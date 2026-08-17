@@ -1,0 +1,115 @@
+{
+  "schema_version": "PR90ExactShaMcpPresentationReceiptCollisionBlockerHandoffV1",
+  "observed_utc": "2026-08-17T14:14:53Z",
+  "status": "BLOCKED_EXACT_SHA_MCP_PRODUCT_PRESENTATION_RECEIPT_COLLISION",
+  "product": {
+    "pr_number": 90,
+    "head_sha": "16ba8532b53cc598a422060039aaee49c862057b",
+    "tree_sha": "faa91174fa45fad6254c3a743b8400b7fdf614f7",
+    "ci_run_id": 31975708077,
+    "ci_status": "SUCCESS",
+    "pr_state": "OPEN_DRAFT",
+    "pr_mergeable": true
+  },
+  "formal_product_acceptance": {
+    "run_id": "pr90-gate63-repaired-head-release-full-001",
+    "attempt_id": "formal-attempt-001",
+    "execution_count": 1,
+    "started_count": 79,
+    "completed_count": 79,
+    "pass_count": 79,
+    "fail_count": 0,
+    "formal_receipt_count": 79,
+    "summary_sha256": "d041a0b8ccbdcb4585365e25ce16bc753757a8d2e5868685377200cfacd2007b",
+    "aggregate_sha256": "f046baaa958b7a9a15bbfd8b847200ac3406b28626d4eb7efa8eda1384473b03"
+  },
+  "post_aggregate_review": {
+    "review_a": "GO",
+    "review_b": "GO",
+    "review_c": "GO",
+    "p0_count": 0,
+    "p1_count": 0
+  },
+  "resolved_prestart_tooling_blocker": {
+    "historical_run_id": "16ba8532b53c-20260816T225934819Z-0fe3e209",
+    "historical_failed_block_index": 3,
+    "historical_product_runtime_started": false,
+    "adapted_runner_sha256": "729591fe43859d1264d3de608b17bd74a889ab728e5586eb3f3b4cdc1dc5da6b",
+    "uid_allowlist_sha256": "02236b076bc2a14ce3f1d55ae256be91526e11afeb6453af5815a7844d653cd1",
+    "uid_entry_count": 215,
+    "uid_entry_set_sha256": "ec22a3f71805a64dae8fae60a54f8bf327185dcd08f2b68ca8633a930f65f805",
+    "validate_only_status": "PASS"
+  },
+  "exact_sha_mcp_failure": {
+    "run_id": "16ba8532b53c-20260817T135931485Z-504c4740",
+    "failed_block_index": 8,
+    "first_failure_class": "PRODUCT_PRESENTATION_RECEIPT_IDENTITY_COLLISION",
+    "message": "The natural production runtime state failed the combat/safety gate.",
+    "mcp_role_started": true,
+    "editor_started": true,
+    "product_runtime_started": true,
+    "product_match_completed": true,
+    "primary_failure_sha256": "c3797454189eb95493d6da6eae02e928982ff797c855f1dc747b9f5948ff7b57",
+    "final_failure_sha256": "ce78276e349026609f843f695018982f3acdf8226a129a589ead101283891dc1",
+    "transient_observation_sha256": "567daae4cddc45dbeb5cc3d6d9c4fcc3996bc6024dc36c9f7bebfc3843da4df8",
+    "raw_mcp_manifest_sha256": "50b80e02136369227fabc7a1e6138f68885b9ad74f367e2356d0a943a9e4c27a",
+    "terminal_acceptance_state_raw_sha256": "8385035080840c608adbd2ba008159cf00c0d88b754748634933117c5d86ff85"
+  },
+  "mcp_completed_scope": {
+    "changed_total": 314,
+    "changed_script_validation": "163/163",
+    "project_script_validation": "1525/1525",
+    "changed_scene_load": "13/13",
+    "changed_resource_validation": "19/19"
+  },
+  "natural_runtime_sample": {
+    "player_count": 4,
+    "local_human_count": 1,
+    "ai_player_count": 3,
+    "phase": "settled",
+    "match_completed": true,
+    "combat_action_count": 9,
+    "combat_public_receipt_count": 12,
+    "presentation_applied_receipt_count": 12,
+    "presentation_collision_receipt_count": 2,
+    "presentation_duplicate_receipt_count": 0,
+    "presentation_gameplay_mutation_count": 0,
+    "presentation_rng_draw_delta": 0,
+    "final_settlement_count": 1,
+    "duplicate_settlement_count": 0,
+    "runtime_error_count": 0,
+    "hidden_info_violation_count": 0,
+    "invalid_action_count": 0,
+    "nonfinite_count": 0,
+    "combat_duplicate_effect_count": 0,
+    "effect_integrity_green": true,
+    "receipt_integrity_green": true,
+    "facility_integrity_green": true
+  },
+  "first_failed_contract": {
+    "field": "runtime_acceptance_debug.combat_presentation.collision_receipt_count",
+    "expected": 0,
+    "actual": 2,
+    "semantic": "The presentation consumer observed an existing receipt_id with a different normalized receipt fingerprint and rejected it fail-closed."
+  },
+  "machine_state_after_failure": {
+    "cleanup_green": true,
+    "godot_process_count": 0,
+    "worker_process_count": 0,
+    "port_7576_count": 0,
+    "port_7586_count": 0,
+    "clone_tracked_delta": 0,
+    "clone_untracked_delta": 0
+  },
+  "later_release_stages": {
+    "viewport_status": "NOT_RUN",
+    "headless_matrix_status": "NOT_RUN",
+    "product_headless_2000_status": "NOT_RUN",
+    "pr90_merged": false,
+    "v076_branch_created": false,
+    "v076_poc_started": false
+  },
+  "automatic_retry_allowed": false,
+  "same_head_mcp_rerun_allowed": false,
+  "next_task": "PR90_RELEASE_EXACT_SHA_MCP_PRESENTATION_RECEIPT_IDENTITY_COLLISION_REPAIR"
+}

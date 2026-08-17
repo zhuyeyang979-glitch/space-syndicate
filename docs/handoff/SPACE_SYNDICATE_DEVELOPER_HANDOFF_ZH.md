@@ -1,10 +1,10 @@
 # 《Space Syndicate / 太空辛迪加》V0.7.5 开发者交接日志
 
-> **2026-08-17 当前覆盖状态（优先于本文后续历史段落）**：PR #90 Head `16ba8532b53cc598a422060039aaee49c862057b`、Tree `faa91174fa45fad6254c3a743b8400b7fdf614f7` 已在唯一完整 Formal Run 中 Gate 1—79 全部 PASS，Aggregate 79/79，79 份 current-run Formal Receipt，0 份复用证明。Post-Aggregate Reviews A/B/C 均为 GO，P0=0、P1=0，没有发现真实产品问题。Release 链随后在 Exact-SHA MCP Runbook Block 3 启动前 fail-closed：Authority 001 声明的 UID entry-set SHA 与按合同重建值不一致。MCP Role、Editor、产品 Runtime、Viewport、Headless、2,000 均未启动。下一任务为 `PR90_RELEASE_EXACT_SHA_MCP_UID_ALLOWLIST_AUTHORITY_SELECTION_CONTINUATION`，且不含自动重跑授权。完整当前证据见 `reports/handoffs/pr90_exact_sha_mcp_uid_authority_prestart_blocker.{json,md}`；后续旧 Attempt/Gate 63 段落仅保留为历史记录。
+> **2026-08-17 当前覆盖状态（优先于本文后续历史段落）**：PR #90 Head `16ba8532b53cc598a422060039aaee49c862057b`、Tree `faa91174fa45fad6254c3a743b8400b7fdf614f7` 已在唯一完整 Formal Run 中 Gate 1—79 全部 PASS，Aggregate 79/79，79 份 current-run Formal Receipt。Post-Aggregate Reviews A/B/C 均为 GO，P0=0、P1=0。旧 UID Authority prestart blocker 已通过仓库外 Runner-only 适配和正确的 215 项 Authority 002 完成预检；随后唯一 Exact-SHA MCP 真实启动并完成 163/163 变更脚本、1,525/1,525 项目脚本、13/13 场景和 19/19 资源。真实 4 人（1 Human + 3 AI）UI 对局自然进入 FinalSettlement，但 Presentation Consumer 记录 `collision_receipt_count=2`，违反硬零合同并在 Block 8 fail-closed。当前为真实产品 Presentation Receipt identity collision blocker；Viewport、Headless、2,000、PR merge 与 V0.7.6 均未启动。下一任务为 `PR90_RELEASE_EXACT_SHA_MCP_PRESENTATION_RECEIPT_IDENTITY_COLLISION_REPAIR`。完整证据见 `reports/handoffs/pr90_exact_sha_mcp_presentation_receipt_collision_blocker.{json,md}`；后续旧段落只保留为历史记录。
 
 > 交接基线：PR #90 Head `16ba8532b53cc598a422060039aaee49c862057b`，Tree `faa91174fa45fad6254c3a743b8400b7fdf614f7`。
 > 状态标签：**LIVE** 已由当前产品代码或正式规则确认；**TEST_ONLY** 仅为测试夹具/离线验证能力；**PLANNED** 尚未实现；**RETIRED** 已禁止重新引入；**UNVERIFIED** 当前没有足够证据。
-> 当前终态：**BLOCKED_AT_EXACT_SHA_MCP_PRESTART_UID_AUTHORITY_CONTRACT**。PR #90 尚未合并；79/79 产品结果保持 PASS。Godot、7576、7586 均为 0。
+> 当前终态：**BLOCKED_AT_EXACT_SHA_MCP_PRODUCT_PRESENTATION_RECEIPT_COLLISION**。PR #90 尚未合并；79/79 Formal 结果保持 PASS，但 Release Acceptance 因两个 Presentation receipt identity collision 未通过。Godot、7576、7586 均为 0。
 
 ## 1. 五分钟总览
 

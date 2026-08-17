@@ -3,8 +3,8 @@
 ```text
 你是《Space Syndicate / 太空辛迪加》的主开发 Agent。
 
-TASK_ID=PR90_RELEASE_EXACT_SHA_MCP_UID_ALLOWLIST_AUTHORITY_SELECTION_CONTINUATION
-EXECUTION_MODE=FREEZE_FAILED_EXACT_SHA_MCP_PRESTART_RUN_VALIDATE_AUTHORITY_002_AND_IGNORED_IMPORT_CLOSED_SET_NO_AUTOMATIC_RERUN
+TASK_ID=PR90_RELEASE_EXACT_SHA_MCP_PRESENTATION_RECEIPT_IDENTITY_COLLISION_REPAIR
+EXECUTION_MODE=FREEZE_FAILED_EXACT_SHA_MCP_DIAGNOSE_AND_REPAIR_PRESENTATION_RECEIPT_IDENTITY_ON_NEW_HEAD_NO_SAME_HEAD_RERUN
 
 产品身份：
 PR_NUMBER=90
@@ -15,7 +15,7 @@ CI_STATUS=SUCCESS
 PR_STATE=OPEN_DRAFT
 PR_MERGEABLE=true
 
-冻结产品结果：
+冻结 Formal 产品结果：
 FORMAL_RUN_ID=pr90-gate63-repaired-head-release-full-001
 FORMAL_ATTEMPT_ID=formal-attempt-001
 FORMAL_EXECUTION_COUNT=1
@@ -32,44 +32,75 @@ POST_AGGREGATE_REVIEW_C=GO
 POST_AGGREGATE_REVIEW_P0=0
 POST_AGGREGATE_REVIEW_P1=0
 
-不得修改、删除、覆盖、补写或重跑该 Formal Attempt。79/79 产品结论继续有效。
+不得修改、删除、覆盖、补写或重跑 Formal Attempt。79/79 Formal 结论继续有效，但不等于 Release PASS。
 
-冻结 Exact-SHA MCP prestart 失败：
-RUNBOOK_RUN_ID=16ba8532b53c-20260816T225934819Z-0fe3e209
-FAILED_BLOCK_INDEX=3
-MCP_ROLE_STARTED=false
-EDITOR_STARTED=false
-PRODUCT_RUNTIME_STARTED=false
-FIRST_FAILURE_CLASS=UID_ALLOWLIST_ENTRY_SET_HASH_INVALID
-FIRST_FAILURE_MESSAGE=The frozen UID allowlist entry-set hash is invalid.
-PRIMARY_FAILURE_SHA256=a0fd0fb947c8729279c4df3168d5b770a1b03ff1febb137bd07b1e5db173e8df
-FINAL_FAILURE_SHA256=f0a57b465b5f81b62eeb5949c2330fa564204b0af1fa007edde32715cb5e6e5f
-TRANSIENT_OBSERVATION_SHA256=55a159a917e5adae85a83b48ae92a2045a8a551d051acbd3494a2a062846d7ff
+冻结 Exact-SHA MCP 产品失败：
+RUNBOOK_RUN_ID=16ba8532b53c-20260817T135931485Z-504c4740
+FAILED_BLOCK_INDEX=8
+MCP_ROLE_STARTED=true
+EDITOR_STARTED=true
+PRODUCT_RUNTIME_STARTED=true
+PRODUCT_MATCH_COMPLETED=true
+FIRST_FAILURE_CLASS=PRODUCT_PRESENTATION_RECEIPT_IDENTITY_COLLISION
+FIRST_FAILURE_MESSAGE=The natural production runtime state failed the combat/safety gate.
+PRIMARY_FAILURE_SHA256=c3797454189eb95493d6da6eae02e928982ff797c855f1dc747b9f5948ff7b57
+FINAL_FAILURE_SHA256=ce78276e349026609f843f695018982f3acdf8226a129a589ead101283891dc1
+TERMINAL_ACCEPTANCE_STATE_RAW_SHA256=8385035080840c608adbd2ba008159cf00c0d88b754748634933117c5d86ff85
 
-失败使用的 Authority 001：
-FILE_SHA256=468be020c0c88d1ee1f58c7d5ce14a80c218d252bdf1f0876a14b53cdb5e560c
-ENTRY_COUNT=215
-DECLARED_ENTRY_SET_SHA256=e744234619d31a4080f37683f189451da0ab052836454370342a4e20cc2080fb
-RECOMPUTED_ENTRY_SET_SHA256=ec22a3f71805a64dae8fae60a54f8bf327185dcd08f2b68ca8633a930f65f805
-ENTRY_SET_MATCH=false
+已通过的 MCP 范围：
+CHANGED_TOTAL=314
+MCP_CHANGED_SCRIPT_VALIDATION=163/163
+MCP_PROJECT_SCRIPT_VALIDATION=1525/1525
+MCP_CHANGED_SCENE_LOAD=13/13
+MCP_CHANGED_RESOURCE_VALIDATION=19/19
 
-现有 Authority 002：
-FILE_SHA256=02236b076bc2a14ce3f1d55ae256be91526e11afeb6453af5815a7844d653cd1
-ENTRY_COUNT=215
-DECLARED_ENTRY_SET_SHA256=ec22a3f71805a64dae8fae60a54f8bf327185dcd08f2b68ca8633a930f65f805
-USED_BY_FAILED_RUNBOOK=false
+真实自然对局：
+PLAYER_COUNT=4
+LOCAL_HUMAN_COUNT=1
+AI_PLAYER_COUNT=3
+MATCH_COMPLETED=true
+PHASE=settled
+FINAL_SETTLEMENT_COUNT=1
+RUNTIME_ERROR_COUNT=0
+HIDDEN_INFO_VIOLATION_COUNT=0
+INVALID_ACTION_COUNT=0
+NONFINITE_COUNT=0
+COMBAT_DUPLICATE_EFFECT_COUNT=0
+DUPLICATE_SETTLEMENT_COUNT=0
+PRESENTATION_APPLIED_RECEIPT_COUNT=12
+PRESENTATION_COLLISION_RECEIPT_COUNT=2
 
-本任务先只读验证：
-1. Authority 002 的原始文件 SHA、Head、Tree、controlled-preimport Clone 和 capture 时间；
-2. 215 个 UID 条目的 exact field set、唯一 path/value、source tracked、raw UID hash/length；
-3. 使用 Runbook 的 Ordinal 排序与 UTF-8 canonical row 算法重建 entry-set SHA；
-4. 比较 Authority 001/002，解释为什么 001 的声明 SHA 错误；
-5. 审计 Failure Finalizer 报告的 57 个 ignored .import sidecar；
-6. 证明这些 sidecar 是预存缓存、正式运行生成物或未知漂移，并给出闭集处理方案；
-7. 核验 Godot=0、7576=0、7586=0、Clone tracked/untracked delta=0。
+硬门要求 collision_receipt_count=0；实际为2。V075CombatPresentationConsumer 的合同表示：同一个 receipt_id 已绑定一个规范 receipt fingerprint，后续又收到不同 fingerprint。Consumer 正确 fail-closed；不得把碰撞改名为重复、忽略、清零或降低 Gate 标准。
 
-本任务不自动授权新的 Exact-SHA MCP 正式运行：
-AUTHORIZED_EXACT_SHA_MCP_RETRY_COUNT=0
+先只读定位：
+1. 从冻结 Raw MCP terminal acceptance state、public receipt history 和源码构造链重建两个碰撞 receipt 的 ID、首次 fingerprint、后续 fingerprint、event kind 与来源 Owner；
+2. 审计所有传入 V075CombatPresentationConsumer.consume_receipt 的 receipt schema；
+3. 区分真正 identity 复用、可变字段被错误纳入 fingerprint、同一 authority effect 的多种 presentation event 和 stale replay；
+4. 证明 Combat/Facility authoritative receipt integrity 仍为 GREEN 的同时，Presentation 为什么出现 collision；
+5. 建立负例：同 ID/不同 payload 必须继续 fail-closed；
+6. 建立正例：同 authority receipt 的合法重放必须具有相同 fingerprint，并且不会产生第二次 cue。
+
+修复边界：
+PRODUCTION_CODE_CHANGE_ALLOWED=true
+GODOT_MCP_CODE_EDIT_DEFAULT=true
+DIRECT_FILESYSTEM_PRODUCTION_GODOT_EDIT_ALLOWED=false
+TEST_EXPECTATION_CHANGE_ALLOWED=false
+CANONICAL_GATE_MANIFEST_CHANGE_ALLOWED=false
+GATE_ORDER_CHANGE_ALLOWED=false
+GATE_STANDARD_REDUCTION_ALLOWED=false
+
+修复必须在 PR #90 新 Head 上完成，保持单一 Authority、零 Presentation gameplay mutation、零 Presentation rule RNG draw。新增或修改测试只允许锁定真实 identity/fingerprint 合同，不得把 expected collision 改为2。
+
+新 Head 必须：
+- targeted presentation/exact-once tests PASS；
+- CI SUCCESS；
+- 完整 Gate 1—79 在新 Head 只执行一次并 79/79；
+- Post-Aggregate Review GO；
+- Exact-SHA MCP 在新 Head 只执行一次，collision=0；
+- 随后才允许 Viewport、Headless 3/4/6/8、Product Headless 2,000、PR Ready/Merge。
+
+当前 Head 不得重跑 MCP：
+AUTHORIZED_SAME_HEAD_MCP_RERUN_COUNT=0
 AUTOMATIC_RETRY_ALLOWED=false
 VIEWPORT_START_ALLOWED=false
 HEADLESS_START_ALLOWED=false
@@ -77,14 +108,7 @@ PRODUCT_HEADLESS_2000_START_ALLOWED=false
 PR90_MERGE_ALLOWED=false
 V076_START_ALLOWED=false
 
-如 Authority 002 或 ignored import closed-set 审计失败：
-STATUS=BLOCKED
-NEXT_TASK=PR90_RELEASE_EXACT_SHA_MCP_<EXACT_AUTHORITY_BLOCKER>_REPAIR
+失败后机器状态已归零：Godot=0，Worker=0，7576=0，7586=0，Exact Clone tracked/untracked delta=0。
 
-如所有 prestart 审计通过：
-停止并请求用户明确授权一个新的 Exact-SHA MCP continuation；不得自动运行。
-
-PR90_MERGED=false
-V076_BRANCH_CREATED=false
-V076_POC_STARTED=false
+NEXT_TASK=PR90_RELEASE_EXACT_SHA_MCP_PRESENTATION_RECEIPT_IDENTITY_COLLISION_REPAIR
 ```
