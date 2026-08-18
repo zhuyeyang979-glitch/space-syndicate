@@ -188,6 +188,7 @@ function Test-CanonicalGateSources {
         $spec = @($gateManifest.gates | Where-Object { [int]$_.id -eq $gateId })[0]
         $specArguments = if ($spec.PSObject.Properties.Name -contains 'arguments') { @($spec.arguments) } else { @() }
         $rawArguments = if ($raw.PSObject.Properties.Name -contains 'test_arguments') { @($raw.test_arguments) } else { @() }
+        $argumentDifference = if (@($specArguments).Count -eq 0 -and @($rawArguments).Count -eq 0) { @() } else { @(Compare-Object $specArguments $rawArguments -SyncWindow 0) }
         $markerRequired = -not [string]::IsNullOrWhiteSpace([string]$spec.marker)
         $markerGreen = if ($markerRequired) {
             [bool]$raw.marker_required -and [bool]$raw.marker_found -and [string]$raw.expected_completion_marker -ceq [string]$spec.marker -and
@@ -202,7 +203,7 @@ function Test-CanonicalGateSources {
             @($receipt.project_process_convergence.remaining_process_ids).Count -ne 0 -or [int]$receipt.clone_tracked_change_count_after -ne 0 -or
             [int]$receipt.clone_index_change_count_after -ne 0 -or [string]$raw.status -cne 'passed' -or [string]$raw.target_path -cne [string]$spec.script -or
             [string]$raw.test_script -cne [string]$spec.script -or @($specArguments).Count -ne @($rawArguments).Count -or
-            (@(Compare-Object $specArguments $rawArguments -SyncWindow 0).Count -ne 0) -or [int]$raw.process_exit_code -ne 0 -or
+            (@($argumentDifference).Count -ne 0) -or [int]$raw.process_exit_code -ne 0 -or
             [int]$raw.runner_exit_code -ne 0 -or [bool]$raw.timed_out -or [bool]$raw.raw_capture_failure -or
             -not [bool]$raw.stdout_capture.capture_complete -or -not [bool]$raw.stderr_capture.capture_complete -or
             [string]$raw.stdout_capture.sha256 -cne [string]$receipt.stdout_sha256 -or [string]$raw.stderr_capture.sha256 -cne [string]$receipt.stderr_sha256 -or
