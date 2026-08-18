@@ -1,0 +1,174 @@
+{
+  "schema_version": "PR90RuntimeEventCursorInstrumentationBlockerV1",
+  "observed_utc": "2026-08-18T14:55:25.6130908Z",
+  "status": "BLOCKED_REQUIRES_RUNTIME_EVENT_CURSOR_INSTRUMENTATION",
+  "product_identity": {
+    "pr_number": 90,
+    "head_sha": "4d5b173fccae7c6bb1004488e4d561c11714210a",
+    "tree_sha": "365a2a0d8b09162cc7338a460935e8b881cac770",
+    "live_github_pr_head_sha": "4d5b173fccae7c6bb1004488e4d561c11714210a",
+    "direct_remote_pr_ref_sha": "4d5b173fccae7c6bb1004488e4d561c11714210a",
+    "direct_remote_branch_ref_sha": "4d5b173fccae7c6bb1004488e4d561c11714210a",
+    "local_product_head_sha": "4d5b173fccae7c6bb1004488e4d561c11714210a",
+    "local_product_tree_sha": "365a2a0d8b09162cc7338a460935e8b881cac770",
+    "authoritative_head_match_count": 4,
+    "source_worktree_clean": true,
+    "ci_run_id": 32055074222,
+    "ci_status": "SUCCESS",
+    "pr_state": "OPEN_DRAFT",
+    "pr_mergeable": true,
+    "pr_merge_state_status": "CLEAN",
+    "pr90_product_head_change_count": 0
+  },
+  "reused_release_evidence": {
+    "formal_gate_pass_count": 79,
+    "formal_gate_total_count": 79,
+    "aggregated_product_focused_tests": "79/79",
+    "aggregated_product_focused_reused": true,
+    "formal_gate_rerun_count": 0,
+    "post_aggregate_review": "GO",
+    "post_aggregate_p0_count": 0,
+    "post_aggregate_p1_count": 0,
+    "frozen_exact_sha_mcp_status": "FAIL",
+    "frozen_exact_sha_mcp_modification_count": 0,
+    "frozen_exact_sha_mcp_rerun_count": 0,
+    "frozen_exact_sha_mcp_evidence_overwrite_count": 0
+  },
+  "runtime_event_interface_audit": {
+    "runtime_event_capacity": 100,
+    "tool_arguments": [
+      "max_events",
+      "timeout_msec"
+    ],
+    "event_fields": [
+      "kind",
+      "message",
+      "details",
+      "timestamp"
+    ],
+    "event_sequence_available": false,
+    "event_id_available": false,
+    "cursor_available": false,
+    "total_generated_event_count_available": false,
+    "since_available": false,
+    "acknowledgement_available": false,
+    "drain_available": false,
+    "clear_available": false,
+    "poll_consumes_events": false,
+    "poll_returns_snapshot": true,
+    "overflow_discards_oldest_event": true,
+    "timestamp_has_authoritative_unique_ordering_identity": false,
+    "evidence": [
+      "addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd:10 fixes MAX_RUNTIME_EVENTS at 100",
+      "addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd:48-55 emits ready before normal runtime activity",
+      "addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd:98 exposes a duplicate of the current ring",
+      "addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd:158-162 returns a duplicate without consuming or acknowledging events",
+      "addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd:518-526 stores only kind/message/details/timestamp and pop_front discards overflow",
+      "addons/funplay_mcp/core/funplay_core_tools.gd:4303-4326 only tails the snapshot according to max_events",
+      "addons/funplay_mcp/core/funplay_tool_registry.gd:577-583 exposes only max_events and timeout_msec"
+    ]
+  },
+  "collector_mode_decision": {
+    "runtime_event_collector_mode": "NONE",
+    "mode_a": {
+      "name": "MONOTONIC_EVENT_SEQUENCE_OR_CURSOR",
+      "status": "IMPOSSIBLE_WITH_CURRENT_INTERFACE",
+      "reason": "No event sequence, event ID, cursor, total generated count, or since token exists."
+    },
+    "mode_b": {
+      "name": "OVERLAPPING_WINDOWS_WITH_NO_SATURATION",
+      "status": "IMPOSSIBLE_WITH_CURRENT_INTERFACE",
+      "reason": "Polling does not drain the ring. The natural run produces more than 100 events, so the cumulative ring necessarily reaches 100, evicts early evidence, and remains saturated. Limiting max_events to 80 only hides the saturated tail."
+    },
+    "fingerprint_deduplication_authoritative": false,
+    "fingerprint_rejection_reason": "Legitimate repeated events can have identical kind, message, details, and second-resolution timestamps; fingerprints cannot establish occurrence identity, global order, or absence of eviction.",
+    "runtime_event_collector_selftest_status": "BLOCKED",
+    "runtime_event_collector_selftest_case_count": 0,
+    "runtime_event_collector_selftest_pass_count": 0,
+    "collector_blocker": "Neither authorized continuity mode can be implemented honestly against the current production interface."
+  },
+  "new_exact_sha_mcp": {
+    "authorized_run_id": "pr90-gate78-repaired-exact-sha-mcp-002",
+    "authorized_run_count": 1,
+    "authorized_run_count_consumed": 0,
+    "authorization_transferred_to_next_task": false,
+    "formal_event_poll_count": 0,
+    "formal_ready_witness_count": 0,
+    "formal_event_window_saturation_count": 0,
+    "formal_event_evidence_gap_count": "NOT_RUN",
+    "post_import_baseline_sealed": false,
+    "import_finalizer_status": "NOT_RUN_BLOCKED_BY_EVENT_COLLECTOR_PRECONDITION",
+    "disposable_clone_disposition": "NOT_CREATED",
+    "exact_sha_mcp_status": "NOT_RUN",
+    "mcp_event_evidence_complete": false,
+    "mcp_presentation_collision_count": "NOT_RUN",
+    "mcp_duplicate_presentation_effect_count": "NOT_RUN",
+    "automatic_retry_count": 0
+  },
+  "headless_presentation_read_only_characterization": {
+    "status": "NOT_RUN_AFTER_COLLECTOR_PRECONDITION_FAILURE",
+    "current_simulation_presentation_observer_disabled": true,
+    "current_simulation_metrics": [
+      "presentation_observer_disabled",
+      "presentation_gameplay_mutation_count",
+      "presentation_rng_draw_delta"
+    ],
+    "current_simulation_presentation_collision_metric_available": false,
+    "current_simulation_duplicate_observer_edge_metric_available": false,
+    "production_three_edge_wiring_present": true,
+    "external_harness_can_use_production_consumer": true,
+    "external_harness_requires_new_authorized_identity_manifest": true,
+    "headless_presentation_uses_production_consumer": false,
+    "presentation_parity_seed_count": 0,
+    "presentation_audit_authority_state_parity": false,
+    "dispatcher_available": false,
+    "existing_planner_expected_shard_count_for_2000_matches": 100,
+    "actual_shard_planned_count": 0,
+    "actual_shard_dispatched_count": 0,
+    "actual_shard_completed_count": 0,
+    "unique_seed_count": 0,
+    "evidence": [
+      "scripts/v075_simulation/v075_combat_simulation_runtime_driver.gd:18 and 443-452 disable and omit the Presentation consumer",
+      "scripts/v075_simulation/v075_combat_simulation_runtime_driver.gd:1203-1205 exports only disabled/mutation/RNG Presentation fields",
+      "scripts/v075_runtime/v075_runtime_owner.gd:5977-6006 creates the production consumer and connects all three required observer edges",
+      "tools/v075_formal_authority.psm1:1028-1170 builds plans; configurationIndex modulo WorkerCount assigns whole configurations to workers",
+      "tools/invoke_v075_formal_authority.ps1:1-129 exposes plan-shards but no dispatch operation"
+    ]
+  },
+  "later_release_stages": {
+    "import_finalizer_status": "NOT_RUN",
+    "viewport_status": "NOT_RUN",
+    "headless_matrix_status": "NOT_RUN",
+    "product_headless_2000_status": "NOT_RUN",
+    "product_headless_completed_count": "NOT_RUN",
+    "product_headless_presentation_receipt_count": "NOT_RUN",
+    "product_headless_presentation_collision_count": "NOT_RUN",
+    "product_headless_duplicate_observer_edge_count": "NOT_RUN"
+  },
+  "release_disposition": {
+    "main_result_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
+    "pr90_ready": false,
+    "pr90_merged": false,
+    "pr90_merge_sha": null,
+    "v076_branch_created": false,
+    "v076_branch": null,
+    "v076_poc_started": false,
+    "poc_seed_count": 0,
+    "deterministic_replay_count": 0,
+    "state_hash_mismatch_count": "NOT_RUN",
+    "poc_monster_directional_move_green": "NOT_RUN",
+    "v076_production_cutover_performed": false,
+    "handoff_pr_number": 91,
+    "handoff_available_in_cloud": true,
+    "handoff_product_code_change_count": 0
+  },
+  "continuation_constraints": {
+    "runtime_event_cursor_instrumentation_requires_explicit_authorization": true,
+    "do_not_modify_production_runtime_under_this_task": true,
+    "do_not_start_new_exact_sha_mcp_under_this_task": true,
+    "do_not_enter_viewport_headless_or_product_2000": true,
+    "do_not_merge_pr90": true,
+    "do_not_create_v076_branch": true
+  },
+  "next_task": "PR90_RUNTIME_EVENT_CURSOR_INSTRUMENTATION_AUTHORIZATION"
+}
