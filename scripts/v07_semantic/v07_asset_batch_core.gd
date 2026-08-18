@@ -19,6 +19,17 @@ const ASSET_INTENT_ID := "v072.six_color_assets.intent.v3"
 const ASSET_RECEIPT_ID := "v072.six_color_assets.authoritative_receipt.v3"
 const ASSET_SAVE_STATE_ID := "v072.six_color_assets.save_state.v3"
 
+const MONSTER_SKILL_RESERVATION_REQUEST_ID := (
+	"V075MonsterSkillAssetReservationRequestV1"
+)
+const MONSTER_SKILL_RESERVATION_RECEIPT_ID := (
+	"V075MonsterSkillAssetReservationReceiptV1"
+)
+const MONSTER_SKILL_SETTLEMENT_INTENT_ID := (
+	"V075MonsterSkillAssetSettlementIntentV1"
+)
+const MONSTER_SKILL_RESERVATION_PREFIX := "reservation.monster.skill."
+
 const BATCH_CORE_AUTHORITY_ID := "v072.card_batch.core_authority.v3"
 const BATCH_AI_OBSERVATION_ID := "v072.card_batch.ai_observation.v3"
 const BATCH_PLAYER_PROJECTION_ID := "v072.card_batch.player_projection.v3"
@@ -728,7 +739,8 @@ func lock_player_queue(
 
 	var reservation_plan := _reservation_plan(
 		sorted_actions,
-		player.get("assets") as Dictionary
+		player.get("assets") as Dictionary,
+		player.get("reserved_totals") as Dictionary
 	)
 	if not bool(reservation_plan.get("affordable", false)):
 		return _failure(
@@ -998,6 +1010,289 @@ static func reject_resolution_input(state: Dictionary, operation_id: String) -> 
 	return _failure(state, "reject_resolution_input", "resolution_accepts_no_new_input")
 
 
+static func monster_skill_available_asset_view(
+	state: Dictionary,
+	viewer_id: String
+) -> Dictionary:
+	if (
+		not _state_error(state).is_empty()
+		or not (state.get("player_ids") as Array).has(viewer_id)
+	):
+		return {}
+	var player := (state.get("players") as Dictionary).get(
+		viewer_id
+	) as Dictionary
+	var available := _zero_color_map()
+	for color in COLORS:
+		available[color] = int(
+			(player.get("assets") as Dictionary).get(color, 0)
+		) - int(
+			(player.get("reserved_totals") as Dictionary).get(color, 0)
+		)
+	return {
+		"viewer_id": viewer_id,
+		"state_revision": int(state.get("revision", 0)),
+		"own_available_assets": available,
+	}
+
+
+static func prepare_monster_skill_asset_reservation(
+	state: Dictionary,
+	reservation_request: Dictionary
+) -> Dictionary:
+	if not _state_error(state).is_empty():
+		return _monster_skill_asset_failure(state, "state_invalid")
+	var request_error := _monster_skill_reservation_request_error(
+		reservation_request
+	)
+	if not request_error.is_empty():
+		return _monster_skill_asset_failure(state, request_error)
+	var reservation_id := str(reservation_request.get(
+		"reservation_id",
+		""
+	))
+	var request_fingerprint := str(reservation_request.get(
+		"reservation_request_fingerprint",
+		""
+	))
+	var prior := _monster_skill_operation_receipt(
+		state,
+		reservation_id,
+		["reserve_monster_skill_assets"]
+	)
+	if not prior.is_empty():
+		if str(prior.get("intent_fingerprint", "")) != request_fingerprint:
+			return _monster_skill_asset_failure(
+				state,
+				"monster_skill_reservation_id_collision"
+			)
+		return {
+			"accepted": true,
+			"replayed": true,
+			"reason_code": str(prior.get("reason_code", "")),
+			"state": state.duplicate(true),
+			"receipt": prior,
+			"reservation_receipt": (
+				_monster_skill_reservation_receipt(
+					reservation_request,
+					true,
+					str(prior.get("reason_code", "")),
+					int(prior.get("state_revision", 0))
+				)
+			),
+		}
+	var owner_id := str(reservation_request.get("owner_player_id", ""))
+	if not (state.get("player_ids") as Array).has(owner_id):
+		return _monster_skill_reservation_rejection(
+			state,
+			reservation_request,
+			"monster_skill_asset_owner_invalid"
+		)
+	if int(reservation_request.get("asset_snapshot_revision", -1)) != int(
+		state.get("revision", 0)
+	):
+		return _monster_skill_reservation_rejection(
+			state,
+			reservation_request,
+			"monster_skill_asset_snapshot_changed"
+		)
+	var player := (state.get("players") as Dictionary).get(
+		owner_id
+	) as Dictionary
+	if (player.get("reservations") as Dictionary).has(reservation_id):
+		return _monster_skill_asset_failure(
+			state,
+			"monster_skill_reservation_unjournaled_collision"
+		)
+	var cost := reservation_request.get("asset_cost_by_color") as Dictionary
+	for color in COLORS:
+		var available := int(
+			(player.get("assets") as Dictionary).get(color, 0)
+		) - int(
+			(player.get("reserved_totals") as Dictionary).get(color, 0)
+		)
+		if int(cost.get(color, 0)) > available:
+			return _monster_skill_reservation_rejection(
+				state,
+				reservation_request,
+				"available_unreserved_assets_insufficient"
+			)
+	var next := state.duplicate(true)
+	var next_player := (next.get("players") as Dictionary).get(
+		owner_id
+	) as Dictionary
+	(next_player.get("reservations") as Dictionary)[reservation_id] = (
+		cost.duplicate(true)
+	)
+	_recalculate_reserved_totals(next_player)
+	_increment_revision(next)
+	var receipt := _receipt(
+		next,
+		"reserve_monster_skill_assets",
+		true,
+		"monster_skill_assets_reserved",
+		owner_id,
+		reservation_id,
+		"reserved",
+		str(reservation_request.get("request_id", "")),
+		request_fingerprint
+	)
+	(next.get("receipts") as Array).append(receipt)
+	return {
+		"accepted": true,
+		"replayed": false,
+		"reason_code": "monster_skill_assets_reserved",
+		"state": next,
+		"receipt": receipt,
+		"reservation_receipt": _monster_skill_reservation_receipt(
+			reservation_request,
+			true,
+			"monster_skill_assets_reserved",
+			int(next.get("revision", 0))
+		),
+	}
+
+
+static func commit_monster_skill_asset_reservation(
+	state: Dictionary,
+	settlement_intent: Dictionary
+) -> Dictionary:
+	return _settle_monster_skill_asset_reservation(
+		state,
+		settlement_intent,
+		"commit"
+	)
+
+
+static func release_monster_skill_asset_reservation(
+	state: Dictionary,
+	settlement_intent: Dictionary
+) -> Dictionary:
+	return _settle_monster_skill_asset_reservation(
+		state,
+		settlement_intent,
+		"release"
+	)
+
+
+static func _settle_monster_skill_asset_reservation(
+	state: Dictionary,
+	settlement_intent: Dictionary,
+	expected_action: String
+) -> Dictionary:
+	if not _state_error(state).is_empty():
+		return _monster_skill_asset_failure(state, "state_invalid")
+	var intent_error := _monster_skill_settlement_intent_error(
+		settlement_intent
+	)
+	if not intent_error.is_empty():
+		return _monster_skill_asset_failure(state, intent_error)
+	if str(settlement_intent.get("action", "")) != expected_action:
+		return _monster_skill_asset_failure(
+			state,
+			"monster_skill_asset_settlement_action_mismatch"
+		)
+	var reservation_id := str(settlement_intent.get(
+		"reservation_id",
+		""
+	))
+	var settlement_fingerprint := str(settlement_intent.get(
+		"settlement_fingerprint",
+		""
+	))
+	var operation_id := (
+		"commit_monster_skill_assets"
+		if expected_action == "commit"
+		else "release_monster_skill_assets"
+	)
+	var prior := _monster_skill_operation_receipt(
+		state,
+		reservation_id,
+		[
+			"commit_monster_skill_assets",
+			"release_monster_skill_assets",
+		]
+	)
+	if not prior.is_empty():
+		if (
+			str(prior.get("operation_id", "")) != operation_id
+			or str(prior.get("intent_fingerprint", ""))
+			!= settlement_fingerprint
+		):
+			return _monster_skill_asset_failure(
+				state,
+				"monster_skill_asset_settlement_collision"
+			)
+		return {
+			"accepted": true,
+			"replayed": true,
+			"reason_code": str(prior.get("reason_code", "")),
+			"state": state.duplicate(true),
+			"receipt": prior,
+		}
+	var owner_id := str(settlement_intent.get("owner_player_id", ""))
+	if not (state.get("player_ids") as Array).has(owner_id):
+		return _monster_skill_asset_failure(
+			state,
+			"monster_skill_asset_owner_invalid"
+		)
+	var player := (state.get("players") as Dictionary).get(
+		owner_id
+	) as Dictionary
+	var reservations := player.get("reservations") as Dictionary
+	if not reservations.has(reservation_id):
+		return _monster_skill_asset_failure(
+			state,
+			"monster_skill_asset_reservation_missing"
+		)
+	var cost := settlement_intent.get("asset_cost_by_color") as Dictionary
+	if reservations.get(reservation_id) != cost:
+		return _monster_skill_asset_failure(
+			state,
+			"monster_skill_asset_reservation_cost_changed"
+		)
+	var next := state.duplicate(true)
+	var next_player := (next.get("players") as Dictionary).get(
+		owner_id
+	) as Dictionary
+	if expected_action == "commit":
+		var assets := next_player.get("assets") as Dictionary
+		for color in COLORS:
+			assets[color] = int(assets.get(color, 0)) - int(
+				cost.get(color, 0)
+			)
+	(next_player.get("reservations") as Dictionary).erase(reservation_id)
+	_recalculate_reserved_totals(next_player)
+	_increment_revision(next)
+	var committed := expected_action == "commit"
+	var reason_code := (
+		"monster_skill_assets_committed"
+		if committed
+		else "monster_skill_assets_released"
+	)
+	var receipt := _receipt(
+		next,
+		operation_id,
+		true,
+		reason_code,
+		owner_id,
+		reservation_id,
+		"assets_debited" if committed else "assets_released",
+		str(settlement_intent.get("settlement_intent_id", "")),
+		settlement_fingerprint
+	)
+	(next.get("receipts") as Array).append(receipt)
+	return {
+		"accepted": true,
+		"replayed": false,
+		"reason_code": reason_code,
+		"state": next,
+		"receipt": receipt,
+		"asset_debit_count": 1 if committed else 0,
+		"full_reservation_release": not committed,
+	}
+
+
 static func core_authority(state: Dictionary) -> Dictionary:
 	if not _state_error(state).is_empty():
 		return {}
@@ -1154,6 +1449,21 @@ static func contract_snapshot() -> Dictionary:
 		"one_shot": true,
 		"full_queue_atomic_reservation": true,
 		"per_action_reservation": true,
+		"monster_private_skill_asset_port": {
+			"reservation_request_contract_id": (
+				MONSTER_SKILL_RESERVATION_REQUEST_ID
+			),
+			"reservation_receipt_contract_id": (
+				MONSTER_SKILL_RESERVATION_RECEIPT_ID
+			),
+			"settlement_intent_contract_id": (
+				MONSTER_SKILL_SETTLEMENT_INTENT_ID
+			),
+			"available_unreserved_only": true,
+			"public_reservations_protected": true,
+			"commit_or_full_release": true,
+			"direct_combat_asset_write_count": 0,
+		},
 		"future_refresh_can_pay_current_batch": false,
 		"interactive_counters": false,
 		"resolution_mode": "round_robin_by_local_action_index",
@@ -2485,8 +2795,24 @@ static func _lock_player_in_state(
 	var player := (state.get("players") as Dictionary).get(actor_id) as Dictionary
 	player["queue_status"] = "locked"
 	player["local_queue"] = actions.duplicate(true)
-	player["reservations"] = reservations.duplicate(true)
-	player["reserved_totals"] = reserved_totals.duplicate(true)
+	var combined_reservations := {}
+	for reservation_id_variant in (
+		player.get("reservations") as Dictionary
+	).keys():
+		var reservation_id := str(reservation_id_variant)
+		if _is_monster_skill_reservation_id(reservation_id):
+			combined_reservations[reservation_id] = (
+				(player.get("reservations") as Dictionary).get(
+					reservation_id
+				) as Dictionary
+			).duplicate(true)
+	for reservation_id_variant in reservations.keys():
+		combined_reservations[str(reservation_id_variant)] = (
+			(reservations.get(reservation_id_variant) as Dictionary)
+			.duplicate(true)
+		)
+	player["reservations"] = combined_reservations
+	_recalculate_reserved_totals(player)
 	player["frozen_gdp_milli"] = completed_gdp_milli.duplicate(true)
 	var window := state.get("window") as Dictionary
 	window["locked_player_count"] = int(window.get("locked_player_count", 0)) + 1
@@ -2699,9 +3025,26 @@ static func _build_authority_queue(state: Dictionary) -> Array:
 	return result
 
 
-static func _reservation_plan(actions: Array, assets: Dictionary) -> Dictionary:
+static func _reservation_plan(
+	actions: Array,
+	assets: Dictionary,
+	pre_reserved_totals: Dictionary = {}
+) -> Dictionary:
 	var reservations := {}
 	var totals := _zero_color_map()
+	if not pre_reserved_totals.is_empty():
+		if not _color_map_valid(
+			pre_reserved_totals,
+			0,
+			MAX_SAFE_INTEGER
+		):
+			return {
+				"affordable": false,
+				"reason_code": "existing_reservations_invalid",
+				"reservations": {},
+				"totals": _zero_color_map(),
+			}
+		totals = pre_reserved_totals.duplicate(true)
 	for action_variant in actions:
 		var action := action_variant as Dictionary
 		var reservation := _reservation_for_action(action)
@@ -3085,6 +3428,11 @@ static func _state_error(value: Variant) -> String:
 		}
 		if _fingerprint(reconstructed_intent) != entry.get("intent_fingerprint"):
 			return "state_intent_receipt_reconstruction_invalid"
+	var monster_skill_history_error := (
+		_monster_skill_reservation_history_error(state, player_ids)
+	)
+	if not monster_skill_history_error.is_empty():
+		return monster_skill_history_error
 	return _semantic_state_error(state, player_ids, action_ids, locked_count)
 
 
@@ -3133,9 +3481,7 @@ static func _player_error(value: Variant, conversion: int) -> String:
 		return "player_local_queue_invalid"
 	if str(player.get("queue_status", "")) == "open":
 		if not sorted.is_empty() \
-				or not (player.get("reservations") as Dictionary).is_empty() \
 				or not (player.get("action_results") as Dictionary).is_empty() \
-				or player.get("reserved_totals") != _zero_color_map() \
 				or player.get("frozen_gdp_milli") != _zero_color_map():
 			return "open_player_queue_not_empty"
 	var expected_reservation_ids: Array[String] = []
@@ -3146,6 +3492,12 @@ static func _player_error(value: Variant, conversion: int) -> String:
 		local_action_ids.append(action_id)
 		if not (player.get("action_results") as Dictionary).has(action_id):
 			expected_reservation_ids.append(action_id)
+	for reservation_id_variant in (
+		player.get("reservations") as Dictionary
+	).keys():
+		var reservation_id := str(reservation_id_variant)
+		if _is_monster_skill_reservation_id(reservation_id):
+			expected_reservation_ids.append(reservation_id)
 	if not _exact_keys(player.get("reservations") as Dictionary, expected_reservation_ids):
 		return "player_reservations_invalid"
 	var calculated_totals := _zero_color_map()
@@ -3162,6 +3514,27 @@ static func _player_error(value: Variant, conversion: int) -> String:
 		for color in COLORS:
 			calculated_totals[color] = int(calculated_totals.get(color, 0)) \
 				+ int((reservation_variant as Dictionary).get(color, 0))
+	for reservation_id_variant in (
+		player.get("reservations") as Dictionary
+	).keys():
+		var reservation_id := str(reservation_id_variant)
+		if not _is_monster_skill_reservation_id(reservation_id):
+			continue
+		var private_reservation_variant: Variant = (
+			player.get("reservations") as Dictionary
+		).get(reservation_id)
+		if not _color_map_valid(
+			private_reservation_variant,
+			0,
+			ASSET_CAP
+		):
+			return "monster_skill_asset_reservation_invalid"
+		for color in COLORS:
+			calculated_totals[color] = int(
+				calculated_totals.get(color, 0)
+			) + int(
+				(private_reservation_variant as Dictionary).get(color, 0)
+			)
 	if calculated_totals != player.get("reserved_totals"):
 		return "player_reserved_totals_invalid"
 	for color in COLORS:
@@ -3350,6 +3723,35 @@ static func _state_receipt_binding_error(
 						and not INVALID_TARGET_OUTCOME_BY_POLICY.values().has(outcome_id)
 					):
 				return "state_receipt_settlement_result_invalid"
+		"reserve_monster_skill_assets":
+			if (
+				receipt.get("reason_code") != "monster_skill_assets_reserved"
+				or outcome_id != "reserved"
+				or not player_ids.has(actor_id)
+				or not _is_monster_skill_reservation_id(action_id)
+				or not _stable_id(intent_id)
+				or not _fingerprint_valid(intent_fingerprint)
+				or not _receipt_resolution_detail_is_empty(receipt)
+			):
+				return "state_receipt_monster_skill_reserve_invalid"
+		"commit_monster_skill_assets", "release_monster_skill_assets":
+			var committed := operation_id == "commit_monster_skill_assets"
+			if (
+				receipt.get("reason_code") != (
+					"monster_skill_assets_committed"
+					if committed
+					else "monster_skill_assets_released"
+				)
+				or outcome_id != (
+					"assets_debited" if committed else "assets_released"
+				)
+				or not player_ids.has(actor_id)
+				or not _is_monster_skill_reservation_id(action_id)
+				or not _stable_id(intent_id)
+				or not _fingerprint_valid(intent_fingerprint)
+				or not _receipt_resolution_detail_is_empty(receipt)
+			):
+				return "state_receipt_monster_skill_settlement_invalid"
 		"refresh_assets_after_batch":
 			if receipt.get("reason_code") != "frozen_snapshot_applied" \
 					or outcome_id != "assets_refreshed" \
@@ -3577,6 +3979,284 @@ static func _saved_envelope_error(
 		return "save_context_binding_invalid"
 	var state_error := _state_error(state)
 	return "" if state_error.is_empty() else "save_state_invalid"
+
+
+static func _monster_skill_reservation_history_error(
+	state: Dictionary,
+	player_ids: Array[String]
+) -> String:
+	var history := {}
+	for receipt_variant in state.get("receipts", []) as Array:
+		var receipt := receipt_variant as Dictionary
+		var operation_id := str(receipt.get("operation_id", ""))
+		if operation_id not in [
+			"reserve_monster_skill_assets",
+			"commit_monster_skill_assets",
+			"release_monster_skill_assets",
+		]:
+			continue
+		var reservation_id := str(receipt.get("action_id", ""))
+		var owner_id := str(receipt.get("actor_id", ""))
+		if not player_ids.has(owner_id):
+			return "monster_skill_reservation_history_owner_invalid"
+		if operation_id == "reserve_monster_skill_assets":
+			if history.has(reservation_id):
+				return "monster_skill_reservation_history_duplicate"
+			history[reservation_id] = {
+				"owner_player_id": owner_id,
+				"settled": false,
+			}
+			continue
+		if not history.has(reservation_id):
+			return "monster_skill_reservation_settlement_without_reserve"
+		var record := history.get(reservation_id) as Dictionary
+		if (
+			bool(record.get("settled", false))
+			or str(record.get("owner_player_id", "")) != owner_id
+		):
+			return "monster_skill_reservation_settlement_history_invalid"
+		record["settled"] = true
+	var active := {}
+	for player_id in player_ids:
+		var player := (state.get("players") as Dictionary).get(
+			player_id
+		) as Dictionary
+		for reservation_id_variant in (
+			player.get("reservations") as Dictionary
+		).keys():
+			var reservation_id := str(reservation_id_variant)
+			if not _is_monster_skill_reservation_id(reservation_id):
+				continue
+			if active.has(reservation_id):
+				return "monster_skill_reservation_active_owner_duplicate"
+			active[reservation_id] = player_id
+	for reservation_id_variant in history.keys():
+		var reservation_id := str(reservation_id_variant)
+		var record := history.get(reservation_id) as Dictionary
+		var settled := bool(record.get("settled", false))
+		if settled and active.has(reservation_id):
+			return "monster_skill_settled_reservation_still_active"
+		if not settled:
+			if (
+				not active.has(reservation_id)
+				or str(active.get(reservation_id, ""))
+				!= str(record.get("owner_player_id", ""))
+			):
+				return "monster_skill_reservation_journal_orphaned"
+	for reservation_id_variant in active.keys():
+		var reservation_id := str(reservation_id_variant)
+		if not history.has(reservation_id):
+			return "monster_skill_reservation_unjournaled"
+	return ""
+
+
+static func _monster_skill_reservation_request_error(
+	value: Variant
+) -> String:
+	if not (value is Dictionary) or not _is_pure_data(value):
+		return "monster_skill_reservation_request_not_pure_data"
+	var request := value as Dictionary
+	var fields := [
+		"schema_version",
+		"contract_id",
+		"reservation_id",
+		"request_id",
+		"owner_player_id",
+		"source_instance_id",
+		"source_generation",
+		"asset_snapshot_revision",
+		"asset_cost_by_color",
+		"purpose",
+		"request_fingerprint",
+		"reservation_request_fingerprint",
+	]
+	if not _exact_fields(request, fields):
+		return "monster_skill_reservation_request_fields_invalid"
+	if (
+		request.get("schema_version") != SCHEMA_VERSION
+		or str(request.get("contract_id", ""))
+		!= MONSTER_SKILL_RESERVATION_REQUEST_ID
+		or not _is_monster_skill_reservation_id(str(request.get(
+			"reservation_id",
+			""
+		)))
+		or not _stable_id(request.get("request_id"))
+		or not _stable_id(request.get("owner_player_id"))
+		or not _stable_id(request.get("source_instance_id"))
+		or not _positive_integer(request.get("source_generation"))
+		or not _nonnegative_integer(request.get("asset_snapshot_revision"))
+		or not _color_map_valid(
+			request.get("asset_cost_by_color"),
+			0,
+			ASSET_CAP
+		)
+		or str(request.get("purpose", ""))
+		!= "monster_private_instant_skill"
+		or not _fingerprint_valid(request.get("request_fingerprint"))
+	):
+		return "monster_skill_reservation_request_invalid"
+	var fingerprint := str(request.get(
+		"reservation_request_fingerprint",
+		""
+	))
+	var unsealed := request.duplicate(true)
+	unsealed.erase("reservation_request_fingerprint")
+	if not _fingerprint_valid(fingerprint) or _fingerprint(unsealed) != fingerprint:
+		return "monster_skill_reservation_request_fingerprint_invalid"
+	return ""
+
+
+static func _monster_skill_settlement_intent_error(
+	value: Variant
+) -> String:
+	if not (value is Dictionary) or not _is_pure_data(value):
+		return "monster_skill_settlement_intent_not_pure_data"
+	var intent := value as Dictionary
+	var fields := [
+		"schema_version",
+		"contract_id",
+		"settlement_intent_id",
+		"reservation_id",
+		"request_id",
+		"owner_player_id",
+		"source_instance_id",
+		"action",
+		"asset_cost_by_color",
+		"full_reservation_release",
+		"effect_receipt_id",
+		"settlement_fingerprint",
+	]
+	if not _exact_fields(intent, fields):
+		return "monster_skill_settlement_intent_fields_invalid"
+	var action := str(intent.get("action", ""))
+	if (
+		intent.get("schema_version") != SCHEMA_VERSION
+		or str(intent.get("contract_id", ""))
+		!= MONSTER_SKILL_SETTLEMENT_INTENT_ID
+		or not _stable_id(intent.get("settlement_intent_id"))
+		or not _is_monster_skill_reservation_id(str(intent.get(
+			"reservation_id",
+			""
+		)))
+		or not _stable_id(intent.get("request_id"))
+		or not _stable_id(intent.get("owner_player_id"))
+		or not _stable_id(intent.get("source_instance_id"))
+		or action not in ["commit", "release"]
+		or not _color_map_valid(
+			intent.get("asset_cost_by_color"),
+			0,
+			ASSET_CAP
+		)
+		or not (intent.get("full_reservation_release") is bool)
+		or bool(intent.get("full_reservation_release", false))
+		!= (action == "release")
+		or not _stable_id(intent.get("effect_receipt_id"))
+	):
+		return "monster_skill_settlement_intent_invalid"
+	var fingerprint := str(intent.get("settlement_fingerprint", ""))
+	var unsealed := intent.duplicate(true)
+	unsealed.erase("settlement_fingerprint")
+	if not _fingerprint_valid(fingerprint) or _fingerprint(unsealed) != fingerprint:
+		return "monster_skill_settlement_intent_fingerprint_invalid"
+	return ""
+
+
+static func _is_monster_skill_reservation_id(value: String) -> bool:
+	return (
+		value.begins_with(MONSTER_SKILL_RESERVATION_PREFIX)
+		and _stable_id(value)
+	)
+
+
+static func _monster_skill_operation_receipt(
+	state: Dictionary,
+	reservation_id: String,
+	operation_ids: Array
+) -> Dictionary:
+	for receipt_variant in state.get("receipts", []) as Array:
+		var receipt := receipt_variant as Dictionary
+		if (
+			str(receipt.get("action_id", "")) == reservation_id
+			and operation_ids.has(str(receipt.get("operation_id", "")))
+		):
+			return receipt.duplicate(true)
+	return {}
+
+
+static func _monster_skill_reservation_receipt(
+	request: Dictionary,
+	accepted: bool,
+	reason_code: String,
+	committed_asset_revision: int
+) -> Dictionary:
+	if (
+		not _monster_skill_reservation_request_error(request).is_empty()
+		or not _stable_id(reason_code)
+		or not _nonnegative_integer(committed_asset_revision)
+	):
+		return {}
+	return _seal({
+		"schema_version": SCHEMA_VERSION,
+		"contract_id": MONSTER_SKILL_RESERVATION_RECEIPT_ID,
+		"receipt_id": "receipt.asset.monster.skill.%s" % (
+			"%s|%s|%s|%d" % [
+				request.get("reservation_id"),
+				"accepted" if accepted else "rejected",
+				reason_code,
+				committed_asset_revision,
+			]
+		).sha256_text().substr(0, 24),
+		"reservation_id": request.get("reservation_id"),
+		"request_id": request.get("request_id"),
+		"owner_player_id": request.get("owner_player_id"),
+		"accepted": accepted,
+		"reason_code": reason_code,
+		"committed_asset_revision": committed_asset_revision,
+		"reserved_asset_cost_by_color": (
+			request.get("asset_cost_by_color") as Dictionary
+		).duplicate(true),
+		"reservation_request_fingerprint": request.get(
+			"reservation_request_fingerprint"
+		),
+	}, "receipt_fingerprint")
+
+
+static func _monster_skill_reservation_rejection(
+	state: Dictionary,
+	request: Dictionary,
+	reason_code: String
+) -> Dictionary:
+	return {
+		"accepted": false,
+		"replayed": false,
+		"reason_code": reason_code,
+		"state": state.duplicate(true),
+		"receipt": {},
+		"reservation_receipt": _monster_skill_reservation_receipt(
+			request,
+			false,
+			reason_code,
+			int(state.get("revision", 0))
+		),
+	}
+
+
+static func _monster_skill_asset_failure(
+	state: Variant,
+	reason_code: String
+) -> Dictionary:
+	return {
+		"accepted": false,
+		"replayed": false,
+		"reason_code": reason_code,
+		"state": (
+			(state as Dictionary).duplicate(true)
+			if state is Dictionary
+			else {}
+		),
+		"receipt": {},
+		"reservation_receipt": {},
+	}
 
 
 static func _cost_map_valid(value: Variant) -> bool:

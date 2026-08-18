@@ -155,6 +155,12 @@ func _test_envelope_contract() -> void:
 	_expect(int(envelope.get("selected_card_resolution_id", -1)) == 17, "envelope freezes selected resolution identity")
 	var bound := StableTargetEnvelope.bind_target(envelope, StableTargetEnvelope.TARGET_PLAYER, -1, 1)
 	_expect(bool(StableTargetEnvelope.validate(bound).get("valid", false)), "pending envelope binds one explicit player target")
+	var bound_entry := StableTargetEnvelope.context_at_capture(bound)
+	bound_entry["stable_target_envelope"] = bound
+	_expect(bool(StableTargetEnvelope.validate_entry_binding(bound_entry).get("valid", false)), "resolved queue entry accepts every exact legacy mirror")
+	var missing_product_mirror := bound_entry.duplicate(true)
+	missing_product_mirror.erase("selected_trade_product")
+	_expect(not bool(StableTargetEnvelope.validate_entry_binding(missing_product_mirror).get("valid", false)), "queue binding rejects a missing product mirror without a NUL sentinel")
 	var tampered := bound.duplicate(true)
 	tampered["region_id"] = "region.001"
 	_expect(not bool(StableTargetEnvelope.validate(tampered).get("valid", false)), "fingerprint rejects stable region tampering")
@@ -193,7 +199,6 @@ func _test_target_choice_focus_drift() -> void:
 		queue,
 		resolution,
 		target_choice,
-		null,
 		_market,
 		null,
 		_query,

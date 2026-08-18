@@ -17,11 +17,18 @@ is opt-in.
   configured executable and absolute project path.
 - Any post-exit cleanup is limited to verified Godot descendants of that started
   process. It never enumerates another worktree as a cleanup target.
-- Retains stdout, stderr, Godot log and `result.json` outside the repository.
+- Captures stdout and stderr from the process byte streams before decoding,
+  retains both `*.raw.bin` files, their SHA-256/length metadata, normalized text
+  logs, the Godot log, and `result.json` outside the repository.
 
 ## False-green prevention
 
-The runner audits stdout, stderr and the Godot log after the process exits.
+The runner audits stdout, stderr and the Godot log after the process exits. Raw
+stdout/stderr must both complete. UTF-8 is decoded strictly; UTF-16 LE/BE is
+accepted only with its BOM and then normalized to UTF-8 text. A decoding error,
+decoded U+0000, or U+FFFD replacement evidence fails closed. Structural zero
+bytes in a valid UTF-16 stream are recorded but are not mistaken for decoded
+NUL characters.
 
 These diagnostics fail the run even if Godot returned exit code `0`:
 
@@ -29,6 +36,12 @@ These diagnostics fail the run even if Godot returned exit code `0`:
 - `Parse Error` / `Parser Error`
 - `Runtime Error`
 - Godot failures to load or parse a script
+- generic Godot `ERROR:` diagnostics
+- every unclassified `WARNING:`, including an invalid UID warning
+
+The Godot log is treated as an independent mirror. Identical diagnostics in
+stdout/stderr and the Godot log are fingerprinted and counted once rather than
+silently ignored or double-counted.
 
 An optional literal completion marker can be required:
 
@@ -39,9 +52,62 @@ pwsh -File tools/invoke_godot_test.ps1 `
   -TimeoutSeconds 600
 ```
 
-If `-ExpectedCompletionMarker` is omitted, old calls keep their previous
-exit-code behavior while still gaining script-error detection and user-data
-isolation.
+If `-ExpectedCompletionMarker` is omitted, marker absence is not a failure. All
+raw-capture, decoding, error, warning, user-data isolation, timeout, and process
+cleanup gates still apply.
+
+## Opt-in live process telemetry
+
+Long-running gates may request a repository-external atomic heartbeat without
+changing the default runner contract:
+
+```powershell
+pwsh -File tools/invoke_godot_test.ps1 `
+  -TestScript res://tests/smoke_test.gd `
+  -TimeoutSeconds 600 `
+  -LiveTelemetryPath "E:\ss-evidence\smoke-live-telemetry.json"
+```
+
+`-LiveTelemetryPath` is optional and defaults to an empty string. With no path,
+the runner performs no additional process enumeration or live writes. When a
+path is supplied, it must resolve outside the project worktree. Its parent may
+be created, but the target cannot be a directory. The project and telemetry
+path chains are checked component by component; reparse points, junctions,
+symbolic links, and 8.3 aliases fail closed so an apparently external path
+cannot resolve physically back into the worktree.
+
+The runner records the exact Godot PID and a start token formed from that PID
+and its UTC process-start ticks. Immediately after start and after each existing
+approximately 250 ms `WaitForExit` poll, it reopens that PID, verifies the start
+token, and samples. A requested headed-window probe also invokes the sampler at
+approximately 250 ms intervals while it waits. At a safely observable exit
+boundary, the retained process handle is sampled once more so final CPU is
+recorded and the maximum previously observed working-set peak is retained; a platform exit race is recorded explicitly
+as `final_sample_status=exit_race_unavailable` rather than treated as PID reuse.
+Samples include:
+
+- `cpu_time_seconds`
+- `working_set_bytes`
+- `peak_working_set_bytes`
+- `sample_count`
+- `sampled_at_utc`
+
+Each live snapshot uses schema
+`SpaceSyndicateGodotProcessTelemetryV1`. It includes `godot_pid`,
+`godot_start_token`, phase (`import` or `test`), run/target identity, current
+counters, final exit fields, and failure details. A same-directory temporary
+file is written as UTF-8 without BOM and atomically moved over the destination;
+temporary files are removed on success and failure.
+
+Telemetry is an acceptance gate when requested. PID enumeration, start-token
+verification, counter reads, or atomic publication failures stop only the
+verified runner-owned process tree and return `status=telemetry_failed`, exit
+`132`. Cleanup verifies the launched root and its verified descendants are gone;
+any survivor is listed in `remaining_project_runtime_process_ids` while the run
+remains failed with `132`. An exit race after at least one valid sample is treated as normal process
+completion, not PID reuse. The normal `result.json` retains the final observed
+`cpu_time_seconds`, `working_set_bytes`, `peak_working_set_bytes`,
+`telemetry_sample_count`, start token, and complete `process_telemetry` object.
 
 ## Runner exit codes
 
@@ -54,6 +120,10 @@ isolation.
 | `126` | Import/bootstrap could not produce a usable result. |
 | `127` | Godot exited zero but emitted an audited script/parser/runtime error. |
 | `128` | Godot exited zero but the required completion marker was absent. |
+| `129` | Raw capture was incomplete, strict decoding failed, or decoded NUL/U+FFFD evidence was present. |
+| `130` | Godot exited zero but emitted an unclassified warning. |
+| `131` | A required headed-window handshake or exact client-size probe failed. |
+| `132` | Requested live process telemetry could not be sampled or atomically published. |
 
 Every machine-readable result contains the stable summary fields:
 
@@ -61,8 +131,22 @@ Every machine-readable result contains the stable summary fields:
 - `exit_code`
 - `timed_out`
 - `script_error_count`
+- `diagnostic_count`
+- `task_introduced_error_count`
+- `unclassified_diagnostic_count`
+- `invalid_uid_unclassified_count`
+- `stdout_capture` / `stderr_capture` (raw path, byte length, SHA-256,
+  encoding, strict-decode result, raw/decoded NUL counts, replacement count,
+  and capture-complete flag)
+- `raw_capture_failure`
 - `marker_found`
 - `duration`
+- `godot_pid` and `process_start_token` / `godot_start_token`
+- `telemetry_sample_count`
+- `cpu_time_seconds`
+- `working_set_bytes`
+- `peak_working_set_bytes`
+- `process_telemetry`
 
 The detailed result also retains `process_exit_code`, `runner_exit_code`,
 `first_script_error`, log paths, isolated profile paths, cleanup PIDs and any
@@ -76,6 +160,12 @@ logic:
 - `tests/fixtures/godot_test_runner/script_error_exit_zero.gd`
 - `tests/fixtures/godot_test_runner/missing_marker.gd`
 - `tests/fixtures/godot_test_runner/normal_with_marker.gd`
+- `tests/fixtures/godot_test_runner/unicode_raw.gd`
+- `tests/fixtures/godot_test_runner/raw_nul.gd`
+- `tests/fixtures/godot_test_runner/unclassified_warning.gd`
+- `tests/fixtures/godot_test_runner/generic_error.gd`
+- `tests/fixtures/godot_test_runner/invalid_uid_warning.gd`
+- `tests/fixtures/godot_test_runner/mirrored_warning.gd`
 
 Run:
 
@@ -84,12 +174,47 @@ pwsh -File tools/invoke_godot_test_failure_detection_self_test.ps1 `
   -GodotPath "C:\path\to\Godot_v4.7-stable_win64.exe"
 ```
 
-The expected result is fail / fail / pass:
+The expected result is `9/9` with these exact outcomes:
 
 1. Script error plus a real Godot exit `0` becomes runner exit `127`.
 2. Missing required marker becomes runner exit `128`.
 3. Normal completion becomes runner exit `0`.
+4. Strict Unicode output remains exact and exits `0`.
+5. A NUL that Godot reports as U+FFFD/replacement evidence becomes `129`.
+6. An unclassified warning becomes `130`.
+7. A generic error becomes `127`.
+8. An invalid UID warning becomes `130` and increments the invalid-UID count.
+9. A warning mirrored into the Godot log becomes `130` and is counted once.
 
 The self-test also compares the player's campaign/current-run save fingerprints
 before and after, verifies isolated profile paths, and verifies that every case
 leaves zero scoped Godot processes.
+
+The byte decoder has a separate six-case proof:
+
+```powershell
+pwsh -File tools/invoke_godot_test_raw_decoder_self_test.ps1
+```
+
+It covers empty input, strict UTF-8 with non-ASCII text, UTF-16 LE/BE with BOM,
+decoded NUL, and invalid UTF-8. It also locks the SHA-256 of the empty stream and
+the distinction between valid UTF-16 structural zero bytes and a decoded NUL.
+
+The process telemetry path has a separate proof that never launches Godot, MCP,
+or a formal gate:
+
+```powershell
+pwsh -File tools/invoke_godot_test_process_telemetry_self_test.ps1
+```
+
+It parses the complete runner, loads only the telemetry helpers, samples the
+self-test's own PowerShell process twice, verifies monotonic CPU and retained
+working-set peak fields, and proves six negative controls: in-worktree path,
+an external junction that resolves into the worktree, wrong start token, missing
+PID, backward CPU, and an invalid atomic target. It also exercises the real
+telemetry outcome helper (`telemetry_failed` / `132`), import-to-test selection,
+the top-level result-field projection, the default `not_requested` projection,
+and successful/failed publication temporary-file cleanup. A short-lived hidden
+PowerShell child (never Godot) also proves the retained process handle supplies
+the exit-boundary CPU sample, preserves the previously observed memory peak,
+and treats a headed-probe exit race as normal completion rather than PID reuse.

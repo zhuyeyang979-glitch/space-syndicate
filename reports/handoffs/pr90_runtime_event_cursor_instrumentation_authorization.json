@@ -1,0 +1,82 @@
+{
+  "schema_version": "PR90RuntimeEventCursorInstrumentationCandidateV1",
+  "observed_utc": "2026-08-18T15:44:46.8373996Z",
+  "status": "TOOLING_CANDIDATE_REQUIRES_FORMAL_AUTHORIZATION",
+  "base_product_identity": {
+    "pr_number": 90,
+    "head_sha": "4d5b173fccae7c6bb1004488e4d561c11714210a",
+    "tree_sha": "365a2a0d8b09162cc7338a460935e8b881cac770",
+    "product_head_change_count": 0,
+    "formal_79_of_79_reused": true,
+    "formal_rerun_on_candidate": false
+  },
+  "candidate_identity": {
+    "branch": "codex/pr90-runtime-event-cursor-instrumentation",
+    "head_sha": "bdd3ae43c430b17d88d2103a776945f577118459",
+    "tree_sha": "f52b3df77ec091c5aa2fd34046bbae759c4b43ac",
+    "parent_sha": "4d5b173fccae7c6bb1004488e4d561c11714210a",
+    "implementation_commit_sha": "1ba7b1cb6fb88c79348350ff0603de14aa5c7e0b",
+    "implementation_tree_sha": "22c14e536687b6a84ffa6871183b90fd527ceb18",
+    "product_runtime_code_change_count": 0,
+    "gameplay_rule_change_count": 0,
+    "balance_value_change_count": 0,
+    "candidate_file_count": 4
+  },
+  "instrumentation_contract": {
+    "stream_id_per_bridge_incarnation": true,
+    "monotonic_event_sequence": true,
+    "event_sequence_starts_at": 1,
+    "cursor_arguments": [
+      "stream_id",
+      "since_sequence"
+    ],
+    "cursor_requires_stream_identity": true,
+    "cursor_gap_error_code": "RUNTIME_EVENT_EVENTS_DROPPED",
+    "stream_restart_error_code": "RUNTIME_EVENT_STREAM_CHANGED",
+    "cursor_ahead_error_code": "RUNTIME_EVENT_CURSOR_AHEAD",
+    "client_truncation_error_code": "RUNTIME_EVENT_CLIENT_TRUNCATED",
+    "legacy_snapshot_preserved": true,
+    "legacy_snapshot_continuity_status": "SNAPSHOT_ONLY",
+    "event_count_semantics_preserved": "retained_ring_count",
+    "overflow_metadata": [
+      "event_overflow_count",
+      "event_window_saturated",
+      "event_window_overflowed",
+      "buffered_first_event_sequence",
+      "buffered_last_event_sequence",
+      "next_event_sequence"
+    ]
+  },
+  "validation": {
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "contract_test": "PASS",
+    "contract_test_case_count": 33,
+    "editor_scan": "PASS",
+    "godot_mcp_project_run": "STARTED_AND_STOPPED",
+    "godot_mcp_new_error_count": 0,
+    "godot_mcp_baseline_warning_count": "PRESENT_PREEXISTING",
+    "git_diff_check": "PASS",
+    "source_worktree_clean_after_commit": true
+  },
+  "formal_release_gate": {
+    "new_exact_sha_mcp_authorized_run_count_consumed": 0,
+    "exact_sha_mcp_status": "NOT_RUN",
+    "post_import_baseline_sealed": false,
+    "import_finalizer_status": "NOT_RUN",
+    "viewport_status": "NOT_RUN",
+    "headless_matrix_status": "NOT_RUN",
+    "product_headless_2000_status": "NOT_RUN",
+    "pr90_ready": false,
+    "pr90_merged": false,
+    "v076_branch_created": false,
+    "v076_poc_started": false
+  },
+  "required_next_authorization": {
+    "new_head_manifest_required": true,
+    "candidate_ci_required": true,
+    "formal_gate_1_to_79_on_candidate_required": true,
+    "exact_sha_mcp_must_use_candidate_head": true,
+    "old_frozen_exact_sha_mcp_must_remain_untouched": true,
+    "next_task": "PR90_CURSOR_INSTRUMENTATION_FORMAL_AUTHORIZATION_AND_79_GATE_REVALIDATION"
+  }
+}

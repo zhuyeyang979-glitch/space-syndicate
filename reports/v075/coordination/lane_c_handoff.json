@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_5_C2_V075_MONSTER_AUTONOMY_PRIVATE_INSTANT_SKILLS_AND_MILITARY_ASSAULT_MISSIONS_PRODUCTION_CUTOVER",
+  "lane": "C",
+  "status": "GREEN",
+  "base_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
+  "branch": "codex/v075-lane-c-autonomy-trample-bd0af5c",
+  "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-v075-lane-c-bd0af5c",
+  "candidate_commit_sha": "commit_containing_this_handoff",
+  "owned_file_count": 31,
+  "read_only_dependencies": [
+    "scripts/v074/map/v074_map_genesis_core.gd",
+    "scripts/v074/map/map_genesis_request_v1.gd",
+    "scripts/v074/map/map_genesis_receipt_v1.gd",
+    "scripts/v074/facility/v074_facility_runtime_core.gd",
+    "scripts/v074/warehouse/v074_warehouse_runtime_policy.gd"
+  ],
+  "hot_file_conflicts": [],
+  "production_cutover_domains": [
+    "monster_preferred_color_autonomy",
+    "monster_dynamic_shortest_path",
+    "monster_fixed_point_movement_receipt",
+    "monster_ground_trample_budget"
+  ],
+  "public_api": {
+    "V075MonsterAutonomyCore": [
+      "topology_snapshot_from_map_receipt",
+      "freeze_public_snapshot",
+      "plan_batch",
+      "shortest_path",
+      "path_distance_milli_arc"
+    ],
+    "V075MonsterTrampleCore": [
+      "resolve_movement"
+    ]
+  },
+  "contracts": {
+    "topology": "V075MonsterPublicTopologySnapshotV1",
+    "frozen_world": "V075MonsterAutonomyFrozenSnapshotV1",
+    "autonomy_plan": "MonsterAutonomyPlanV1",
+    "movement_receipt": "MonsterMovementReceiptV1",
+    "trample_resolution": "MonsterTrampleResolutionV1",
+    "trample_region_receipt": "MonsterTrampleRegionReceiptV1",
+    "facility_damage_intent": "FacilityCombatDamageIntentV1"
+  },
+  "implementation": {
+    "target_search": "deterministic BFS over sorted dynamic adjacency",
+    "target_tie_break": [
+      "hop_distance",
+      "monster_facility_type_preference",
+      "authored_target_priority_desc",
+      "damage_points_desc",
+      "damage_revision_desc",
+      "facility_id_lexicographic"
+    ],
+    "no_target_policy": "expand one hop per batch, then hungry nearest-any; matching color resets to base range",
+    "topology_distance": "authoritative integer edge distances when supplied; otherwise each V074 region-center edge is independently quantized to 1000000 units per radian before integer path summation",
+    "movement_position": "atomic destination region; no per-frame authority mutation",
+    "trample_formula": "max(1, integer_floor(region_distance / step)) * rank damage, capped once per region",
+    "trample_allocation": "preferred-color facilities then other enemy facilities, stable IDs, quotient/remainder one-unit round-robin equivalent",
+    "exact_once": "movement_id journal key rejects repeats before emitting intents",
+    "facility_mutation": "none; FacilityCombatDamageIntentV1 only",
+    "private_data": "explicit public-field allowlists; assets, warehouse stock, and future plans are never read"
+  },
+  "gates": {
+    "MONSTER_PREFERRED_COLOR_CONTRACT_COVERAGE": "6/6",
+    "MONSTER_PREFERRED_COLOR_RUNTIME_INFERENCE_COUNT": 0,
+    "MONSTER_PRIVATE_ASSET_READER_COUNT": 0,
+    "MONSTER_PRIVATE_WAREHOUSE_STOCK_READER_COUNT": 0,
+    "MONSTER_AUTONOMY_TARGET_DETERMINISTIC": true,
+    "MONSTER_AUTONOMY_CAMERA_INDEPENDENT": true,
+    "MONSTER_AUTONOMY_PLAN_FROZEN_SNAPSHOT_GREEN": true,
+    "MONSTER_AUTONOMY_TARGET_ORDER_BIAS_COUNT": 0,
+    "MONSTER_HUNGRY_FALLBACK_GREEN": true,
+    "MONSTER_NO_TARGET_PERMANENT_STALL_COUNT": 0,
+    "MONSTER_PATH_DISTANCE_FIXED_POINT": true,
+    "MONSTER_PATH_DISTANCE_COMPLEXITY_INDEPENDENT": true,
+    "MONSTER_PATH_LOOP_COUNT": 0,
+    "MONSTER_GROUND_TRAMPLE_GREEN": true,
+    "FLYING_MONSTER_TRAMPLE_DAMAGE_COUNT": 0,
+    "TELEPORT_MONSTER_TRAMPLE_DAMAGE_COUNT": 0,
+    "DEFAULT_FORCED_MOVEMENT_TRAMPLE_DAMAGE_COUNT": 0,
+    "FACTORY_TRAMPLE_DAMAGE_GREEN": true,
+    "MARKET_TRAMPLE_DAMAGE_GREEN": true,
+    "WAREHOUSE_TRAMPLE_DAMAGE_GREEN": true,
+    "TRAMPLE_UNIT_DAMAGE_COUNT": 0,
+    "TRAMPLE_REGION_HP_MUTATION_COUNT": 0,
+    "TRAMPLE_PER_REGION_CAP_GREEN": true,
+    "DUPLICATE_TRAMPLE_DAMAGE_COUNT": 0,
+    "COMBAT_DIRECT_FACILITY_WRITE_COUNT": 0,
+    "FACILITY_COMBAT_DAMAGE_TYPED_PORT_GREEN": true,
+    "WAREHOUSE_PRIVATE_STOCK_COMBAT_DISCLOSURE_COUNT": 0,
+    "GAMEPLAY_RNG_DRAW_COUNT": 0
+  },
+  "mcp": {
+    "tool": "Funplay MCP for Godot 0.9.6",
+    "role": "C",
+    "port": 7573,
+    "godot_version": "4.7-stable",
+    "renderer": "forward_plus",
+    "project_identity": "d021c846658034fe",
+    "scene": "res://scenes/tools/v075/V075MonsterAutonomyTrampleBench.tscn",
+    "scene_tree_loaded": true,
+    "changed_script_validation": "14/14",
+    "changed_scene_load": "1/1",
+    "bench_cases": "11/11",
+    "bench_checks": "78/78",
+    "runtime_log_error_count": 0,
+    "task_introduced_error_count": 0,
+    "play_state_after_run": false,
+    "clean_stop": true,
+    "editor_stopped": true,
+    "port_open_after_stop": false,
+    "project_wide_error_count": null,
+    "project_wide_error_gate_note": "Not claimed by Lane C; initial commercial-asset reimport emitted unrelated baseline diagnostics. Final changed-file validators and runtime log are clean."
+  },
+  "focused_tests": {
+    "passed": 11,
+    "total": 11,
+    "failure_count": 0,
+    "full_smoke_run": false,
+    "reliability_suite_run": false
+  },
+  "production_topology_evidence": {
+    "map_seed": 900626424,
+    "region_count": 16,
+    "geography_complexity": "STANDARD",
+    "land_ocean_profile": "BALANCED",
+    "topology_accepted": true,
+    "sample_shortest_path_hops": 3,
+    "all_edge_distances_positive_integer": true
+  },
+  "content_hashes_after_final_mcp_validation": {
+    "scripts/v075/monster/v075_monster_autonomy_core.gd": "28d2deb54ef36ea3efcbb8593fa5af1dc140955c8176c23a39169e4a886edce7",
+    "scripts/v075/monster/v075_monster_trample_core.gd": "d315224c40fbbb3352f9a6efb6d467a13371e410a587a7f202233caa58bc5343",
+    "scripts/tools/v075/v075_monster_autonomy_trample_bench.gd": "e7b9015c1960a5cc198d9f9f8c997315869f4dcd1bd675ead03eed428b94a945",
+    "scenes/tools/v075/V075MonsterAutonomyTrampleBench.tscn": "c4bbcd19a5a5caadf4d279c1277cc930341a796809d1a9dff9fb4489f83514e1"
+  },
+  "integration_notes": [
+    "Freeze one world snapshot for all monsters and call plan_batch once before presentation.",
+    "Persist next_detection_range_hops into the next batch source state.",
+    "Register movement_id in the combat exact-once journal.",
+    "Region Infrastructure Owner validates and commits FacilityCombatDamageIntentV1.",
+    "Balance defaults supply distance step and rank-keyed damage/cap maps.",
+    "No runtime, UI, main scene, catalog, balance file, or legacy controller was modified."
+  ]
+}

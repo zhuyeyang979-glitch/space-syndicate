@@ -1,0 +1,254 @@
+{
+  "schema": "V075PresentationReceiptRepairAllowlistV1",
+  "head_sha_before": "16ba8532b53cc598a422060039aaee49c862057b",
+  "tree_sha_before": "faa91174fa45fad6254c3a743b8400b7fdf614f7",
+  "root_cause_class": "H_MULTIPLE_A_F_G",
+  "identity_scope_model": "MODEL_A_GLOBAL_UNIQUE_RECEIPT_ID_INCLUDES_AUDIENCE_SCOPE",
+  "paths": [
+    {
+      "path": "scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd",
+      "category": "production_gdscript",
+      "reason": "single PresentationReceiptIdentityV2 ID, ordinal, audience and canonical fingerprint authority",
+      "call_graph_role": "source_lineage_to_sealed_presentation_receipt",
+      "before_sha256": null,
+      "planned_change": "new deterministic builder and validator"
+    },
+    {
+      "path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "category": "production_gdscript",
+      "reason": "replace mixed-bus Consumer ingress with a dedicated V2 Presentation bus and copy explicit upstream Authority sequences",
+      "call_graph_role": "presentation_program_mapper_and_bus_owner",
+      "before_sha256": "1c387979fe28033aa3e65149a1b79a68d4b7e1a0ca56efa5f1a01e20fd9d4cfb",
+      "planned_change": "map public staged events once, require source ID/fingerprint/Authority sequence, emit sealed V2, preserve application and telemetry bus"
+    },
+    {
+      "path": "scripts/v075/presentation/v075_combat_presentation_consumer.gd",
+      "category": "production_gdscript",
+      "reason": "validate and consume V2 without deriving identity from raw Authority receipts",
+      "call_graph_role": "exact_once_ledger_and_public_cue_projector",
+      "before_sha256": "c9d59dbcbcf96af029027125874a7be13a6df7d397399c84f0fd9c54dad20f0f",
+      "planned_change": "V2 validation, immutable semantic payload copy, preserve same/same idempotence and same/different fail-closed"
+    },
+    {
+      "path": "scripts/ui/v075/v075_sample_game_screen.gd",
+      "category": "production_gdscript",
+      "reason": "the isolated-preview mapper must recognize V2 identity fields and report the Presentation receipt ID",
+      "call_graph_role": "presentation_receipt_ui_ingress_mapper",
+      "before_sha256": "f4301dc03916bb3f60a3844ca803b189c1b25e47c9e5fd49dacb655b6f2e4397",
+      "planned_change": "recognize sealed V2 without accepting arbitrary legacy identity aliases"
+    },
+    {
+      "path": "scripts/ui/v075/v075_combat_player_surface.gd",
+      "category": "production_gdscript",
+      "reason": "the local cue exact-once journal must exclude sealed observer-only transport metadata from its semantic fingerprint dialect",
+      "call_graph_role": "presentation_surface_exact_once_ledger",
+      "before_sha256": "adecf557ad952096981c982faffbc52016f952026939af7465041f5a6a8ed8e1",
+      "planned_change": "retain full cue mutation detection while excluding observer_correlation_id and its transport fingerprint"
+    },
+    {
+      "path": "scripts/v075/telemetry/v075_combat_telemetry_bridge.gd",
+      "category": "production_gdscript",
+      "reason": "cue telemetry must deduplicate by explicit source lineage rather than the distinct Presentation event ID",
+      "call_graph_role": "presentation_cue_observer_identity_mapper",
+      "before_sha256": "ef043d461a3e06e6bb2b0adcdd3d035a3a72c96aa7699bdc31603c11217d5dbb",
+      "planned_change": "prefer source_receipt_id for cue correlation; retain Presentation ID as fallback"
+    },
+    {
+      "path": "tests/v075_presentation_receipt_identity_contract_test.gd",
+      "category": "test_gdscript",
+      "reason": "identity, audience, ordinal, immutability and deterministic replay contract",
+      "call_graph_role": "focused_contract_test",
+      "before_sha256": null,
+      "planned_change": "new focused suite"
+    },
+    {
+      "path": "tests/v075_presentation_receipt_collision_reproduction_test.gd",
+      "category": "test_gdscript",
+      "reason": "reproduce both frozen legacy collision pairs and prove V2 resolves them without weakening the negative fixture",
+      "call_graph_role": "frozen_pair_regression_test",
+      "before_sha256": null,
+      "planned_change": "new focused suite using sanitized pair fixture"
+    },
+    {
+      "path": "tests/v075_final_settlement_presentation_exact_once_regression_test.gd",
+      "category": "test_gdscript",
+      "reason": "prove terminal Presentation exact-once remains intact",
+      "call_graph_role": "terminal_regression_test",
+      "before_sha256": null,
+      "planned_change": "new focused suite"
+    },
+    {
+      "path": "tests/v075_combat_presentation_exact_once_test.gd",
+      "category": "test_gdscript",
+      "reason": "canonical Gate 61 must exercise V2 while retaining adversarial collision rejection",
+      "call_graph_role": "canonical_consumer_contract_gate",
+      "before_sha256": "1b16cc3d01a25c089df120f643dd4b2d783494cc3d4b0ffa265aa9908eebaa8f",
+      "planned_change": "replace legacy fixtures with V2 fixtures and preserve markers"
+    },
+    {
+      "path": "tests/v075_ui_runtime_presentation_binding_integration_test.gd",
+      "category": "test_gdscript",
+      "reason": "canonical Gate 21 must attest the dedicated signal and shared Consumer identity",
+      "call_graph_role": "canonical_runtime_ui_wiring_gate",
+      "before_sha256": "84f85a4fe6f1a7e757f046522dd752a6d99eae123baa70090771d79b0a18ffef",
+      "planned_change": "assert one V2 bus route and no mixed-bus Consumer route"
+    },
+    {
+      "path": "tests/v075_runtime_owner_integration_test.gd",
+      "category": "test_gdscript",
+      "reason": "canonical Gate 22 must fail if a natural fixed-seed match has any Presentation collision",
+      "call_graph_role": "canonical_natural_runtime_gate",
+      "before_sha256": "523654b2381f89ef5d1ea5e73001832514a98ec4edf0b78587aa4260a046400e",
+      "planned_change": "assert applied receipts greater than zero and collision count zero"
+    },
+    {
+      "path": "tests/v075_terminal_combat_quiescence_test.gd",
+      "category": "test_gdscript",
+      "reason": "terminal fixture must submit a valid V2 receipt",
+      "call_graph_role": "terminal_consumer_fixture",
+      "before_sha256": "68b204085699dd389e322374808c81789d38a802f911614bf4aace96da6416d1",
+      "planned_change": "use V2 builder without changing terminal expectations"
+    },
+    {
+      "path": "tests/v075_runtime_telemetry_bridge_integration_test.gd",
+      "category": "test_gdscript",
+      "reason": "prove telemetry remains on the legacy application bus while Presentation uses the dedicated bus",
+      "call_graph_role": "telemetry_separation_regression",
+      "before_sha256": "b5010d119f673ed44b79c69efb2c2b89386ca4d1e4b6310c702d604cdca980db",
+      "planned_change": "update signal topology assertions only if required"
+    },
+    {
+      "path": "tests/v075_sample_game_screen_wrapper_test.gd",
+      "category": "test_gdscript",
+      "reason": "isolated-preview screen fixture must submit sealed V2 receipts to the strict Consumer ingress",
+      "call_graph_role": "isolated_preview_consumer_fixture",
+      "before_sha256": "7f6380420ff5178752649e2ea8705744c5a4894d7e48bb2189b56d2e0c488020",
+      "planned_change": "wrap existing public fixtures with the V2 builder"
+    },
+    {
+      "path": "scripts/tools/v075/v075_combat_player_surface_bench.gd",
+      "category": "test_support_gdscript",
+      "reason": "development bench directly invokes the Consumer and must use a V2 fixture",
+      "call_graph_role": "focused_test_support",
+      "before_sha256": "c34ff7f6056418b7e41c7cb306d3e4c09604ec27d6f172f6eaefbca9697ee4b9",
+      "planned_change": "construct fixture through V2 builder"
+    },
+    {
+      "path": "tests/fixtures/v075_presentation_collision_pairs_v1.json",
+      "category": "test_fixture_json",
+      "reason": "sanitized immutable regression fixture derived from the two reconstructed pairs",
+      "call_graph_role": "focused_test_input",
+      "before_sha256": null,
+      "planned_change": "new fixture with public payloads and lineage hashes only"
+    },
+    {
+      "path": "docs/architecture/v075_presentation_receipt_identity_authority_matrix.json",
+      "category": "documentation",
+      "reason": "machine-readable identity writer audit",
+      "call_graph_role": "audit_evidence",
+      "before_sha256": null,
+      "planned_change": "new and post-patch verification update"
+    },
+    {
+      "path": "docs/architecture/v075_presentation_receipt_identity_authority_matrix.md",
+      "category": "documentation",
+      "reason": "human-readable identity writer audit",
+      "call_graph_role": "audit_evidence",
+      "before_sha256": null,
+      "planned_change": "new and post-patch verification update"
+    },
+    {
+      "path": "docs/architecture/presentation-canonical-field-authority-matrix.json",
+      "category": "documentation",
+      "reason": "machine-readable canonical field boundary",
+      "call_graph_role": "audit_evidence",
+      "before_sha256": null,
+      "planned_change": "new"
+    },
+    {
+      "path": "docs/architecture/presentation-canonical-field-authority-matrix.md",
+      "category": "documentation",
+      "reason": "human-readable canonical field boundary",
+      "call_graph_role": "audit_evidence",
+      "before_sha256": null,
+      "planned_change": "new"
+    },
+    {
+      "path": "reports/v075/presentation_identity_repair/presentation-collision-pair-01.json",
+      "category": "evidence",
+      "reason": "append-only pair 01 characterization",
+      "call_graph_role": "pre_patch_evidence",
+      "before_sha256": null,
+      "planned_change": "new"
+    },
+    {
+      "path": "reports/v075/presentation_identity_repair/presentation-collision-pair-02.json",
+      "category": "evidence",
+      "reason": "append-only pair 02 characterization",
+      "call_graph_role": "pre_patch_evidence",
+      "before_sha256": null,
+      "planned_change": "new"
+    },
+    {
+      "path": "reports/v075/presentation_identity_repair/presentation-collision-characterization.md",
+      "category": "evidence",
+      "reason": "human-readable root cause characterization",
+      "call_graph_role": "pre_patch_evidence",
+      "before_sha256": null,
+      "planned_change": "new"
+    },
+    {
+      "path": "reports/v075/presentation_identity_repair/presentation-receipt-repair-allowlist.json",
+      "category": "evidence",
+      "reason": "freeze authorized direct patch boundary",
+      "call_graph_role": "patch_gate",
+      "before_sha256": null,
+      "planned_change": "new then append after hashes"
+    },
+    {
+      "path": "reports/v075/presentation_identity_repair/presentation-receipt-repair-patch-manifest.json",
+      "category": "evidence",
+      "reason": "record before and after hashes plus scope checks",
+      "call_graph_role": "post_patch_evidence",
+      "before_sha256": null,
+      "planned_change": "new after patch"
+    }
+  ],
+  "limits": {
+    "max_production_gdscript_file_count": 8,
+    "planned_production_gdscript_file_count": 6,
+    "max_test_gdscript_file_count": 10,
+    "planned_test_and_support_gdscript_file_count": 10,
+    "scene_file_change_count": 0,
+    "resource_file_change_count": 0
+  },
+  "reviews": [
+    {
+      "review": "A_ID_ORDINAL_LINEAGE_SEQUENCE",
+      "reviewer": "identity_matrix_read_only_agent",
+      "p0": 0,
+      "p1": 0,
+      "decision": "GO",
+      "reason": "allowlist contains the single builder, sequence owner, dedicated bus and direct contract tests"
+    },
+    {
+      "review": "B_FINGERPRINT_IMMUTABILITY_PRIVACY",
+      "reviewer": "collision_forensics_read_only_agent",
+      "p0": 0,
+      "p1": 0,
+      "decision": "GO",
+      "reason": "allowlist preserves public projection, deep copies, canonical semantic hashing and no private plaintext fixture"
+    },
+    {
+      "review": "C_CONSUMER_EXACT_ONCE_SCOPE",
+      "reviewer": "focused_test_design_read_only_agent",
+      "p0": 0,
+      "p1": 0,
+      "decision": "GO",
+      "reason": "allowlist retains both exact-once branches, adds natural collision assertions and changes no gameplay owner"
+    }
+  ],
+  "patch_allowlist_review_p0": 0,
+  "patch_allowlist_review_p1": 0,
+  "patch_allowlist_review": "GO"
+}

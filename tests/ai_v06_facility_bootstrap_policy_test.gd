@@ -1,7 +1,7 @@
 extends SceneTree
 
 const AI_SCRIPT := preload("res://scripts/runtime/ai_runtime_controller.gd")
-const PORT_SCRIPT := preload("res://scripts/runtime/ai_v06_economy_action_port.gd")
+const PORT_SCRIPT := preload("res://tests/fixtures/ai_v06_economy_action_port.gd")
 const WORLD_BRIDGE_SCRIPT := preload("res://scripts/runtime/ai_runtime_world_bridge.gd")
 const MONSTER_SCRIPT := preload("res://scripts/runtime/monster_runtime_controller.gd")
 

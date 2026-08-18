@@ -11,9 +11,13 @@ removes only the verified process tree started by this invocation.
 Runner exit codes are the Godot exit code for a completed test, 124 for timeout,
 125 when a completed process leaves a scoped runtime process (even if cleanup
 succeeds), 126 when an import bootstrap fails without a more specific exit code,
-127 when Godot reports a script/parser/runtime error despite exiting zero, and
-128 when an explicitly required completion marker is absent. The console wrapper
-is deliberately rejected because it can return before the real process.
+127 when Godot reports an error despite exiting zero, 128 when an explicitly
+required completion marker is absent, 129 for incomplete/invalid/NUL raw capture,
+130 for an unclassified warning, 131 when a required headed client-window
+handshake or exact client-size probe fails, and 132 when explicitly requested
+live process telemetry cannot be sampled or atomically published. The console
+wrapper is deliberately rejected
+because it can return before the real process.
 
 .EXAMPLE
 pwsh -File tools/invoke_godot_test.ps1 `
@@ -73,14 +77,66 @@ param(
 
     [string[]]$TestArgument = @(),
 
+    [string]$TestArgumentJson = "",
+
+    [switch]$HeadedClientProbe,
+
+    [ValidatePattern('^[1-9][0-9]{2,4}x[1-9][0-9]{2,4}$')]
+    [string]$ExpectedClientSize = "",
+
+    [ValidateRange(1, 120)]
+    [int]$WindowProbeTimeoutSeconds = 20,
+
     [string]$LogRoot = (Join-Path $env:LOCALAPPDATA "SpaceSyndicate\godot_test_runs"),
 
     [string]$ExpectedCompletionMarker = "",
 
-    [string]$IsolatedUserDataRoot = ""
+    [string]$IsolatedUserDataRoot = "",
+
+    [string]$LiveTelemetryPath = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not [string]::IsNullOrWhiteSpace($TestArgumentJson)) {
+    if ($PSBoundParameters.ContainsKey("TestArgument")) {
+        throw "Use either -TestArgument or -TestArgumentJson, not both."
+    }
+    $parsedTestArguments = ConvertFrom-Json `
+        -InputObject $TestArgumentJson `
+        -NoEnumerate
+    if ($parsedTestArguments -isnot [Array]) {
+        throw "TestArgumentJson must be a JSON array of strings."
+    }
+    $normalizedTestArguments = [Collections.Generic.List[string]]::new()
+    foreach ($parsedTestArgument in $parsedTestArguments) {
+        if ($parsedTestArgument -isnot [string]) {
+            throw "Every TestArgumentJson item must be a string."
+        }
+        $normalizedTestArguments.Add([string]$parsedTestArgument)
+    }
+    $TestArgument = @($normalizedTestArguments)
+}
+
+if ($HeadedClientProbe) {
+    if ($PSCmdlet.ParameterSetName -ne "Script") {
+        throw "-HeadedClientProbe is supported only for a script driver."
+    }
+    if ([string]::IsNullOrWhiteSpace($ExpectedClientSize)) {
+        throw "-ExpectedClientSize is required with -HeadedClientProbe."
+    }
+} elseif (-not [string]::IsNullOrWhiteSpace($ExpectedClientSize)) {
+    throw "-ExpectedClientSize requires -HeadedClientProbe."
+}
+
+foreach ($argument in @($TestArgument)) {
+    if (
+        $argument.StartsWith("--window-probe-ready=", [StringComparison]::Ordinal) -or
+        $argument.StartsWith("--window-probe-ack=", [StringComparison]::Ordinal)
+    ) {
+        throw "Window probe handshake paths are owned by the runner."
+    }
+}
 
 function Test-CommandLineContains {
     param(
@@ -301,6 +357,949 @@ function New-GodotProcessStartInfo {
     return $startInfo
 }
 
+function Initialize-GodotWindowProbeNative {
+    if ($null -ne ("SpaceSyndicate.GodotWindowProbeNative" -as [type])) {
+        return
+    }
+
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace SpaceSyndicate {
+    public static class GodotWindowProbeNative {
+        public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT {
+            public int X;
+            public int Y;
+        }
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsIconic(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetClientRect(IntPtr hWnd, out RECT rect);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ClientToScreen(IntPtr hWnd, ref POINT point);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern uint GetDpiForWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+    }
+}
+'@
+}
+
+function Get-ProcessVisibleWindow {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Diagnostics.Process]$Process
+    )
+
+    $candidates = [Collections.Generic.List[object]]::new()
+    try {
+        $Process.Refresh()
+        $mainWindow = $Process.MainWindowHandle
+        if ($mainWindow -ne [IntPtr]::Zero) {
+            [uint32]$ownerProcessId = 0
+            [void][SpaceSyndicate.GodotWindowProbeNative]::GetWindowThreadProcessId(
+                $mainWindow,
+                [ref]$ownerProcessId
+            )
+            if (
+                [int]$ownerProcessId -eq $Process.Id -and
+                [SpaceSyndicate.GodotWindowProbeNative]::IsWindowVisible($mainWindow) -and
+                -not [SpaceSyndicate.GodotWindowProbeNative]::IsIconic($mainWindow)
+            ) {
+                $candidates.Add([pscustomobject][ordered]@{
+                    handle = $mainWindow
+                    source = "MainWindowHandle"
+                    area = [int64]::MaxValue
+                })
+            }
+        }
+    } catch {
+        # EnumWindows below is the authoritative fallback.
+    }
+
+    $enumHandles = [Collections.Generic.List[int64]]::new()
+    $callback = [SpaceSyndicate.GodotWindowProbeNative+EnumWindowsProc]{
+        param([IntPtr]$windowHandle, [IntPtr]$unused)
+        [uint32]$ownerProcessId = 0
+        [void][SpaceSyndicate.GodotWindowProbeNative]::GetWindowThreadProcessId(
+            $windowHandle,
+            [ref]$ownerProcessId
+        )
+        if (
+            [int]$ownerProcessId -eq $Process.Id -and
+            [SpaceSyndicate.GodotWindowProbeNative]::IsWindowVisible($windowHandle) -and
+            -not [SpaceSyndicate.GodotWindowProbeNative]::IsIconic($windowHandle)
+        ) {
+            $enumHandles.Add($windowHandle.ToInt64())
+        }
+        return $true
+    }
+    [void][SpaceSyndicate.GodotWindowProbeNative]::EnumWindows(
+        $callback,
+        [IntPtr]::Zero
+    )
+    foreach ($handleValue in $enumHandles) {
+        $handle = [IntPtr]::new($handleValue)
+        $rect = [SpaceSyndicate.GodotWindowProbeNative+RECT]::new()
+        if (-not [SpaceSyndicate.GodotWindowProbeNative]::GetClientRect(
+            $handle,
+            [ref]$rect
+        )) {
+            continue
+        }
+        $width = [Math]::Max(0, $rect.Right - $rect.Left)
+        $height = [Math]::Max(0, $rect.Bottom - $rect.Top)
+        $candidates.Add([pscustomobject][ordered]@{
+            handle = $handle
+            source = "EnumWindows"
+            area = [int64]$width * [int64]$height
+        })
+    }
+
+    if ($candidates.Count -eq 0) {
+        return $null
+    }
+    return @($candidates | Sort-Object -Property area -Descending)[0]
+}
+
+function Write-AtomicUtf8Json {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [object]$Value
+    )
+
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    $parentPath = [IO.Path]::GetDirectoryName($fullPath)
+    if ([string]::IsNullOrWhiteSpace($parentPath)) {
+        throw "Atomic JSON path has no parent directory: $fullPath"
+    }
+    [IO.Directory]::CreateDirectory($parentPath) | Out-Null
+
+    $encoding = [Text.UTF8Encoding]::new($false)
+    $temporaryPath = Join-Path $parentPath ("{0}.{1}.tmp" -f [IO.Path]::GetFileName($fullPath), [guid]::NewGuid().ToString("N"))
+    $json = $Value | ConvertTo-Json -Depth 10
+    try {
+        [IO.File]::WriteAllText($temporaryPath, $json, $encoding)
+        [IO.File]::Move($temporaryPath, $fullPath, $true)
+    } finally {
+        if (Test-Path -LiteralPath $temporaryPath -PathType Leaf) {
+            Remove-Item -LiteralPath $temporaryPath -Force
+        }
+    }
+}
+
+function Assert-PathChainHasNoReparsePoint {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Label
+    )
+
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    foreach ($segment in $fullPath.Split(@('\', '/'), [StringSplitOptions]::RemoveEmptyEntries)) {
+        if ($segment -match '~[0-9]+') {
+            throw "$Label must not use an 8.3 path alias: $fullPath"
+        }
+    }
+
+    $cursor = $fullPath.TrimEnd('\', '/')
+    while (-not [string]::IsNullOrWhiteSpace($cursor)) {
+        if (Test-Path -LiteralPath $cursor) {
+            $item = Get-Item -LiteralPath $cursor -Force
+            if (
+                ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+                -not [string]::IsNullOrWhiteSpace([string]$item.LinkType) -or
+                $null -ne $item.Target
+            ) {
+                throw "$Label path chain contains a reparse point, junction, or symbolic link: $($item.FullName)"
+            }
+        }
+        $parent = [IO.Path]::GetDirectoryName($cursor)
+        if ([string]::IsNullOrWhiteSpace($parent) -or [string]::Equals($parent, $cursor, [StringComparison]::OrdinalIgnoreCase)) {
+            break
+        }
+        $cursor = $parent.TrimEnd('\', '/')
+    }
+}
+
+function Resolve-LiveTelemetryPath {
+    param(
+        [AllowEmptyString()]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$ResolvedProjectPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return ""
+    }
+
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    $projectRoot = [IO.Path]::GetFullPath($ResolvedProjectPath).TrimEnd('\', '/')
+    Assert-PathChainHasNoReparsePoint -Path $projectRoot -Label "Project worktree"
+    Assert-PathChainHasNoReparsePoint -Path $fullPath -Label "Live telemetry"
+    $projectPrefix = $projectRoot + [IO.Path]::DirectorySeparatorChar
+    if (
+        [string]::Equals($fullPath.TrimEnd('\', '/'), $projectRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($projectPrefix, [StringComparison]::OrdinalIgnoreCase)
+    ) {
+        throw "Live telemetry must stay outside the project worktree: $fullPath"
+    }
+    if (Test-Path -LiteralPath $fullPath -PathType Container) {
+        throw "Live telemetry path must be a file, not a directory: $fullPath"
+    }
+
+    $parentPath = [IO.Path]::GetDirectoryName($fullPath)
+    if ([string]::IsNullOrWhiteSpace($parentPath)) {
+        throw "Live telemetry path has no parent directory: $fullPath"
+    }
+    if ([string]::IsNullOrWhiteSpace([IO.Path]::GetFileName($fullPath))) {
+        throw "Live telemetry path must name a file: $fullPath"
+    }
+    [IO.Directory]::CreateDirectory($parentPath) | Out-Null
+    Assert-PathChainHasNoReparsePoint -Path $parentPath -Label "Live telemetry parent"
+
+    $resolvedProjectRoot = (Resolve-Path -LiteralPath $projectRoot).ProviderPath.TrimEnd('\', '/')
+    $resolvedParent = (Resolve-Path -LiteralPath $parentPath).ProviderPath.TrimEnd('\', '/')
+    $resolvedFullPath = Join-Path $resolvedParent ([IO.Path]::GetFileName($fullPath))
+    $resolvedProjectPrefix = $resolvedProjectRoot + [IO.Path]::DirectorySeparatorChar
+    if (
+        [string]::Equals($resolvedFullPath.TrimEnd('\', '/'), $resolvedProjectRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        $resolvedFullPath.StartsWith($resolvedProjectPrefix, [StringComparison]::OrdinalIgnoreCase)
+    ) {
+        throw "Live telemetry physical path must stay outside the project worktree: $resolvedFullPath"
+    }
+    return $resolvedFullPath
+}
+
+function New-ProcessStartToken {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, [int]::MaxValue)]
+        [int]$ProcessId,
+        [Parameter(Mandatory = $true)]
+        [DateTime]$StartTimeUtc
+    )
+
+    return "{0}:{1}" -f $ProcessId, $StartTimeUtc.ToUniversalTime().Ticks
+}
+
+function New-ProcessTelemetryState {
+    param(
+        [AllowEmptyString()]
+        [string]$LivePath = "",
+        [AllowEmptyString()]
+        [string]$RunId = "",
+        [AllowEmptyString()]
+        [string]$Phase = "process",
+        [AllowEmptyString()]
+        [string]$TargetPath = ""
+    )
+
+    $requested = -not [string]::IsNullOrWhiteSpace($LivePath)
+    return [ordered]@{
+        schema = "SpaceSyndicateGodotProcessTelemetryV1"
+        requested = $requested
+        status = if ($requested) { "pending" } else { "not_requested" }
+        live_telemetry_path = if ($requested) { $LivePath } else { $null }
+        run_id = $RunId
+        phase = $Phase
+        target_path = $TargetPath
+        process_id = $null
+        process_start_token = $null
+        godot_pid = $null
+        godot_start_token = $null
+        process_started_at_utc = $null
+        sampled_at_utc = $null
+        ended_at_utc = $null
+        sample_count = 0
+        write_count = 0
+        cpu_time_seconds = 0.0
+        working_set_bytes = [int64]0
+        peak_working_set_bytes = [int64]0
+        process_exit_code = $null
+        runner_exit_code = $null
+        timed_out = $false
+        failure_stage = $null
+        failure_message = $null
+        final_sample_status = if ($requested) { "pending" } else { "not_requested" }
+        final_sample_message = $null
+    }
+}
+
+function Get-ProcessObjectResourceTelemetrySample {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Diagnostics.Process]$Process,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ExpectedStartToken
+    )
+
+    try {
+        $Process.Refresh()
+        $processId = $Process.Id
+        $startTimeUtc = $Process.StartTime.ToUniversalTime()
+        $observedStartToken = New-ProcessStartToken `
+            -ProcessId $processId `
+            -StartTimeUtc $startTimeUtc
+        if (-not [string]::Equals(
+            $observedStartToken,
+            $ExpectedStartToken,
+            [StringComparison]::Ordinal
+        )) {
+            throw "Process identity changed for PID $processId. expected='$ExpectedStartToken' observed='$observedStartToken'"
+        }
+
+        $cpuTimeSeconds = [Math]::Round($Process.TotalProcessorTime.TotalSeconds, 6)
+        $workingSetBytes = [int64]$Process.WorkingSet64
+        $peakWorkingSetBytes = [int64]$Process.PeakWorkingSet64
+        if ($cpuTimeSeconds -lt 0.0 -or $workingSetBytes -lt 0 -or $peakWorkingSetBytes -lt 0) {
+            throw "Process resource counters were negative for PID $processId."
+        }
+        return [pscustomobject][ordered]@{
+            process_id = $processId
+            process_start_token = $observedStartToken
+            godot_pid = $processId
+            godot_start_token = $observedStartToken
+            process_started_at_utc = $startTimeUtc.ToString("o")
+            sampled_at_utc = [DateTime]::UtcNow.ToString("o")
+            cpu_time_seconds = $cpuTimeSeconds
+            working_set_bytes = $workingSetBytes
+            peak_working_set_bytes = [Math]::Max($peakWorkingSetBytes, $workingSetBytes)
+        }
+    } catch {
+        throw "Process telemetry enumeration failed: $($_.Exception.Message)"
+    }
+}
+
+function Get-ProcessResourceTelemetrySample {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, [int]::MaxValue)]
+        [int]$ProcessId,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ExpectedStartToken
+    )
+
+    $sampleProcess = $null
+    try {
+        $sampleProcess = [Diagnostics.Process]::GetProcessById($ProcessId)
+        return Get-ProcessObjectResourceTelemetrySample `
+            -Process $sampleProcess `
+            -ExpectedStartToken $ExpectedStartToken
+    } catch {
+        throw "Process telemetry enumeration failed for PID ${ProcessId}: $($_.Exception.Message)"
+    } finally {
+        if ($null -ne $sampleProcess) {
+            $sampleProcess.Dispose()
+        }
+    }
+}
+
+function Update-ProcessTelemetryState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Collections.IDictionary]$State,
+        [Parameter(Mandatory = $true)]
+        [object]$Sample
+    )
+
+    if (-not [bool]$State["requested"]) {
+        throw "Cannot update process telemetry that was not requested."
+    }
+    if (
+        $null -ne $State["process_start_token"] -and
+        -not [string]::Equals(
+            [string]$State["process_start_token"],
+            [string]$Sample.process_start_token,
+            [StringComparison]::Ordinal
+        )
+    ) {
+        throw "Process telemetry sample start token changed."
+    }
+
+    $previousCpuSeconds = [double]$State["cpu_time_seconds"]
+    $sampleCpuSeconds = [double]$Sample.cpu_time_seconds
+    if ($sampleCpuSeconds + 0.000001 -lt $previousCpuSeconds) {
+        throw "Process CPU time moved backwards. previous=$previousCpuSeconds sample=$sampleCpuSeconds"
+    }
+
+    $State["status"] = "running"
+    $State["process_id"] = [int]$Sample.process_id
+    $State["process_start_token"] = [string]$Sample.process_start_token
+    $State["godot_pid"] = [int]$Sample.process_id
+    $State["godot_start_token"] = [string]$Sample.process_start_token
+    $State["process_started_at_utc"] = [string]$Sample.process_started_at_utc
+    $State["sampled_at_utc"] = [string]$Sample.sampled_at_utc
+    $State["sample_count"] = [int]$State["sample_count"] + 1
+    $State["cpu_time_seconds"] = $sampleCpuSeconds
+    $State["working_set_bytes"] = [int64]$Sample.working_set_bytes
+    $State["peak_working_set_bytes"] = [Math]::Max(
+        [int64]$State["peak_working_set_bytes"],
+        [Math]::Max(
+            [int64]$Sample.peak_working_set_bytes,
+            [int64]$Sample.working_set_bytes
+        )
+    )
+}
+
+function Set-ProcessTelemetryFailure {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Collections.IDictionary]$State,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Stage,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Message
+    )
+
+    $State["status"] = "failed"
+    $State["failure_stage"] = $Stage
+    $State["failure_message"] = $Message
+    $State["ended_at_utc"] = [DateTime]::UtcNow.ToString("o")
+}
+
+function Publish-ProcessTelemetryState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Collections.IDictionary]$State
+    )
+
+    if (-not [bool]$State["requested"]) {
+        return
+    }
+    $State["write_count"] = [int]$State["write_count"] + 1
+    Write-AtomicUtf8Json `
+        -Path ([string]$State["live_telemetry_path"]) `
+        -Value $State
+}
+
+function Get-TelemetryGatedRunnerOutcome {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$TelemetryFailed,
+        [Parameter(Mandatory = $true)]
+        [string]$Status,
+        [Parameter(Mandatory = $true)]
+        [int]$RunnerExitCode
+    )
+
+    if ($TelemetryFailed) {
+        return [pscustomobject][ordered]@{
+            status = "telemetry_failed"
+            runner_exit_code = 132
+        }
+    }
+    return [pscustomobject][ordered]@{
+        status = $Status
+        runner_exit_code = $RunnerExitCode
+    }
+}
+
+function Select-EffectiveProcessTelemetry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$TestStarted,
+        [AllowNull()]
+        [object]$TestProcess,
+        [Parameter(Mandatory = $true)]
+        [Collections.IDictionary]$ImportRecord
+    )
+
+    if ($TestStarted) {
+        return $TestProcess.process_telemetry
+    }
+    if ([bool]$ImportRecord["attempted"]) {
+        return $ImportRecord["process_telemetry"]
+    }
+    return $null
+}
+
+function Get-ProcessTelemetryResultFields {
+    param(
+        [AllowNull()]
+        [object]$State
+    )
+
+    return [ordered]@{
+        process_start_token = if ($null -ne $State) { $State.process_start_token } else { $null }
+        godot_start_token = if ($null -ne $State) { $State.process_start_token } else { $null }
+        telemetry_sample_count = if ($null -ne $State) { [int]$State.sample_count } else { 0 }
+        cpu_time_seconds = if ($null -ne $State) { [double]$State.cpu_time_seconds } else { 0.0 }
+        working_set_bytes = if ($null -ne $State) { [int64]$State.working_set_bytes } else { [int64]0 }
+        peak_working_set_bytes = if ($null -ne $State) { [int64]$State.peak_working_set_bytes } else { [int64]0 }
+        process_telemetry = $State
+    }
+}
+
+function Save-WindowClientPng {
+    param(
+        [Parameter(Mandatory = $true)]
+        [IntPtr]$WindowHandle,
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 32768)]
+        [int]$Width,
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 32768)]
+        [int]$Height,
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $parent = [IO.Path]::GetDirectoryName($Path)
+    if (-not [string]::IsNullOrWhiteSpace($parent)) {
+        [IO.Directory]::CreateDirectory($parent) | Out-Null
+    }
+    [void][SpaceSyndicate.GodotWindowProbeNative]::SetForegroundWindow($WindowHandle)
+    Start-Sleep -Milliseconds 250
+    $preCaptureRect = [SpaceSyndicate.GodotWindowProbeNative+RECT]::new()
+    if (-not [SpaceSyndicate.GodotWindowProbeNative]::GetClientRect(
+        $WindowHandle,
+        [ref]$preCaptureRect
+    )) {
+        throw "GetClientRect failed immediately before client capture."
+    }
+    $preCaptureWidth = $preCaptureRect.Right - $preCaptureRect.Left
+    $preCaptureHeight = $preCaptureRect.Bottom - $preCaptureRect.Top
+    if ($preCaptureWidth -ne $Width -or $preCaptureHeight -ne $Height) {
+        throw (
+            "Client size changed before capture: expected={0}x{1} actual={2}x{3}" -f
+            $Width,
+            $Height,
+            $preCaptureWidth,
+            $preCaptureHeight
+        )
+    }
+    $point = [SpaceSyndicate.GodotWindowProbeNative+POINT]::new()
+    $point.X = 0
+    $point.Y = 0
+    if (-not [SpaceSyndicate.GodotWindowProbeNative]::ClientToScreen(
+        $WindowHandle,
+        [ref]$point
+    )) {
+        throw "ClientToScreen failed for the headed Godot window."
+    }
+    $bitmap = [Drawing.Bitmap]::new(
+        $Width,
+        $Height,
+        [Drawing.Imaging.PixelFormat]::Format32bppArgb
+    )
+    $graphics = $null
+    try {
+        $graphics = [Drawing.Graphics]::FromImage($bitmap)
+        $graphics.CopyFromScreen(
+            $point.X,
+            $point.Y,
+            0,
+            0,
+            $bitmap.Size,
+            [Drawing.CopyPixelOperation]::SourceCopy
+        )
+        $bitmap.Save($Path, [Drawing.Imaging.ImageFormat]::Png)
+    } finally {
+        if ($null -ne $graphics) {
+            $graphics.Dispose()
+        }
+        $bitmap.Dispose()
+    }
+    $postCaptureSamples = [Collections.Generic.List[object]]::new()
+    for ($sampleIndex = 0; $sampleIndex -lt 3; $sampleIndex += 1) {
+        if (
+            -not [SpaceSyndicate.GodotWindowProbeNative]::IsWindowVisible($WindowHandle) -or
+            [SpaceSyndicate.GodotWindowProbeNative]::IsIconic($WindowHandle)
+        ) {
+            throw "Headed Godot window stopped being visible after capture."
+        }
+        $postCaptureRect = [SpaceSyndicate.GodotWindowProbeNative+RECT]::new()
+        if (-not [SpaceSyndicate.GodotWindowProbeNative]::GetClientRect(
+            $WindowHandle,
+            [ref]$postCaptureRect
+        )) {
+            throw "GetClientRect failed after client capture."
+        }
+        $postCaptureWidth = $postCaptureRect.Right - $postCaptureRect.Left
+        $postCaptureHeight = $postCaptureRect.Bottom - $postCaptureRect.Top
+        $postCaptureSamples.Add([pscustomobject][ordered]@{
+            sampled_at_utc = [DateTime]::UtcNow.ToString("o")
+            width = $postCaptureWidth
+            height = $postCaptureHeight
+        })
+        if ($postCaptureWidth -ne $Width -or $postCaptureHeight -ne $Height) {
+            throw (
+                "Client size changed during capture: expected={0}x{1} actual={2}x{3}" -f
+                $Width,
+                $Height,
+                $postCaptureWidth,
+                $postCaptureHeight
+            )
+        }
+        if ($sampleIndex -lt 2) {
+            Start-Sleep -Milliseconds 100
+        }
+    }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Client PNG was not created: $Path"
+    }
+    return [pscustomobject][ordered]@{
+        path = $Path
+        width = $Width
+        height = $Height
+        byte_length = [int64](Get-Item -LiteralPath $Path).Length
+        sha256 = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+        capture_method = "win32_client_copy_from_screen"
+        pre_capture_client_width = $preCaptureWidth
+        pre_capture_client_height = $preCaptureHeight
+        post_capture_client_width = $postCaptureWidth
+        post_capture_client_height = $postCaptureHeight
+        post_capture_exact_sample_count = $postCaptureSamples.Count
+        post_capture_samples = @($postCaptureSamples)
+        capture_source_client_origin = [ordered]@{ x = $point.X; y = $point.Y }
+        capture_source_client_rect = [ordered]@{
+            width = $preCaptureWidth
+            height = $preCaptureHeight
+        }
+    }
+}
+
+function Invoke-HeadedTelemetryTick {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Diagnostics.Process]$Process,
+        [AllowNull()]
+        [scriptblock]$TelemetryTick
+    )
+
+    if ($null -eq $TelemetryTick) {
+        return $true
+    }
+    try {
+        if ($Process.HasExited) {
+            return $false
+        }
+        & $TelemetryTick
+        return $true
+    } catch {
+        try {
+            if ($Process.HasExited) {
+                return $false
+            }
+        } catch {
+            return $false
+        }
+        throw [InvalidOperationException]::new(
+            "PROCESS_TELEMETRY_TICK_FAILED|$($_.Exception.Message)",
+            $_.Exception
+        )
+    }
+}
+
+function Invoke-HeadedClientWindowProbe {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Diagnostics.Process]$Process,
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedSize,
+        [Parameter(Mandatory = $true)]
+        [string]$ReadyPath,
+        [Parameter(Mandatory = $true)]
+        [string]$AckPath,
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 120)]
+        [int]$ProbeTimeoutSeconds,
+        [AllowNull()]
+        [scriptblock]$TelemetryTick = $null
+    )
+
+    Initialize-GodotWindowProbeNative
+    $match = [regex]::Match($ExpectedSize, '^(?<width>\d+)x(?<height>\d+)$')
+    $expectedWidth = [int]$match.Groups['width'].Value
+    $expectedHeight = [int]$match.Groups['height'].Value
+    $samples = [Collections.Generic.List[object]]::new()
+    $readyRecord = $null
+    $readySha256 = ""
+    $windowRecord = $null
+    $clientCapture = $null
+    $stableExactSampleCount = 0
+    $failureReason = "probe_timeout"
+    $deadline = [DateTime]::UtcNow.AddSeconds($ProbeTimeoutSeconds)
+    $nextTelemetryTickAt = [DateTime]::UtcNow
+    $previousDpiContext = [SpaceSyndicate.GodotWindowProbeNative]::SetThreadDpiAwarenessContext(
+        [IntPtr]::new(-4)
+    )
+
+    try {
+        while ([DateTime]::UtcNow -lt $deadline) {
+            if ($Process.HasExited) {
+                $failureReason = "process_exited_before_probe_ack"
+                break
+            }
+            if ($null -ne $TelemetryTick -and [DateTime]::UtcNow -ge $nextTelemetryTickAt) {
+                if (-not (Invoke-HeadedTelemetryTick -Process $Process -TelemetryTick $TelemetryTick)) {
+                    $failureReason = "process_exited_during_probe_telemetry_tick"
+                    break
+                }
+                $nextTelemetryTickAt = [DateTime]::UtcNow.AddMilliseconds(250)
+            }
+
+            if ($null -eq $readyRecord -and (Test-Path -LiteralPath $ReadyPath -PathType Leaf)) {
+                try {
+                    $readyBytes = [IO.File]::ReadAllBytes($ReadyPath)
+                    $readyText = [Text.UTF8Encoding]::new($false, $true).GetString($readyBytes)
+                    $candidateReady = ConvertFrom-Json -InputObject $readyText -AsHashtable
+                    if ($candidateReady -isnot [Collections.IDictionary]) {
+                        throw "ready payload is not a JSON object"
+                    }
+                    if ([int]$candidateReady.process_id -ne $Process.Id) {
+                        throw "ready process_id does not match the launched Godot process"
+                    }
+                    if ([string]$candidateReady.expected_client_size -ne $ExpectedSize) {
+                        throw "ready expected_client_size does not match the runner request"
+                    }
+                    $readyRecord = $candidateReady
+                    $readySha256 = [Convert]::ToHexString(
+                        [Security.Cryptography.SHA256]::HashData($readyBytes)
+                    ).ToLowerInvariant()
+                } catch {
+                    $failureReason = "ready_invalid: $($_.Exception.Message)"
+                    Start-Sleep -Milliseconds 50
+                    continue
+                }
+            }
+
+            if ($null -eq $readyRecord) {
+                Start-Sleep -Milliseconds 50
+                continue
+            }
+
+            $candidateWindow = Get-ProcessVisibleWindow -Process $Process
+            if ($null -eq $candidateWindow) {
+                $failureReason = "visible_window_not_found"
+                Start-Sleep -Milliseconds 50
+                continue
+            }
+            $windowRecord = $candidateWindow
+            $windowHandle = [IntPtr]$candidateWindow.handle
+            $readyHandle = [int64]$readyRecord.native_hwnd_decimal
+            if ($readyHandle -ne 0 -and $readyHandle -ne $windowHandle.ToInt64()) {
+                $failureReason = "driver_and_external_window_handle_mismatch"
+                $stableExactSampleCount = 0
+                Start-Sleep -Milliseconds 50
+                continue
+            }
+
+            $rect = [SpaceSyndicate.GodotWindowProbeNative+RECT]::new()
+            if (-not [SpaceSyndicate.GodotWindowProbeNative]::GetClientRect(
+                $windowHandle,
+                [ref]$rect
+            )) {
+                $failureReason = "get_client_rect_failed"
+                $stableExactSampleCount = 0
+                Start-Sleep -Milliseconds 50
+                continue
+            }
+            $width = $rect.Right - $rect.Left
+            $height = $rect.Bottom - $rect.Top
+            $sample = [pscustomobject][ordered]@{
+                sampled_at_utc = [DateTime]::UtcNow.ToString("o")
+                left = $rect.Left
+                top = $rect.Top
+                right = $rect.Right
+                bottom = $rect.Bottom
+                width = $width
+                height = $height
+            }
+            if ($samples.Count -lt 50) {
+                $samples.Add($sample)
+            }
+            if ($width -eq $expectedWidth -and $height -eq $expectedHeight) {
+                $stableExactSampleCount += 1
+            } else {
+                $stableExactSampleCount = 0
+                $failureReason = "client_size_mismatch_${width}x${height}"
+            }
+            if ($stableExactSampleCount -ge 3) {
+                $capturePath = [string]$readyRecord.capture_path
+                if (
+                    [string]::IsNullOrWhiteSpace($capturePath) -or
+                    -not [IO.Path]::IsPathFullyQualified($capturePath)
+                ) {
+                    $failureReason = "ready_capture_path_is_not_absolute"
+                    break
+                }
+                try {
+                    if ($null -ne $TelemetryTick) {
+                        if (-not (Invoke-HeadedTelemetryTick -Process $Process -TelemetryTick $TelemetryTick)) {
+                            $failureReason = "process_exited_before_client_capture"
+                            break
+                        }
+                    }
+                    $clientCapture = Save-WindowClientPng `
+                        -WindowHandle $windowHandle `
+                        -Width $width `
+                        -Height $height `
+                        -Path $capturePath
+                    if ($null -ne $TelemetryTick) {
+                        if (-not (Invoke-HeadedTelemetryTick -Process $Process -TelemetryTick $TelemetryTick)) {
+                            $failureReason = "process_exited_after_client_capture"
+                            break
+                        }
+                    }
+                } catch {
+                    if ($_.Exception.Message.StartsWith("PROCESS_TELEMETRY_TICK_FAILED|", [StringComparison]::Ordinal)) {
+                        throw
+                    }
+                    $failureReason = "client_capture_failed: $($_.Exception.Message)"
+                    break
+                }
+                $ack = [ordered]@{
+                    schema = "space_syndicate.godot_headed_client_probe_ack.v1"
+                    status = "PASS"
+                    process_id = $Process.Id
+                    expected_client_size = $ExpectedSize
+                    client_width = $width
+                    client_height = $height
+                    hwnd_decimal = $windowHandle.ToInt64().ToString()
+                    hwnd_hex = "0x{0:X}" -f $windowHandle.ToInt64()
+                    hwnd_source = [string]$candidateWindow.source
+                    dpi = [int][SpaceSyndicate.GodotWindowProbeNative]::GetDpiForWindow($windowHandle)
+                    ready_sha256 = $readySha256
+                    probe_nonce = [string]$readyRecord.probe_nonce
+                    stable_exact_sample_count = $stableExactSampleCount
+                    client_capture_path = $clientCapture.path
+                    client_capture_width = $clientCapture.width
+                    client_capture_height = $clientCapture.height
+                    client_capture_bytes = $clientCapture.byte_length
+                    client_capture_sha256 = $clientCapture.sha256
+                    client_capture_method = $clientCapture.capture_method
+                    pre_capture_client_width = $clientCapture.pre_capture_client_width
+                    pre_capture_client_height = $clientCapture.pre_capture_client_height
+                    post_capture_client_width = $clientCapture.post_capture_client_width
+                    post_capture_client_height = $clientCapture.post_capture_client_height
+                    post_capture_exact_sample_count = $clientCapture.post_capture_exact_sample_count
+                    post_capture_samples = @($clientCapture.post_capture_samples)
+                    capture_source_client_origin = $clientCapture.capture_source_client_origin
+                    capture_source_client_rect = $clientCapture.capture_source_client_rect
+                }
+                Write-AtomicUtf8Json -Path $AckPath -Value $ack
+                return [pscustomobject][ordered]@{
+                    required = $true
+                    status = "passed"
+                    failure_reason = $null
+                    expected_client_size = $ExpectedSize
+                    ready_path = $ReadyPath
+                    ready_sha256 = $readySha256
+                    probe_nonce = [string]$readyRecord.probe_nonce
+                    ack_path = $AckPath
+                    process_id = $Process.Id
+                    hwnd_decimal = $windowHandle.ToInt64().ToString()
+                    hwnd_hex = "0x{0:X}" -f $windowHandle.ToInt64()
+                    hwnd_source = [string]$candidateWindow.source
+                    dpi = [int]$ack.dpi
+                    stable_exact_sample_count = $stableExactSampleCount
+                    exact_match = $true
+                    client_capture = $clientCapture
+                    samples = @($samples)
+                }
+            }
+            Start-Sleep -Milliseconds 100
+        }
+    } finally {
+        if ($previousDpiContext -ne [IntPtr]::Zero) {
+            [void][SpaceSyndicate.GodotWindowProbeNative]::SetThreadDpiAwarenessContext(
+                $previousDpiContext
+            )
+        }
+    }
+
+    $failureAck = [ordered]@{
+        schema = "space_syndicate.godot_headed_client_probe_ack.v1"
+        status = "FAIL"
+        process_id = $Process.Id
+        expected_client_size = $ExpectedSize
+        ready_sha256 = $readySha256
+        probe_nonce = if ($null -ne $readyRecord) {
+            [string]$readyRecord.probe_nonce
+        } else { "" }
+        failure_reason = $failureReason
+        stable_exact_sample_count = $stableExactSampleCount
+    }
+    try {
+        Write-AtomicUtf8Json -Path $AckPath -Value $failureAck
+    } catch {
+        $failureReason = "$failureReason;ack_write_failed:$($_.Exception.Message)"
+    }
+    return [pscustomobject][ordered]@{
+        required = $true
+        status = "failed"
+        failure_reason = $failureReason
+        expected_client_size = $ExpectedSize
+        ready_path = $ReadyPath
+        ready_sha256 = $readySha256
+        probe_nonce = if ($null -ne $readyRecord) {
+            [string]$readyRecord.probe_nonce
+        } else { "" }
+        ack_path = $AckPath
+        process_id = $Process.Id
+        hwnd_decimal = if ($null -ne $windowRecord) {
+            ([IntPtr]$windowRecord.handle).ToInt64().ToString()
+        } else { "" }
+        hwnd_hex = if ($null -ne $windowRecord) {
+            "0x{0:X}" -f ([IntPtr]$windowRecord.handle).ToInt64()
+        } else { "" }
+        hwnd_source = if ($null -ne $windowRecord) {
+            [string]$windowRecord.source
+        } else { "" }
+        dpi = 0
+        stable_exact_sample_count = $stableExactSampleCount
+        exact_match = $false
+        client_capture = $clientCapture
+        samples = @($samples)
+    }
+}
+
 function Get-GodotDiagnosticAudit {
     param(
         [Parameter(Mandatory = $true)]
@@ -314,6 +1313,10 @@ function Get-GodotDiagnosticAudit {
     $markerRequired = -not [string]::IsNullOrEmpty($ExpectedMarker)
     $markerFound = $false
     $scriptErrors = [Collections.Generic.List[object]]::new()
+    $diagnosticKeys = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal
+    )
+    $diagnostics = [Collections.Generic.List[object]]::new()
 
     foreach ($path in $LogPaths) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -329,7 +1332,34 @@ function Get-GodotDiagnosticAudit {
                 message = $match.Value.Trim()
             })
         }
+        foreach ($line in ($content -split "`r?`n")) {
+            $diagnosticMatch = [regex]::Match(
+                $line,
+                '^\s*(WARNING|ERROR):\s*(.+)$',
+                [Text.RegularExpressions.RegexOptions]::IgnoreCase
+            )
+            if (-not $diagnosticMatch.Success) {
+                continue
+            }
+            $severity = $diagnosticMatch.Groups[1].Value.ToUpperInvariant()
+            $message = $diagnosticMatch.Groups[2].Value.Trim()
+            $key = "$severity|$message"
+            if ($diagnosticKeys.Add($key)) {
+                $diagnostics.Add([pscustomobject][ordered]@{
+                    severity = $severity
+                    message = $message
+                    invalid_uid = $message.IndexOf(
+                        "invalid UID:",
+                        [StringComparison]::OrdinalIgnoreCase
+                    ) -ge 0
+                })
+            }
+        }
     }
+
+    $taskErrors = @($diagnostics | Where-Object { $_.severity -eq "ERROR" })
+    $unclassified = @($diagnostics | Where-Object { $_.severity -eq "WARNING" })
+    $invalidUids = @($diagnostics | Where-Object { $_.invalid_uid })
 
     return [pscustomobject][ordered]@{
         script_error_count = $scriptErrors.Count
@@ -338,6 +1368,11 @@ function Get-GodotDiagnosticAudit {
         marker_required = $markerRequired
         expected_completion_marker = if ($markerRequired) { $ExpectedMarker } else { $null }
         marker_found = if ($markerRequired) { $markerFound } else { $null }
+        diagnostic_count = $diagnostics.Count
+        task_introduced_error_count = $taskErrors.Count
+        unclassified_diagnostic_count = $unclassified.Count
+        invalid_uid_unclassified_count = $invalidUids.Count
+        diagnostics = @($diagnostics)
     }
 }
 
@@ -390,6 +1425,80 @@ function Get-ClassCacheAudit {
     }
 }
 
+function Convert-RawLogToNormalizedText {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RawPath,
+        [Parameter(Mandatory = $true)]
+        [string]$TextPath,
+        [Parameter(Mandatory = $true)]
+        [bool]$CaptureComplete
+    )
+
+    [byte[]]$bytes = [byte[]]::new(0)
+    if (Test-Path -LiteralPath $RawPath -PathType Leaf) {
+        $bytes = [IO.File]::ReadAllBytes($RawPath)
+    }
+    $encodingName = "utf-8"
+    $strictDecode = $true
+    $offset = 0
+    $count = $bytes.Length
+    $encoding = [Text.UTF8Encoding]::new($false, $true)
+    if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) {
+        $encodingName = "utf-16le-bom"
+        $encoding = [Text.UnicodeEncoding]::new($false, $true, $true)
+        $offset = 2
+        $count -= 2
+    } elseif ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFE -and $bytes[1] -eq 0xFF) {
+        $encodingName = "utf-16be-bom"
+        $encoding = [Text.UnicodeEncoding]::new($true, $true, $true)
+        $offset = 2
+        $count -= 2
+    } elseif (
+        $bytes.Length -ge 3 -and
+        $bytes[0] -eq 0xEF -and
+        $bytes[1] -eq 0xBB -and
+        $bytes[2] -eq 0xBF
+    ) {
+        $encodingName = "utf-8-bom"
+        $offset = 3
+        $count -= 3
+    }
+
+    try {
+        $text = $encoding.GetString($bytes, $offset, $count)
+    } catch {
+        $strictDecode = $false
+        $encodingName = "$encodingName-invalid"
+        $text = [Text.UTF8Encoding]::new($false, $false).GetString($bytes)
+    }
+    [IO.File]::WriteAllText($TextPath, $text, [Text.UTF8Encoding]::new($false))
+    $rawNulCount = @($bytes | Where-Object { $_ -eq 0 }).Count
+    $decodedNulCharacterCount = @(
+        $text.ToCharArray() | Where-Object { [int]$_ -eq 0 }
+    ).Count
+    $replacementCharacterCount = @(
+        $text.ToCharArray() | Where-Object { [int]$_ -eq 0xFFFD }
+    ).Count
+    $rawSha256 = if (Test-Path -LiteralPath $RawPath -PathType Leaf) {
+        (Get-FileHash -LiteralPath $RawPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    } else {
+        $null
+    }
+    return [pscustomobject][ordered]@{
+        raw_path = $RawPath
+        text_path = $TextPath
+        byte_length = [int64]$bytes.Length
+        sha256 = $rawSha256
+        encoding = $encodingName
+        strict_decode = $strictDecode
+        raw_nul_count = $rawNulCount
+        decoded_nul_character_count = $decodedNulCharacterCount
+        replacement_character_count = $replacementCharacterCount
+        capture_complete = $CaptureComplete
+    }
+}
+
 function Invoke-GodotBlockingProcess {
     param(
         [Parameter(Mandatory = $true)]
@@ -411,7 +1520,17 @@ function Invoke-GodotBlockingProcess {
         [string]$AppDataPath,
         [Parameter(Mandatory = $true)]
         [string]$LocalAppDataPath,
-        [string]$ExpectedMarker = ""
+        [string]$ExpectedMarker = "",
+        [AllowNull()]
+        [Collections.IDictionary]$HeadedProbe = $null,
+        [AllowEmptyString()]
+        [string]$LiveTelemetryPath = "",
+        [AllowEmptyString()]
+        [string]$TelemetryRunId = "",
+        [AllowEmptyString()]
+        [string]$TelemetryPhase = "process",
+        [AllowEmptyString()]
+        [string]$TelemetryTargetPath = ""
     )
 
     $startedAt = [DateTime]::UtcNow
@@ -427,20 +1546,223 @@ function Invoke-GodotBlockingProcess {
         -ArgumentList $ArgumentList `
         -EnvironmentVariables $environmentVariables
     $timedOut = $false
+    $processExited = $false
     $processId = $null
     $processExitCode = $null
     $cleanupProcessIds = @()
+    $stdoutRawPath = [IO.Path]::ChangeExtension($StdoutPath, "raw.bin")
+    $stderrRawPath = [IO.Path]::ChangeExtension($StderrPath, "raw.bin")
+    $stdoutRawStream = $null
+    $stderrRawStream = $null
+    $stdoutTask = $null
+    $stderrTask = $null
+    $stdoutCaptureComplete = $false
+    $stderrCaptureComplete = $false
+    $processTelemetry = New-ProcessTelemetryState `
+        -LivePath $LiveTelemetryPath `
+        -RunId $TelemetryRunId `
+        -Phase $TelemetryPhase `
+        -TargetPath $TelemetryTargetPath
+    $telemetryFailure = $false
+    $rootProcessRemaining = $false
+    $windowProbe = [pscustomobject][ordered]@{
+        required = $false
+        status = "not_requested"
+        failure_reason = $null
+        expected_client_size = $null
+        ready_path = $null
+        ready_sha256 = ""
+        ack_path = $null
+        process_id = $null
+        hwnd_decimal = ""
+        hwnd_hex = ""
+        hwnd_source = ""
+        dpi = 0
+        stable_exact_sample_count = 0
+        exact_match = $false
+        client_capture = $null
+        samples = @()
+    }
 
     try {
         if (-not $process.Start()) {
             throw "Godot process did not start."
         }
         $processId = $process.Id
-        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $stdoutRawStream = [IO.File]::Open(
+            $stdoutRawPath,
+            [IO.FileMode]::Create,
+            [IO.FileAccess]::Write,
+            [IO.FileShare]::Read
+        )
+        $stderrRawStream = [IO.File]::Open(
+            $stderrRawPath,
+            [IO.FileMode]::Create,
+            [IO.FileAccess]::Write,
+            [IO.FileShare]::Read
+        )
+        $stdoutTask = $process.StandardOutput.BaseStream.CopyToAsync($stdoutRawStream)
+        $stderrTask = $process.StandardError.BaseStream.CopyToAsync($stderrRawStream)
 
-        $processExited = $process.WaitForExit($ProcessTimeoutSeconds * 1000)
-        if (-not $processExited) {
+        if ([bool]$processTelemetry["requested"]) {
+            try {
+                $processStartTimeUtc = $process.StartTime.ToUniversalTime()
+                $processStartToken = New-ProcessStartToken `
+                    -ProcessId $processId `
+                    -StartTimeUtc $processStartTimeUtc
+                $processTelemetry["process_id"] = $processId
+                $processTelemetry["process_start_token"] = $processStartToken
+                $processTelemetry["process_started_at_utc"] = $processStartTimeUtc.ToString("o")
+                $initialTelemetrySample = Get-ProcessResourceTelemetrySample `
+                    -ProcessId $processId `
+                    -ExpectedStartToken $processStartToken
+                Update-ProcessTelemetryState `
+                    -State $processTelemetry `
+                    -Sample $initialTelemetrySample
+            } catch {
+                $telemetryFailure = $true
+                Set-ProcessTelemetryFailure `
+                    -State $processTelemetry `
+                    -Stage "process_enumeration" `
+                    -Message $_.Exception.Message
+            }
+
+            if (-not $telemetryFailure) {
+                try {
+                    Publish-ProcessTelemetryState -State $processTelemetry
+                } catch {
+                    $telemetryFailure = $true
+                    Set-ProcessTelemetryFailure `
+                        -State $processTelemetry `
+                        -Stage "telemetry_write" `
+                        -Message $_.Exception.Message
+                }
+            }
+        }
+
+        $headedTelemetryTick = $null
+        if (-not $telemetryFailure -and [bool]$processTelemetry["requested"]) {
+            $headedTelemetryTick = {
+                $headedTelemetrySample = Get-ProcessResourceTelemetrySample `
+                    -ProcessId $processId `
+                    -ExpectedStartToken ([string]$processTelemetry["process_start_token"])
+                Update-ProcessTelemetryState `
+                    -State $processTelemetry `
+                    -Sample $headedTelemetrySample
+                Publish-ProcessTelemetryState -State $processTelemetry
+            }.GetNewClosure()
+        }
+
+        if (-not $telemetryFailure -and $null -ne $HeadedProbe) {
+            try {
+                $windowProbe = Invoke-HeadedClientWindowProbe `
+                    -Process $process `
+                    -ExpectedSize ([string]$HeadedProbe.expected_client_size) `
+                    -ReadyPath ([string]$HeadedProbe.ready_path) `
+                    -AckPath ([string]$HeadedProbe.ack_path) `
+                    -ProbeTimeoutSeconds ([int]$HeadedProbe.timeout_seconds) `
+                    -TelemetryTick $headedTelemetryTick
+            } catch {
+                if ($_.Exception.Message.StartsWith("PROCESS_TELEMETRY_TICK_FAILED|", [StringComparison]::Ordinal)) {
+                    $telemetryFailure = $true
+                    Set-ProcessTelemetryFailure `
+                        -State $processTelemetry `
+                        -Stage "headed_probe_telemetry" `
+                        -Message $_.Exception.Message.Substring("PROCESS_TELEMETRY_TICK_FAILED|".Length)
+                } else {
+                    throw
+                }
+            }
+            if ($windowProbe.status -ne "passed") {
+                $processExited = $process.WaitForExit(5000)
+                if (-not $processExited) {
+                    [void](Stop-ScopedProcessTree `
+                        -Process $process `
+                        -ResolvedProjectPath $ResolvedProjectPath `
+                        -ResolvedGodotPath $ResolvedGodotPath)
+                    try {
+                        $processExited = $process.WaitForExit(10000)
+                    } catch {
+                        $processExited = $false
+                    }
+                }
+            }
+        }
+
+        $processDeadline = $startedAt.AddSeconds($ProcessTimeoutSeconds)
+        while (
+            -not $telemetryFailure -and
+            -not $processExited -and
+            [DateTime]::UtcNow -lt $processDeadline
+        ) {
+            try {
+                $processExited = $process.WaitForExit(250)
+            } catch {
+                $processExited = $true
+            }
+            if (-not $processExited -and [bool]$processTelemetry["requested"]) {
+                try {
+                    $telemetrySample = Get-ProcessResourceTelemetrySample `
+                        -ProcessId $processId `
+                        -ExpectedStartToken ([string]$processTelemetry["process_start_token"])
+                    Update-ProcessTelemetryState `
+                        -State $processTelemetry `
+                        -Sample $telemetrySample
+                } catch {
+                    $exitedDuringSample = $false
+                    try {
+                        $exitedDuringSample = $process.HasExited
+                    } catch {
+                        $exitedDuringSample = $false
+                    }
+                    if ($exitedDuringSample) {
+                        $processExited = $true
+                    } else {
+                        $telemetryFailure = $true
+                        Set-ProcessTelemetryFailure `
+                            -State $processTelemetry `
+                            -Stage "process_enumeration" `
+                            -Message $_.Exception.Message
+                    }
+                }
+                if (-not $processExited -and -not $telemetryFailure) {
+                    try {
+                        Publish-ProcessTelemetryState -State $processTelemetry
+                    } catch {
+                        $telemetryFailure = $true
+                        Set-ProcessTelemetryFailure `
+                            -State $processTelemetry `
+                            -Stage "telemetry_write" `
+                            -Message $_.Exception.Message
+                    }
+                }
+            }
+        }
+        if ($telemetryFailure -and -not $processExited) {
+            $telemetryStopSucceeded = Stop-ScopedProcessTree `
+                -Process $process `
+                -ResolvedProjectPath $ResolvedProjectPath `
+                -ResolvedGodotPath $ResolvedGodotPath
+            try {
+                $processExited = $process.WaitForExit(10000)
+            } catch {
+                $processExited = $false
+            }
+            try {
+                $rootProcessRemaining = -not $process.HasExited
+            } catch {
+                $rootProcessRemaining = -not $telemetryStopSucceeded
+            }
+            if ($rootProcessRemaining) {
+                $cleanupMessage = "Telemetry failure cleanup could not verify root PID $processId stopped."
+                $processTelemetry["failure_message"] = if ([string]::IsNullOrWhiteSpace([string]$processTelemetry["failure_message"])) {
+                    $cleanupMessage
+                } else {
+                    "$($processTelemetry["failure_message"]); $cleanupMessage"
+                }
+            }
+        }
+        if (-not $telemetryFailure -and -not $processExited) {
             $timedOut = $true
             $stopRequested = Stop-ScopedProcessTree `
                 -Process $process `
@@ -464,6 +1786,46 @@ function Invoke-GodotBlockingProcess {
             }
         }
 
+        if ($processExited -and -not $telemetryFailure -and [bool]$processTelemetry["requested"]) {
+            try {
+                $finalTelemetrySample = Get-ProcessObjectResourceTelemetrySample `
+                    -Process $process `
+                    -ExpectedStartToken ([string]$processTelemetry["process_start_token"])
+                Update-ProcessTelemetryState `
+                    -State $processTelemetry `
+                    -Sample $finalTelemetrySample
+                $processTelemetry["final_sample_status"] = "captured"
+            } catch {
+                $confirmedExited = $false
+                try {
+                    $confirmedExited = $process.HasExited
+                } catch {
+                    $confirmedExited = $true
+                }
+                if ($confirmedExited) {
+                    $processTelemetry["final_sample_status"] = "exit_race_unavailable"
+                    $processTelemetry["final_sample_message"] = $_.Exception.Message
+                } else {
+                    $telemetryFailure = $true
+                    Set-ProcessTelemetryFailure `
+                        -State $processTelemetry `
+                        -Stage "final_process_enumeration" `
+                        -Message $_.Exception.Message
+                }
+            }
+            if (-not $telemetryFailure) {
+                try {
+                    Publish-ProcessTelemetryState -State $processTelemetry
+                } catch {
+                    $telemetryFailure = $true
+                    Set-ProcessTelemetryFailure `
+                        -State $processTelemetry `
+                        -Stage "telemetry_write" `
+                        -Message $_.Exception.Message
+                }
+            }
+        }
+
         $postExitRuntime = @(
             Get-OwnedProjectRuntimeProcess `
                 -RootProcessId $processId `
@@ -479,22 +1841,43 @@ function Invoke-GodotBlockingProcess {
             }
         }
 
-        $stdout = if ($stdoutTask.Wait(1000)) {
-            $stdoutTask.GetAwaiter().GetResult()
-        } else {
-            "[runner] stdout capture remained open after the bounded process shutdown window."
+        $stdoutCaptureComplete = $stdoutTask.Wait(5000)
+        if ($stdoutCaptureComplete) {
+            $stdoutTask.GetAwaiter().GetResult() | Out-Null
         }
-        $stderr = if ($stderrTask.Wait(1000)) {
-            $stderrTask.GetAwaiter().GetResult()
-        } else {
-            "[runner] stderr capture remained open after the bounded process shutdown window."
+        $stderrCaptureComplete = $stderrTask.Wait(5000)
+        if ($stderrCaptureComplete) {
+            $stderrTask.GetAwaiter().GetResult() | Out-Null
         }
-        Set-Content -LiteralPath $StdoutPath -Value $stdout -Encoding utf8 -NoNewline
-        Set-Content -LiteralPath $StderrPath -Value $stderr -Encoding utf8 -NoNewline
     } finally {
         $stopwatch.Stop()
+        if ($null -ne $stdoutRawStream) {
+            $stdoutRawStream.Dispose()
+        }
+        if ($null -ne $stderrRawStream) {
+            $stderrRawStream.Dispose()
+        }
         $process.Dispose()
     }
+
+    $stdoutCapture = Convert-RawLogToNormalizedText `
+        -RawPath $stdoutRawPath `
+        -TextPath $StdoutPath `
+        -CaptureComplete $stdoutCaptureComplete
+    $stderrCapture = Convert-RawLogToNormalizedText `
+        -RawPath $stderrRawPath `
+        -TextPath $StderrPath `
+        -CaptureComplete $stderrCaptureComplete
+    $rawCaptureFailure = (
+        -not $stdoutCapture.capture_complete -or
+        -not $stderrCapture.capture_complete -or
+        -not $stdoutCapture.strict_decode -or
+        -not $stderrCapture.strict_decode -or
+        $stdoutCapture.decoded_nul_character_count -gt 0 -or
+        $stderrCapture.decoded_nul_character_count -gt 0 -or
+        $stdoutCapture.replacement_character_count -gt 0 -or
+        $stderrCapture.replacement_character_count -gt 0
+    )
 
     if (-not (Test-Path -LiteralPath $GodotLogPath -PathType Leaf)) {
         New-Item -ItemType File -Path $GodotLogPath | Out-Null
@@ -506,43 +1889,110 @@ function Invoke-GodotBlockingProcess {
             -ResolvedProjectPath $ResolvedProjectPath `
             -ResolvedGodotPath $ResolvedGodotPath
     )
+    $remainingRuntimeIds = [Collections.Generic.List[int]]::new()
+    if ($rootProcessRemaining -and $null -ne $processId) {
+        $remainingRuntimeIds.Add([int]$processId)
+    }
+    foreach ($remainingProcess in $remainingRuntime) {
+        if (-not $remainingRuntimeIds.Contains([int]$remainingProcess.ProcessId)) {
+            $remainingRuntimeIds.Add([int]$remainingProcess.ProcessId)
+        }
+    }
     $diagnosticAudit = Get-GodotDiagnosticAudit `
         -LogPaths @($StdoutPath, $StderrPath, $GodotLogPath) `
         -ExpectedMarker $ExpectedMarker
-    $runnerExitCode = if ($timedOut) {
+    $runnerExitCode = if ($telemetryFailure) {
+        132
+    } elseif ($timedOut) {
         124
     } elseif ($cleanupProcessIds.Count -gt 0 -or $remainingRuntime.Count -gt 0) {
         125
     } elseif ($null -eq $processExitCode) {
         126
+    } elseif ($windowProbe.required -and $windowProbe.status -ne "passed") {
+        131
+    } elseif ($rawCaptureFailure) {
+        129
     } elseif ($processExitCode -ne 0) {
         [int]$processExitCode
     } elseif ($diagnosticAudit.script_error_count -gt 0) {
         127
+    } elseif ($diagnosticAudit.task_introduced_error_count -gt 0) {
+        127
+    } elseif ($diagnosticAudit.unclassified_diagnostic_count -gt 0) {
+        130
     } elseif ($diagnosticAudit.marker_required -and -not $diagnosticAudit.marker_found) {
         128
     } else {
         [int]$processExitCode
     }
-    $status = if ($timedOut) {
+    $status = if ($telemetryFailure) {
+        "telemetry_failed"
+    } elseif ($timedOut) {
         "timed_out"
     } elseif ($remainingRuntime.Count -gt 0) {
         "orphaned"
     } elseif ($cleanupProcessIds.Count -gt 0) {
         "orphan_cleaned"
+    } elseif ($windowProbe.required -and $windowProbe.status -ne "passed") {
+        "headed_window_probe_failed"
+    } elseif ($rawCaptureFailure) {
+        "raw_capture_error"
     } elseif ($processExitCode -ne 0) {
         "failed"
     } elseif ($diagnosticAudit.script_error_count -gt 0) {
         "script_error"
+    } elseif ($diagnosticAudit.task_introduced_error_count -gt 0) {
+        "project_error"
+    } elseif ($diagnosticAudit.unclassified_diagnostic_count -gt 0) {
+        "unclassified_diagnostic"
     } elseif ($diagnosticAudit.marker_required -and -not $diagnosticAudit.marker_found) {
         "marker_missing"
     } else {
         "passed"
     }
 
+    if ([bool]$processTelemetry["requested"]) {
+        $processTelemetry["process_exit_code"] = $processExitCode
+        $processTelemetry["runner_exit_code"] = $runnerExitCode
+        $processTelemetry["timed_out"] = $timedOut
+        if (-not $telemetryFailure) {
+            $processTelemetry["status"] = if ($timedOut) { "timed_out" } else { "completed" }
+            $processTelemetry["ended_at_utc"] = [DateTime]::UtcNow.ToString("o")
+        }
+        if (
+            -not $telemetryFailure -or
+            [string]$processTelemetry["failure_stage"] -ne "telemetry_write"
+        ) {
+            try {
+                Publish-ProcessTelemetryState -State $processTelemetry
+            } catch {
+                $telemetryFailure = $true
+                Set-ProcessTelemetryFailure `
+                    -State $processTelemetry `
+                    -Stage "telemetry_write" `
+                    -Message $_.Exception.Message
+                $processTelemetry["runner_exit_code"] = 132
+                $runnerExitCode = 132
+                $status = "telemetry_failed"
+            }
+        }
+    }
+
+    $telemetryGatedOutcome = Get-TelemetryGatedRunnerOutcome `
+        -TelemetryFailed $telemetryFailure `
+        -Status $status `
+        -RunnerExitCode $runnerExitCode
+    $status = $telemetryGatedOutcome.status
+    $runnerExitCode = [int]$telemetryGatedOutcome.runner_exit_code
+    if ([bool]$processTelemetry["requested"]) {
+        $processTelemetry["runner_exit_code"] = $runnerExitCode
+    }
+
     return [pscustomobject][ordered]@{
         status = $status
         process_id = $processId
+        godot_pid = $processId
         timeout_seconds = $ProcessTimeoutSeconds
         timed_out = $timedOut
         process_exit_code = $processExitCode
@@ -551,9 +2001,22 @@ function Invoke-GodotBlockingProcess {
         started_at_utc = $startedAt.ToString("o")
         duration_seconds = [Math]::Round($stopwatch.Elapsed.TotalSeconds, 3)
         duration = [Math]::Round($stopwatch.Elapsed.TotalSeconds, 3)
+        process_start_token = $processTelemetry["process_start_token"]
+        godot_start_token = $processTelemetry["process_start_token"]
+        telemetry_sample_count = [int]$processTelemetry["sample_count"]
+        cpu_time_seconds = [double]$processTelemetry["cpu_time_seconds"]
+        working_set_bytes = [int64]$processTelemetry["working_set_bytes"]
+        peak_working_set_bytes = [int64]$processTelemetry["peak_working_set_bytes"]
+        process_telemetry = $processTelemetry
         command_arguments = @($ArgumentList)
         stdout_log = $StdoutPath
         stderr_log = $StderrPath
+        stdout_raw_log = $stdoutRawPath
+        stderr_raw_log = $stderrRawPath
+        stdout_capture = $stdoutCapture
+        stderr_capture = $stderrCapture
+        raw_capture_failure = $rawCaptureFailure
+        window_probe = $windowProbe
         godot_log = $GodotLogPath
         appdata = $AppDataPath
         localappdata = $LocalAppDataPath
@@ -563,14 +2026,22 @@ function Invoke-GodotBlockingProcess {
         marker_required = $diagnosticAudit.marker_required
         expected_completion_marker = $diagnosticAudit.expected_completion_marker
         marker_found = $diagnosticAudit.marker_found
+        diagnostic_count = $diagnosticAudit.diagnostic_count
+        task_introduced_error_count = $diagnosticAudit.task_introduced_error_count
+        unclassified_diagnostic_count = $diagnosticAudit.unclassified_diagnostic_count
+        invalid_uid_unclassified_count = $diagnosticAudit.invalid_uid_unclassified_count
+        diagnostics = $diagnosticAudit.diagnostics
         cleanup_process_ids = @($cleanupProcessIds)
-        remaining_project_runtime_process_ids = @($remainingRuntime | ForEach-Object { [int]$_.ProcessId })
+        remaining_project_runtime_process_ids = @($remainingRuntimeIds)
     }
 }
 
 $ProjectPath = (Resolve-Path -LiteralPath $ProjectPath).Path.TrimEnd('\', '/')
 $GodotPath = (Resolve-Path -LiteralPath $GodotPath).Path
 $LogRoot = [IO.Path]::GetFullPath($LogRoot)
+$LiveTelemetryPath = Resolve-LiveTelemetryPath `
+    -Path $LiveTelemetryPath `
+    -ResolvedProjectPath $ProjectPath
 
 if (-not (Test-Path -LiteralPath (Join-Path $ProjectPath "project.godot") -PathType Leaf)) {
     throw "project.godot was not found under $ProjectPath"
@@ -625,17 +2096,38 @@ $importStdoutPath = Join-Path $runDirectory "import.stdout.log"
 $importStderrPath = Join-Path $runDirectory "import.stderr.log"
 $importGodotLogPath = Join-Path $runDirectory "import.godot.log"
 $resultPath = Join-Path $runDirectory "result.json"
-$arguments = @(
-    "--headless",
-    "--path", $ProjectPath,
-    "--log-file", $godotLogPath
-)
+$windowReadyPath = Join-Path $runDirectory "window-ready.json"
+$windowAckPath = Join-Path $runDirectory "window-ack.json"
+$arguments = @()
+if ($HeadedClientProbe) {
+    $arguments += @("--windowed", "--resolution", $ExpectedClientSize)
+} else {
+    $arguments += "--headless"
+}
+$arguments += @("--path", $ProjectPath, "--log-file", $godotLogPath)
 if ($targetType -eq "scene") {
     $arguments += @("--scene", $Scene)
 } else {
     $arguments += @("--script", $TestScript)
 }
 $arguments += @($TestArgument)
+if ($HeadedClientProbe) {
+    $arguments += @(
+        "--window-probe-ready=$windowReadyPath",
+        "--window-probe-ack=$windowAckPath",
+        "--expected-client-size=$ExpectedClientSize"
+    )
+}
+$headedProbeConfig = if ($HeadedClientProbe) {
+    [ordered]@{
+        expected_client_size = $ExpectedClientSize
+        ready_path = $windowReadyPath
+        ack_path = $windowAckPath
+        timeout_seconds = $WindowProbeTimeoutSeconds
+    }
+} else {
+    $null
+}
 
 $classCachePath = Join-Path $ProjectPath ".godot\global_script_class_cache.cfg"
 $cacheBefore = Get-ClassCacheAudit -Path $classCachePath
@@ -674,16 +2166,34 @@ $importRecord = [ordered]@{
     process_status = $null
     succeeded = $null
     process_id = $null
+    godot_pid = $null
     timeout_seconds = $ImportTimeoutSeconds
     timed_out = $false
     process_exit_code = $null
     runner_exit_code = $null
     started_at_utc = $null
     duration_seconds = 0.0
+    process_start_token = $null
+    godot_start_token = $null
+    telemetry_sample_count = 0
+    cpu_time_seconds = 0.0
+    working_set_bytes = [int64]0
+    peak_working_set_bytes = [int64]0
+    process_telemetry = $null
     command_arguments = @()
     stdout_log = $null
     stderr_log = $null
     godot_log = $null
+    stdout_raw_log = $null
+    stderr_raw_log = $null
+    stdout_capture = $null
+    stderr_capture = $null
+    raw_capture_failure = $null
+    diagnostic_count = 0
+    task_introduced_error_count = 0
+    unclassified_diagnostic_count = 0
+    invalid_uid_unclassified_count = 0
+    diagnostics = @()
     cleanup_process_ids = @()
     remaining_project_runtime_process_ids = @()
     cache_present_after = [bool]$cacheBefore.present
@@ -719,7 +2229,11 @@ if ($importMode -eq "ensure" -and $cacheBefore.valid) {
         -StderrPath $importStderrPath `
         -GodotLogPath $importGodotLogPath `
         -AppDataPath $isolatedAppDataPath `
-        -LocalAppDataPath $isolatedLocalAppDataPath
+        -LocalAppDataPath $isolatedLocalAppDataPath `
+        -LiveTelemetryPath $LiveTelemetryPath `
+        -TelemetryRunId $runId `
+        -TelemetryPhase "import" `
+        -TelemetryTargetPath $targetPath
     $importRecord.process_status = $importProcess.status
     foreach ($property in $importProcess.PSObject.Properties) {
         if ($property.Name -ne "status") {
@@ -772,18 +2286,27 @@ if ($importReady) {
         -GodotLogPath $godotLogPath `
         -AppDataPath $isolatedAppDataPath `
         -LocalAppDataPath $isolatedLocalAppDataPath `
-        -ExpectedMarker $ExpectedCompletionMarker
+        -ExpectedMarker $ExpectedCompletionMarker `
+        -HeadedProbe $headedProbeConfig `
+        -LiveTelemetryPath $LiveTelemetryPath `
+        -TelemetryRunId $runId `
+        -TelemetryPhase "test" `
+        -TelemetryTargetPath $targetPath
 }
 
 $status = if ($testStarted) { $testProcess.status } else { $importFailureStatus }
 $runnerExitCode = if ($testStarted) { [int]$testProcess.runner_exit_code } else { [int]$importFailureExitCode }
 $remainingRuntimeIds = [Collections.Generic.HashSet[int]]::new()
 foreach ($processId in @($importRecord.remaining_project_runtime_process_ids)) {
-    $remainingRuntimeIds.Add([int]$processId) | Out-Null
+    if ($null -ne $processId) {
+        $remainingRuntimeIds.Add([int]$processId) | Out-Null
+    }
 }
 if ($testStarted) {
     foreach ($processId in @($testProcess.remaining_project_runtime_process_ids)) {
-        $remainingRuntimeIds.Add([int]$processId) | Out-Null
+        if ($null -ne $processId) {
+            $remainingRuntimeIds.Add([int]$processId) | Out-Null
+        }
     }
 }
 $reportedCommandArguments = [Collections.Generic.List[string]]::new()
@@ -793,13 +2316,24 @@ if ($testStarted) {
         $reportedCommandArguments.Add([string]$argument)
     }
     foreach ($cleanupProcessId in @($testProcess.cleanup_process_ids)) {
-        $reportedCleanupProcessIds.Add([int]$cleanupProcessId)
+        if ($null -ne $cleanupProcessId) {
+            $reportedCleanupProcessIds.Add([int]$cleanupProcessId)
+        }
     }
 } else {
     foreach ($cleanupProcessId in @($importRecord.cleanup_process_ids)) {
-        $reportedCleanupProcessIds.Add([int]$cleanupProcessId)
+        if ($null -ne $cleanupProcessId) {
+            $reportedCleanupProcessIds.Add([int]$cleanupProcessId)
+        }
     }
 }
+
+$effectiveProcessTelemetry = Select-EffectiveProcessTelemetry `
+    -TestStarted $testStarted `
+    -TestProcess $testProcess `
+    -ImportRecord $importRecord
+$effectiveProcessTelemetryFields = Get-ProcessTelemetryResultFields `
+    -State $effectiveProcessTelemetry
 
 $result = [ordered]@{
     run_id = $runId
@@ -809,9 +2343,13 @@ $result = [ordered]@{
     test_script = if ($targetType -eq "script") { $TestScript } else { $null }
     scene = if ($targetType -eq "scene") { $Scene } else { $null }
     test_arguments = @($TestArgument)
+    headed_client_probe = [bool]$HeadedClientProbe
+    expected_client_size = if ($HeadedClientProbe) { $ExpectedClientSize } else { $null }
+    window_probe_timeout_seconds = $WindowProbeTimeoutSeconds
     project_path = $ProjectPath
     godot_path = $GodotPath
     godot_product_version = $godotVersion
+    live_telemetry_path = if ([string]::IsNullOrWhiteSpace($LiveTelemetryPath)) { $null } else { $LiveTelemetryPath }
     ensure_imported = [bool]$EnsureImported
     refresh_import = [bool]$RefreshImport
     import_mode = $importMode
@@ -819,6 +2357,7 @@ $result = [ordered]@{
     import = $importRecord
     test_started = $testStarted
     process_id = if ($testStarted) { $testProcess.process_id } else { $null }
+    godot_pid = if ($testStarted) { $testProcess.godot_pid } elseif ($importRecord.attempted) { $importRecord.godot_pid } else { $null }
     timeout_seconds = $TimeoutSeconds
     timed_out = if ($testStarted) { $testProcess.timed_out } else { $importRecord.timed_out }
     process_exit_code = if ($testStarted) { $testProcess.process_exit_code } else { $null }
@@ -827,22 +2366,40 @@ $result = [ordered]@{
     started_at_utc = if ($testStarted) { $testProcess.started_at_utc } else { $importRecord.started_at_utc }
     duration_seconds = if ($testStarted) { $testProcess.duration_seconds } else { $importRecord.duration_seconds }
     duration = if ($testStarted) { $testProcess.duration } else { $importRecord.duration_seconds }
+    process_start_token = $effectiveProcessTelemetryFields.process_start_token
+    godot_start_token = $effectiveProcessTelemetryFields.godot_start_token
+    telemetry_sample_count = $effectiveProcessTelemetryFields.telemetry_sample_count
+    cpu_time_seconds = $effectiveProcessTelemetryFields.cpu_time_seconds
+    working_set_bytes = $effectiveProcessTelemetryFields.working_set_bytes
+    peak_working_set_bytes = $effectiveProcessTelemetryFields.peak_working_set_bytes
+    process_telemetry = $effectiveProcessTelemetryFields.process_telemetry
     command_arguments = $reportedCommandArguments
     stdout_log = if ($testStarted) { $stdoutPath } else { $null }
     stderr_log = if ($testStarted) { $stderrPath } else { $null }
+    stdout_raw_log = if ($testStarted) { $testProcess.stdout_raw_log } else { $null }
+    stderr_raw_log = if ($testStarted) { $testProcess.stderr_raw_log } else { $null }
+    stdout_capture = if ($testStarted) { $testProcess.stdout_capture } else { $null }
+    stderr_capture = if ($testStarted) { $testProcess.stderr_capture } else { $null }
+    raw_capture_failure = if ($testStarted) { $testProcess.raw_capture_failure } else { $null }
+    window_probe = if ($testStarted) { $testProcess.window_probe } else { $null }
     godot_log = if ($testStarted) { $godotLogPath } else { $null }
     isolated_user_data_root = $isolatedProfileRoot
     appdata = $isolatedAppDataPath
     localappdata = $isolatedLocalAppDataPath
     script_error_count = if ($testStarted) { $testProcess.script_error_count } else { $importRecord.script_error_count }
     first_script_error = if ($testStarted) { $testProcess.first_script_error } else { $importRecord.first_script_error }
+    diagnostic_count = if ($testStarted) { $testProcess.diagnostic_count } else { $importRecord.diagnostic_count }
+    task_introduced_error_count = if ($testStarted) { $testProcess.task_introduced_error_count } else { $importRecord.task_introduced_error_count }
+    unclassified_diagnostic_count = if ($testStarted) { $testProcess.unclassified_diagnostic_count } else { $importRecord.unclassified_diagnostic_count }
+    invalid_uid_unclassified_count = if ($testStarted) { $testProcess.invalid_uid_unclassified_count } else { $importRecord.invalid_uid_unclassified_count }
+    diagnostics = if ($testStarted) { $testProcess.diagnostics } else { $importRecord.diagnostics }
     marker_required = if ($testStarted) { $testProcess.marker_required } else { -not [string]::IsNullOrEmpty($ExpectedCompletionMarker) }
     expected_completion_marker = if ([string]::IsNullOrEmpty($ExpectedCompletionMarker)) { $null } else { $ExpectedCompletionMarker }
     marker_found = if ($testStarted) { $testProcess.marker_found } else { $null }
     cleanup_process_ids = $reportedCleanupProcessIds
     remaining_project_runtime_process_ids = @($remainingRuntimeIds)
 }
-$result | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $resultPath -Encoding utf8
+$result | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $resultPath -Encoding utf8
 $result["result_json"] = $resultPath
-$result | ConvertTo-Json -Depth 5 -Compress | Write-Output
+$result | ConvertTo-Json -Depth 10 -Compress | Write-Output
 exit $runnerExitCode

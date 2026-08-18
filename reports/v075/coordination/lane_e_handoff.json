@@ -1,0 +1,149 @@
+{
+  "lane": "E",
+  "task_id": "ALPHA_0_5_C2_V075_MONSTER_AUTONOMY_PRIVATE_INSTANT_SKILLS_AND_MILITARY_ASSAULT_MISSIONS_PRODUCTION_CUTOVER",
+  "status": "GREEN",
+  "base_main_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
+  "branch": "codex/v075-lane-e-military-missions-bd0af5c",
+  "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-v075-lane-e-bd0af5c",
+  "commit_sha": null,
+  "push_performed": false,
+  "new_branch_or_worktree_created": false,
+  "owned_files": {
+    "production_scripts": [
+      "scripts/v075/military/v075_military_mission_core.gd",
+      "scripts/v075/combat/facility_combat_damage_intent_v1.gd",
+      "scripts/v075/combat/v075_combat_damage_core.gd"
+    ],
+    "bench": [
+      "scripts/tools/v075/v075_military_mission_bench.gd",
+      "scenes/tools/v075/V075MilitaryMissionBench.tscn"
+    ],
+    "focused_tests": [
+      "tests/v075_military_two_task_contract_test.gd",
+      "tests/v075_military_no_guard_test.gd",
+      "tests/v075_military_no_bound_action_test.gd",
+      "tests/v075_military_region_budget_test.gd",
+      "tests/v075_military_region_no_full_damage_replication_test.gd",
+      "tests/v075_military_monster_assault_test.gd",
+      "tests/v075_military_no_retarget_test.gd",
+      "tests/v075_military_withdraw_to_discard_test.gd",
+      "tests/v075_military_dbg_reshuffle_test.gd",
+      "tests/v075_facility_combat_damage_port_test.gd",
+      "tests/v075_warehouse_combat_privacy_test.gd"
+    ],
+    "generated_sidecars": "Only sidecars corresponding to Lane E GDScript files"
+  },
+  "read_only_dependencies": [
+    "scripts/v07_semantic/v07_dbg_deck_core.gd",
+    "scripts/v074/facility/v074_facility_runtime_core.gd",
+    "scripts/v074/warehouse/v074_warehouse_runtime_policy.gd",
+    "V0.7.5 monster public source identity/generation/revision contract supplied by Lane B/main integration"
+  ],
+  "hot_file_conflicts": [],
+  "untouched_hot_domains": [
+    "runtime owner and composition",
+    "player UI and AI",
+    "scenes/main.tscn",
+    "facility authoritative core",
+    "DBG authoritative owner",
+    "monster authoritative core",
+    "legacy V0.6 MilitaryRuntimeController"
+  ],
+  "production_cutover_domains": [
+    "military mission request, authority lock, and pure resolution",
+    "typed facility combat damage intent construction",
+    "military withdrawal and normal DBG lifecycle outbound intents"
+  ],
+  "contracts": {
+    "ruleset_id": "v0.7.5",
+    "military_task_kinds": [
+      "assault_region",
+      "assault_monster"
+    ],
+    "military_task_button_count": 2,
+    "military_guard_task_count": 0,
+    "military_bound_action_count": 0,
+    "military_persistent_source_count": 0,
+    "target_retarget_count": 0,
+    "region_damage_distribution": "stable_round_robin_fixed_total_budget",
+    "region_full_damage_per_facility_count": 0,
+    "region_new_target_after_lock_count": 0,
+    "monster_target_identity": "source_instance_id + source_generation",
+    "monster_revision_input_aliases": [
+      "damage_revision",
+      "source_revision",
+      "revision"
+    ],
+    "monster_current_public_region_followed": true,
+    "facility_combat_damage_typed_port": true,
+    "direct_facility_write_count": 0,
+    "direct_dbg_write_count": 0,
+    "warehouse_private_stock_reader_count": 0,
+    "warehouse_private_stock_disclosure_count": 0,
+    "normal_dbg_member": true,
+    "lifecycle": [
+      "normal_hand",
+      "committed_escrow",
+      "military_mission_resolving",
+      "withdrawn",
+      "personal_discard",
+      "normal_reshuffle",
+      "future_draw"
+    ],
+    "post_resolution_intent_order": [
+      "military_withdrawal",
+      "personal_discard"
+    ],
+    "asset_policy_owner": "existing normal action asset owner",
+    "action_slot_refunded_on_fizzle": false
+  },
+  "validation": {
+    "changed_script_validation": {
+      "passed": 15,
+      "total": 15,
+      "diagnostic_count": 0
+    },
+    "changed_scene_load": {
+      "passed": 1,
+      "total": 1
+    },
+    "focused_tests": {
+      "passed": 11,
+      "total": 11,
+      "process_exit_error_count": 0,
+      "script_error_count": 0,
+      "completion_marker_miss_count": 0
+    },
+    "mcp": {
+      "role": "C",
+      "port": 7575,
+      "godot_version": "4.7-stable (official)",
+      "tool_profile": "core",
+      "scene": "res://scenes/tools/v075/V075MilitaryMissionBench.tscn",
+      "scene_tree_loaded": true,
+      "bench_status": "PASS",
+      "bench_checks": 12,
+      "bench_failures": 0,
+      "play_state_after_bench": "stopped",
+      "fresh_editor_error_line_count": 0,
+      "lane_error_line_count": 0,
+      "task_introduced_runtime_error_count": 0,
+      "isolated_shader_cache_baseline_error_count": 1,
+      "isolated_shader_cache_baseline_error": "Condition header != String(shader_file_header) is true. Returning: false",
+      "endpoint_stopped": true,
+      "port_open_after_stop": false
+    },
+    "legacy_controller_reference_count": 0,
+    "full_smoke_run": false,
+    "frozen_reliability_track_run": false
+  },
+  "integration_notes": [
+    "V075CombatRuntimeOwner should supply authoritative card facts and public target snapshots, then journal each combat_receipt_id exactly once.",
+    "Region Infrastructure Owner consumes FacilityCombatDamageIntentV1 and revalidates target generation before applying damage.",
+    "DBG Owner consumes the lifecycle intent only after military withdrawal and moves the existing normal card instance into personal discard.",
+    "Asset Owner consumes the emitted existing-normal-action success or fizzle policy; the mission core never debits assets.",
+    "The monster mission accepts a moved target only when source instance and generation remain identical; it uses the target's current public region and never scans for a replacement. Lane B's authoritative damage_revision is accepted as the revision input.",
+    "No runtime, UI, AI, catalog, facility owner, DBG owner, main scene, or old controller cutover was performed in this lane."
+  ],
+  "ready_for_coordinator_integration": true
+}

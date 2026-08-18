@@ -1,0 +1,62 @@
+{
+  "schema": "SpaceSyndicatePr90UidEvidenceDebtV1",
+  "task_id": "C4_2_PR90_PRODUCT_FIRST_ACCEPTANCE_LANDING_AND_ALPHA_0_6_V076_MAJOR_PRODUCTION_SLICE",
+  "pr_number": 90,
+  "recorded_base_head_sha": "2484f8cbcf79ddcb3e43c97bd0d59f78789758af",
+  "recorded_base_tree_sha": "810f52b9942cbb0e56ed892378ca2f4ebedeb153",
+  "uid_evidence_chain_status": "INCOMPLETE_NON_BLOCKING_TOOLING_DEBT",
+  "high_complexity_uid_evidence_chain_merge_blocking": false,
+  "uid_authority_pass": false,
+  "uid_attempt006_creation_allowed": false,
+  "attempts": [
+    {
+      "attempt_id": "mcp-preimport-authority-003",
+      "controller_sha256": "6f2c4a890283fe9e3c1205c768ea03c0ce030301bf3ecaccce273ea2b1118421",
+      "controller_length": 198416,
+      "execution_count": 0,
+      "selftest_execution_count": 1,
+      "product_execution_count": 0,
+      "failure_stage": "independent_audit",
+      "failure_message": "Independent audit returned NO_GO after the self-test; production UID authority execution was never started.",
+      "repository_mutation_count": 0,
+      "disposition": "AUDIT_NO_GO_UNEXECUTED",
+      "future_repair_status": "deferred_non_blocking"
+    },
+    {
+      "attempt_id": "mcp-preimport-authority-004",
+      "controller_sha256": "9b399c88a220f0aa087f536af5cf68d92ae080c1e5ae87b08ef0bea726bc6a43",
+      "controller_length": 370021,
+      "execution_count": 0,
+      "selftest_execution_count": 1,
+      "product_execution_count": 0,
+      "failure_stage": "selftest_and_independent_audit",
+      "failure_message": "Self-test status was BLOCKED; the subsequent independent-audit disposition remained NO_GO, and production UID authority execution was never started.",
+      "repository_mutation_count": 0,
+      "disposition": "AUDIT_NO_GO_UNEXECUTED",
+      "future_repair_status": "deferred_non_blocking"
+    },
+    {
+      "attempt_id": "mcp-preimport-authority-005",
+      "controller_sha256": "1f551d6b18ee53780ae845ba934f4d90611a637e6594e78e804fefb6666c271e",
+      "controller_length": 376506,
+      "execution_count": 0,
+      "selftest_execution_count": 1,
+      "product_execution_count": 0,
+      "failure_stage": "selftest",
+      "failure_message": "Self-test finalization failed: cleanup_same_content_identity_swap_fixture_failed",
+      "preceding_selftest_failure_message": "godot_start_token_process_identity_mismatch|ControlledResult.godot_start_token",
+      "failure_location": "controller.ps1:3929",
+      "repository_mutation_count": 0,
+      "disposition": "SELFTEST_FAILED_UNEXECUTED",
+      "future_repair_status": "deferred_non_blocking"
+    }
+  ],
+  "policy": {
+    "preserve_historical_evidence": true,
+    "historical_modification_count": 0,
+    "historical_rerun_count": 0,
+    "new_uac_allowed": false,
+    "symbolic_link_fixture_allowed": false,
+    "merge_gate_replacement": "fresh_clean_clone_product_contamination_acceptance"
+  }
+}

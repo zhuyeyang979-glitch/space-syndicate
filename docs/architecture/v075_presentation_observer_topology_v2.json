@@ -1,0 +1,150 @@
+{
+  "schema": "PresentationObserverTopologyV2",
+  "schema_version": 2,
+  "product_version": "v0.7.5",
+  "authority_head_sha": "60e7757bb52e487ad40abc5210349cd9930195f5",
+  "authority_tree_sha": "11ce5fdde15e1fbca9d7aea16ffd855bc859f606",
+  "root_cause_class": "STALE_ORACLE_OLD_RESOLUTION_BUS_CONNECTION_COUNT",
+  "scope": "runtime-owner internal presentation and telemetry observer edges",
+  "signature_identity": [
+    "source_object_role",
+    "source_signal",
+    "target_object_role",
+    "target_method",
+    "connection_flags"
+  ],
+  "cross_run_node_instance_id_authoritative": false,
+  "same_fixture_instance_id_parity_allowed": true,
+  "required_edge_count": 3,
+  "required_edge_present_count": 3,
+  "legacy_edge_present_count": 0,
+  "duplicate_edge_count": 0,
+  "unclassified_edge_count": 0,
+  "classified_out_of_scope_connection_count": 1,
+  "edges": [
+    {
+      "edge_id": "EDGE_A",
+      "source_object_role": "V075RuntimeOwner",
+      "source_signal": "resolution_presented",
+      "target_object_role": "CombatTelemetryBridge",
+      "target_method": "consume_public_receipt",
+      "connection_flags": 0,
+      "ownership": "composition",
+      "required": true,
+      "legacy": false,
+      "cleanup_preservation_required": true,
+      "duplicate_allowed": false,
+      "current_connection_count": 1
+    },
+    {
+      "edge_id": "EDGE_B",
+      "source_object_role": "V075RuntimeOwner",
+      "source_signal": "combat_presentation_receipt_ready",
+      "target_object_role": "V075CombatPresentationConsumer",
+      "target_method": "consume_receipt",
+      "connection_flags": 0,
+      "ownership": "composition",
+      "required": true,
+      "legacy": false,
+      "cleanup_preservation_required": true,
+      "duplicate_allowed": false,
+      "current_connection_count": 1
+    },
+    {
+      "edge_id": "EDGE_C",
+      "source_object_role": "V075CombatPresentationConsumer",
+      "source_signal": "presentation_cue_ready",
+      "target_object_role": "CombatTelemetryBridge",
+      "target_method": "consume_public_cue",
+      "connection_flags": 0,
+      "ownership": "composition",
+      "required": true,
+      "legacy": false,
+      "cleanup_preservation_required": true,
+      "duplicate_allowed": false,
+      "current_connection_count": 1
+    },
+    {
+      "edge_id": "LEGACY_EDGE_RESOLUTION_TO_PRESENTATION_CONSUMER",
+      "source_object_role": "V075RuntimeOwner",
+      "source_signal": "resolution_presented",
+      "target_object_role": "V075CombatPresentationConsumer",
+      "target_method": "consume_receipt",
+      "connection_flags": 0,
+      "ownership": "retired_legacy",
+      "required": false,
+      "legacy": true,
+      "cleanup_preservation_required": true,
+      "duplicate_allowed": false,
+      "current_connection_count": 0
+    }
+  ],
+  "classified_out_of_scope_connections": [
+    {
+      "source_object_role": "V075RuntimeOwner",
+      "source_signal": "resolution_presented",
+      "target_object_role": "V075ApplicationFlow",
+      "target_method": "_on_public_resolution_presented",
+      "connection_flags": 0,
+      "ownership": "application_flow",
+      "reason": "application receipt forwarding is not a Presentation Consumer edge"
+    }
+  ],
+  "failed_initialization_cleanup_characterization": {
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "command": "godot --headless --path . --script res://tests/_gate78_topology_characterization_tmp.gd",
+    "fixture_kind": "isolated exact-head failing-initialize runtime fixture",
+    "before": {
+      "combat_owner_instance_id": 52814677517,
+      "presentation_consumer_instance_id": 52831454735,
+      "telemetry_bridge_instance_id": -9223371984073652773,
+      "resolution_presented_signatures": [
+        {
+          "source_object_role": "V075RuntimeOwner",
+          "source_signal": "resolution_presented",
+          "target_object_role": "CombatTelemetryBridge",
+          "target_method": "consume_public_receipt",
+          "connection_flags": 0
+        }
+      ],
+      "presentation_receipt_signatures": [
+        {
+          "source_object_role": "V075RuntimeOwner",
+          "source_signal": "combat_presentation_receipt_ready",
+          "target_object_role": "V075CombatPresentationConsumer",
+          "target_method": "consume_receipt",
+          "connection_flags": 0
+        }
+      ],
+      "presentation_cue_signatures": [
+        {
+          "source_object_role": "V075CombatPresentationConsumer",
+          "source_signal": "presentation_cue_ready",
+          "target_object_role": "CombatTelemetryBridge",
+          "target_method": "consume_public_cue",
+          "connection_flags": 0
+        }
+      ]
+    },
+    "after": {
+      "combat_owner_instance_id": 52814677517,
+      "presentation_consumer_instance_id": 52831454735,
+      "telemetry_bridge_instance_id": -9223371984073652773,
+      "signature_sets_equal_to_before": true
+    },
+    "combat_owner_identity_before_after_parity": true,
+    "presentation_consumer_identity_before_after_parity": true,
+    "telemetry_bridge_identity_before_after_parity": true,
+    "resolution_bus_signature_set_parity": true,
+    "presentation_receipt_bus_signature_set_parity": true,
+    "presentation_cue_bus_signature_set_parity": true,
+    "cleanup_removed_preexisting_edge_count": 0,
+    "cleanup_added_unexpected_edge_count": 0,
+    "cleanup_duplicated_edge_count": 0,
+    "cleanup_legacy_edge_reintroduction_count": 0,
+    "observer_rebind_idempotent": true,
+    "production_composition_fixture_green": true,
+    "production_telemetry_service_bound": true,
+    "cleanup_rebind_v2_receipt_exact_once_green": true
+  }
+}

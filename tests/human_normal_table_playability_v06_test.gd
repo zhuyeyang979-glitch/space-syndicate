@@ -134,7 +134,7 @@ func _run() -> void:
 			players[1] = rival
 			((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 		var supply_query := coordinator.get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort
-		var supply_presentation := coordinator.card_supply_presentation_state()
+		var supply_presentation: TableCardSupplyPresentationState = coordinator.card_supply_presentation_state()
 		var rival_supply: Dictionary = {}
 		if supply_query != null and supply_presentation != null:
 			supply_presentation.open_district = district

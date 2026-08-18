@@ -1,0 +1,102 @@
+{
+  "schema_version": "Gate63TestFixturePatchManifestV1",
+  "exception_id": "PR90_GATE63_TEST_FIXTURE_AUDITED_PATCH_001",
+  "base_head_sha": "1e948a15e17faffe648722fd596fac01a4525426",
+  "base_tree_sha": "8508df4e900a73c058566f00fc556ec1d11e08ca",
+  "allowed_paths": [
+    "tests/v074_planet_map_view_test.gd",
+    "tests/support/v074_planet_map_view_test_host.gd"
+  ],
+  "changed_paths": [
+    "tests/v074_planet_map_view_test.gd"
+  ],
+  "changed_path_count": 1,
+  "optional_support_file_created": false,
+  "before_sha256": {
+    "tests/v074_planet_map_view_test.gd": "b419789330335ddfa3f8a9bcfda342287947a47142ddb8ee179384fae93f6f8c"
+  },
+  "after_sha256": {
+    "tests/v074_planet_map_view_test.gd": "49f65badca084d87e6c26f3dddcf27cbdf35a7133ad13dcf209e7a730f51f8c4"
+  },
+  "patch_path": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/patches/PR90_GATE63_TEST_FIXTURE_AUDITED_PATCH_001.patch",
+  "patch_sha256": "4cc873028cd08fa6ab17617ed28865f5e0aeefec03b7b7638f4f135df053e97b",
+  "patch_hunk_count": 4,
+  "patch_addition_count": 82,
+  "patch_deletion_count": 3,
+  "initial_authorized_patch_id": "c55c6f61877bde81ab5951c6998ef5a9242c25b0",
+  "initial_actual_diff_patch_id": "c55c6f61877bde81ab5951c6998ef5a9242c25b0",
+  "initial_actual_diff_matches_authorized_patch": true,
+  "amendments": [
+    {
+      "patch_path": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/patches/PR90_GATE63_TEST_FIXTURE_AUDITED_PATCH_001_AMENDMENT_002.patch",
+      "patch_sha256": "3ae981c3d522a37136c233d1c6b16b03a880b1407926ac0aeb14c0a5179c29c1",
+      "patch_id": "dde5c44900ff33b7e621a3d6831f83de3ea33291",
+      "hunk_count": 1,
+      "addition_count": 5,
+      "deletion_count": 0,
+      "changed_paths": [
+        "tests/v074_planet_map_view_test.gd"
+      ],
+      "review_status": "GO",
+      "review_p0": 0,
+      "review_p1": 0,
+      "git_apply_check": "PASS",
+      "reverse_apply_check_after_application": "PASS",
+      "applied_utc": "2026-08-16T22:03:58.4081251Z"
+    }
+  ],
+  "final_actual_diff_patch_id": "88718d1fc477b56c95bcd8f26f820a887b931960",
+  "actual_diff_matches_authorized_patch_set": true,
+  "direct_edit_tool": "git apply --whitespace=error-all",
+  "git_apply_check": "PASS",
+  "git_diff_check": "PASS",
+  "review_status": "GO_AFTER_AMENDMENT_002",
+  "review_p0": 0,
+  "review_p1": 0,
+  "direct_edit_changed_path_count": 1,
+  "direct_edit_path_outside_allowlist_count": 0,
+  "direct_edit_patch_hunk_outside_root_cause_count": 0,
+  "direct_filesystem_test_godot_edit_count": 1,
+  "direct_filesystem_production_godot_edit_count": 0,
+  "frozen_formal_attempt_modification_count": 0,
+  "frozen_formal_attempt_rerun_count": 0,
+  "frozen_formal_evidence_overwrite_count": 0,
+  "development_repair_cycle_count": 2,
+  "focused_run_history": [
+    {
+      "evidence_root": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/development/gate63-focused-20260816T220143417Z",
+      "status": "FAILED_PATCH_PARSE",
+      "process_exit_code": 1,
+      "script_error_count": 4,
+      "first_script_error": "Parse Error: Not all code paths return a value.",
+      "root_cause": "INITIAL_PATCH_HUNK_LENGTH_OMITTED_FUNCTION_EPILOGUE",
+      "product_failure_attested": false
+    },
+    {
+      "evidence_root": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/development/gate63-focused-20260816T220425050Z",
+      "status": "PASS",
+      "result_sha256": "d515fb7a30faf9abed2a0f164a1c8f958e9727167fd048c4444f62bcc4f97d44",
+      "process_exit_code": 0,
+      "script_error_count": 0,
+      "diagnostic_count": 0,
+      "unclassified_diagnostic_count": 0,
+      "residual_process_count": 0,
+      "business_assertions": "18/18",
+      "layout_matrix": "4/4"
+    }
+  ],
+  "focused_repair_green": true,
+  "development_rehearsal": {
+    "gate_range": "63-79",
+    "evidence_root": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/development/gate63-79-rehearsal-20260816T220659735Z",
+    "started_count": 17,
+    "completed_count": 17,
+    "pass_count": 17,
+    "fail_count": 0,
+    "godot_process_count_after": 0,
+    "protected_port_count_after": 0,
+    "formal_execution_count": 0,
+    "release_evidence": false
+  },
+  "applied_utc": "2026-08-16T22:00:56.8462644Z"
+}

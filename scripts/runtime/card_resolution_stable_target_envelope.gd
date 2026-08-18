@@ -185,7 +185,8 @@ static func validate_entry_binding(entry: Dictionary) -> Dictionary:
 	if target_kind == TARGET_PLAYER and int(envelope["target_player"]) < 0:
 		return _invalid("stable_target_player_unresolved")
 	var mirrors_match := int(entry.get("selected_district", -2)) == int(envelope["region_public_index_at_capture"]) \
-		and str(entry.get("selected_trade_product", "\u0000")) == str(envelope["product_id"]) \
+		and entry.has("selected_trade_product") \
+		and str(entry["selected_trade_product"]) == str(envelope["product_id"]) \
 		and int(entry.get("selected_card_resolution_id", -2)) == int(envelope["selected_card_resolution_id"]) \
 		and int(entry.get("target_slot", -2)) == int(envelope["target_slot"]) \
 		and int(entry.get("target_monster_uid", -2)) == int(envelope["target_monster_uid"]) \

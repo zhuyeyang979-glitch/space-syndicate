@@ -2996,25 +2996,50 @@ func validate_gdscript_file(arguments: Dictionary) -> String:
 	if not FileAccess.file_exists(path):
 		return "Error: File not found: %s" % path
 
-	var source = FileAccess.get_file_as_string(path)
-	var script = GDScript.new()
-	script.resource_path = path
-	script.source_code = source
-	var err = script.reload()
-	var resource_path: String = script.resource_path
-	# Temporary validation scripts must not remain registered in ResourceCache.
-	script.resource_path = ""
+	var isolated_validation: Dictionary = _run_isolated_gdscript_validation([path])
+	var rows: Array = isolated_validation.get("rows", [])
+	var row: Dictionary = rows[0] if rows.size() == 1 and rows[0] is Dictionary else {}
+	var row_protocol_valid: bool = _isolated_gdscript_row_protocol_is_valid(row, path)
+	var err: int = int(row.get("error_code")) if row_protocol_valid else FAILED
 	var diagnostics: Array = []
-	if err != OK and bool(arguments.get("include_diagnostics", true)):
-		diagnostics = _get_gdscript_diagnostics(path)
+	if not bool(isolated_validation.get("ok", false)):
+		diagnostics.append(_build_gdscript_diagnostic(
+			path,
+			null,
+			str(isolated_validation.get("failure_reason", "Isolated GDScript validation failed.")),
+			"validation_process_error"
+		))
+	elif not row_protocol_valid:
+		diagnostics.append(_build_gdscript_diagnostic(
+			path,
+			null,
+			"Isolated GDScript validation returned an invalid result row.",
+			"validation_process_error"
+		))
+	elif err != OK and bool(arguments.get("include_diagnostics", true)):
+		diagnostics = _isolated_gdscript_diagnostics_for_path(
+			str(isolated_validation.get("output", "")),
+			path,
+			err,
+			bool(row.get("read_ok"))
+		)
 	elif err == OK:
 		_gdscript_diagnostic_cache.erase(path)
 
 	var result: Dictionary = {
 		"path": path,
-		"ok": err == OK,
+		"success": bool(isolated_validation.get("ok", false)) \
+			and row_protocol_valid \
+			and bool(row.get("read_ok", false)) \
+			and bool(row.get("validation_attempted", false)),
+		"ok": bool(isolated_validation.get("ok", false)) and row_protocol_valid and err == OK,
 		"error_code": err,
-		"resource_path": resource_path,
+		"resource_path": str(row.get("resource_path", path)),
+		"validation_mode": "isolated_process",
+		"read_ok": bool(row.get("read_ok", false)) if row_protocol_valid else false,
+		"validation_attempted": bool(row.get("validation_attempted", false)) if row_protocol_valid else false,
+		"validator_project_root": str(isolated_validation.get("project_root", "")),
+		"validator_worker_log_diagnostic_header_count": int(isolated_validation.get("worker_log_diagnostic_header_count", 0)),
 		"diagnostic_count": diagnostics.size(),
 		"diagnostics": diagnostics,
 	}
@@ -3026,54 +3051,511 @@ func validate_gdscript_file(arguments: Dictionary) -> String:
 	return _render_variant(result)
 
 
-func _get_gdscript_diagnostics(path: String) -> Array:
-	var modified_time: int = int(FileAccess.get_modified_time(path))
-	var now: int = Time.get_ticks_msec()
-	var cached = _gdscript_diagnostic_cache.get(path, {})
-	if cached is Dictionary \
-			and int(cached.get("modified_time", -1)) == modified_time \
-			and now - int(cached.get("cached_at", 0)) < GDSCRIPT_DIAGNOSTIC_CACHE_TTL_MSEC:
-		var cached_diagnostics = cached.get("diagnostics", [])
-		if cached_diagnostics is Array:
-			return cached_diagnostics.duplicate(true)
-
-	var diagnostics: Array = _run_godot_gdscript_check(path)
-	_gdscript_diagnostic_cache[path] = {
-		"modified_time": modified_time,
-		"cached_at": now,
-		"diagnostics": diagnostics.duplicate(true),
-	}
-	return diagnostics
-
-
-func _run_godot_gdscript_check(path: String) -> Array:
+func _run_isolated_gdscript_validation(paths: Array) -> Dictionary:
 	var executable: String = OS.get_executable_path()
 	if executable == "" or not FileAccess.file_exists(executable):
-		return [_build_gdscript_diagnostic(path, null, "Godot executable is unavailable for detailed script diagnostics.", "validation_error")]
+		return {
+			"ok": false,
+			"rows": [],
+			"failure_reason": "Godot executable is unavailable for isolated script validation.",
+		}
 
-	var output: Array = []
-	OS.execute(executable, [
+	var normalized_paths: Array = []
+	for path_value in paths:
+		if not path_value is String:
+			return {
+				"ok": false,
+				"rows": [],
+				"failure_reason": "Isolated script validation requires string paths.",
+			}
+		var validation_path: String = path_value
+		if not validation_path.begins_with("res://") \
+				or not validation_path.ends_with(".gd") \
+				or not FileAccess.file_exists(validation_path):
+			return {
+				"ok": false,
+				"rows": [],
+				"failure_reason": "Invalid isolated script validation path: %s" % validation_path,
+			}
+		normalized_paths.append(validation_path)
+
+	var expected_project_root: String = ProjectSettings.globalize_path("res://")
+	var request_id: String = "%s-%s" % [
+		str(OS.get_process_id()),
+		str(Time.get_ticks_usec()),
+	]
+	var temp_root: String = OS.get_temp_dir().path_join(
+		"funplay-mcp-gdscript-validation-%s-%s" % [
+			str(OS.get_process_id()),
+			str(Time.get_ticks_usec()),
+		]
+	)
+	if DirAccess.make_dir_recursive_absolute(temp_root) != OK:
+		return {
+			"ok": false,
+			"rows": [],
+			"failure_reason": "Failed to create isolated script validation directory.",
+		}
+
+	var worker_path: String = temp_root.path_join("worker.gd")
+	var request_path: String = temp_root.path_join("request.json")
+	var response_path: String = temp_root.path_join("response.json")
+	var worker_log_path: String = temp_root.path_join("worker.log")
+	var worker_file := FileAccess.open(worker_path, FileAccess.WRITE)
+	var request_file := FileAccess.open(request_path, FileAccess.WRITE)
+	if worker_file == null or request_file == null:
+		if worker_file != null:
+			worker_file.close()
+		if request_file != null:
+			request_file.close()
+		_cleanup_isolated_gdscript_validation(
+			temp_root,
+			[worker_path, request_path, response_path, worker_log_path]
+		)
+		return {
+			"ok": false,
+			"rows": [],
+			"failure_reason": "Failed to create isolated script validation inputs.",
+		}
+
+	worker_file.store_string(_isolated_gdscript_validation_worker_source())
+	worker_file.close()
+	request_file.store_string(JSON.stringify({
+		"schema": "funplay.isolated_gdscript_validation.request.v1",
+		"request_id": request_id,
+		"project_root": expected_project_root,
+		"paths": normalized_paths,
+	}))
+	request_file.close()
+
+	var process_result: Dictionary = _execute_isolated_gdscript_validator(
+		executable,
+		[
 		"--headless",
 		"--quiet",
+		"--no-header",
+		"--log-file",
+		worker_log_path,
 		"--path",
-		ProjectSettings.globalize_path("res://"),
+		expected_project_root,
 		"--script",
-		ProjectSettings.globalize_path(path),
-		"--check-only",
-	], output, true)
+		worker_path,
+		"--",
+		request_path,
+		response_path,
+		],
+		120000
+	)
+	var exit_code: int = int(process_result.get("exit_code", -1))
+	var validator_pid: int = int(process_result.get("pid", -1))
+	if bool(process_result.get("termination_unconfirmed", false)):
+		return {
+			"ok": false,
+			"rows": [],
+			"validator_pid": validator_pid,
+			"temp_root": temp_root,
+			"failure_reason": "Isolated GDScript validator termination could not be confirmed; temporary evidence remains at %s." % temp_root,
+		}
+	if bool(process_result.get("timed_out", false)):
+		return {
+			"ok": false,
+			"rows": [],
+			"validator_pid": validator_pid,
+			"temp_root": temp_root,
+			"failure_reason": "Isolated GDScript validator exceeded the 120 second timeout.",
+		}
 
-	var text: String = ""
-	for chunk in output:
-		text += str(chunk)
-	var diagnostics: Array = _parse_godot_gdscript_check_output(text, path)
-	if diagnostics.is_empty():
-		diagnostics.append(_build_gdscript_diagnostic(
-			path,
-			null,
-			"GDScript validation failed, but Godot did not return a source location.",
-			"validation_error"
-		))
-	return diagnostics
+	var worker_log_read: Dictionary = _read_isolated_gdscript_validator_text(
+		worker_log_path,
+		8388608
+	)
+	if not bool(worker_log_read.get("ok", false)):
+		return {
+			"ok": false,
+			"rows": [],
+			"validator_pid": validator_pid,
+			"temp_root": temp_root,
+			"failure_reason": str(worker_log_read.get("failure_reason", "Failed to read isolated validator log.")),
+		}
+	var worker_log_text: String = str(worker_log_read.get("text", ""))
+	var worker_log_diagnostic_header_count: int = _count_isolated_gdscript_diagnostic_headers(
+		worker_log_text
+	)
+
+	if exit_code != 0:
+		var exit_cleanup_ok := _cleanup_isolated_gdscript_validation(
+			temp_root,
+			[worker_path, request_path, response_path, worker_log_path]
+		)
+		return {
+			"ok": false,
+			"rows": [],
+			"output": worker_log_text,
+			"validator_pid": validator_pid,
+			"worker_log_diagnostic_header_count": worker_log_diagnostic_header_count,
+			"failure_reason": "Isolated GDScript validator exited with code %s%s." % [
+				str(exit_code),
+				" and cleanup failed" if not exit_cleanup_ok else "",
+			],
+		}
+
+	var response_read: Dictionary = _read_isolated_gdscript_validator_text(
+		response_path,
+		16777216
+	)
+	if not bool(response_read.get("ok", false)):
+		return {
+			"ok": false,
+			"rows": [],
+			"output": worker_log_text,
+			"validator_pid": validator_pid,
+			"temp_root": temp_root,
+			"worker_log_diagnostic_header_count": worker_log_diagnostic_header_count,
+			"failure_reason": str(response_read.get("failure_reason", "Failed to read isolated validator response.")),
+		}
+	var response = JSON.parse_string(str(response_read.get("text", "")))
+	var rows_value = response.get("rows") if response is Dictionary else null
+	var rows: Array = rows_value if rows_value is Array else []
+	var response_protocol_green: bool = response is Dictionary \
+		and str(response.get("schema", "")) == "funplay.isolated_gdscript_validation.response.v1" \
+		and response.get("request_id") is String \
+		and str(response.get("request_id")) == request_id \
+		and response.get("project_root") is String \
+		and str(response.get("project_root")) == expected_project_root \
+		and _isolated_gdscript_integral_number_is_valid(response.get("requested_count")) \
+		and int(response.get("requested_count")) == normalized_paths.size() \
+		and _isolated_gdscript_integral_number_is_valid(response.get("completed_count")) \
+		and int(response.get("completed_count")) == normalized_paths.size() \
+		and rows_value is Array \
+		and rows.size() == normalized_paths.size()
+	if not response_protocol_green:
+		var protocol_cleanup_ok := _cleanup_isolated_gdscript_validation(
+			temp_root,
+			[worker_path, request_path, response_path, worker_log_path]
+		)
+		return {
+			"ok": false,
+			"rows": rows,
+			"output": worker_log_text,
+			"validator_pid": validator_pid,
+			"worker_log_diagnostic_header_count": worker_log_diagnostic_header_count,
+			"failure_reason": "Isolated GDScript validator returned an invalid response%s." % (
+				" and cleanup failed" if not protocol_cleanup_ok else ""
+			),
+		}
+
+	var all_rows_green: bool = true
+	for index in range(normalized_paths.size()):
+		var row: Dictionary = rows[index] if rows[index] is Dictionary else {}
+		if not _isolated_gdscript_row_protocol_is_valid(row, str(normalized_paths[index])):
+			var row_cleanup_ok := _cleanup_isolated_gdscript_validation(
+				temp_root,
+				[worker_path, request_path, response_path, worker_log_path]
+			)
+			return {
+				"ok": false,
+				"rows": rows,
+				"output": worker_log_text,
+				"validator_pid": validator_pid,
+				"worker_log_diagnostic_header_count": worker_log_diagnostic_header_count,
+				"failure_reason": "Isolated GDScript validator returned a malformed result row%s." % (
+					" and cleanup failed" if not row_cleanup_ok else ""
+				),
+			}
+		if not bool(row.get("ok")):
+			all_rows_green = false
+
+	var cleanup_ok := _cleanup_isolated_gdscript_validation(
+		temp_root,
+		[worker_path, request_path, response_path, worker_log_path]
+	)
+	if not cleanup_ok:
+		return {
+			"ok": false,
+			"rows": rows,
+			"output": worker_log_text,
+			"validator_pid": validator_pid,
+			"worker_log_diagnostic_header_count": worker_log_diagnostic_header_count,
+			"failure_reason": "Isolated GDScript validation temporary files were not removed.",
+		}
+	if all_rows_green and worker_log_diagnostic_header_count > 0:
+		return {
+			"ok": false,
+			"rows": rows,
+			"output": worker_log_text,
+			"project_root": expected_project_root,
+			"worker_log_diagnostic_header_count": worker_log_diagnostic_header_count,
+			"failure_reason": "Isolated GDScript validator logged a diagnostic despite green result rows.",
+		}
+	return {
+		"ok": true,
+		"rows": rows,
+		"output": worker_log_text,
+		"project_root": expected_project_root,
+		"worker_log_diagnostic_header_count": worker_log_diagnostic_header_count,
+		"failure_reason": "",
+	}
+
+
+func _execute_isolated_gdscript_validator(
+	executable: String,
+	arguments: Array,
+	timeout_msec: int
+) -> Dictionary:
+	var packed_arguments := PackedStringArray()
+	for argument_value in arguments:
+		packed_arguments.append(str(argument_value))
+	var pid: int = OS.create_process(executable, packed_arguments, false)
+	if pid <= 0:
+		return {
+			"pid": pid,
+			"exit_code": -1,
+			"timed_out": false,
+			"termination_unconfirmed": false,
+		}
+	var deadline_msec: int = Time.get_ticks_msec() + timeout_msec
+	while OS.is_process_running(pid):
+		if Time.get_ticks_msec() >= deadline_msec:
+			var kill_error: int = OS.kill(pid)
+			return {
+				"pid": pid,
+				"exit_code": -1,
+				"timed_out": true,
+				"termination_unconfirmed": true,
+				"kill_error": kill_error,
+			}
+		OS.delay_msec(10)
+	var exit_code: int = OS.get_process_exit_code(pid)
+	if OS.get_name() == "Windows":
+		# The child is already proven exited. This releases the retained process-map handles.
+		OS.kill(pid)
+	return {
+		"pid": pid,
+		"exit_code": exit_code,
+		"timed_out": false,
+		"termination_unconfirmed": false,
+	}
+
+
+func _read_isolated_gdscript_validator_text(path: String, maximum_bytes: int) -> Dictionary:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {
+			"ok": false,
+			"text": "",
+			"failure_reason": "Failed to open isolated validator evidence: %s" % path,
+		}
+	var byte_length: int = file.get_length()
+	if byte_length < 0 or byte_length > maximum_bytes:
+		file.close()
+		return {
+			"ok": false,
+			"text": "",
+			"failure_reason": "Isolated validator evidence exceeded its byte limit: %s" % path,
+		}
+	var bytes: PackedByteArray = file.get_buffer(byte_length)
+	file.close()
+	if bytes.size() != byte_length:
+		return {
+			"ok": false,
+			"text": "",
+			"failure_reason": "Isolated validator evidence was read incompletely: %s" % path,
+		}
+	var text: String = bytes.get_string_from_utf8()
+	if text.to_utf8_buffer() != bytes:
+		return {
+			"ok": false,
+			"text": "",
+			"failure_reason": "Isolated validator evidence was not strict UTF-8: %s" % path,
+		}
+	return {
+		"ok": true,
+		"text": text,
+		"byte_length": byte_length,
+		"sha256": text.sha256_text(),
+		"failure_reason": "",
+	}
+
+
+func _isolated_gdscript_integral_number_is_valid(value) -> bool:
+	if value is int:
+		return true
+	if value is float:
+		return is_finite(float(value)) and float(value) == floor(float(value))
+	return false
+
+
+func _isolated_gdscript_row_protocol_is_valid(row: Dictionary, expected_path: String) -> bool:
+	for required_field in [
+		"path",
+		"read_ok",
+		"validation_attempted",
+		"ok",
+		"error_code",
+		"resource_path",
+		"source_sha256",
+		"source_byte_length",
+	]:
+		if not row.has(required_field):
+			return false
+	if not row.get("path") is String or str(row.get("path")) != expected_path:
+		return false
+	if not row.get("read_ok") is bool \
+			or not row.get("validation_attempted") is bool \
+			or not row.get("ok") is bool \
+			or not row.get("resource_path") is String \
+			or not row.get("source_sha256") is String:
+		return false
+	if not _isolated_gdscript_integral_number_is_valid(row.get("error_code")) \
+			or not _isolated_gdscript_integral_number_is_valid(row.get("source_byte_length")):
+		return false
+	var read_ok: bool = bool(row.get("read_ok"))
+	var validation_attempted: bool = bool(row.get("validation_attempted"))
+	var row_ok: bool = bool(row.get("ok"))
+	var error_code: int = int(row.get("error_code"))
+	var source_sha256: String = str(row.get("source_sha256"))
+	var source_byte_length: int = int(row.get("source_byte_length"))
+	if read_ok != validation_attempted or row_ok != (read_ok and error_code == OK):
+		return false
+	if read_ok:
+		return str(row.get("resource_path")) == expected_path \
+			and source_byte_length >= 0 \
+			and source_sha256.length() == 64 \
+			and source_sha256 == source_sha256.to_lower() \
+			and source_sha256.is_valid_hex_number(false)
+	return not row_ok \
+		and error_code != OK \
+		and str(row.get("resource_path")) == "" \
+		and source_sha256 == "" \
+		and source_byte_length == -1
+
+
+func _count_isolated_gdscript_diagnostic_headers(output: String) -> int:
+	var count: int = 0
+	for raw_line in output.split("\n"):
+		var line: String = str(raw_line).strip_edges()
+		if line.begins_with("SCRIPT ERROR:") \
+				or line.begins_with("ERROR:") \
+				or line.begins_with("WARNING:"):
+			count += 1
+	return count
+
+
+func _isolated_gdscript_diagnostics_for_path(
+	output: String,
+	path: String,
+	error_code: int,
+	read_ok: bool
+) -> Array:
+	var parsed: Array = _parse_godot_gdscript_check_output(output, path)
+	var matching: Array = []
+	for diagnostic_value in parsed:
+		if not diagnostic_value is Dictionary:
+			continue
+		var diagnostic: Dictionary = diagnostic_value
+		var diagnostic_path: String = str(diagnostic.get("path", ""))
+		if diagnostic_path == path or diagnostic_path.ends_with(path.trim_prefix("res://")):
+			matching.append(diagnostic)
+	if not matching.is_empty():
+		return matching
+	return [_build_gdscript_diagnostic(
+		path,
+		null,
+		"Failed to read the script for isolated validation." if not read_ok else \
+			"Isolated GDScript reload returned error code %s." % str(error_code),
+		"read_error" if not read_ok else "validation_error"
+	)]
+
+
+func _cleanup_isolated_gdscript_validation(temp_root: String, file_paths: Array) -> bool:
+	var cleanup_ok: bool = true
+	for file_path_value in file_paths:
+		var file_path := str(file_path_value)
+		if FileAccess.file_exists(file_path) and DirAccess.remove_absolute(file_path) != OK:
+			cleanup_ok = false
+	if DirAccess.dir_exists_absolute(temp_root) and DirAccess.remove_absolute(temp_root) != OK:
+		cleanup_ok = false
+	return cleanup_ok
+
+
+func _isolated_gdscript_validation_worker_source() -> String:
+	return "\n".join(PackedStringArray([
+		"extends SceneTree",
+		"",
+		"func _init() -> void:",
+		"\tvar arguments := OS.get_cmdline_user_args()",
+		"\tif arguments.size() != 2:",
+		"\t\tquit(64)",
+		"\t\treturn",
+		"\tvar request_file := FileAccess.open(arguments[0], FileAccess.READ)",
+		"\tif request_file == null:",
+		"\t\tquit(65)",
+		"\t\treturn",
+		"\tvar request = JSON.parse_string(request_file.get_as_text())",
+		"\trequest_file.close()",
+		"\tvar project_root := ProjectSettings.globalize_path(\"res://\")",
+		"\tif not request is Dictionary \\",
+		"\t\t\tor request.get(\"schema\") != \"funplay.isolated_gdscript_validation.request.v1\" \\",
+		"\t\t\tor not request.get(\"request_id\") is String \\",
+		"\t\t\tor str(request.get(\"request_id\")) == \"\" \\",
+		"\t\t\tor not request.get(\"project_root\") is String \\",
+		"\t\t\tor str(request.get(\"project_root\")) != project_root \\",
+		"\t\t\tor not request.get(\"paths\") is Array:",
+		"\t\tquit(65)",
+		"\t\treturn",
+		"\tvar rows: Array = []",
+		"\tvar paths: Array = request.get(\"paths\")",
+		"\tfor path_value in paths:",
+		"\t\tif not path_value is String:",
+		"\t\t\tquit(65)",
+		"\t\t\treturn",
+		"\t\tvar path: String = path_value",
+		"\t\tvar source_file := FileAccess.open(path, FileAccess.READ)",
+		"\t\tif source_file == null:",
+		"\t\t\tvar open_error: int = FileAccess.get_open_error()",
+		"\t\t\trows.append({\"path\": path, \"read_ok\": false, \"validation_attempted\": false, \"ok\": false, \"error_code\": open_error if open_error != OK else ERR_CANT_OPEN, \"resource_path\": \"\", \"source_sha256\": \"\", \"source_byte_length\": -1})",
+		"\t\t\tcontinue",
+		"\t\tvar source_byte_length: int = source_file.get_length()",
+		"\t\tvar source_bytes: PackedByteArray = source_file.get_buffer(source_byte_length)",
+		"\t\tsource_file.close()",
+		"\t\tif source_bytes.size() != source_byte_length:",
+		"\t\t\trows.append({\"path\": path, \"read_ok\": false, \"validation_attempted\": false, \"ok\": false, \"error_code\": ERR_FILE_CANT_READ, \"resource_path\": \"\", \"source_sha256\": \"\", \"source_byte_length\": -1})",
+		"\t\t\tcontinue",
+		"\t\tvar source := source_bytes.get_string_from_utf8()",
+		"\t\tif source.to_utf8_buffer() != source_bytes:",
+		"\t\t\trows.append({\"path\": path, \"read_ok\": false, \"validation_attempted\": false, \"ok\": false, \"error_code\": ERR_INVALID_DATA, \"resource_path\": \"\", \"source_sha256\": \"\", \"source_byte_length\": -1})",
+		"\t\t\tcontinue",
+		"\t\tvar cached_script := ResourceLoader.get_cached_ref(path) as Script",
+		"\t\tvar was_cached := cached_script != null",
+		"\t\tvar script := GDScript.new()",
+		"\t\tif was_cached:",
+		"\t\t\tscript.set_path_cache(path)",
+		"\t\telse:",
+		"\t\t\tscript.resource_path = path",
+		"\t\tscript.source_code = source",
+		"\t\tvar error_code := script.reload()",
+		"\t\trows.append({",
+		"\t\t\t\"path\": path,",
+		"\t\t\t\"read_ok\": true,",
+		"\t\t\t\"validation_attempted\": true,",
+		"\t\t\t\"ok\": error_code == OK,",
+		"\t\t\t\"error_code\": error_code,",
+		"\t\t\t\"resource_path\": script.resource_path,",
+		"\t\t\t\"source_sha256\": source.sha256_text(),",
+		"\t\t\t\"source_byte_length\": source_bytes.size(),",
+		"\t\t})",
+		"\t\tif was_cached:",
+		"\t\t\tscript.set_path_cache(\"\")",
+		"\t\telse:",
+		"\t\t\tscript.resource_path = \"\"",
+		"\tvar output := FileAccess.open(arguments[1], FileAccess.WRITE)",
+		"\tif output == null:",
+		"\t\tquit(66)",
+		"\t\treturn",
+		"\toutput.store_string(JSON.stringify({\"schema\": \"funplay.isolated_gdscript_validation.response.v1\", \"request_id\": request.get(\"request_id\"), \"project_root\": project_root, \"requested_count\": paths.size(), \"completed_count\": rows.size(), \"rows\": rows}))",
+		"\toutput.close()",
+		"\tquit(0)",
+	]))
 
 
 func _parse_godot_gdscript_check_output(output: String, fallback_path: String) -> Array:
@@ -3133,7 +3615,7 @@ func _build_gdscript_diagnostic(path: String, line, message: String, code: Strin
 		"end_column": null,
 		"severity": "error",
 		"code": code,
-		"source": "godot-check-only",
+		"source": "funplay-isolated-gdscript-validator",
 		"message": message,
 	}
 	if line is int and int(line) > 0 and FileAccess.file_exists(path):
@@ -3211,24 +3693,169 @@ func validate_csharp_project(arguments: Dictionary) -> String:
 
 
 func get_script_errors(arguments: Dictionary) -> String:
-	var root_path = _normalize_path(str(arguments.get("path", "res://")))
+	var requested_root_path: String = str(arguments.get("path", "res://"))
+	var root_path: String = _normalize_project_path(requested_root_path)
 	var max_files = clamp(int(arguments.get("max_files", 200)), 1, 3000)
 	var requested_language = str(arguments.get("language", "auto")).to_lower()
 	var resolved_language = _resolve_requested_script_language_set(requested_language)
+	if root_path == "" or not DirAccess.dir_exists_absolute(root_path):
+		return _render_variant({
+			"path": root_path,
+			"language": resolved_language,
+			"success": false,
+			"checked": 0,
+			"requested_count": 0,
+			"validated_count": 0,
+			"complete": false,
+			"scope_truncated": false,
+			"max_files": max_files,
+			"validator_worker_log_diagnostic_header_count": 0,
+			"error_count": 1,
+			"errors": [{
+				"path": requested_root_path,
+				"ok": false,
+				"error_code": ERR_INVALID_PARAMETER,
+				"resource_path": "",
+				"validation_mode": "isolated_process",
+				"diagnostic_count": 1,
+				"diagnostics": [_build_gdscript_diagnostic(
+					requested_root_path,
+					null,
+					"get_script_errors requires an existing directory under res://.",
+					"validation_scope_error"
+				)],
+				"language": "gdscript",
+			}],
+		})
 	var results: Array = []
 	var checked = 0
+	var gdscript_requested_count: int = 0
+	var gdscript_validated_count: int = 0
+	var gdscript_validation_complete: bool = true
+	var validator_worker_log_diagnostic_header_count: int = 0
 
 	if resolved_language == "gdscript" or resolved_language == "mixed":
 		var gd_paths: Array = []
-		_collect_matching_files(root_path, true, max_files, gd_paths, [".gd"])
-		gd_paths = _exclude_internal_plugin_paths(gd_paths)
+		_collect_matching_files(root_path, true, max_files + 1, gd_paths, [".gd"])
+		if gd_paths.size() > max_files:
+			return _render_variant({
+				"path": root_path,
+				"language": resolved_language,
+				"success": false,
+				"checked": gd_paths.size(),
+				"requested_count": 0,
+				"validated_count": 0,
+				"complete": false,
+				"scope_truncated": true,
+				"max_files": max_files,
+				"validator_worker_log_diagnostic_header_count": 0,
+				"error_count": 1,
+				"errors": [{
+					"path": root_path,
+					"ok": false,
+					"error_code": ERR_PARAMETER_RANGE_ERROR,
+					"resource_path": root_path,
+					"validation_mode": "isolated_process",
+					"diagnostic_count": 1,
+					"diagnostics": [_build_gdscript_diagnostic(
+						root_path,
+						null,
+						"The GDScript scope exceeded max_files=%s and was not validated." % str(max_files),
+						"validation_scope_truncated"
+					)],
+					"language": "gdscript",
+				}],
+			})
 		checked += gd_paths.size()
-		for path in gd_paths:
-			var validation_text = validate_gdscript_file({"path": path})
-			var validation = JSON.parse_string(validation_text)
-			if validation is Dictionary and not bool(validation.get("ok", false)):
-				validation["language"] = "gdscript"
-				results.append(validation)
+		gdscript_requested_count = gd_paths.size()
+		var isolated_validation: Dictionary = _run_isolated_gdscript_validation(gd_paths)
+		var isolated_rows_value = isolated_validation.get("rows")
+		var isolated_rows: Array = isolated_rows_value if isolated_rows_value is Array else []
+		validator_worker_log_diagnostic_header_count = int(
+			isolated_validation.get("worker_log_diagnostic_header_count", 0)
+		)
+		if not bool(isolated_validation.get("ok", false)):
+			gdscript_validation_complete = false
+			results.append({
+				"path": root_path,
+				"ok": false,
+				"error_code": FAILED,
+				"resource_path": root_path,
+				"validation_mode": "isolated_process",
+				"diagnostic_count": 1,
+				"diagnostics": [_build_gdscript_diagnostic(
+					root_path,
+					null,
+					str(isolated_validation.get("failure_reason", "Isolated GDScript validation failed.")),
+					"validation_process_error"
+				)],
+				"language": "gdscript",
+			})
+		elif isolated_rows.size() != gd_paths.size():
+			gdscript_validation_complete = false
+			results.append({
+				"path": root_path,
+				"ok": false,
+				"error_code": FAILED,
+				"resource_path": root_path,
+				"validation_mode": "isolated_process",
+				"diagnostic_count": 1,
+				"diagnostics": [_build_gdscript_diagnostic(
+					root_path,
+					null,
+					"Isolated GDScript validation returned an incomplete row set.",
+					"validation_process_error"
+				)],
+				"language": "gdscript",
+			})
+		else:
+			for index in range(gd_paths.size()):
+				var path: String = str(gd_paths[index])
+				var row: Dictionary = isolated_rows[index] if isolated_rows[index] is Dictionary else {}
+				if not _isolated_gdscript_row_protocol_is_valid(row, path):
+					gdscript_validation_complete = false
+					results.append({
+						"path": path,
+						"ok": false,
+						"error_code": FAILED,
+						"resource_path": path,
+						"validation_mode": "isolated_process",
+						"diagnostic_count": 1,
+						"diagnostics": [_build_gdscript_diagnostic(
+							path,
+							null,
+							"Isolated GDScript validation returned a malformed result row.",
+							"validation_process_error"
+						)],
+						"language": "gdscript",
+					})
+					continue
+				var error_code: int = int(row.get("error_code"))
+				if bool(row.get("validation_attempted")):
+					gdscript_validated_count += 1
+				else:
+					gdscript_validation_complete = false
+				if bool(row.get("ok")):
+					_gdscript_diagnostic_cache.erase(path)
+					continue
+				var diagnostics: Array = _isolated_gdscript_diagnostics_for_path(
+					str(isolated_validation.get("output", "")),
+					path,
+					error_code,
+					bool(row.get("read_ok"))
+				)
+				results.append({
+					"path": path,
+					"ok": false,
+					"error_code": error_code,
+					"resource_path": str(row.get("resource_path")),
+					"validation_mode": "isolated_process",
+					"read_ok": bool(row.get("read_ok")),
+					"validation_attempted": bool(row.get("validation_attempted")),
+					"diagnostic_count": diagnostics.size(),
+					"diagnostics": diagnostics,
+					"language": "gdscript",
+				})
 
 	if resolved_language == "dotnet" or resolved_language == "mixed":
 		var csharp_validation = JSON.parse_string(get_csharp_errors(arguments))
@@ -3239,7 +3866,14 @@ func get_script_errors(arguments: Dictionary) -> String:
 	return _render_variant({
 		"path": root_path,
 		"language": resolved_language,
+		"success": gdscript_validation_complete,
 		"checked": checked,
+		"requested_count": gdscript_requested_count,
+		"validated_count": gdscript_validated_count,
+		"complete": gdscript_validation_complete,
+		"scope_truncated": false,
+		"max_files": max_files,
+		"validator_worker_log_diagnostic_header_count": validator_worker_log_diagnostic_header_count,
 		"error_count": results.size(),
 		"errors": results,
 	})
@@ -3273,7 +3907,7 @@ func get_csharp_errors(arguments: Dictionary) -> String:
 
 func request_script_reload(arguments: Dictionary) -> String:
 	var path = _normalize_path(str(arguments.get("path", "")))
-	if path != "":
+	if path != "" and not DirAccess.dir_exists_absolute(path):
 		var script = load(path)
 		if script != null and script is Script:
 			var err = script.reload()
@@ -3668,31 +4302,78 @@ func send_runtime_input(arguments: Dictionary) -> String:
 
 func get_runtime_events(arguments: Dictionary) -> String:
 	var max_events: int = int(clamp(int(arguments.get("max_events", 100)), 1, 500))
+	var cursor_requested: bool = arguments.has("stream_id") or arguments.has("since_sequence")
 	var command_arguments: Dictionary = arguments.duplicate(true)
 	command_arguments.erase("max_events")
 	var response: Dictionary = _send_runtime_bridge_command("get_events", command_arguments)
 	if bool(response.get("success", false)):
 		var result = response.get("result", {})
 		if result is Dictionary:
-			result["events"] = _tail_array(result.get("events", []), max_events)
-			result["returned_event_count"] = result["events"].size()
+			result = _prepare_runtime_event_window(result, max_events)
 			response["result"] = result
+			if cursor_requested and bool(result.get("client_truncated", false)):
+				response["success"] = false
+				response["error"] = "Runtime event cursor response exceeded max_events; continuity is incomplete."
+				response["error_code"] = "RUNTIME_EVENT_CLIENT_TRUNCATED"
 		return _render_variant(response)
+
+	var bridge_result = response.get("result", {})
+	if cursor_requested and bridge_result is Dictionary and bridge_result.has("error_code"):
+		return _render_variant({
+			"success": false,
+			"source": "runtime_bridge",
+			"error": response.get("error", bridge_result.get("error", "Runtime event cursor request failed.")),
+			"error_code": bridge_result.get("error_code", "RUNTIME_EVENT_CURSOR_FAILED"),
+			"result": bridge_result,
+			"event_evidence_complete": false,
+			"status": _build_runtime_bridge_status(),
+		})
 
 	var status: Dictionary = _build_runtime_bridge_status()
 	var state = status.get("state", {})
 	if state is Dictionary:
 		var runtime_events = state.get("runtime_events", [])
 		if runtime_events is Array and not runtime_events.is_empty():
+			var fallback_result := _prepare_runtime_event_window({
+				"events": runtime_events,
+				"event_count": runtime_events.size(),
+				"event_sequence_mode": "unavailable_state_fallback",
+				"continuity_status": "STATE_FALLBACK_UNVERIFIED",
+				"event_sequence_complete": false,
+			}, max_events)
 			return _render_variant({
 				"success": false,
 				"source": "last_runtime_state",
 				"error": response.get("error", "Runtime bridge did not respond to get_events."),
-				"events": _tail_array(runtime_events, max_events),
-				"event_count": runtime_events.size(),
+				"events": fallback_result.get("events", []),
+				"event_count": fallback_result.get("event_count", runtime_events.size()),
+				"source_event_count": fallback_result.get("source_event_count", runtime_events.size()),
+				"returned_event_count": fallback_result.get("returned_event_count", 0),
+				"client_truncated_event_count": fallback_result.get("client_truncated_event_count", 0),
+				"client_truncated": fallback_result.get("client_truncated", false),
+				"requested_stream_id": str(arguments.get("stream_id", "")) if arguments.has("stream_id") else null,
+				"requested_since_sequence": int(arguments.get("since_sequence", 0)) if arguments.has("since_sequence") else null,
+				"event_sequence_mode": fallback_result.get("event_sequence_mode", "unavailable_state_fallback"),
+				"continuity_status": fallback_result.get("continuity_status", "STATE_FALLBACK_UNVERIFIED"),
+				"event_sequence_complete": false,
+				"event_evidence_complete": false,
 				"status": status,
 			})
 	return _render_variant(response)
+
+
+func _prepare_runtime_event_window(result: Dictionary, max_events: int) -> Dictionary:
+	var prepared := result.duplicate(true)
+	var source_events: Array = prepared.get("events", []) if prepared.get("events", []) is Array else []
+	var returned_events := _tail_array(source_events, max_events)
+	prepared["events"] = returned_events
+	prepared["source_event_count"] = source_events.size()
+	prepared["returned_event_count"] = returned_events.size()
+	prepared["client_truncated_event_count"] = maxi(0, source_events.size() - returned_events.size())
+	prepared["client_truncated"] = prepared["client_truncated_event_count"] > 0
+	prepared["event_evidence_complete"] = bool(prepared.get("event_sequence_complete", false)) \
+		and not bool(prepared.get("client_truncated", false))
+	return prepared
 
 
 func list_workflow_coverage(_arguments: Dictionary) -> String:

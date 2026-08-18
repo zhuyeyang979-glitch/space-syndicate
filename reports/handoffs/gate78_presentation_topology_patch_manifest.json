@@ -1,0 +1,104 @@
+{
+  "schema": "Gate78PresentationTopologyPatchManifestV1",
+  "patch_exception_id": "PR90_GATE78_PRESENTATION_TOPOLOGY_ORACLE_PATCH_001",
+  "base_head_sha": "60e7757bb52e487ad40abc5210349cd9930195f5",
+  "base_tree_sha": "11ce5fdde15e1fbca9d7aea16ffd855bc859f606",
+  "root_cause_class": "STALE_ORACLE_OLD_RESOLUTION_BUS_CONNECTION_COUNT",
+  "root_cause_runtime_proven": true,
+  "product_topology_defect_attested": false,
+  "product_runtime_code_change_count": 0,
+  "test_code_change_count": 1,
+  "test_gdscript_file_count": 1,
+  "production_gdscript_file_count": 0,
+  "direct_patch_path_outside_allowlist_count": 0,
+  "direct_patch_scene_file_count": 0,
+  "direct_patch_resource_file_count": 0,
+  "gameplay_value_change_count": 0,
+  "balance_value_change_count": 0,
+  "ai_policy_value_change_count": 0,
+  "rng_draw_point_change_count": 0,
+  "legacy_presentation_bus_reintroduction_count": 0,
+  "path_allowlist": [
+    "tests/support/v075_atomic_runtime_test_suite.gd",
+    "docs/architecture/v075_presentation_observer_topology_v2.json",
+    "docs/architecture/v075_presentation_observer_topology_v2.md",
+    "reports/handoffs/gate78_presentation_topology_patch_manifest.json"
+  ],
+  "files": [
+    {
+      "path": "tests/support/v075_atomic_runtime_test_suite.gd",
+      "kind": "test_support",
+      "before_sha256": "69897314076b505fca9349f6f055dba776d7b9702bec671d3d86104abf67a667",
+      "after_sha256": "4705a68f2e29450777ce67608e22a427d1c2c937f6d254ebd7eb7198bb6bd677"
+    },
+    {
+      "path": "docs/architecture/v075_presentation_observer_topology_v2.json",
+      "kind": "architecture_contract",
+      "before_sha256": null,
+      "after_sha256": "765468f87cc383af53fca5186e9a63accd18a3578237c51c9e5b977cb3cc340e"
+    },
+    {
+      "path": "docs/architecture/v075_presentation_observer_topology_v2.md",
+      "kind": "architecture_contract_companion",
+      "before_sha256": null,
+      "after_sha256": "03cc75bfb06064d913d9b5f91975604f1d51a0daaf82fad896665e4741cb682e"
+    },
+    {
+      "path": "reports/handoffs/gate78_presentation_topology_patch_manifest.json",
+      "kind": "self_describing_patch_manifest",
+      "before_sha256": null,
+      "after_sha256": null,
+      "self_hash_excluded": true
+    }
+  ],
+  "characterization": {
+    "fixture_head_sha": "60e7757bb52e487ad40abc5210349cd9930195f5",
+    "failed_initialization_observed": true,
+    "required_edges_present": "3/3",
+    "legacy_edges_present": 0,
+    "duplicate_edges_present": 0,
+    "unclassified_edges_present": 0,
+    "combat_owner_identity_before_after_parity": true,
+    "presentation_consumer_identity_before_after_parity": true,
+    "telemetry_bridge_identity_before_after_parity": true,
+    "resolution_bus_signature_set_parity": true,
+    "presentation_receipt_bus_signature_set_parity": true,
+    "presentation_cue_bus_signature_set_parity": true,
+    "observer_rebind_idempotent": true,
+    "stable_signature_connection_flags_enforced": true,
+    "machine_contract_loaded_by_test": true,
+    "production_composition_fixture_green": true,
+    "production_telemetry_service_bound": true,
+    "application_flow_listener_classified_outside_presentation_scope": true,
+    "out_of_scope_full_signature_allowlist_enforced": true,
+    "cleanup_rebind_v2_receipt_exact_once_green": true,
+    "full_characterization_contract_path": "docs/architecture/v075_presentation_observer_topology_v2.json",
+    "full_characterization_contract_sha256": "765468f87cc383af53fca5186e9a63accd18a3578237c51c9e5b977cb3cc340e"
+  },
+  "gate78_migration": {
+    "retired_oracle": "resolution_presented connection count equals 2",
+    "topology_assertion_count": 33,
+    "raw_connection_count_magic_number_count": 0,
+    "focused_result": "PASS",
+    "focused_marker": "V075_RUNTIME_OWNER_NO_RESIDUAL_BINDINGS_TEST|status=PASS|checks=33|failures=0|details=[]"
+  },
+  "development_rehearsal": {
+    "evidence_kind": "DEVELOPMENT_REHEARSAL_NOT_FORMAL_RELEASE_EVIDENCE",
+    "evidence_root": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate78-topology-repair/development/gate78-79-rehearsal-003",
+    "gate_78_started": true,
+    "gate_78_pass": true,
+    "gate_78_raw_result_sha256": "fe958fae51e1407e3c2e3d0e683a68c1ccea9bbe9a8234ce558ac9c42efac2c3",
+    "gate_79_started": true,
+    "gate_79_pass": true,
+    "gate_79_raw_result_sha256": "3df9dfc65c4bfe765ad7fece24dd5de5143f74baedaab296ab33b7163b2f961f",
+    "gate_78_to_79_pass_count": "2/2",
+    "frozen_formal_modification_count": 0,
+    "frozen_formal_rerun_count": 0,
+    "frozen_formal_evidence_overwrite_count": 0
+  },
+  "unified_diff_validation": {
+    "git_apply_check": "PASS",
+    "git_apply": "PASS",
+    "validation_target": "isolated exact-head audit worktree"
+  }
+}

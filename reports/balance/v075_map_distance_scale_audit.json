@@ -1,0 +1,377 @@
+{
+  "schema_version": 1,
+  "audit_id": "v075.map_distance_scale.audit.v1",
+  "ruleset_id": "v0.7.5",
+  "map_ruleset_id": "v0.7.4",
+  "generated_utc": "2026-08-06T04:34:15Z",
+  "source_commit_sha": "fb5414557da2a2131defb43528c08df9f4f6df5c",
+  "scope": {
+    "lane": "C",
+    "purpose": "real_dynamic_map_distance_scale_audit",
+    "committed_files": [
+      "reports/balance/v075_map_distance_scale_audit.json",
+      "reports/balance/v075_map_distance_scale_audit.md"
+    ],
+    "constitution_modified": false,
+    "balance_defaults_modified": false,
+    "godot_core_modified": false,
+    "tests_modified": false
+  },
+  "source_contracts": {
+    "map_generator": "res://scripts/v074/map/v074_map_genesis_core.gd",
+    "map_request": "res://scripts/v074/map/map_genesis_request_v1.gd",
+    "topology_adapter": "V075MonsterAutonomyCore.topology_snapshot_from_map_receipt",
+    "map_receipt_fields_read": [
+      "region_ids",
+      "adjacency_graph",
+      "region_centers_unit_sphere"
+    ],
+    "distance_unit": "integer_milli_arc",
+    "units_per_radian": 1000000,
+    "edge_source": "quantized_region_center_geodesic",
+    "path_rule": "sorted_adjacency_bfs_then_integer_edge_sum",
+    "movement_budget_rule": "whole_edges_only",
+    "segment_rule": "split_each_edge_between_endpoints_then_aggregate_by_region"
+  },
+  "methodology": {
+    "map_generation": "V074MapGenesisCore.generate(MapGenesisRequestV1.build(seed, region_count, complexity, BALANCED))",
+    "real_receipts_only": true,
+    "mock_topology_count": 0,
+    "fixed_six_region_map_count": 0,
+    "player_count_note": "Player count labels the requested scenario matrix; MapGenesisRequestV1 does not accept player_count, so topology generation is determined by seed, region_count, geography_complexity, and land_ocean_profile.",
+    "edge_sampling": "Every undirected adjacency edge from every accepted receipt was sampled once.",
+    "path_sampling": "Every unordered region pair whose deterministic sorted-BFS shortest path had exactly two or three hops was sampled.",
+    "percentile_method": "nearest_rank_ceiling",
+    "segment_sampling": "Each sampled path edge was split deterministically between endpoint regions using integer division; repeated region segments were aggregated once per path.",
+    "forbidden_distance_inputs_read": {
+      "camera": 0,
+      "screen_pixels": 0,
+      "polygon_vertices": 0,
+      "microcell_count": 0,
+      "float_path_accumulation": 0
+    }
+  },
+  "sample_plan": {
+    "land_ocean_profile": "BALANCED",
+    "configuration_count": 5,
+    "seeds_per_configuration": 24,
+    "map_count_requested": 120,
+    "map_count_accepted": 120,
+    "map_failure_count": 0,
+    "seeds": [
+      900626424,
+      900731153,
+      900835882,
+      900940611,
+      901045340,
+      901150069,
+      901254798,
+      901359527,
+      901464256,
+      901568985,
+      901673714,
+      901778443,
+      901883172,
+      901987901,
+      902092630,
+      902197359,
+      902302088,
+      902406817,
+      902511546,
+      902616275,
+      902721004,
+      902825733,
+      902930462,
+      903035191
+    ]
+  },
+  "inputs_under_review": {
+    "movement_budget_milli_arc": {
+      "min": 180,
+      "max": 400
+    },
+    "trample_distance_step_milli_arc": 80
+  },
+  "overall": {
+    "adjacent_edge_milli_arc": {
+      "count": 6491,
+      "min": 531250,
+      "p05": 624094,
+      "p10": 645985,
+      "p25": 692438,
+      "p50": 788476,
+      "p75": 912635,
+      "p90": 1090728,
+      "p95": 1262034,
+      "max": 1917261,
+      "mean": 835807.729933754
+    },
+    "two_hop_shortest_path_milli_arc": {
+      "count": 9845,
+      "min": 1115161,
+      "p05": 1282805,
+      "p10": 1321856,
+      "p25": 1435655,
+      "p50": 1579344,
+      "p75": 1751151,
+      "p90": 1931307,
+      "p95": 2175198,
+      "max": 3372255,
+      "mean": 1630010.63941087
+    },
+    "three_hop_shortest_path_milli_arc": {
+      "count": 8112,
+      "min": 1697126,
+      "p05": 1959788,
+      "p10": 2044209,
+      "p25": 2178450,
+      "p50": 2352260,
+      "p75": 2533888,
+      "p90": 2737822,
+      "p95": 2894706,
+      "max": 3794123,
+      "mean": 2377418.92307692
+    },
+    "aggregated_trample_segment_milli_arc": {
+      "count": 61983,
+      "min": 265625,
+      "p05": 319227,
+      "p10": 332133,
+      "p25": 374434,
+      "p50": 472209,
+      "p75": 761352,
+      "p90": 870115,
+      "p95": 932425,
+      "max": 1686128,
+      "mean": 570044.642063146
+    },
+    "histograms": {
+      "inclusive_upper_bounds_milli_arc": [
+        100000,
+        250000,
+        500000,
+        750000,
+        1000000,
+        1250000,
+        1500000,
+        2000000,
+        2500000,
+        3000000,
+        4000000,
+        6000000
+      ],
+      "adjacent_edge_counts": [0, 0, 0, 2645, 2994, 508, 239, 105, 0, 0, 0, 0],
+      "two_hop_counts": [0, 0, 0, 0, 0, 191, 3371, 5462, 622, 156, 43, 0],
+      "three_hop_counts": [0, 0, 0, 0, 0, 0, 0, 617, 5126, 2115, 254, 0],
+      "aggregated_trample_segment_counts": [0, 0, 33164, 12229, 15232, 1155, 160, 43, 0, 0, 0, 0],
+      "overflow_count_by_series": {
+        "adjacent_edge": 0,
+        "two_hop": 0,
+        "three_hop": 0,
+        "aggregated_trample_segment": 0
+      }
+    }
+  },
+  "movement_budget_coverage": {
+    "basis_points_by_budget": {
+      "180": {
+        "adjacent_edge": 0,
+        "two_hop": 0,
+        "three_hop": 0
+      },
+      "400": {
+        "adjacent_edge": 0,
+        "two_hop": 0,
+        "three_hop": 0
+      },
+      "1100000": {
+        "adjacent_edge": 9031,
+        "two_hop": 0,
+        "three_hop": 0
+      },
+      "1250000": {
+        "adjacent_edge": 9470,
+        "two_hop": 194,
+        "three_hop": 0
+      },
+      "1600000": {
+        "adjacent_edge": 9925,
+        "two_hop": 5346,
+        "three_hop": 0
+      },
+      "2000000": {
+        "adjacent_edge": 10000,
+        "two_hop": 9166,
+        "three_hop": 761
+      },
+      "2400000": {
+        "adjacent_edge": 10000,
+        "two_hop": 9725,
+        "three_hop": 5762
+      },
+      "3000000": {
+        "adjacent_edge": 10000,
+        "two_hop": 9956,
+        "three_hop": 9687
+      }
+    },
+    "sample_counts_at_recommended_endpoints": {
+      "2000000": {
+        "adjacent_edge": 6491,
+        "two_hop": 9024,
+        "three_hop": 617
+      },
+      "3000000": {
+        "adjacent_edge": 6491,
+        "two_hop": 9802,
+        "three_hop": 7858
+      }
+    }
+  },
+  "trample_step_comparison": {
+    "80": {
+      "count": 61983,
+      "min": 3320,
+      "p05": 3990,
+      "p25": 4680,
+      "p50": 5902,
+      "p75": 9516,
+      "p95": 11655,
+      "max": 21076,
+      "mean": 7125.06603423519
+    },
+    "200000": {
+      "count": 61983,
+      "min": 1,
+      "p05": 1,
+      "p25": 1,
+      "p50": 2,
+      "p75": 3,
+      "p95": 4,
+      "max": 8,
+      "mean": 2.32741235500056
+    },
+    "250000": {
+      "count": 61983,
+      "min": 1,
+      "p05": 1,
+      "p25": 1,
+      "p50": 1,
+      "p75": 3,
+      "p95": 3,
+      "max": 6,
+      "mean": 1.75848216446445
+    },
+    "300000": {
+      "count": 61983,
+      "min": 1,
+      "p05": 1,
+      "p25": 1,
+      "p50": 1,
+      "p75": 2,
+      "p95": 3,
+      "max": 5,
+      "mean": 1.51167255537809
+    }
+  },
+  "configurations": [
+    {
+      "id": "3p_8r_simple",
+      "player_count": 3,
+      "region_count": 8,
+      "complexity": "SIMPLE",
+      "land_ocean_profile": "BALANCED",
+      "maps_accepted": 24,
+      "adjacent_edge_milli_arc": {"count": 426, "min": 1075445, "p05": 1137940, "p25": 1223530, "p50": 1366334, "p75": 1498393, "p95": 1744213, "max": 1917261, "mean": 1378040.40610329},
+      "two_hop_shortest_path_milli_arc": {"count": 246, "min": 2295108, "p05": 2378116, "p25": 2535158, "p50": 2720862, "p75": 2847613, "p95": 3316559, "max": 3372255, "mean": 2751179.47560976},
+      "three_hop_shortest_path_milli_arc": {"count": 0, "min": null, "p05": null, "p25": null, "p50": null, "p75": null, "p95": null, "max": null, "mean": null},
+      "aggregated_trample_segment_milli_arc": {"count": 738, "min": 537722, "p05": 577274, "p25": 638591, "p50": 749561, "p75": 1267579, "p95": 1587334, "max": 1686128, "mean": 917059.825203252},
+      "movement_coverage_bps": {"2000000": {"edge": 10000, "two_hop": 0, "three_hop": 0}, "3000000": {"edge": 10000, "two_hop": 8252, "three_hop": 0}},
+      "note": "No exactly-three-hop shortest paths occurred; sampled graphs had diameter at most two."
+    },
+    {
+      "id": "4p_16r_standard",
+      "player_count": 4,
+      "region_count": 16,
+      "complexity": "STANDARD",
+      "land_ocean_profile": "BALANCED",
+      "maps_accepted": 24,
+      "adjacent_edge_milli_arc": {"count": 984, "min": 750458, "p05": 812964, "p25": 875550, "p50": 936717, "p75": 1075878, "p95": 1253431, "max": 1394980, "mean": 975165.650406504},
+      "two_hop_shortest_path_milli_arc": {"count": 1341, "min": 1567203, "p05": 1679601, "p25": 1815529, "p50": 1926892, "p75": 2124783, "p95": 2362978, "max": 2685923, "mean": 1976517.4049217},
+      "three_hop_shortest_path_milli_arc": {"count": 555, "min": 2420160, "p05": 2571205, "p25": 2819722, "p50": 2987597, "p75": 3099178, "p95": 3374102, "max": 3794123, "mean": 2987635.76396396},
+      "aggregated_trample_segment_milli_arc": {"count": 6243, "min": 375229, "p05": 412645, "p25": 462692, "p50": 571832, "p75": 943181, "p95": 1101880, "max": 1342962, "mean": 690156.605638315},
+      "movement_coverage_bps": {"2000000": {"edge": 10000, "two_hop": 5794, "three_hop": 0}, "3000000": {"edge": 10000, "two_hop": 10000, "three_hop": 5441}}
+    },
+    {
+      "id": "4p_24r_complex",
+      "player_count": 4,
+      "region_count": 24,
+      "complexity": "COMPLEX",
+      "land_ocean_profile": "BALANCED",
+      "maps_accepted": 24,
+      "adjacent_edge_milli_arc": {"count": 1571, "min": 610838, "p05": 663469, "p25": 713552, "p50": 773267, "p75": 873915, "p95": 986007, "max": 1180821, "mean": 795543.947167409},
+      "two_hop_shortest_path_milli_arc": {"count": 2450, "min": 1271105, "p05": 1381075, "p25": 1476341, "p50": 1597589, "p75": 1709549, "p95": 1883464, "max": 2178264, "mean": 1606154.68163265},
+      "three_hop_shortest_path_milli_arc": {"count": 2079, "min": 1949443, "p05": 2112643, "p25": 2286316, "p50": 2430982, "p75": 2579217, "p95": 2770677, "max": 3016034, "mean": 2438577.02501203},
+      "aggregated_trample_segment_milli_arc": {"count": 15666, "min": 305419, "p05": 340839, "p25": 382339, "p50": 469542, "p75": 785726, "p95": 923815, "max": 1089132, "mean": 574804.072832886},
+      "movement_coverage_bps": {"2000000": {"edge": 10000, "two_hop": 9967, "three_hop": 53}, "3000000": {"edge": 10000, "two_hop": 10000, "three_hop": 9995}}
+    },
+    {
+      "id": "6p_24r_standard",
+      "player_count": 6,
+      "region_count": 24,
+      "complexity": "STANDARD",
+      "land_ocean_profile": "BALANCED",
+      "maps_accepted": 24,
+      "adjacent_edge_milli_arc": {"count": 1551, "min": 588431, "p05": 661381, "p25": 713181, "p50": 772256, "p75": 864175, "p95": 975128, "max": 1090728, "mean": 791967.756931012},
+      "two_hop_shortest_path_milli_arc": {"count": 2428, "min": 1242917, "p05": 1375779, "p25": 1474609, "p50": 1586630, "p75": 1698732, "p95": 1868695, "max": 2017394, "mean": 1595641.44069193},
+      "three_hop_shortest_path_milli_arc": {"count": 2077, "min": 1926284, "p05": 2108924, "p25": 2275839, "p50": 2414608, "p75": 2558312, "p95": 2752032, "max": 2927499, "mean": 2419288.89985556},
+      "aggregated_trample_segment_milli_arc": {"count": 15592, "min": 294215, "p05": 338543, "p25": 381112, "p50": 465945, "p75": 778569, "p95": 910093, "max": 1008697, "mean": 570746.566380195},
+      "movement_coverage_bps": {"2000000": {"edge": 10000, "two_hop": 9988, "three_hop": 43}, "3000000": {"edge": 10000, "two_hop": 10000, "three_hop": 10000}}
+    },
+    {
+      "id": "8p_30r_complex",
+      "player_count": 8,
+      "region_count": 30,
+      "complexity": "COMPLEX",
+      "land_ocean_profile": "BALANCED",
+      "maps_accepted": 24,
+      "adjacent_edge_milli_arc": {"count": 1959, "min": 531250, "p05": 598177, "p25": 639177, "p50": 673768, "p75": 785850, "p95": 923374, "max": 1033230, "mean": 714894.451250638},
+      "two_hop_shortest_path_milli_arc": {"count": 3380, "min": 1115161, "p05": 1246818, "p25": 1313476, "p50": 1435655, "p75": 1561842, "p95": 1747085, "max": 1938610, "mean": 1452916.67633136},
+      "three_hop_shortest_path_milli_arc": {"count": 3401, "min": 1697126, "p05": 1916777, "p25": 2065246, "p50": 2199536, "p75": 2351115, "p95": 2572727, "max": 2869176, "mean": 2214883.7915319},
+      "aggregated_trample_segment_milli_arc": {"count": 23744, "min": 265625, "p05": 306874, "p25": 335277, "p50": 447292, "p75": 711634, "p95": 841741, "max": 969305, "mean": 524076.741113545},
+      "movement_coverage_bps": {"2000000": {"edge": 10000, "two_hop": 10000, "three_hop": 1755}, "3000000": {"edge": 10000, "two_hop": 10000, "three_hop": 10000}}
+    }
+  ],
+  "verdict": {
+    "movement_budget_180_to_400_matches_map_scale": false,
+    "movement_mismatch_reason": "The minimum sampled adjacent edge is 531250 milli_arc. Budgets 180 and 400 cover zero of 6491 adjacent edges, so the current whole-edge movement rule cannot leave the starting region.",
+    "recommended_movement_budget_tunable_range_milli_arc": {
+      "min": 2000000,
+      "max": 3000000,
+      "initial_calibration_anchor": 2400000,
+      "minimum_basis": "2000000 is rounded above the sampled maximum adjacent edge of 1917261 and covers all 6491 sampled adjacent edges.",
+      "maximum_basis": "3000000 covers 99.56 percent of sampled two-hop paths and 96.87 percent of sampled three-hop paths; higher values need combat-cadence simulation before adoption.",
+      "balance_change_applied": false
+    },
+    "trample_step_80_matches_map_scale": false,
+    "trample_mismatch_reason": "A step of 80 produces 3320 to 21076 steps per aggregated region segment, with a median of 5902, so per-region caps dominate instead of preserving useful distance scaling.",
+    "recommended_trample_step_tunable_range_milli_arc": {
+      "min": 200000,
+      "max": 300000,
+      "initial_calibration_anchor": 250000,
+      "minimum_basis": "200000 produces a median of 2, p75 of 3, p95 of 4, and maximum of 8 steps over the observed segment distribution.",
+      "maximum_basis": "300000 produces a median of 1, p75 of 2, p95 of 3, and maximum of 5 steps while retaining positive-distance minimum damage.",
+      "balance_change_applied": false
+    },
+    "follow_up_required": "Run combat balance simulation with candidate values and rank damage caps before changing V075 combat balance defaults."
+  },
+  "integrity": {
+    "map_generation_failure_count": 0,
+    "nonpositive_edge_distance_count": 0,
+    "camera_distance_reader_count": 0,
+    "polygon_complexity_reader_count": 0,
+    "microcell_count_reader_count": 0,
+    "production_rule_mutation_count": 0,
+    "audit_green": true
+  }
+}

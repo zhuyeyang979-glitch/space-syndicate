@@ -27,6 +27,19 @@ The launcher redirects `APPDATA` and `LOCALAPPDATA` into the ignored `.codex-god
 
 The checked-in `.mcp.json` starts `tools/funplay_mcp_stdio.cmd`. That bridge reads the endpoint and token from the current worktree's ignored local files, so no shared or committed secret is required. For deterministic shell-side diagnostics, `tools/invoke_role_godot_mcp.ps1` calls the same authenticated embedded endpoint; it is still MCP traffic, not a direct editor shortcut.
 
+The launcher's `connection.json` stores `process_start_time_utc` as the exact
+UTC round-trip timestamp from the launched process. PowerShell
+`ConvertFrom-Json` may materialize that JSON value as `System.DateTime` instead
+of leaving it as a string; converting that object back through `[string]`
+loses its fractional ticks and timezone. Both invoke and stop therefore use
+`tools/role_godot_mcp_process_identity.psm1`, which accepts only a timezone-
+identified `DateTime`, `DateTimeOffset`, or canonical round-trip string,
+normalizes it to UTC, and compares exact ticks. Null, blank, timezone-free,
+object-shaped, invalid, or mismatched tokens fail closed so a reused PID is
+never invoked or stopped. The pure offline regression gate is
+`tools/role_godot_mcp_process_identity_self_test.ps1`; it launches no Godot or
+MCP process.
+
 `project.godot` replaces the retired MCP runtime autoload with Funplay's runtime bridge. The bridge provides play-mode heartbeat, input, scene-tree, and viewport capture through local `user://` command files; the authenticated network endpoint remains editor-only.
 
 ## Development and acceptance split

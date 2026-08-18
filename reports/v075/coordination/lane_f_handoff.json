@@ -1,0 +1,235 @@
+{
+  "schema": "V075LaneFHandoffV1",
+  "lane": "F",
+  "status": "GREEN_FOR_COORDINATOR_INTEGRATION",
+  "scope": "combat_ai_player_public_private_projection_ui_presentation_telemetry",
+  "base_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
+  "branch": "codex/v075-lane-f-ai-ui-presentation-bd0af5c",
+  "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-v075-lane-f-bd0af5c",
+  "push_performed": false,
+  "owned_files": [
+    "scripts/v075/ai/",
+    "scripts/v075/player/",
+    "scripts/v075/presentation/",
+    "scripts/v075/telemetry/",
+    "scripts/ui/v075/",
+    "scenes/ui/v075/",
+    "scenes/tools/v075/V075CombatPlayerSurfaceBench.tscn",
+    "scripts/tools/v075/v075_combat_player_surface_bench.gd",
+    "tests/v075_combat_ai_test.gd",
+    "tests/v075_combat_public_private_projection_test.gd",
+    "tests/v075_combat_presentation_exact_once_test.gd",
+    "tests/v075_terminal_combat_quiescence_test.gd",
+    "reports/v075/coordination/lane_f_handoff.json",
+    "reports/v075/coordination/lane_f_handoff.md"
+  ],
+  "read_only_dependencies": [
+    "resources/presentation/alpha01_card_illustration_catalog.tres",
+    "V074 UI styles and stable commercial asset keys",
+    "future V075 Combat Runtime Owner DTOs",
+    "public dynamic-map, facility, monster, asset, and DBG facts"
+  ],
+  "expected_outputs": [
+    "deterministic combat AI dictionary adapter",
+    "player public/private projection adapter",
+    "owner-only compact monster skill dock",
+    "two-action one-shot military mission panel",
+    "receipt exact-once presentation consumer",
+    "read-only telemetry allowlist contract",
+    "responsive owner/rival production-wiring Bench"
+  ],
+  "hot_file_conflicts": [
+    "scenes/main.tscn",
+    "all existing V074 UI and runtime scripts/scenes",
+    "MonsterRuntimeController",
+    "MilitaryRuntimeController",
+    "other V075 lane-owned files"
+  ],
+  "production_cutover_domains": [
+    "combat_ai",
+    "combat_player_projection",
+    "monster_private_skill_ui",
+    "military_mission_ui",
+    "combat_presentation",
+    "combat_telemetry"
+  ],
+  "changed_existing_v074_or_runtime_file_count": 0,
+  "legacy_controller_reference_count": 0,
+  "main_scene_or_script_change_count": 0,
+  "special_support_placeholder_change_count": 0,
+  "contracts": {
+    "ai": {
+      "monster_card_modes": [
+        "DEPLOY_NEW",
+        "REFRESH_EXISTING",
+        "UPGRADE_EXISTING",
+        "REPLACE_EXISTING"
+      ],
+      "monster_private_skill_supported": true,
+      "military_task_kinds": [
+        "assault_region",
+        "assault_monster"
+      ],
+      "victory_pending_quiescent": true,
+      "opponent_hidden_skill_reader_count": 0,
+      "private_warehouse_reader_count": 0,
+      "rng_draw_count": 0
+    },
+    "projection": {
+      "public_monster_fields": [
+        "display_name",
+        "rank",
+        "hp",
+        "max_hp",
+        "armor",
+        "preferred_industry_color",
+        "region_id",
+        "tracked_region_id",
+        "tracked_facility_id",
+        "projected_path",
+        "unlocked_skill_count",
+        "batch_active_skill_used",
+        "status"
+      ],
+      "owner_private_skill_zone": true,
+      "rival_private_skill_card_disclosure_count": 0,
+      "rival_skill_cost_disclosure_count": 0,
+      "rival_skill_cooldown_disclosure_count": 0,
+      "future_skill_target_disclosure_count": 0,
+      "downed_source_requestable_skill_count": 0
+    },
+    "ui": {
+      "owner_skill_states": [
+        "READY",
+        "COOLDOWN",
+        "DISABLED"
+      ],
+      "cost_display_mode": "repeated_symbol_pips",
+      "ultimate_marker": true,
+      "military_task_button_count": 2,
+      "military_task_labels": [
+        "攻击地区",
+        "攻击怪兽"
+      ],
+      "military_guard_ui_count": 0,
+      "military_bound_action_ui_count": 0,
+      "military_skill_dock_count": 0,
+      "wide_columns": 2,
+      "compact_columns": 1
+    },
+    "presentation": {
+      "receipt_exact_once": true,
+      "dictionary_order_independent_fingerprint": true,
+      "stable_commercial_asset_keys": true,
+      "gameplay_mutation_count": 0,
+      "rng_draw_delta": 0,
+      "authority_receipt_delay_ms": 0,
+      "public_skill_card_disclosure_count": 0
+    },
+    "telemetry": {
+      "event_allowlist_count": 19,
+      "stored_hidden_field_count": 0,
+      "gameplay_owner_count": 0,
+      "rng_owner_count": 0,
+      "world_mutation_count": 0
+    }
+  },
+  "focused_tests": [
+    {
+      "path": "tests/v075_combat_ai_test.gd",
+      "status": "PASS",
+      "passed": 17,
+      "total": 17
+    },
+    {
+      "path": "tests/v075_combat_public_private_projection_test.gd",
+      "status": "PASS",
+      "passed": 32,
+      "total": 32
+    },
+    {
+      "path": "tests/v075_combat_presentation_exact_once_test.gd",
+      "status": "PASS",
+      "passed": 10,
+      "total": 10
+    },
+    {
+      "path": "tests/v075_terminal_combat_quiescence_test.gd",
+      "status": "PASS",
+      "passed": 7,
+      "total": 7
+    }
+  ],
+  "mcp": {
+    "role": "A",
+    "port": 7576,
+    "godot_version": "4.7-stable",
+    "tool_profile": "core",
+    "renderer": "compatibility",
+    "bench_scene": "res://scenes/tools/v075/V075CombatPlayerSurfaceBench.tscn",
+    "changed_script_validation": "12/12",
+    "changed_scene_load": "4/4",
+    "runtime_bridge_ready": true,
+    "runtime_fps_observed": 120,
+    "runtime_node_count_observed": 108,
+    "runtime_error_count": 0,
+    "runtime_warning_count": 0,
+    "play_mode_stopped": true,
+    "editor_cache_rebuild_crash_observed": true,
+    "editor_cache_rebuild_crash_runtime_related": false,
+    "editor_relaunch_recovered": true
+  },
+  "visual_evidence": [
+    {
+      "view": "owner",
+      "capture_path_at_validation": "reports/v075/lane_f/bench_owner_final.png",
+      "size": "1528x917",
+      "sha256": "9180fa670e18f3e417e776e2825f35d229ae9004fcafcdf7607231d7e806b27e",
+      "observed": "L4 four-skill dock, READY/COOLDOWN/DISABLED, ultimate, cost pips, public path, and exactly two military assaults"
+    },
+    {
+      "view": "rival",
+      "capture_path_at_validation": "reports/v075/lane_f/bench_rival_final.png",
+      "size": "1528x917",
+      "sha256": "1825d5d625004ef899b3ee03c07416ac36d52799b2bc95ea7e3c269145bcec45",
+      "observed": "same public monster facts; no private skill cards, costs, cooldown details, future targets, or military private choices"
+    },
+    {
+      "view": "rival_public_receipt",
+      "capture_path_at_validation": "reports/v075/lane_f/bench_public_receipt_final.png",
+      "size": "1528x917",
+      "sha256": "c2678c36d40341a9907409a413f55840653fea222ba7d5d35deca5a546bef14b",
+      "observed": "public effect summary only; receipt marked exact-once and duplicate-safe"
+    }
+  ],
+  "visual_capture_files_committed": false,
+  "visual_capture_retention_note": "Temporary MCP captures were inspected and hashed, then excluded from the atomic commit because Lane F file ownership permits only the two coordination report files under reports/v075.",
+  "integration_ports": [
+    "V075CombatAIAdapter.enumerate_candidates(own_private_facts, public_facts)",
+    "V075CombatAIAdapter.choose_action(own_private_facts, public_facts)",
+    "V075CombatProjectionAdapter.project_for_viewer(authority_snapshot, viewer_player_id)",
+    "V075CombatPlayerSurface.apply_projection(projection, preferred_source_instance_id)",
+    "V075CombatPlayerSurface.private_target_selection_requested",
+    "V075CombatPlayerSurface.military_mission_selected",
+    "V075CombatPresentationConsumer.consume_receipt(receipt)",
+    "V075CombatPresentationConsumer.presentation_cue_ready",
+    "V075CombatTelemetryContract.record_event(event_type, source_payload, batch_id)"
+  ],
+  "coordinator_actions_required": [
+    "bind dictionary adapters to typed V075 Combat Runtime Owner ports",
+    "connect the player surface into the coordinator-owned production scene",
+    "route private skill requests through the authority safe-boundary sequence",
+    "route military selection into prebinding and ordinary anonymous batch flow",
+    "feed public Combat Receipts into presentation exactly once",
+    "connect the telemetry allowlist to the read-only playtest sink",
+    "remove the existing tactical-support placeholder in its owning hot file",
+    "run integrated main.tscn MCP sample match and full regression"
+  ],
+  "not_claimed_by_lane_f": [
+    "production runtime cutover",
+    "main.tscn integration",
+    "full sample match",
+    "combat simulation matrix",
+    "PR, merge, or release tag"
+  ]
+}
