@@ -4302,31 +4302,78 @@ func send_runtime_input(arguments: Dictionary) -> String:
 
 func get_runtime_events(arguments: Dictionary) -> String:
 	var max_events: int = int(clamp(int(arguments.get("max_events", 100)), 1, 500))
+	var cursor_requested: bool = arguments.has("stream_id") or arguments.has("since_sequence")
 	var command_arguments: Dictionary = arguments.duplicate(true)
 	command_arguments.erase("max_events")
 	var response: Dictionary = _send_runtime_bridge_command("get_events", command_arguments)
 	if bool(response.get("success", false)):
 		var result = response.get("result", {})
 		if result is Dictionary:
-			result["events"] = _tail_array(result.get("events", []), max_events)
-			result["returned_event_count"] = result["events"].size()
+			result = _prepare_runtime_event_window(result, max_events)
 			response["result"] = result
+			if cursor_requested and bool(result.get("client_truncated", false)):
+				response["success"] = false
+				response["error"] = "Runtime event cursor response exceeded max_events; continuity is incomplete."
+				response["error_code"] = "RUNTIME_EVENT_CLIENT_TRUNCATED"
 		return _render_variant(response)
+
+	var bridge_result = response.get("result", {})
+	if cursor_requested and bridge_result is Dictionary and bridge_result.has("error_code"):
+		return _render_variant({
+			"success": false,
+			"source": "runtime_bridge",
+			"error": response.get("error", bridge_result.get("error", "Runtime event cursor request failed.")),
+			"error_code": bridge_result.get("error_code", "RUNTIME_EVENT_CURSOR_FAILED"),
+			"result": bridge_result,
+			"event_evidence_complete": false,
+			"status": _build_runtime_bridge_status(),
+		})
 
 	var status: Dictionary = _build_runtime_bridge_status()
 	var state = status.get("state", {})
 	if state is Dictionary:
 		var runtime_events = state.get("runtime_events", [])
 		if runtime_events is Array and not runtime_events.is_empty():
+			var fallback_result := _prepare_runtime_event_window({
+				"events": runtime_events,
+				"event_count": runtime_events.size(),
+				"event_sequence_mode": "unavailable_state_fallback",
+				"continuity_status": "STATE_FALLBACK_UNVERIFIED",
+				"event_sequence_complete": false,
+			}, max_events)
 			return _render_variant({
 				"success": false,
 				"source": "last_runtime_state",
 				"error": response.get("error", "Runtime bridge did not respond to get_events."),
-				"events": _tail_array(runtime_events, max_events),
-				"event_count": runtime_events.size(),
+				"events": fallback_result.get("events", []),
+				"event_count": fallback_result.get("event_count", runtime_events.size()),
+				"source_event_count": fallback_result.get("source_event_count", runtime_events.size()),
+				"returned_event_count": fallback_result.get("returned_event_count", 0),
+				"client_truncated_event_count": fallback_result.get("client_truncated_event_count", 0),
+				"client_truncated": fallback_result.get("client_truncated", false),
+				"requested_stream_id": str(arguments.get("stream_id", "")) if arguments.has("stream_id") else null,
+				"requested_since_sequence": int(arguments.get("since_sequence", 0)) if arguments.has("since_sequence") else null,
+				"event_sequence_mode": fallback_result.get("event_sequence_mode", "unavailable_state_fallback"),
+				"continuity_status": fallback_result.get("continuity_status", "STATE_FALLBACK_UNVERIFIED"),
+				"event_sequence_complete": false,
+				"event_evidence_complete": false,
 				"status": status,
 			})
 	return _render_variant(response)
+
+
+func _prepare_runtime_event_window(result: Dictionary, max_events: int) -> Dictionary:
+	var prepared := result.duplicate(true)
+	var source_events: Array = prepared.get("events", []) if prepared.get("events", []) is Array else []
+	var returned_events := _tail_array(source_events, max_events)
+	prepared["events"] = returned_events
+	prepared["source_event_count"] = source_events.size()
+	prepared["returned_event_count"] = returned_events.size()
+	prepared["client_truncated_event_count"] = maxi(0, source_events.size() - returned_events.size())
+	prepared["client_truncated"] = prepared["client_truncated_event_count"] > 0
+	prepared["event_evidence_complete"] = bool(prepared.get("event_sequence_complete", false)) \
+		and not bool(prepared.get("client_truncated", false))
+	return prepared
 
 
 func list_workflow_coverage(_arguments: Dictionary) -> String:

@@ -574,11 +574,13 @@ func _register_tools() -> void:
 			"timeout_msec": {"type": "integer", "default": 10000},
 		},
 	}, "send_runtime_input", ["core", "full"])
-	_register_tool("get_runtime_events", "Return the runtime bridge event ring buffer from the running game.", {
+	_register_tool("get_runtime_events", "Return runtime bridge events with optional cursor continuity and overflow evidence.", {
 		"type": "object",
 		"properties": {
 			"timeout_msec": {"type": "integer", "default": 10000},
 			"max_events": {"type": "integer", "default": 100},
+			"stream_id": {"type": "string", "default": ""},
+			"since_sequence": {"type": "integer", "minimum": 0, "default": 0},
 		},
 	}, "get_runtime_events", ["core", "full"])
 	_register_tool("list_workflow_coverage", "Return a compact workflow coverage matrix for high-value Godot MCP workflows.", _empty_schema(), "list_workflow_coverage", ["core", "full"])

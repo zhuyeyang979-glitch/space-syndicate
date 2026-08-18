@@ -36,10 +36,14 @@ const MOUSE_BUTTON_MAP = {
 var _elapsed: float = 0.0
 var _last_command_id: String = ""
 var _runtime_events: Array = []
+var _event_stream_id: String = ""
+var _next_event_sequence: int = 1
+var _event_overflow_count: int = 0
 var _release_disabled: bool = false
 
 
 func _enter_tree() -> void:
+	_ensure_event_stream_id()
 	_release_disabled = OS.has_feature(RELEASE_FEATURE)
 	if _release_disabled:
 		process_mode = Node.PROCESS_MODE_DISABLED
@@ -50,6 +54,7 @@ func _ready() -> void:
 		set_process(false)
 		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_ensure_event_stream_id()
 	_clear_session_command_files()
 	_add_runtime_event("ready", "Runtime bridge ready.")
 	_write_state("ready")
@@ -96,6 +101,7 @@ func _write_state(status: String) -> void:
 		"scene_tree_max_depth": MAX_TREE_DEPTH,
 		"scene_tree_max_nodes": MAX_TREE_NODES,
 		"runtime_events": _runtime_events.duplicate(true),
+		"runtime_event_cursor": _runtime_event_cursor_snapshot(),
 		"last_command_id": _last_command_id,
 		"command_path": COMMAND_PATH,
 		"response_path": RESPONSE_PATH,
@@ -156,10 +162,7 @@ func _poll_command() -> void:
 		"send_input":
 			response["result"] = _command_send_input(arguments)
 		"get_events":
-			response["result"] = {
-				"events": _runtime_events.duplicate(true),
-				"event_count": _runtime_events.size(),
-			}
+			response["result"] = _runtime_event_snapshot(arguments)
 		_:
 			response["success"] = false
 			response["error"] = "Unknown runtime bridge command '%s'." % command_name
@@ -516,14 +519,184 @@ func _serialize_node_tree_limited(node: Node, depth: int, max_depth: int, budget
 
 
 func _add_runtime_event(kind: String, message: String, details: Dictionary = {}) -> void:
+	_ensure_event_stream_id()
 	_runtime_events.append({
+		"stream_id": _event_stream_id,
+		"event_sequence": _next_event_sequence,
 		"kind": kind,
 		"message": message,
 		"details": details,
 		"timestamp": Time.get_datetime_string_from_system(true, true),
 	})
+	_next_event_sequence += 1
 	while _runtime_events.size() > MAX_RUNTIME_EVENTS:
 		_runtime_events.pop_front()
+		_event_overflow_count += 1
+
+
+func _runtime_event_cursor_snapshot() -> Dictionary:
+	_ensure_event_stream_id()
+	var first_sequence: Variant = null
+	var last_sequence: Variant = null
+	if not _runtime_events.is_empty():
+		var first_event = _runtime_events[0]
+		var last_event = _runtime_events[_runtime_events.size() - 1]
+		if first_event is Dictionary and first_event.has("event_sequence"):
+			first_sequence = int(first_event.get("event_sequence", 0))
+		if last_event is Dictionary and last_event.has("event_sequence"):
+			last_sequence = int(last_event.get("event_sequence", 0))
+	return {
+		"stream_id": _event_stream_id,
+		"event_capacity": MAX_RUNTIME_EVENTS,
+		"total_emitted_event_count": _next_event_sequence - 1,
+		"next_event_sequence": _next_event_sequence,
+		"event_overflow_count": _event_overflow_count,
+		"buffered_event_count": _runtime_events.size(),
+		"buffered_first_event_sequence": first_sequence,
+		"buffered_last_event_sequence": last_sequence,
+		"event_window_saturated": _runtime_events.size() >= MAX_RUNTIME_EVENTS,
+		"event_window_overflowed": _event_overflow_count > 0,
+	}
+
+
+func _runtime_event_snapshot(arguments: Dictionary) -> Dictionary:
+	_ensure_event_stream_id()
+	var has_stream_id := arguments.has("stream_id")
+	var has_since_sequence := arguments.has("since_sequence")
+	var requested_stream_id := str(arguments.get("stream_id", "")).strip_edges()
+	var since_sequence := int(arguments.get("since_sequence", 0))
+	if has_since_sequence and not has_stream_id:
+		return _runtime_event_cursor_error(
+			"RUNTIME_EVENT_STREAM_ID_REQUIRED",
+			"stream_id is required when since_sequence is provided."
+		)
+	if has_stream_id and requested_stream_id == "":
+		return _runtime_event_cursor_error(
+			"RUNTIME_EVENT_STREAM_ID_INVALID",
+			"stream_id must be a non-empty string."
+		)
+	if has_stream_id and requested_stream_id != _event_stream_id:
+		return _runtime_event_cursor_error(
+			"RUNTIME_EVENT_STREAM_CHANGED",
+			"The runtime bridge stream changed; establish a fresh ready witness."
+		)
+	if has_since_sequence and since_sequence < 0:
+		return _runtime_event_cursor_error(
+			"RUNTIME_EVENT_CURSOR_INVALID",
+			"since_sequence must be a non-negative integer."
+		)
+	if has_since_sequence and since_sequence >= _next_event_sequence:
+		return _runtime_event_cursor_error(
+			"RUNTIME_EVENT_CURSOR_AHEAD",
+			"since_sequence is ahead of the current event stream."
+		)
+
+	var buffered_events: Array = _runtime_events.duplicate(true)
+	var selected_events: Array = []
+	for event in buffered_events:
+		if not has_since_sequence or (
+			event is Dictionary
+			and int(event.get("event_sequence", -1)) > since_sequence
+		):
+			selected_events.append(event)
+
+	var gap_count := 0
+	var invalid_count := 0
+	var sequence_gap_count: Variant = null
+	var sequence_invalid_count: Variant = null
+	var sequence_complete := false
+	if has_since_sequence:
+		var expected_sequence := since_sequence + 1
+		for event in selected_events:
+			if not (event is Dictionary) or not event.has("event_sequence"):
+				invalid_count += 1
+				continue
+			var actual_sequence := int(event.get("event_sequence", -1))
+			if actual_sequence < expected_sequence:
+				invalid_count += 1
+			elif actual_sequence > expected_sequence:
+				gap_count += actual_sequence - expected_sequence
+			expected_sequence = actual_sequence + 1
+		if selected_events.is_empty() and _next_event_sequence > expected_sequence:
+			gap_count += _next_event_sequence - expected_sequence
+		sequence_gap_count = gap_count
+		sequence_invalid_count = invalid_count
+		sequence_complete = gap_count == 0 and invalid_count == 0
+
+	var selected_first_sequence: Variant = null
+	var selected_last_sequence: Variant = null
+	if not selected_events.is_empty():
+		var selected_first = selected_events[0]
+		var selected_last = selected_events[selected_events.size() - 1]
+		if selected_first is Dictionary and selected_first.has("event_sequence"):
+			selected_first_sequence = int(selected_first.get("event_sequence", 0))
+		if selected_last is Dictionary and selected_last.has("event_sequence"):
+			selected_last_sequence = int(selected_last.get("event_sequence", 0))
+
+	var result: Dictionary = _runtime_event_cursor_snapshot()
+	result["events"] = selected_events
+	result["event_count"] = buffered_events.size()
+	result["source_event_count"] = selected_events.size()
+	result["requested_stream_id"] = requested_stream_id if has_stream_id else null
+	result["requested_since_sequence"] = since_sequence if has_since_sequence else null
+	result["event_sequence_mode"] = "cursor" if has_since_sequence else "snapshot_only"
+	result["event_sequence_first"] = selected_first_sequence
+	result["event_sequence_last"] = selected_last_sequence
+	result["event_sequence_gap_count"] = sequence_gap_count
+	result["event_sequence_invalid_count"] = sequence_invalid_count
+	result["event_sequence_complete"] = sequence_complete
+	result["success"] = true
+	result["continuity_status"] = (
+		"CONTIGUOUS"
+		if sequence_complete
+		else "EVENTS_DROPPED"
+		if has_since_sequence and gap_count > 0
+		else "INVALID_EVENT_METADATA"
+		if has_since_sequence
+		else "SNAPSHOT_ONLY"
+	)
+	if has_since_sequence and not sequence_complete:
+		result["success"] = false
+		result["error_code"] = (
+			"RUNTIME_EVENT_EVENTS_DROPPED"
+			if gap_count > 0
+			else "RUNTIME_EVENT_METADATA_INVALID"
+		)
+		result["error"] = (
+			"Runtime event sequence gap detected; continuity is incomplete."
+			if gap_count > 0
+			else "Runtime event sequence metadata is invalid."
+		)
+	return result
+
+
+func _runtime_event_cursor_error(error_code: String, message: String) -> Dictionary:
+	var result: Dictionary = _runtime_event_cursor_snapshot()
+	result["success"] = false
+	result["error_code"] = error_code
+	result["error"] = message
+	result["events"] = []
+	result["source_event_count"] = 0
+	result["requested_stream_id"] = null
+	result["requested_since_sequence"] = null
+	result["event_sequence_mode"] = "cursor_error"
+	result["event_sequence_first"] = null
+	result["event_sequence_last"] = null
+	result["event_sequence_gap_count"] = 0
+	result["event_sequence_invalid_count"] = 0
+	result["event_sequence_complete"] = false
+	result["continuity_status"] = error_code
+	return result
+
+
+func _ensure_event_stream_id() -> void:
+	if _event_stream_id != "":
+		return
+	_event_stream_id = "%d-%d-%d" % [
+			int(Time.get_unix_time_from_system()),
+			Time.get_ticks_usec(),
+			get_instance_id(),
+		]
 
 
 func _runtime_result_success(result) -> bool:
