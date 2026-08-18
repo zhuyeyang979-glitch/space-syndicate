@@ -32,7 +32,7 @@ $engineOutput = @(& $pwsh -NoProfile -File $LegacyImportEnginePath `
     -ExpectedHeadSha $ExpectedHeadSha -ExpectedTreeSha $ExpectedTreeSha)
 $engineExitCode = $LASTEXITCODE
 if ($engineExitCode -ne 0 -or $engineOutput.Count -eq 0) { throw "Bound import engine failed: exit=$engineExitCode" }
-$engineResult = $engineOutput[-1] | ConvertFrom-Json -Depth 100
+$engineResult = ([string]::Join("`n", [string[]]$engineOutput)) | ConvertFrom-Json -Depth 100
 $pass1Path = Join-Path $evidence 'import-pass-1-manifest.json'
 $pass2Path = Join-Path $evidence 'import-pass-2-manifest.json'
 $baselinePath = Join-Path $evidence 'post-import-authority-baseline.json'
