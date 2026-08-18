@@ -1,0 +1,174 @@
+{
+  "schema_version": "PR90Gate78RepairedReleaseChainBlockerHandoffV1",
+  "observed_utc": "2026-08-18T14:14:26.3701534Z",
+  "status": "BLOCKED_POST_AGGREGATE_EXACT_SHA_MCP",
+  "product": {
+    "pr_number": 90,
+    "head_sha": "4d5b173fccae7c6bb1004488e4d561c11714210a",
+    "tree_sha": "365a2a0d8b09162cc7338a460935e8b881cac770",
+    "ci_run_id": 32055074222,
+    "ci_job_id": 95463236612,
+    "ci_status": "SUCCESS",
+    "ci_sha_match": true,
+    "pr_state": "OPEN_DRAFT",
+    "pr_mergeable": true,
+    "pr_merge_state_status": "CLEAN"
+  },
+  "gate78_repair": {
+    "commit_sha": "4d5b173fccae7c6bb1004488e4d561c11714210a",
+    "root_cause_class": "STALE_ORACLE_OLD_RESOLUTION_BUS_CONNECTION_COUNT",
+    "product_topology_defect_attested": false,
+    "product_runtime_code_change_count": 0,
+    "test_code_change_count": 1,
+    "direct_patch_path_outside_allowlist_count": 0,
+    "legacy_presentation_bus_reintroduction_count": 0,
+    "focused_gate78_checks": "33/33_PASS",
+    "development_gate_78_to_79": "2/2_PASS",
+    "topology": {
+      "required_edge_count": 3,
+      "required_edge_present_count": 3,
+      "legacy_edge_present_count": 0,
+      "duplicate_edge_count": 0,
+      "unclassified_edge_count": 0,
+      "edges": [
+        "V075RuntimeOwner.resolution_presented -> CombatTelemetryBridge.consume_public_receipt",
+        "V075RuntimeOwner.combat_presentation_receipt_ready -> V075CombatPresentationConsumer.consume_receipt",
+        "V075CombatPresentationConsumer.presentation_cue_ready -> CombatTelemetryBridge.consume_public_cue"
+      ],
+      "forbidden_legacy_edge": "V075RuntimeOwner.resolution_presented -> V075CombatPresentationConsumer.consume_receipt",
+      "cleanup_identity_parity": true,
+      "cleanup_signature_set_parity": true
+    }
+  },
+  "frozen_formal_attempt": {
+    "run_id": "pr90-presentation-identity-repaired-release-full-001",
+    "disposition": "GATE_1_TO_77_PASS_GATE_78_FAIL_GATE_79_ABSENT",
+    "modification_count": 0,
+    "rerun_count": 0,
+    "evidence_overwrite_count": 0,
+    "gate78_raw_result_sha256": "c5a92e3f1b233c5544bda66152c15b39381f00047106270b0df68e72da74e1f4"
+  },
+  "repaired_head_formal_attempt": {
+    "run_id": "pr90-gate78-repaired-head-release-full-001",
+    "attempt_id": "formal-attempt-001",
+    "status": "PASS",
+    "planned_gate_count": 79,
+    "started_count": 79,
+    "completed_count": 79,
+    "pass_count": 79,
+    "fail_count": 0,
+    "aggregate": "79/79",
+    "projection_backlog_count": 0,
+    "execution_count": 1,
+    "automatic_retry_count": 0,
+    "gate78_raw_result_sha256": "6497fc21dbcf7ef3ad5f96758f2cd7934271501c9ad0ebedde3721d1925cd44a",
+    "gate79_raw_result_sha256": "fef3be79381ebc9ec91f7c6a4beae660530ca88e51df981ffe45b38d7f61080",
+    "summary_sha256": "a081d794afb10ea937d24e255f8a1543f84609f6dd4557022ca629a0fcfc66de",
+    "aggregate_sha256": "80b4c09662ea7fa534998ffda7ae3d016d1b449698f25d7e1ef00e7c30c2fd5d",
+    "post_aggregate_review": "GO",
+    "post_aggregate_p0_count": 0,
+    "post_aggregate_p1_count": 0
+  },
+  "exact_sha_mcp": {
+    "status": "FAIL",
+    "execution_count": 1,
+    "automatic_retry_count": 0,
+    "failed_block_index": 8,
+    "failure_class": "MCP_RUNTIME_EVENT_WINDOW_SATURATION",
+    "primary_error": "Final runtime event evidence is incomplete or contains a failed command/runtime event.",
+    "scope_validation": {
+      "changed_file_count": 331,
+      "changed_script_validation": "167/167",
+      "project_script_validation": "1529/1529",
+      "project_script_error_count": 0,
+      "changed_scene_load": "13/13",
+      "changed_resource_validation": "28/28"
+    },
+    "runtime_event_window": {
+      "success": true,
+      "event_count": 100,
+      "returned_event_count": 100,
+      "command_event_count": 100,
+      "ready_event_count": 0,
+      "non_success_command_event_count": 0,
+      "other_event_count": 0,
+      "runbook_rejects_count_greater_than_or_equal_to": 100,
+      "evidence_complete": false
+    },
+    "terminal_product_observation": {
+      "natural_match_reached_settled": true,
+      "match_completed": true,
+      "final_settlement_count": 1,
+      "final_settlement_presentation_count": 1,
+      "presentation_collision_count": 0,
+      "presentation_duplicate_receipt_count": 0,
+      "presentation_cue_collision_count": 0,
+      "presentation_cue_duplicate_count": 0,
+      "duplicate_presentation_effect_count": 0,
+      "observer_topology_required_edge_count": 3,
+      "observer_topology_legacy_edge_count": 0,
+      "observer_topology_duplicate_edge_count": 0,
+      "runtime_error_count": 0,
+      "hidden_info_violation_count": 0,
+      "invalid_action_count": 0,
+      "nonfinite_count": 0,
+      "duplicate_settlement_count": 0,
+      "note": "These green terminal observations do not override the fail-closed incomplete event evidence."
+    },
+    "failure_finalizer": {
+      "exit_play_code": 0,
+      "stop_code": 0,
+      "godot_process_count": 0,
+      "port_7576_count": 0,
+      "port_7586_count": 0,
+      "cleanup_mode": "OBSERVATION_ONLY",
+      "import_state": "INVALID_PARTIAL_UNKNOWN_OR_TAMPERED",
+      "uid_state": "EXACT_EXTERNAL_ALLOWLIST",
+      "tracked_import_drift_count": 57,
+      "allowlisted_untracked_uid_count": 219,
+      "other_untracked_file_count": 0,
+      "exact_clone_clean": false
+    },
+    "evidence_sha256": {
+      "primary_failure": "2d449188dd3ba3bbc72823ae676681b9e4415f5395fe38856bbfafa422f129f1",
+      "final_failure": "d14fb1c39d99ba2ae13b79677e56be025b0353f5ba68d906d8c2fb9e8dd85808",
+      "raw_manifest": "51aedb75ffa66129faa9da4ee391f530214066f081cb1c85118d4ad170c5f529",
+      "terminal_acceptance_state_raw": "a1109c6ea28f1b0e081640802a55e01e6f8f51f7b8bad294ade4b304085f184c",
+      "final_runtime_events_raw": "ec26a68526e6278de4acc528c2ae7569ff1a1871eba8839229ab86a2fc5aa75f"
+    }
+  },
+  "later_release_stages": {
+    "viewport_status": "NOT_STARTED_AFTER_EXACT_SHA_MCP_FAILURE",
+    "headless_matrix_status": "NOT_STARTED_AFTER_EXACT_SHA_MCP_FAILURE",
+    "product_headless_2000_status": "BLOCKED_MISSING_PRESENTATION_OBSERVABILITY",
+    "product_headless_match_count": 0,
+    "product_headless_completed_count": 0,
+    "product_headless_presentation_collision_count": "NOT_PROVABLE",
+    "product_headless_observer_duplicate_edge_count": "NOT_PROVABLE",
+    "dispatcher_available": false,
+    "observability_evidence": [
+      "scripts/v075_simulation/v075_combat_simulation_runtime_driver.gd sets _simulation_presentation_observer_disabled=true and omits the presentation node",
+      "simulation metrics expose presentation_observer_disabled but not presentation collision or observer duplicate-edge counters",
+      "tools/invoke_v075_formal_authority.ps1 supports planning shards but exposes no dispatch operation"
+    ]
+  },
+  "release_disposition": {
+    "pr90_ready": false,
+    "pr90_merged": false,
+    "pr90_merge_sha": null,
+    "v076_branch_created": false,
+    "v076_poc_started": false,
+    "v076_production_cutover_performed": false
+  },
+  "continuation_constraints": {
+    "do_not_modify_or_rerun_frozen_formal_attempt": true,
+    "do_not_rewrite_exact_sha_mcp_failure_as_pass": true,
+    "do_not_rerun_exact_sha_mcp_without_new_explicit_authorization": true,
+    "do_not_merge_pr90_until_all_release_conditions_are_green": true,
+    "do_not_create_v076_branch_before_pr90_merge": true,
+    "preserve_three_edge_presentation_topology": true,
+    "do_not_restore_legacy_resolution_to_presentation_consumer_edge": true
+  },
+  "next_task": "PR90_RELEASE_EXACT_SHA_MCP_RUNTIME_EVENT_WINDOW_AND_IMPORT_FINALIZER_CONTINUATION",
+  "subsequent_product_2000_task": "PR90_PRODUCT_HEADLESS_2000_PRESENTATION_OBSERVABILITY_HARNESS"
+}
