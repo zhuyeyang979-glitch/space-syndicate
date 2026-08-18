@@ -12,9 +12,11 @@
   },
   "candidate_identity": {
     "branch": "codex/pr90-runtime-event-cursor-instrumentation",
-    "head_sha": "1ba7b1cb6fb88c79348350ff0603de14aa5c7e0b",
-    "tree_sha": "22c14e536687b6a84ffa6871183b90fd527ceb18",
+    "head_sha": "bdd3ae43c430b17d88d2103a776945f577118459",
+    "tree_sha": "f52b3df77ec091c5aa2fd34046bbae759c4b43ac",
     "parent_sha": "4d5b173fccae7c6bb1004488e4d561c11714210a",
+    "implementation_commit_sha": "1ba7b1cb6fb88c79348350ff0603de14aa5c7e0b",
+    "implementation_tree_sha": "22c14e536687b6a84ffa6871183b90fd527ceb18",
     "product_runtime_code_change_count": 0,
     "gameplay_rule_change_count": 0,
     "balance_value_change_count": 0,
