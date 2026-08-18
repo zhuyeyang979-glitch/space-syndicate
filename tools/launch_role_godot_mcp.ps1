@@ -172,6 +172,7 @@ $startProcessParameters = @{
     FilePath = $resolvedGodotPath
     ArgumentList = $argumentString
     Environment = $environment
+    WindowStyle = "Hidden"
     PassThru = $true
 }
 $process = $null
