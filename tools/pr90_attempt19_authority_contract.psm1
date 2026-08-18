@@ -186,7 +186,8 @@ function Test-CanonicalGateSources {
         $receipt = Get-Content -Raw -LiteralPath $receiptPath | ConvertFrom-Json -Depth 100
         $raw = Get-Content -Raw -LiteralPath $resultFiles[0].FullName | ConvertFrom-Json -Depth 100
         $spec = @($gateManifest.gates | Where-Object { [int]$_.id -eq $gateId })[0]
-        $specArguments = @($spec.arguments); $rawArguments = @($raw.test_arguments)
+        $specArguments = if ($spec.PSObject.Properties.Name -contains 'arguments') { @($spec.arguments) } else { @() }
+        $rawArguments = if ($raw.PSObject.Properties.Name -contains 'test_arguments') { @($raw.test_arguments) } else { @() }
         $markerRequired = -not [string]::IsNullOrWhiteSpace([string]$spec.marker)
         $markerGreen = if ($markerRequired) {
             [bool]$raw.marker_required -and [bool]$raw.marker_found -and [string]$raw.expected_completion_marker -ceq [string]$spec.marker -and
