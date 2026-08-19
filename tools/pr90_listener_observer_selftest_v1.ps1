@@ -30,6 +30,7 @@ function Add-Case([int]$Id,[string]$Name,[string]$Family,[bool]$Green,[string]$A
     })
 }
 function Test-Throws([scriptblock]$Script) { try { & $Script | Out-Null; return $false } catch { return $true } }
+function Invoke-CardinalityFixture([AllowEmptyCollection()][object[]]$Rows) { return ,@($Rows) }
 function New-TestIdentity([int]$PidValue,[string]$Creation='134315000000000000') {
     return [pscustomobject][ordered]@{exists=$true;pid=$PidValue;process_name='fixture.exe';executable_path='C:\fixture\fixture.exe';executable_sha256=('a'*64);command_line='fixture';command_line_sha256=('b'*64);creation_time_utc='2026-08-19T00:00:00.0000000Z';creation_time_filetime_utc=$Creation;parent_pid=4;windows_session_id=1;user_sid='S-1-5-21-1';pid_reuse_detected=$false;identity_read_green=$true;failure_class=''}
 }
@@ -128,12 +129,25 @@ try {
     Add-Case 42 'duplicate_rows_not_silently_hidden' collision (-not$dup.parity-and$dup.matched_count-eq1) "matched=$($dup.matched_count);duplicate=$($dup.duplicate_key_count)"
     $twoOwners=Compare-EndpointListenerSourceSetsV1 (New-Envelope A @((New-TestRecord -PidValue 1001 -Source A),(New-TestRecord -PidValue 1002 -Source A))) (New-Envelope B @((New-TestRecord -PidValue 1001 -Source B),(New-TestRecord -PidValue 1002 -Source B)))
     Add-Case 43 'multiple_active_endpoint_owners_fail_stable_gate' stability ($twoOwners.parity-and$twoOwners.matched_count-eq2-and$twoOwners.matched_count-ne1) "matched=$($twoOwners.matched_count)"
+    $orderedReceipt=[ordered]@{schema='ReceiptFixture';status='PASS';canonical_payload_sha256=''}
+    Set-Pr90CanonicalPayloadV1 $orderedReceipt|Out-Null
+    Add-Case 44 'ordered_dictionary_canonical_payload_written' receipt ($orderedReceipt.canonical_payload_sha256-match'^[0-9a-f]{64}$'-and(Get-Pr90CanonicalSha256 $orderedReceipt)-ceq$orderedReceipt.canonical_payload_sha256) $orderedReceipt.canonical_payload_sha256
+    $objectReceipt=[pscustomobject][ordered]@{schema='ReceiptFixture';status='PASS';canonical_payload_sha256=''}
+    Set-Pr90CanonicalPayloadV1 $objectReceipt|Out-Null
+    Add-Case 45 'pscustomobject_canonical_payload_written' receipt ($objectReceipt.canonical_payload_sha256-match'^[0-9a-f]{64}$'-and(Get-Pr90CanonicalSha256 $objectReceipt)-ceq$objectReceipt.canonical_payload_sha256) $objectReceipt.canonical_payload_sha256
+    Add-Case 46 'missing_canonical_payload_field_rejected' receipt (Test-Throws{Set-Pr90CanonicalPayloadV1 ([ordered]@{schema='MissingFixture'})}) 'throws'
+    $zeroRows=Invoke-CardinalityFixture -Rows @()
+    Add-Case 47 'zero_row_function_result_is_array' cardinality ($zeroRows.GetType().IsArray-and$zeroRows.Count-eq0) "$($zeroRows.GetType().FullName)|$($zeroRows.Count)"
+    $singleRows=Invoke-CardinalityFixture -Rows @([pscustomobject]@{pid=1})
+    Add-Case 48 'single_row_function_result_is_array' cardinality ($singleRows.GetType().IsArray-and$singleRows.Count-eq1) "$($singleRows.GetType().FullName)|$($singleRows.Count)"
+    $multipleRows=Invoke-CardinalityFixture -Rows @([pscustomobject]@{pid=1},[pscustomobject]@{pid=2})
+    Add-Case 49 'multiple_row_function_result_is_array' cardinality ($multipleRows.GetType().IsArray-and$multipleRows.Count-eq2) "$($multipleRows.GetType().FullName)|$($multipleRows.Count)"
 
     if(-not$realParity.parity){$falseMismatchCount+=1}
     if($aOnly.parity-or$bOnly.parity-or$dup.parity-or$falseGreen.parity){$falseParityCount+=1}
     $passCount=@($cases|Where-Object pass).Count
     $result=[ordered]@{
-        schema='SpaceSyndicatePr90ListenerObserverSelfTestV1';status=if($passCount-eq$cases.Count-and$cases.Count-ge35){'PASS'}else{'FAIL'}
+        schema='SpaceSyndicatePr90ListenerObserverSelfTestV2';status=if($passCount-eq$cases.Count-and$cases.Count-ge49){'PASS'}else{'FAIL'}
         revision_id=$RevisionId;created_at_utc=[DateTimeOffset]::UtcNow.ToString('o');case_count=$cases.Count;pass_count=$passCount
         listener_formatter_exception_count=$formatterExceptionCount;first_nonempty_listener_fixture_green=$firstGreen
         cross_source_false_parity_count=$falseParityCount;cross_source_false_mismatch_count=$falseMismatchCount
@@ -149,6 +163,10 @@ try {
         real_getnettcp_raw_inventory=$netInventory;real_netstat_raw_inventory=$statInventory
         real_observer_parity=[bool]$realParity.parity;real_observer_matched_count=[int]$realParity.matched_count
         first_jsonrpc_request_sent=$false;m6_to_m11_execution_count=0;formal_mcp_execution_count=0;authorized_run_count_consumed=0;product_process_count=0
+        controller_receipt_canonical_fix_green=[bool]$cases[43].pass
+        controller_zero_one_many_cardinality_fix_green=(@($cases|Where-Object{[int]$_.case_id-in@(47,48,49)-and[bool]$_.pass}).Count-eq3)
+        frozen_characterization_v2_001_modification_count=0
+        frozen_characterization_v2_001_rerun_count=0
         cases=@($cases);canonical_payload_sha256=''
     }
     $result.canonical_payload_sha256=Get-Pr90CanonicalSha256 $result

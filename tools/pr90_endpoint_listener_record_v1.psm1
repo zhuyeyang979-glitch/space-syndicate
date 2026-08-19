@@ -38,6 +38,26 @@ function Get-Pr90CanonicalSha256 {
     return Get-Pr90TextSha256 (ConvertTo-Pr90CanonicalJson $copy)
 }
 
+function Set-Pr90CanonicalPayloadV1 {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][AllowNull()][object]$Value)
+    if ($null -eq $Value) { throw 'Canonical payload value is null.' }
+    $hasField = if ($Value -is [Collections.IDictionary]) {
+        $Value.Contains('canonical_payload_sha256')
+    } else {
+        $Value.PSObject.Properties.Name -ccontains 'canonical_payload_sha256'
+    }
+    if (-not $hasField) { throw 'Canonical payload field is missing.' }
+    $canonical = Get-Pr90CanonicalSha256 $Value
+    if ($Value -is [Collections.IDictionary]) {
+        $Value['canonical_payload_sha256'] = $canonical
+    } else {
+        $Value.canonical_payload_sha256 = $canonical
+    }
+    if ($canonical -notmatch '^[0-9a-f]{64}$') { throw 'Canonical payload SHA-256 is invalid.' }
+    return $Value
+}
+
 function Write-Pr90ImmutableText {
     [CmdletBinding()]
     param(
@@ -288,7 +308,8 @@ function Build-EndpointListenerCanonicalKeyV1 {
 
 Export-ModuleMember -Function @(
     'Get-Pr90Sha256', 'Get-Pr90TextSha256', 'ConvertTo-Pr90CanonicalJson',
-    'Get-Pr90CanonicalSha256', 'Write-Pr90ImmutableText', 'Write-Pr90ImmutableJson',
+    'Get-Pr90CanonicalSha256', 'Set-Pr90CanonicalPayloadV1',
+    'Write-Pr90ImmutableText', 'Write-Pr90ImmutableJson',
     'Get-EndpointSourcePropertyValueV1', 'ConvertTo-EndpointPositiveIntV1',
     'ConvertTo-EndpointAddressV1', 'ConvertTo-EndpointTcpStateV1',
     'New-EndpointListenerRecordV1', 'Test-EndpointListenerRecordV1',
