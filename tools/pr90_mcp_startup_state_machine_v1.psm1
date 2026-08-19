@@ -1,0 +1,609 @@
+Set-StrictMode -Version Latest
+
+$contractPath = Join-Path $PSScriptRoot 'pr90_attempt21_mcp_startup_contract.psm1'
+$stateMachinePath = Join-Path $PSScriptRoot 'pr90_mcp_startup_state_machine_v1.psm1'
+Import-Module $contractPath -Force
+
+function Test-StateCommandLineWorktreeBinding {
+    param([string]$CommandLine, [string]$ExpectedRoot)
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return $false }
+    foreach ($rootForm in @($ExpectedRoot, $ExpectedRoot.Replace('\','/'))) {
+        $escaped = [Regex]::Escape($rootForm.TrimEnd('\','/'))
+        $pattern = '(?i)(?:^|\s)--path(?:\s+|=)(?:"' + $escaped + '"|' + $escaped + ')(?=\s|$)'
+        if ([Regex]::IsMatch($CommandLine, $pattern)) { return $true }
+    }
+    return $false
+}
+
+function Write-StateAtomicText {
+    param([string]$Path, [string]$Text, [switch]$Immutable)
+    $full = [IO.Path]::GetFullPath($Path)
+    if ($Immutable -and (Test-Path -LiteralPath $full)) { throw "Refusing overwrite: $full" }
+    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($full)) | Out-Null
+    $temporary = "$full.$([Guid]::NewGuid().ToString('N')).tmp"
+    try {
+        [IO.File]::WriteAllText($temporary, $Text, [Text.UTF8Encoding]::new($false))
+        [IO.File]::Move($temporary, $full, (-not $Immutable))
+    } finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+    }
+}
+
+function New-StateRpcEnvelope {
+    param([int]$Id, [string]$ToolName, [hashtable]$Arguments)
+    return [ordered]@{
+        jsonrpc = '2.0'
+        id = $Id
+        method = 'tools/call'
+        params = [ordered]@{ name=$ToolName; arguments=$Arguments }
+    }
+}
+
+function Start-StateRpcTransaction {
+    param(
+        [Parameter(Mandatory = $true)][object]$Envelope,
+        [Parameter(Mandatory = $true)][string]$Endpoint,
+        [Parameter(Mandatory = $true)][string]$Token,
+        [Parameter(Mandatory = $true)][string]$LaunchSessionId,
+        [ValidateRange(1,65535)][int]$Port,
+        [ValidateRange(1,120)][int]$TimeoutSeconds = 15
+    )
+    $bodyText = $Envelope | ConvertTo-Json -Depth 50 -Compress
+    $bodyBytes = [Text.UTF8Encoding]::new($false).GetBytes($bodyText)
+    $headerText = @(
+        'POST / HTTP/1.1'
+        'Host: 127.0.0.1'
+        'Content-Type: application/json'
+        "Content-Length: $($bodyBytes.Length)"
+        "X-Funplay-MCP-Token: $Token"
+        'MCP-Protocol-Version: 2025-11-25'
+        "X-PR90-Launch-Session: $LaunchSessionId"
+        'Connection: close'
+        ''
+        ''
+    ) -join "`r`n"
+    $headerBytes = [Text.Encoding]::ASCII.GetBytes($headerText)
+    $requestBytes = [byte[]]::new($headerBytes.Length + $bodyBytes.Length)
+    [Buffer]::BlockCopy($headerBytes, 0, $requestBytes, 0, $headerBytes.Length)
+    [Buffer]::BlockCopy($bodyBytes, 0, $requestBytes, $headerBytes.Length, $bodyBytes.Length)
+    $client = [Net.Sockets.TcpClient]::new()
+    try {
+        $connectTask = $client.ConnectAsync('127.0.0.1', $Port)
+        if (-not $connectTask.Wait([TimeSpan]::FromSeconds($TimeoutSeconds))) {
+            throw "TCP endpoint connect timed out after $TimeoutSeconds seconds."
+        }
+        [void]$connectTask.GetAwaiter().GetResult()
+        $stream = $client.GetStream()
+        $stream.WriteTimeout = $TimeoutSeconds * 1000
+        $stream.Write($requestBytes, 0, $requestBytes.Length)
+        $stream.Flush()
+        return ,([pscustomobject]@{
+            client=$client; stream=$stream; request_id=[int]$Envelope.id; request_text=$bodyText;
+            request_bytes=$requestBytes; request_sha256=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bodyBytes)).ToLowerInvariant();
+            sent_utc=[DateTimeOffset]::UtcNow.ToString('o'); received_bytes=[byte[]]@(); response=$null
+        })
+    } catch {
+        try { $client.Dispose() } catch {}
+        throw
+    }
+}
+
+function Complete-StateRpcTransaction {
+    param(
+        [Parameter(Mandatory = $true)][object]$Transaction,
+        [ValidateRange(1,120)][int]$TimeoutSeconds = 30
+    )
+    $stream = $Transaction.stream
+    $stream.ReadTimeout = $TimeoutSeconds * 1000
+    $bufferStream = [IO.MemoryStream]::new()
+    $buffer = [byte[]]::new(8192)
+    $headerLength = -1
+    $contentLength = -1
+    $statusCode = 0
+    $headers = [ordered]@{}
+    $deadline = [DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds)
+    try {
+        while ($true) {
+            if ([DateTimeOffset]::UtcNow -gt $deadline) { throw "JSON-RPC response timeout after $TimeoutSeconds seconds." }
+            $read = $stream.Read($buffer, 0, $buffer.Length)
+            if ($read -le 0) { break }
+            $bufferStream.Write($buffer, 0, $read)
+            $Transaction.received_bytes = $bufferStream.ToArray()
+            if ($headerLength -lt 0) {
+                $asLatin1 = [Text.Encoding]::Latin1.GetString($Transaction.received_bytes)
+                $separator = $asLatin1.IndexOf("`r`n`r`n", [StringComparison]::Ordinal)
+                if ($separator -ge 0) {
+                    $headerLength = $separator + 4
+                    $headerLines = $asLatin1.Substring(0, $separator) -split "`r`n"
+                    if ($headerLines.Count -eq 0 -or $headerLines[0] -notmatch '^HTTP/\d\.\d\s+(\d+)') {
+                        throw 'MCP response did not contain an HTTP status line.'
+                    }
+                    $statusCode = [int]$Matches[1]
+                    foreach ($line in @($headerLines | Select-Object -Skip 1)) {
+                        $separatorIndex = $line.IndexOf(':')
+                        if ($separatorIndex -gt 0) {
+                            $headers[$line.Substring(0,$separatorIndex).Trim().ToLowerInvariant()] = $line.Substring($separatorIndex+1).Trim()
+                        }
+                    }
+                    if (-not $headers.Contains('content-length')) { throw 'MCP response omitted Content-Length.' }
+                    $contentLength = [int]$headers['content-length']
+                }
+            }
+            if ($headerLength -ge 0 -and $Transaction.received_bytes.Length -ge ($headerLength + $contentLength)) { break }
+        }
+        if ($headerLength -lt 0) { throw 'MCP response closed before HTTP headers arrived.' }
+        $allBytes = [byte[]]$Transaction.received_bytes
+        if ($allBytes.Length -lt ($headerLength + $contentLength)) { throw 'MCP response closed before Content-Length bytes arrived.' }
+        $bodyBytes = [byte[]]::new($contentLength)
+        [Buffer]::BlockCopy($allBytes, $headerLength, $bodyBytes, 0, $contentLength)
+        $Transaction.response = [pscustomobject]@{
+            status_code=$statusCode; headers=$headers; body_bytes=$bodyBytes;
+            body_sha256=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bodyBytes)).ToLowerInvariant();
+            received_utc=[DateTimeOffset]::UtcNow.ToString('o')
+        }
+        return $Transaction.response
+    } finally {
+        try { $stream.Dispose() } catch {}
+        try { $Transaction.client.Dispose() } catch {}
+    }
+}
+
+function Dispose-StateRpcTransaction {
+    param([object]$Transaction)
+    if ($null -eq $Transaction) { return }
+    try { $Transaction.stream.Dispose() } catch {}
+    try { $Transaction.client.Dispose() } catch {}
+}
+
+function ConvertFrom-StateRpcResponse {
+    param([Parameter(Mandatory = $true)][byte[]]$BodyBytes)
+    $text = [Text.UTF8Encoding]::new($false, $true).GetString($BodyBytes)
+    return $text | ConvertFrom-Json -Depth 100
+}
+
+function Get-StateRpcResult {
+    param([Parameter(Mandatory = $true)][object]$Json)
+    if ($null -eq $Json.result -or $null -eq $Json.result.structuredContent) {
+        throw 'MCP response omitted structuredContent.'
+    }
+    if ($null -eq $Json.result.structuredContent.result) {
+        throw 'MCP response omitted structuredContent.result.'
+    }
+    return $Json.result.structuredContent.result
+}
+
+function Stop-StateGodot {
+    param(
+        [int]$Pid,
+        [string]$ProcessStartUtc,
+        [string]$GodotPath,
+        [string]$Worktree,
+        [int]$Port,
+        [string]$StopScriptPath
+    )
+    $stopExit = 0
+    $connection = Join-Path $Worktree '.codex-godot/connection.json'
+    if (Test-Path -LiteralPath $connection) {
+        try {
+            & pwsh -NoProfile -File $StopScriptPath -Worktree $Worktree -ShutdownTimeoutSeconds 30 2>&1 | Out-Null
+            $stopExit = $LASTEXITCODE
+        } catch { $stopExit = 1 }
+    }
+    $process = if ($Pid -gt 0) { Get-Process -Id $Pid -ErrorAction SilentlyContinue } else { $null }
+    if ($null -ne $process -and -not $process.HasExited) {
+        $row = Get-CimInstance Win32_Process -Filter "ProcessId=$Pid" -ErrorAction SilentlyContinue
+        $identity = (
+            [string]$process.Path -ieq (Resolve-Path -LiteralPath $GodotPath).Path -and
+            ([string]$row.CommandLine).ToLowerInvariant().Contains($Worktree.ToLowerInvariant())
+        )
+        if (-not $identity) { throw 'Refusing cleanup because live PID identity changed.' }
+        try { [void]$process.CloseMainWindow() } catch {}
+        if (-not $process.WaitForExit(5000)) {
+            Stop-Process -Id $Pid -Force -ErrorAction Stop
+            [void]$process.WaitForExit(5000)
+        }
+    }
+    $remainingProcess = @(
+        Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object {
+                [string]$_.ExecutablePath -ieq (Resolve-Path -LiteralPath $GodotPath).Path -and
+                ([string]$_.CommandLine).ToLowerInvariant().Contains($Worktree.ToLowerInvariant())
+            }
+    )
+    $remainingListeners = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+    if ($remainingProcess.Count -ne 0 -or $remainingListeners.Count -ne 0) { return $false }
+    Remove-Item -LiteralPath (Join-Path $Worktree '.codex-godot/godot.pid') -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $Worktree '.codex-godot/endpoint.txt') -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $Worktree '.codex-godot/connection.json') -Force -ErrorAction SilentlyContinue
+    return $stopExit -eq 0
+}
+
+function Invoke-Pr90McpStartupStateMachine {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet('PRE_FORMAL_STARTUP_PROBE','PRE_FORMAL_EXACT_MCP_DRY_RUN','FORMAL_EXACT_SHA_MCP')][string]$ExecutionMode,
+        [Parameter(Mandatory = $true)][string]$RunId,
+        [Parameter(Mandatory = $true)][string]$ProbeIdentity,
+        [Parameter(Mandatory = $true)][string]$Worktree,
+        [Parameter(Mandatory = $true)][string]$EvidenceRoot,
+        [Parameter(Mandatory = $true)][string]$GodotPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedHeadSha,
+        [Parameter(Mandatory = $true)][string]$ExpectedTreeSha,
+        [Parameter(Mandatory = $true)][string]$LaunchScriptPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedLaunchScriptSha256,
+        [Parameter(Mandatory = $true)][string]$StopScriptPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedStopScriptSha256,
+        [Parameter(Mandatory = $true)][string]$WatchdogScriptPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedWatchdogScriptSha256,
+        [Parameter(Mandatory = $true)][string]$ExpectedStateMachineSha256,
+        [Parameter(Mandatory = $true)][string]$ExpectedContractSha256,
+        [string]$ProbeScenePath = 'res://scenes/runtime/ActionResultPresentationService.tscn',
+        [string]$SealedBaselinePath = '',
+        [string]$ExpectedSealedBaselineSha256 = '',
+        [string]$StartupToolingManifestPath = '',
+        [string]$ExpectedStartupToolingManifestSha256 = '',
+        [string]$StartupToolingSealPath = '',
+        [string]$ExpectedStartupToolingSealSha256 = '',
+        [string]$FormalAuthorizationValidationReceiptPath = '',
+        [string]$ExpectedFormalAuthorizationValidationReceiptSha256 = '',
+        [ValidateRange(1,65535)][int]$Port = 7576,
+        [switch]$KeepRunningAfterM11
+    )
+
+    $ErrorActionPreference = 'Stop'
+    $root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd('\')
+    $evidence = [IO.Path]::GetFullPath($EvidenceRoot)
+    if (Test-Path -LiteralPath $evidence) { throw 'Startup state-machine evidence root must be new.' }
+    foreach ($directory in @('milestones','mcp-raw','phases','requests','responses','witnesses','diagnostics','watchdog','launcher')) {
+        [IO.Directory]::CreateDirectory((Join-Path $evidence $directory)) | Out-Null
+    }
+    $sessionId = [Guid]::NewGuid().ToString('N')
+    $receipts = [Collections.Generic.List[object]]::new()
+    $currentMilestone = 'M0'
+    $stageStarted = [DateTimeOffset]::UtcNow
+    $primaryFailure = $null
+    $failureWritten = $false
+    $godotPid = 0
+    $processStartUtc = ''
+    $godotStdoutPath = ''
+    $godotStderrPath = ''
+    $connectionPath = Join-Path $root '.codex-godot/connection.json'
+    $watchdogChild = $null
+    $watchdogStopped = $false
+    $cleanStop = $false
+    $enteredPlayMode = $false
+    $streamId = ''
+    $cursor = [int64]0
+    $mcpCallId = 0
+    $m8RawPath = ''
+    $m8RawSha = ''
+    $m9RawPath = ''
+    $m9RawSha = ''
+    $m10ReadyPath = ''
+    $m10ReadySha = ''
+    $contextBase = @{
+        port=$Port; session_id=$sessionId; session_id_source='tooling_generated'; pid=$null; parent_pid=$null;
+        process_creation_identity=$null; stdout_path=''; stderr_path=''; endpoint_owner_pid=$null
+    }
+    $runtime = @{
+        currentMilestone='M0'; stageStarted=$stageStarted; failureWritten=$false; godotPid=0;
+        godotStdoutPath=''; godotStderrPath=''; mcpCallId=0
+    }
+
+    function Set-Stage {
+        param([string]$MilestoneId)
+        $runtime.currentMilestone = $MilestoneId
+        $runtime.stageStarted = [DateTimeOffset]::UtcNow
+    }
+    function Get-StageContext {
+        param([hashtable]$Extra = @{})
+        $snapshot = Get-McpStartupProcessSnapshot -Pid $runtime.godotPid -StdoutPath $runtime.godotStdoutPath `
+            -StderrPath $runtime.godotStderrPath -Port $Port -EvidenceRoot $evidence -ConnectionPath $connectionPath
+        $row = @{}
+        foreach ($key in $contextBase.Keys) { $row[$key] = $contextBase[$key] }
+        foreach ($property in $snapshot.PSObject.Properties) { $row[$property.Name] = $property.Value }
+        foreach ($key in $Extra.Keys) { $row[$key] = $Extra[$key] }
+        return $row
+    }
+    function Save-Pass {
+        param([string]$MilestoneId, [DateTimeOffset]$Started, [hashtable]$Extra = @{})
+        $actualStarted = $runtime.stageStarted
+        Test-StartupStageElapsed -MilestoneId $MilestoneId -Started $actualStarted
+        $receipt = New-McpStartupReceipt -RunId $RunId -ExecutionMode $ExecutionMode -MilestoneId $MilestoneId `
+            -Status PASS -Started $actualStarted -Completed ([DateTimeOffset]::UtcNow) -Context (Get-StageContext $Extra)
+        $path = Write-McpStartupMilestone -EvidenceRoot $evidence -Receipt $receipt
+        $receipts.Add($receipt)
+        return $path
+    }
+    function Save-Failure {
+        param([string]$MilestoneId, [DateTimeOffset]$Started, [string]$Detail, [string]$FailureClass = '')
+        if ($runtime.failureWritten) { return }
+        $snapshotContext = Get-StageContext @{}
+        $diagnosticPath = Join-Path $evidence ("diagnostics/{0}-failure.json" -f $MilestoneId)
+        $diagnostic = [ordered]@{
+            schema='McpStartupFailureDiagnosticV1'; run_id=$RunId; execution_mode=$ExecutionMode; milestone_id=$MilestoneId;
+            failure_detail=$Detail; observed_utc=[DateTimeOffset]::UtcNow.ToString('o'); context=$snapshotContext
+        }
+        Write-StartupImmutableJson -Path $diagnosticPath -Value $diagnostic -WriteSha256Sidecar | Out-Null
+        $snapshotContext.evidence_path = $diagnosticPath
+        $snapshotContext.evidence_sha256 = Get-StartupSha256 -Path $diagnosticPath
+        $receipt = New-McpStartupReceipt -RunId $RunId -ExecutionMode $ExecutionMode -MilestoneId $MilestoneId `
+            -Status FAIL -Started $Started -Completed ([DateTimeOffset]::UtcNow) -Context $snapshotContext `
+            -FailureClass $FailureClass -FailureDetail $Detail
+        try { Write-McpStartupMilestone -EvidenceRoot $evidence -Receipt $receipt | Out-Null } catch {}
+        $receipts.Add($receipt)
+        $runtime.failureWritten = $true
+    }
+    function Invoke-RecordedRpc {
+        param([string]$ToolName, [hashtable]$Arguments = @{}, [int]$TimeoutSeconds = 30)
+        $runtime.mcpCallId += 1
+        $id = $runtime.mcpCallId
+        $envelope = New-StateRpcEnvelope -Id $id -ToolName $ToolName -Arguments $Arguments
+        $rawPath = Join-Path $evidence ('mcp-raw/{0:D4}-{1}.jsonrpc.json' -f $id,$ToolName)
+        $requestPath = Join-Path $evidence ('requests/{0:D4}-{1}.json' -f $id,$ToolName)
+        Write-StartupImmutableJson -Path $requestPath -Value $envelope | Out-Null
+        $transaction = $null
+        try {
+            $transaction = Start-StateRpcTransaction -Envelope $envelope -Endpoint "http://127.0.0.1:$Port/" -Token ([IO.File]::ReadAllText((Join-Path $root '.codex-godot/auth.token')).Trim()) -LaunchSessionId $sessionId -Port $Port -TimeoutSeconds ([Math]::Min(15,$TimeoutSeconds))
+            $response = Complete-StateRpcTransaction -Transaction $transaction -TimeoutSeconds $TimeoutSeconds
+            Write-StartupImmutableBytes -Path $rawPath -Bytes $response.body_bytes | Out-Null
+            $json = ConvertFrom-StateRpcResponse -BodyBytes $response.body_bytes
+            if ($null -ne $json.error -or $null -eq $json.result -or [bool]$json.result.isError) {
+                throw "MCP tool $ToolName returned a JSON-RPC error."
+            }
+            return [pscustomobject]@{ id=$id; tool=$ToolName; request=$requestPath; raw=$rawPath; raw_sha256=(Get-StartupSha256 $rawPath); response=$response; json=$json }
+        } catch {
+            if ($null -ne $transaction -and $transaction.received_bytes.Length -gt 0 -and -not (Test-Path -LiteralPath $rawPath)) {
+                try { Write-StartupImmutableBytes -Path $rawPath -Bytes ([byte[]]$transaction.received_bytes) | Out-Null } catch {}
+            }
+            throw
+        } finally {
+            Dispose-StateRpcTransaction -Transaction $transaction
+        }
+    }
+
+    try {
+        Set-Stage 'M0'
+        $head = (& git -C $root rev-parse HEAD).Trim()
+        $tree = (& git -C $root rev-parse 'HEAD^{tree}').Trim()
+        if ($head -cne $ExpectedHeadSha -or $tree -cne $ExpectedTreeSha) { throw 'Product HEAD/tree identity mismatch.' }
+        foreach ($pair in @(
+            @($LaunchScriptPath,$ExpectedLaunchScriptSha256),
+            @($StopScriptPath,$ExpectedStopScriptSha256),
+            @($WatchdogScriptPath,$ExpectedWatchdogScriptSha256),
+            @($contractPath,$ExpectedContractSha256),
+            @($stateMachinePath,$ExpectedStateMachineSha256)
+        )) {
+            if ((Get-StartupSha256 -Path $pair[0]) -cne ([string]$pair[1]).ToLowerInvariant()) {
+                throw "Tooling hash mismatch: $($pair[0])"
+            }
+        }
+        if ($SealedBaselinePath) {
+            if ((Get-StartupSha256 -Path $SealedBaselinePath) -cne $ExpectedSealedBaselineSha256.ToLowerInvariant()) { throw 'Sealed baseline hash mismatch.' }
+            $baseline = Get-Content -Raw -LiteralPath $SealedBaselinePath | ConvertFrom-Json -Depth 100
+            if ([string]$baseline.head_sha -cne $head -or [string]$baseline.tree_sha -cne $tree -or -not [bool]$baseline.post_import_baseline_sealed) { throw 'Sealed baseline identity mismatch.' }
+        }
+        if ($StartupToolingManifestPath) {
+            if ((Get-StartupSha256 -Path $StartupToolingManifestPath) -cne $ExpectedStartupToolingManifestSha256.ToLowerInvariant()) { throw 'Startup tooling manifest hash mismatch.' }
+            $toolManifest = Get-Content -Raw -LiteralPath $StartupToolingManifestPath | ConvertFrom-Json -Depth 100
+            if ([string]$toolManifest.product_head_sha -cne $head -or [string]$toolManifest.product_tree_sha -cne $tree -or [string]$toolManifest.status -cne 'READY') { throw 'Startup tooling manifest identity/status mismatch.' }
+        }
+        if ($StartupToolingSealPath) {
+            if ((Get-StartupSha256 -Path $StartupToolingSealPath) -cne $ExpectedStartupToolingSealSha256.ToLowerInvariant()) { throw 'Startup tooling seal hash mismatch.' }
+            $toolSeal = Get-Content -Raw -LiteralPath $StartupToolingSealPath | ConvertFrom-Json -Depth 100
+            if ([string]$toolSeal.product_head_sha -cne $head -or [string]$toolSeal.product_tree_sha -cne $tree -or [string]$toolSeal.status -cne 'SEALED') { throw 'Startup tooling seal identity/status mismatch.' }
+        }
+        if ($ExecutionMode -ceq 'FORMAL_EXACT_SHA_MCP') {
+            if ([string]::IsNullOrWhiteSpace($FormalAuthorizationValidationReceiptPath)) { throw 'Formal authorization validation receipt is required.' }
+            if ((Get-StartupSha256 -Path $FormalAuthorizationValidationReceiptPath) -cne $ExpectedFormalAuthorizationValidationReceiptSha256.ToLowerInvariant()) { throw 'Formal authorization validation receipt hash mismatch.' }
+            $auth = Get-Content -Raw -LiteralPath $FormalAuthorizationValidationReceiptPath | ConvertFrom-Json -Depth 100
+            if ([string]$auth.status -cne 'PASS' -or [string]$auth.product_head_sha -cne $head -or [string]$auth.product_tree_sha -cne $tree -or [bool]$auth.authorization_consumed) { throw 'Formal authorization validation receipt is not an unconsumed exact identity PASS.' }
+        }
+        if (@(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue).Count -ne 0) { throw 'Startup probe port is already bound.' }
+        $m0Path = Join-Path $evidence 'authorization-validation.json'
+        $m0 = [ordered]@{
+            schema='McpStartupAuthorizationValidationV1'; status='PASS'; execution_mode=$ExecutionMode; probe_identity=$ProbeIdentity;
+            formal_authorization_consumed=$false; head_sha=$head; tree_sha=$tree; session_id=$sessionId; session_id_source='tooling_generated';
+            startup_tooling_manifest_sha256=if($StartupToolingManifestPath){Get-StartupSha256 $StartupToolingManifestPath}else{''};
+            startup_tooling_seal_sha256=if($StartupToolingSealPath){Get-StartupSha256 $StartupToolingSealPath}else{''}
+        }
+        Write-StartupImmutableJson -Path $m0Path -Value $m0 -WriteSha256Sidecar | Out-Null
+        Save-Pass -MilestoneId 'M0' -Started $stageStarted -Extra @{evidence_path=$m0Path;evidence_sha256=(Get-StartupSha256 $m0Path)} | Out-Null
+
+        Set-Stage 'M1'
+        $watchdogRoot = Join-Path $evidence 'watchdog'
+        $watchdogStop = Join-Path $watchdogRoot 'stop.signal'
+        $watchdogReady = Join-Path $watchdogRoot 'ready.signal'
+        $watchdogOut = Join-Path $watchdogRoot 'wrapper.stdout.log'
+        $watchdogErr = Join-Path $watchdogRoot 'wrapper.stderr.log'
+        $watchdogArgs = @('-NoProfile','-File',$WatchdogScriptPath,'-ObservationRoot',$watchdogRoot,'-EvidenceRoot',$evidence,'-Worktree',$root,'-GodotPath',$GodotPath,'-LaunchReceiptPath',(Join-Path $evidence 'launcher/process-start.json'),'-StopSignalPath',$watchdogStop,'-ReadySignalPath',$watchdogReady,'-PortsCsv',"$Port,7586",'-IntervalMilliseconds','1000')
+        $watchdogChild = Start-StartupChildProcess -FilePath (Join-Path $PSHOME 'pwsh.exe') -ArgumentList $watchdogArgs -WorkingDirectory $root -StdoutPath $watchdogOut -StderrPath $watchdogErr
+        $readyDeadline = [DateTimeOffset]::UtcNow.AddSeconds(10)
+        while (-not (Test-Path -LiteralPath $watchdogReady) -and [DateTimeOffset]::UtcNow -lt $readyDeadline) { Start-Sleep -Milliseconds 100 }
+        if (-not (Test-Path -LiteralPath $watchdogReady)) { throw 'Startup watchdog did not become ready.' }
+        $executionPath = Join-Path $evidence 'execution-start.json'
+        $execution = [ordered]@{
+            schema='McpStartupExecutionStartV1'; run_id=$RunId; execution_mode=$ExecutionMode; started_utc=$stageStarted.ToString('o');
+            session_id=$sessionId; session_id_source='tooling_generated'; worktree=$root; working_directory=(Get-Location).Path;
+            userprofile=$env:USERPROFILE; appdata_policy='role_local'; localappdata_policy='role_local'; port=$Port; watchdog_pid=$watchdogChild.process.Id;
+            formal_authorization_consumed=$false; play_main_scene_count=0; product_match_count=0
+        }
+        Write-StartupImmutableJson -Path $executionPath -Value $execution -WriteSha256Sidecar | Out-Null
+        Save-Pass -MilestoneId 'M1' -Started $stageStarted -Extra @{evidence_path=$executionPath;evidence_sha256=(Get-StartupSha256 $executionPath)} | Out-Null
+
+        Set-Stage 'M2'
+        $launchReceiptPath = Join-Path $evidence 'launcher/process-start.json'
+        $launcherOut = Join-Path $evidence 'launcher/wrapper.stdout.log'
+        $launcherErr = Join-Path $evidence 'launcher/wrapper.stderr.log'
+        $launchSession = $sessionId
+        $launcherArgs = @('-NoProfile','-File',$LaunchScriptPath,'-Role','A','-Port',[string]$Port,'-Worktree',$root,'-GodotPath',$GodotPath,'-Renderer','compatibility','-StartupTimeoutSeconds','90','-StartOnly','-LaunchReceiptPath',$launchReceiptPath,'-LaunchSessionId',$launchSession)
+        $launcherChild = Start-StartupChildProcess -FilePath (Join-Path $PSHOME 'pwsh.exe') -ArgumentList $launcherArgs -WorkingDirectory $root -StdoutPath $launcherOut -StderrPath $launcherErr
+        $launchCompleted = Complete-StartupChildProcess -Child $launcherChild -TimeoutSeconds 15 -KillOnTimeout
+        if (-not $launchCompleted.exited -or $launchCompleted.exit_code -ne 0 -or -not (Test-Path -LiteralPath $launchReceiptPath)) { throw "Create-only launcher failed (exit=$($launchCompleted.exit_code))." }
+        $launch = Get-Content -Raw -LiteralPath $launchReceiptPath | ConvertFrom-Json -Depth 40 -DateKind String
+        $godotPid = [int]$launch.pid; $processStartUtc = [string]$launch.process_start_time_utc; $godotStdoutPath = [string]$launch.stdout_path; $godotStderrPath = [string]$launch.stderr_path
+        $contextBase.pid = $godotPid; $contextBase.parent_pid = [int]$launch.parent_pid; $contextBase.process_creation_identity = $processStartUtc; $contextBase.stdout_path = $godotStdoutPath; $contextBase.stderr_path = $godotStderrPath
+        $runtime.godotPid = $godotPid; $runtime.godotStdoutPath = $godotStdoutPath; $runtime.godotStderrPath = $godotStderrPath
+        Save-Pass -MilestoneId 'M2' -Started $stageStarted -Extra @{evidence_path=$launchReceiptPath;evidence_sha256=(Get-StartupSha256 $launchReceiptPath)} | Out-Null
+
+        Set-Stage 'M3'
+        $process = Get-Process -Id $godotPid -ErrorAction Stop
+        $processRow = Get-CimInstance Win32_Process -Filter "ProcessId=$godotPid" -ErrorAction Stop
+        if ([string]$process.Path -ine (Resolve-Path -LiteralPath $GodotPath).Path -or -not (Test-StateCommandLineWorktreeBinding -CommandLine ([string]$processRow.CommandLine) -ExpectedRoot $root)) { throw 'Godot process executable or --path identity mismatch.' }
+        $identityPath = Join-Path $evidence 'process-identity.json'
+        $identity = [ordered]@{schema='McpProcessIdentityV1';pid=$godotPid;parent_pid=[int]$processRow.ParentProcessId;process_creation_identity=$processStartUtc;executable_path=[string]$process.Path;command_line=[string]$processRow.CommandLine;command_line_sha256=(Get-StartupCanonicalSha256 ([pscustomobject]@{command_line=[string]$processRow.CommandLine;canonical_payload_sha256=''}));worktree=$root}
+        Write-StartupImmutableJson -Path $identityPath -Value $identity -WriteSha256Sidecar | Out-Null
+        Save-Pass -MilestoneId 'M3' -Started $stageStarted -Extra @{evidence_path=$identityPath;evidence_sha256=(Get-StartupSha256 $identityPath)} | Out-Null
+
+        Set-Stage 'M4'
+        $endpointPath = Join-Path $evidence 'endpoint-bound.json'
+        $deadline = [DateTimeOffset]::UtcNow.AddSeconds((Get-McpStartupSpec 'M4').timeout_seconds)
+        $listeners = @()
+        while ([DateTimeOffset]::UtcNow -lt $deadline) {
+            if ($null -eq (Get-Process -Id $godotPid -ErrorAction SilentlyContinue)) { throw 'Godot exited before endpoint bind.' }
+            $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+            if ($listeners.Count -gt 0) { break }
+            Start-Sleep -Milliseconds 250
+        }
+        if ($listeners.Count -eq 0) { throw 'MCP endpoint did not bind before M4 timeout.' }
+        $endpointEvidence = [ordered]@{schema='McpStartupEndpointBoundV1';run_id=$RunId;port=$Port;observed_utc=[DateTimeOffset]::UtcNow.ToString('o');listeners=@($listeners|ForEach-Object{[ordered]@{local_address=[string]$_.LocalAddress;local_port=[int]$_.LocalPort;owner_pid=[int]$_.OwningProcess}});godot_pid=$godotPid}
+        Write-StartupImmutableJson -Path $endpointPath -Value $endpointEvidence -WriteSha256Sidecar | Out-Null
+        Save-Pass -MilestoneId 'M4' -Started $stageStarted -Extra @{endpoint_owner_pid=if($listeners.Count -eq 1){[int]$listeners[0].OwningProcess}else{$null};port_bound=$true;evidence_path=$endpointPath;evidence_sha256=(Get-StartupSha256 $endpointPath)} | Out-Null
+
+        Set-Stage 'M5'
+        $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction Stop)
+        if ($listeners.Count -ne 1 -or [int]$listeners[0].OwningProcess -ne $godotPid) { throw 'MCP endpoint owner PID mismatch.' }
+        $contextBase.endpoint_owner_pid = $godotPid
+        if (Test-Path -LiteralPath $connectionPath) { throw 'Connection metadata unexpectedly pre-existed before M5.' }
+        $connection = [ordered]@{
+            schema='McpStartupConnectionV1'; role='A'; endpoint="http://127.0.0.1:$Port/"; port=$Port; pid=$godotPid; worktree=$root; godot_path=(Resolve-Path -LiteralPath $GodotPath).Path;
+            process_start_time_utc=$processStartUtc; command_line=[string]$processRow.CommandLine; endpoint_owner_pid=$godotPid; launch_session_id=$sessionId; launch_session_id_source='tooling_generated';
+            token_path=(Join-Path $root '.codex-godot/auth.token'); log_path=[string]$launch.log_path; stdout_path=$godotStdoutPath; stderr_path=$godotStderrPath;
+            tool_profile='core'; renderer='compatibility'; resolution='1600x960'; created_at_utc=[DateTimeOffset]::UtcNow.ToString('o')
+        }
+        Write-StartupImmutableJson -Path $connectionPath -Value $connection | Out-Null
+        Save-Pass -MilestoneId 'M5' -Started $stageStarted -Extra @{evidence_path=$connectionPath;evidence_sha256=(Get-StartupSha256 $connectionPath);endpoint_owner_pid=$godotPid;connection_exists=$true} | Out-Null
+
+        Set-Stage 'M6'
+        $firstEnvelope = New-StateRpcEnvelope -Id 1 -ToolName 'get_project_info' -Arguments @{}
+        $firstRequestPath = Join-Path $evidence 'requests/0001-get_project_info.json'
+        Write-StartupImmutableJson -Path $firstRequestPath -Value $firstEnvelope -WriteSha256Sidecar | Out-Null
+        $firstTx = Start-StateRpcTransaction -Envelope $firstEnvelope -Endpoint "http://127.0.0.1:$Port/" -Token ([IO.File]::ReadAllText((Join-Path $root '.codex-godot/auth.token')).Trim()) -LaunchSessionId $sessionId -Port $Port -TimeoutSeconds 15
+        Save-Pass -MilestoneId 'M6' -Started $stageStarted -Extra @{request_id=1;evidence_path=$firstRequestPath;evidence_sha256=(Get-StartupSha256 $firstRequestPath)} | Out-Null
+
+        Set-Stage 'M7'
+        $firstResponse = $null
+        try { $firstResponse = Complete-StateRpcTransaction -Transaction $firstTx -TimeoutSeconds 30 } catch { throw }
+        $responseMetaPath = Join-Path $evidence 'responses/0001-get_project_info.response.json'
+        $responseMeta = [ordered]@{schema='McpStartupResponseReceiptV1';request_id=1;status_code=$firstResponse.status_code;body_bytes=$firstResponse.body_bytes.Length;body_sha256=$firstResponse.body_sha256;received_utc=$firstResponse.received_utc}
+        Write-StartupImmutableJson -Path $responseMetaPath -Value $responseMeta -WriteSha256Sidecar | Out-Null
+        $firstJson = ConvertFrom-StateRpcResponse -BodyBytes $firstResponse.body_bytes
+        if ([int]$firstJson.id -ne 1) { throw 'First JSON-RPC response ID mismatch.' }
+        Save-Pass -MilestoneId 'M7' -Started $stageStarted -Extra @{response_id=1;evidence_path=$responseMetaPath;evidence_sha256=(Get-StartupSha256 $responseMetaPath)} | Out-Null
+
+        Set-Stage 'M8'
+        $m8RawPath = Join-Path $evidence 'mcp-raw/0001-get_project_info.jsonrpc.json'
+        Write-StartupImmutableBytes -Path $m8RawPath -Bytes $firstResponse.body_bytes -WriteSha256Sidecar | Out-Null
+        $m8RawSha = Get-StartupSha256 -Path $m8RawPath
+        Save-Pass -MilestoneId 'M8' -Started $stageStarted -Extra @{request_id=1;response_id=1;evidence_path=$m8RawPath;evidence_sha256=$m8RawSha} | Out-Null
+        if ($null -eq $firstJson.result -or [bool]$firstJson.result.isError) { throw 'First get_project_info response was an MCP error.' }
+
+        Set-Stage 'M9'
+        $m9Deadline = [DateTimeOffset]::UtcNow.AddSeconds((Get-McpStartupSpec 'M9').timeout_seconds)
+        $enter = Invoke-RecordedRpc -ToolName 'enter_play_mode' -Arguments @{mode='custom';scene_path=$ProbeScenePath} -TimeoutSeconds ([Math]::Max(1,[int]($m9Deadline - [DateTimeOffset]::UtcNow).TotalSeconds))
+        $enteredPlayMode = $true
+        if ([DateTimeOffset]::UtcNow -ge $m9Deadline) { throw 'M9 timeout expired before runtime stream bootstrap request.' }
+        $bootstrap = Invoke-RecordedRpc -ToolName 'get_runtime_events' -Arguments @{max_events=100;timeout_msec=10000} -TimeoutSeconds ([Math]::Max(1,[int]($m9Deadline - [DateTimeOffset]::UtcNow).TotalSeconds))
+        $bootstrapResult = Get-StateRpcResult -Json $bootstrap.json
+        if ([string]::IsNullOrWhiteSpace([string]$bootstrapResult.stream_id) -or [string]$bootstrapResult.event_sequence_mode -cne 'snapshot_only') { throw 'Runtime stream bootstrap contract failed.' }
+        $streamId = [string]$bootstrapResult.stream_id
+        $m9RawPath = $bootstrap.raw; $m9RawSha = $bootstrap.raw_sha256
+        $streamPath = Join-Path $evidence 'witnesses/runtime-stream-bootstrap.json'
+        $streamWitness = [ordered]@{schema='McpStartupRuntimeStreamWitnessV1';run_id=$RunId;stream_id=$streamId;event_sequence_mode=[string]$bootstrapResult.event_sequence_mode;bootstrap_raw_path=$bootstrap.raw;bootstrap_raw_sha256=$bootstrap.raw_sha256}
+        Write-StartupImmutableJson -Path $streamPath -Value $streamWitness -WriteSha256Sidecar | Out-Null
+        Save-Pass -MilestoneId 'M9' -Started $stageStarted -Extra @{request_id=$bootstrap.id;response_id=$bootstrap.id;stream_id=$streamId;evidence_path=$streamPath;evidence_sha256=(Get-StartupSha256 $streamPath)} | Out-Null
+
+        Set-Stage 'M10'
+        $m10Deadline = [DateTimeOffset]::UtcNow.AddSeconds((Get-McpStartupSpec 'M10').timeout_seconds)
+        $readyEvents = @(); $strictResult = $null; $strict = $null
+        while ([DateTimeOffset]::UtcNow -lt $m10Deadline) {
+            $strict = Invoke-RecordedRpc -ToolName 'get_runtime_events' -Arguments @{max_events=100;timeout_msec=10000;stream_id=$streamId;since_sequence=0} -TimeoutSeconds ([Math]::Min(10,[Math]::Max(1,[int]($m10Deadline - [DateTimeOffset]::UtcNow).TotalSeconds)))
+        $strictResult = Get-StateRpcResult -Json $strict.json
+            $readyEvents = @($strictResult.events | Where-Object { [string]$_.kind -ceq 'ready' -and [string]$_.message -ceq 'Runtime bridge ready.' })
+            if ($readyEvents.Count -gt 0 -and [bool]$strictResult.event_sequence_complete -and [string]$strictResult.continuity_status -ceq 'CONTIGUOUS') { break }
+            Start-Sleep -Milliseconds 250
+        }
+        if ($readyEvents.Count -lt 1) { throw 'Runtime ready witness did not arrive before M10 timeout.' }
+        if (@($strictResult.events).Count -gt 0) { $cursor = [int64]$strictResult.events[-1].event_sequence }
+        $m10ReadyPath = Join-Path $evidence 'witnesses/ready-witness.json'
+        $readyWitness = [ordered]@{schema='McpStartupReadyWitnessV1';run_id=$RunId;stream_id=$streamId;request_id=$strict.id;response_id=$strict.id;ready_witness_count=$readyEvents.Count;event_sequence_complete=[bool]$strictResult.event_sequence_complete;continuity_status=[string]$strictResult.continuity_status;events=$readyEvents;raw_path=$strict.raw;raw_sha256=$strict.raw_sha256}
+        Write-StartupImmutableJson -Path $m10ReadyPath -Value $readyWitness -WriteSha256Sidecar | Out-Null
+        $m10ReadySha = Get-StartupSha256 -Path $m10ReadyPath
+        Save-Pass -MilestoneId 'M10' -Started $stageStarted -Extra @{request_id=$strict.id;response_id=$strict.id;stream_id=$streamId;evidence_path=$m10ReadyPath;evidence_sha256=$m10ReadySha} | Out-Null
+
+        Set-Stage 'M11'
+        $phasePath = Join-Path $evidence 'phases/000-phase-0-ready.json'
+        $phase = [ordered]@{schema='SpaceSyndicateCursorPhaseWitnessV4';run_id=$RunId;phase='phase-0-ready';stream_id=$streamId;event_count=@($strictResult.events).Count;event_sequence_complete=[bool]$strictResult.event_sequence_complete;continuity_status=[string]$strictResult.continuity_status;events=@($strictResult.events);m8_raw_path=$m8RawPath;m8_raw_sha256=$m8RawSha;m9_stream_raw_path=$m9RawPath;m9_stream_raw_sha256=$m9RawSha;m10_ready_path=$m10ReadyPath;m10_ready_sha256=$m10ReadySha}
+        Write-StartupImmutableJson -Path $phasePath -Value $phase -WriteSha256Sidecar | Out-Null
+        Save-Pass -MilestoneId 'M11' -Started $stageStarted -Extra @{stream_id=$streamId;evidence_path=$phasePath;evidence_sha256=(Get-StartupSha256 $phasePath)} | Out-Null
+    } catch {
+        $primaryFailure = $_
+        try { Save-Failure -MilestoneId $runtime.currentMilestone -Started $runtime.stageStarted -Detail $_.Exception.Message } catch {}
+    } finally {
+        if (-not $KeepRunningAfterM11 -and $enteredPlayMode -and $godotPid -gt 0 -and $null -eq $primaryFailure) {
+            try { Invoke-RecordedRpc -ToolName 'exit_play_mode' -Arguments @{} -TimeoutSeconds 30 | Out-Null } catch {}
+            $enteredPlayMode = $false
+        }
+        if (-not $KeepRunningAfterM11 -and $godotPid -gt 0) {
+            try { $cleanStop = Stop-StateGodot -Pid $godotPid -ProcessStartUtc $processStartUtc -GodotPath $GodotPath -Worktree $root -Port $Port -StopScriptPath $StopScriptPath } catch { $cleanStop = $false }
+        }
+        if (-not $KeepRunningAfterM11 -and $null -ne $watchdogChild) {
+            try {
+                if (-not (Test-Path -LiteralPath (Join-Path $evidence 'watchdog/stop.signal'))) {
+                    Write-StateAtomicText -Path (Join-Path $evidence 'watchdog/stop.signal') -Text 'stop' -Immutable
+                }
+                $watchdogSummary = Complete-StartupChildProcess -Child $watchdogChild -TimeoutSeconds 15 -KillOnTimeout
+                $watchdogStopped = $watchdogSummary.exited
+            } catch { $watchdogStopped = $false }
+        }
+    }
+    $allReceipts = @(Read-McpStartupMilestones -EvidenceRoot $evidence)
+    $failureReceipts = @($allReceipts | Where-Object { [string]$_.status -ceq 'FAIL' })
+    $firstFailureClass = if ($failureReceipts.Count -gt 0) { [string]$failureReceipts[-1].failure_class } else { '' }
+    $sequence = Test-McpStartupReceiptSequence -Receipts $allReceipts -RequireComplete
+    $watchdogSummaryPath = Join-Path $evidence 'watchdog/watchdog-summary.json'
+    $watchdogSummary = if (Test-Path -LiteralPath $watchdogSummaryPath) { Get-Content -Raw -LiteralPath $watchdogSummaryPath | ConvertFrom-Json -Depth 50 } else { $null }
+    $rawFiles = @(Get-ChildItem -LiteralPath (Join-Path $evidence 'mcp-raw') -File -ErrorAction SilentlyContinue)
+    $phaseFiles = @(Get-ChildItem -LiteralPath (Join-Path $evidence 'phases') -File -ErrorAction SilentlyContinue)
+    $result = [pscustomobject][ordered]@{
+        schema='McpStartupStateMachineResultV1';run_id=$RunId;probe_identity=$ProbeIdentity;execution_mode=$ExecutionMode;status=if($null -eq $primaryFailure -and $sequence.complete -and ($KeepRunningAfterM11 -or $cleanStop) -and ($KeepRunningAfterM11 -or $null -ne $watchdogSummary)){'PASS'}else{'BLOCKED'};
+        product_head_sha=$ExpectedHeadSha;product_tree_sha=$ExpectedTreeSha;launch_session_id=$sessionId;launch_session_id_source='tooling_generated';stream_id=$streamId;cursor_after=$cursor;
+        milestone_count=$sequence.receipt_count;milestone_expected_count=12;startup_milestone_order_green=[bool]$sequence.green;startup_milestone_complete=[bool]$sequence.complete;startup_milestone_duplicate_count=[int]$sequence.duplicate_count;startup_milestone_gap_count=[int]$sequence.gap_count;
+        mcp_raw_evidence_count=$rawFiles.Count;phase0_evidence_count=$phaseFiles.Count;ready_witness_count=@(Get-ChildItem -LiteralPath (Join-Path $evidence 'witnesses') -Filter '*ready*' -File -ErrorAction SilentlyContinue).Count;mcp_raw_evidence_before_phase_evidence=[bool]$sequence.mcp_raw_before_phase_evidence;
+        play_main_scene_count=0;product_match_count=0;formal_authorization_consumed=$false;formal_mcp_execution_count=0;authorized_run_count_consumed=0;
+        watchdog_started_before_godot_process=if($null-ne$watchdogSummary){[bool]$watchdogSummary.started_before_godot_process}else{$false};watchdog_observation_gap_count=if($null-ne$watchdogSummary){[int]$watchdogSummary.observation_gap_count}else{-1};watchdog_open_handle_count_after=if($null-ne$watchdogSummary){[int]$watchdogSummary.open_handle_count_after}else{-1};watchdog_status=if($null-ne$watchdogSummary){[string]$watchdogSummary.status}else{if($KeepRunningAfterM11){'RUNNING'}else{'MISSING'}};
+        stops_cleanly=$cleanStop;stop_pending=[bool]$KeepRunningAfterM11;opaque_startup_wait_count=0;startup_timeout_exact_stage_reported=$true;first_failure_class=$firstFailureClass;failure_detail=if($null-ne$primaryFailure){$primaryFailure.Exception.Message}else{''};evidence_root=$evidence;canonical_payload_sha256=''
+    }
+    $result.canonical_payload_sha256 = Get-StartupCanonicalSha256 -Value $result
+    $summaryPath = Join-Path $evidence 'startup-state-machine-result.json'
+    if (-not (Test-Path -LiteralPath $summaryPath)) { Write-StartupImmutableJson -Path $summaryPath -Value $result -WriteSha256Sidecar | Out-Null }
+    return [pscustomobject]@{summary=$result;godot_pid=$godotPid;process_start_utc=$processStartUtc;launch_session_id=$sessionId;stream_id=$streamId;cursor_after=$cursor;watchdog_child=$watchdogChild;watchdog_stop_path=(Join-Path $evidence 'watchdog/stop.signal');entered_play_mode=$enteredPlayMode;clean_stop=$cleanStop;primary_failure=$primaryFailure}
+}
+
+function Stop-Pr90McpStartupWatchdog {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][object]$State,
+        [ValidateRange(1,120)][int]$TimeoutSeconds = 15
+    )
+    if ($null -eq $State.watchdog_child) { return $false }
+    try {
+        if (-not (Test-Path -LiteralPath $State.watchdog_stop_path)) {
+            Write-StateAtomicText -Path $State.watchdog_stop_path -Text 'stop' -Immutable
+        }
+        $summary = Complete-StartupChildProcess -Child $State.watchdog_child -TimeoutSeconds $TimeoutSeconds -KillOnTimeout
+        return [bool]$summary.exited
+    } catch { return $false }
+}
+
+Export-ModuleMember -Function @('Invoke-Pr90McpStartupStateMachine','Stop-Pr90McpStartupWatchdog')

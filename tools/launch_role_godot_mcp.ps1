@@ -20,10 +20,38 @@ param(
     [ValidateRange(480, 4320)]
     [int]$ResolutionHeight = 960,
 
-    [int]$StartupTimeoutSeconds = 90
+    [int]$StartupTimeoutSeconds = 90,
+
+    [switch]$StartOnly,
+
+    [string]$LaunchReceiptPath = "",
+
+    [string]$LaunchSessionId = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+function Write-AtomicUtf8Text {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Text,
+        [switch]$Immutable
+    )
+    $full = [IO.Path]::GetFullPath($Path)
+    if ($Immutable -and (Test-Path -LiteralPath $full)) { throw "Refusing overwrite: $full" }
+    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($full)) | Out-Null
+    $temporary = "$full.$([Guid]::NewGuid().ToString('N')).tmp"
+    try {
+        [IO.File]::WriteAllText($temporary, $Text, [Text.UTF8Encoding]::new($false))
+        if ($Immutable) {
+            [IO.File]::Move($temporary, $full, $false)
+        } else {
+            [IO.File]::Move($temporary, $full, $true)
+        }
+    } finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+    }
+}
 
 if ([string]::IsNullOrWhiteSpace($GodotPath)) {
     throw "GodotPath is required (or set V075_GODOT_PATH)."
@@ -40,6 +68,18 @@ if (-not (Test-Path -LiteralPath $GodotPath)) {
     throw "Godot executable is missing: $GodotPath"
 }
 $resolvedGodotPath = (Resolve-Path -LiteralPath $GodotPath).Path
+$projectText = [IO.File]::ReadAllText((Join-Path $root 'project.godot'))
+$projectNameMatch = [Regex]::Match($projectText, '(?m)^config/name="([^"]+)"\s*$')
+if (-not $projectNameMatch.Success -or [string]::IsNullOrWhiteSpace($projectNameMatch.Groups[1].Value)) {
+    throw 'project.godot must declare a non-empty config/name for isolated MCP settings.'
+}
+$projectName = $projectNameMatch.Groups[1].Value
+if ([string]::IsNullOrWhiteSpace($LaunchSessionId)) {
+    $LaunchSessionId = [Guid]::NewGuid().ToString('N')
+}
+if ($LaunchSessionId -notmatch '^[0-9a-f]{32}$') {
+    throw 'LaunchSessionId must be a 32-character lowercase hexadecimal tooling identity.'
+}
 
 $roleSlug = $Role.ToLowerInvariant()
 $localRoot = Join-Path $root ".codex-godot"
@@ -117,7 +157,7 @@ execute_code_safety_checks_enabled=true
 disabled=Array[String]([])
 "@
 
-$settingsDirectory = Join-Path $roamingRoot "Godot\app_userdata\太空辛迪加"
+$settingsDirectory = Join-Path $roamingRoot ("Godot\app_userdata\{0}" -f $projectName)
 [System.IO.Directory]::CreateDirectory($settingsDirectory) | Out-Null
 [System.IO.File]::WriteAllText(
     (Join-Path $settingsDirectory "funplay_mcp_settings.cfg"),
@@ -148,8 +188,11 @@ if ($existingListeners.Count -ne 0) {
 }
 
 $endpoint = "http://127.0.0.1:$Port/"
-[System.IO.File]::WriteAllText($endpointPath, $endpoint, [System.Text.UTF8Encoding]::new($false))
-$logPath = Join-Path $logRoot ("godot_{0}.log" -f (Get-Date -Format "yyyyMMdd_HHmmss"))
+Write-AtomicUtf8Text -Path $endpointPath -Text $endpoint
+$launchTimestamp = Get-Date -Format "yyyyMMdd_HHmmss_fff"
+$logPath = Join-Path $logRoot ("godot_{0}.log" -f $launchTimestamp)
+$stdoutPath = Join-Path $logRoot ("godot_{0}.stdout.log" -f $launchTimestamp)
+$stderrPath = Join-Path $logRoot ("godot_{0}.stderr.log" -f $launchTimestamp)
 $arguments = @(
     "--editor",
     "--path", ('"' + $root + '"'),
@@ -173,13 +216,56 @@ $startProcessParameters = @{
     ArgumentList = $argumentString
     Environment = $environment
     WindowStyle = "Hidden"
+    WorkingDirectory = $root
+    RedirectStandardOutput = $stdoutPath
+    RedirectStandardError = $stderrPath
     PassThru = $true
 }
 $process = $null
 try {
     $process = Start-Process @startProcessParameters
     $processStartTimeUtc = $process.StartTime.ToUniversalTime().ToString("o")
-    [System.IO.File]::WriteAllText($pidPath, [string]$process.Id, [System.Text.UTF8Encoding]::new($false))
+    Write-AtomicUtf8Text -Path $pidPath -Text ([string]$process.Id)
+
+    if ($StartOnly) {
+        $commandLine = [string](
+            Get-CimInstance Win32_Process -Filter "ProcessId = $($process.Id)" |
+            Select-Object -ExpandProperty CommandLine
+        )
+        $processRow = Get-CimInstance Win32_Process -Filter "ProcessId = $($process.Id)" -ErrorAction Stop
+        $startReceipt = [ordered]@{
+            schema = "McpGodotProcessStartReceiptV1"
+            status = "PASS"
+            launch_session_id = $LaunchSessionId
+            launch_session_id_source = "tooling_generated"
+            pid = $process.Id
+            parent_pid = [int]$processRow.ParentProcessId
+            process_start_time_utc = $processStartTimeUtc
+            godot_path = $resolvedGodotPath
+            worktree = $root
+            project_name = $projectName
+            working_directory = $root
+            launcher_pid = $PID
+            command_line = $commandLine
+            endpoint = $endpoint
+            port = $Port
+            token_path = $tokenPath
+            settings_path = (Join-Path $settingsDirectory 'funplay_mcp_settings.cfg')
+            endpoint_path = $endpointPath
+            pid_path = $pidPath
+            log_path = $logPath
+            stdout_path = $stdoutPath
+            stderr_path = $stderrPath
+            stdout_stderr_detached = $true
+            created_at_utc = [DateTimeOffset]::UtcNow.ToString('o')
+        }
+        if (-not [string]::IsNullOrWhiteSpace($LaunchReceiptPath)) {
+            $receiptPath = [IO.Path]::GetFullPath($LaunchReceiptPath)
+            Write-AtomicUtf8Text -Path $receiptPath -Text ($startReceipt | ConvertTo-Json -Depth 8) -Immutable
+        }
+        $startReceipt | ConvertTo-Json -Depth 8
+        return
+    }
 
     $headers = @{ "X-Funplay-MCP-Token" = $token; "MCP-Protocol-Version" = "2025-11-25" }
     $deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
@@ -249,22 +335,24 @@ try {
     port = $Port
     pid = $process.Id
     worktree = $root
+    project_name = $projectName
     godot_path = $resolvedGodotPath
     process_start_time_utc = $processStartTimeUtc
     command_line = $commandLine
     endpoint_owner_pid = $endpointOwnerPid
+    launch_session_id = $LaunchSessionId
+    launch_session_id_source = "tooling_generated"
     token_path = $tokenPath
+    settings_path = (Join-Path $settingsDirectory 'funplay_mcp_settings.cfg')
     log_path = $logPath
+    stdout_path = $stdoutPath
+    stderr_path = $stderrPath
     godot_version = [string]$projectInfo.godot_version.string
     tool_profile = [string]$projectInfo.tool_profile
     renderer = $Renderer
     resolution = ("{0}x{1}" -f $ResolutionWidth, $ResolutionHeight)
     }
-    [System.IO.File]::WriteAllText(
-        $connectionPath,
-        ($connection | ConvertTo-Json -Depth 5),
-        [System.Text.UTF8Encoding]::new($false)
-    )
+    Write-AtomicUtf8Text -Path $connectionPath -Text ($connection | ConvertTo-Json -Depth 5)
 
     $connection | ConvertTo-Json -Depth 5
 } catch {
