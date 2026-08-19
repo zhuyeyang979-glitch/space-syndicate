@@ -37,6 +37,38 @@ function ConvertFrom-NetstatListenerRecordV1 {
         -RawRecordFingerprint (Get-Pr90TextSha256 $line)
 }
 
+function ConvertFrom-NetstatTcpLexicalRecordV1 {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][AllowNull()][object]$InputObject)
+    if ($InputObject -isnot [string]) { throw 'netstat adapter requires a System.String line.' }
+    $line = [string]$InputObject
+    if ($line -notmatch '^\s*(?<protocol>TCP)\s+(?<local>\S+)\s+(?<remote>\S+)\s+(?<state>\S+)\s+(?<pid>\S+)\s*$') {
+        throw 'netstat line does not match the TCP row grammar.'
+    }
+    $protocol = [string]$Matches.protocol
+    $local = [string]$Matches.local
+    $remote = [string]$Matches.remote
+    $state = [string]$Matches.state
+    $pidText = [string]$Matches.pid
+    $endpoint = Split-NetstatLocalEndpointV1 $local
+    $portText = [string]$endpoint.port
+    if ($portText -notmatch '^[0-9]+$') { throw "Invalid netstat local port: $portText" }
+    $portValue = 0
+    if (-not [int]::TryParse($portText,[Globalization.NumberStyles]::None,[Globalization.CultureInfo]::InvariantCulture,[ref]$portValue) -or $portValue -lt 1 -or $portValue -gt 65535) {
+        throw "Invalid netstat local port: $portText"
+    }
+    return [pscustomobject][ordered]@{
+        protocol=$protocol
+        local_endpoint=$local
+        local_address=[string]$endpoint.address
+        local_port=$portValue
+        remote_endpoint=$remote
+        state=$state
+        pid=$pidText
+        raw_line=$line
+    }
+}
+
 function ConvertFrom-NetstatListenerRecordsV1 {
     [CmdletBinding()]
     param(
@@ -48,12 +80,27 @@ function ConvertFrom-NetstatListenerRecordsV1 {
     $records = [Collections.Generic.List[object]]::new()
     $failures = [Collections.Generic.List[object]]::new()
     $ignored = 0
+    $ignoredOutsideTargetPort = 0
     $index = 0
     foreach ($raw in @($InputObject)) {
         if ($raw -is [string] -and [string]$raw -notmatch '^\s*TCP\s+') { $ignored += 1; $index += 1; continue }
         try {
-            $record = ConvertFrom-NetstatListenerRecordV1 -InputObject $raw -SampleId $SampleId -ObservedUtc $ObservedUtc
-            if ($Ports.Count -eq 0 -or [int]$record.local_port -in $Ports) { $records.Add($record) }
+            $lexical = ConvertFrom-NetstatTcpLexicalRecordV1 -InputObject $raw
+            if ($Ports.Count -gt 0 -and [int]$lexical.local_port -notin $Ports) {
+                $ignoredOutsideTargetPort += 1
+                $index += 1
+                continue
+            }
+            $record = New-EndpointListenerRecordV1 `
+                -ObserverSource 'netstat-ano-p-TCP' `
+                -SampleId $SampleId `
+                -ObservedUtc $ObservedUtc `
+                -LocalAddressRaw ([string]$lexical.local_address) `
+                -LocalPort ([int]$lexical.local_port) `
+                -TcpState ([string]$lexical.state) `
+                -OwningPid ([string]$lexical.pid) `
+                -RawRecordFingerprint (Get-Pr90TextSha256 ([string]$lexical.raw_line))
+            $records.Add($record)
         } catch {
             $failures.Add([pscustomobject][ordered]@{
                 source='netstat-ano-p-TCP'; record_index=$index; failure_class='NETSTAT_RECORD_PARSE_FAILED'
@@ -71,6 +118,7 @@ function ConvertFrom-NetstatListenerRecordsV1 {
         observed_utc=$ObservedUtc.ToUniversalTime().ToString('o')
         raw_record_count=@($InputObject).Count
         ignored_non_tcp_line_count=$ignored
+        ignored_outside_target_port_count=$ignoredOutsideTargetPort
         records=@($records)
         parse_failures=@($failures)
         parse_failure_count=$failures.Count
@@ -89,6 +137,6 @@ function Invoke-NetstatTcpListenerObservationV1 {
 }
 
 Export-ModuleMember -Function @(
-    'Split-NetstatLocalEndpointV1', 'ConvertFrom-NetstatListenerRecordV1',
+    'Split-NetstatLocalEndpointV1', 'ConvertFrom-NetstatListenerRecordV1', 'ConvertFrom-NetstatTcpLexicalRecordV1',
     'ConvertFrom-NetstatListenerRecordsV1', 'Invoke-NetstatTcpListenerObservationV1'
 )

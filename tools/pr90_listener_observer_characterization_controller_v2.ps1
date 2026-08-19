@@ -23,7 +23,7 @@ Import-Module (Join-Path $PSScriptRoot 'pr90_listener_process_identity_reader_v1
 Import-Module (Join-Path $PSScriptRoot 'pr90_endpoint_listener_key_formatter_v1.psm1')
 Import-Module (Join-Path $PSScriptRoot 'pr90_listener_parity_validator_v1.psm1')
 
-$probeId='pr90-m5-endpoint-owner-characterization-v3-001'
+$probeId='pr90-m5-endpoint-owner-characterization-v4-001'
 $expectedFixtureHead='99c53e0ac2663155d24e4c645644f93b08e3fd09'
 $expectedFixtureTree='4435a8d7ed9f824180c12dbae6e489c778f2226a'
 $productHead='770d741f05964facda4afcbddcdeb3e7f40571d5'
