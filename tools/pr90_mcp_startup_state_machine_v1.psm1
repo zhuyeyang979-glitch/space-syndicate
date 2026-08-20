@@ -199,18 +199,85 @@ function Assert-StateRpcToolResponse {
     return $resultProperty.value
 }
 
-function Get-StateRpcResult {
-    param([Parameter(Mandatory = $true)][object]$Json)
-    $toolResult = Assert-StateRpcToolResponse -Json $Json -ToolName 'get_runtime_events'
+function Get-StateRpcStructuredContent {
+    param(
+        [Parameter(Mandatory = $true)][object]$Json,
+        [Parameter(Mandatory = $true)][string]$ToolName
+    )
+    $toolResult = Assert-StateRpcToolResponse -Json $Json -ToolName $ToolName
     $structuredContentProperty = Get-StatePropertyDescriptor -InputObject $toolResult -Name 'structuredContent'
     if (-not [bool]$structuredContentProperty.exists -or $null -eq $structuredContentProperty.value) {
-        throw 'MCP response omitted structuredContent.'
+        throw "MCP tool $ToolName omitted structuredContent."
     }
-    $resultProperty = Get-StatePropertyDescriptor -InputObject $structuredContentProperty.value -Name 'result'
+    return $structuredContentProperty.value
+}
+
+function Get-StateRpcResult {
+    param([Parameter(Mandatory = $true)][object]$Json)
+    $structuredContent = Get-StateRpcStructuredContent -Json $Json -ToolName 'get_runtime_events'
+    $resultProperty = Get-StatePropertyDescriptor -InputObject $structuredContent -Name 'result'
     if (-not [bool]$resultProperty.exists -or $null -eq $resultProperty.value) {
         throw 'MCP response omitted structuredContent.result.'
     }
     return $resultProperty.value
+}
+
+function Get-StateRuntimeBridgeStatusSummaryV1 {
+    param(
+        [AllowNull()][object]$Status,
+        [ValidateRange(1,60000)][int]$MaxStateAgeMs = 3000
+    )
+    $installed = $false
+    $scriptExists = $false
+    $stateExists = $false
+    $runtimeStatus = ''
+    $stateAgeMs = -1
+    $stateModifiedUnix = 0
+    if ($null -ne $Status) {
+        $installedProperty = Get-StatePropertyDescriptor -InputObject $Status -Name 'installed'
+        $scriptProperty = Get-StatePropertyDescriptor -InputObject $Status -Name 'script_exists'
+        $stateExistsProperty = Get-StatePropertyDescriptor -InputObject $Status -Name 'state_exists'
+        $stateAgeProperty = Get-StatePropertyDescriptor -InputObject $Status -Name 'state_age_msec'
+        $stateModifiedProperty = Get-StatePropertyDescriptor -InputObject $Status -Name 'state_modified_unix'
+        $stateProperty = Get-StatePropertyDescriptor -InputObject $Status -Name 'state'
+        if ([bool]$installedProperty.exists) { $installed = [bool]$installedProperty.value }
+        if ([bool]$scriptProperty.exists) { $scriptExists = [bool]$scriptProperty.value }
+        if ([bool]$stateExistsProperty.exists) { $stateExists = [bool]$stateExistsProperty.value }
+        if ([bool]$stateAgeProperty.exists -and $null -ne $stateAgeProperty.value) { $stateAgeMs = [int]$stateAgeProperty.value }
+        if ([bool]$stateModifiedProperty.exists -and $null -ne $stateModifiedProperty.value) { $stateModifiedUnix = [int64]$stateModifiedProperty.value }
+        if ([bool]$stateProperty.exists -and $null -ne $stateProperty.value) {
+            $runtimeStatusProperty = Get-StatePropertyDescriptor -InputObject $stateProperty.value -Name 'status'
+            if ([bool]$runtimeStatusProperty.exists -and $null -ne $runtimeStatusProperty.value) { $runtimeStatus = [string]$runtimeStatusProperty.value }
+        }
+    }
+    $ready = (
+        $installed -and $scriptExists -and $stateExists -and $stateModifiedUnix -gt 0 -and
+        $stateAgeMs -ge 0 -and $stateAgeMs -le $MaxStateAgeMs -and
+        $runtimeStatus -cin @('ready','running','command')
+    )
+    return [pscustomobject][ordered]@{
+        ready=$ready;installed=$installed;script_exists=$scriptExists;state_exists=$stateExists;
+        runtime_status=$runtimeStatus;state_age_msec=$stateAgeMs;state_modified_unix=$stateModifiedUnix;
+        max_state_age_msec=$MaxStateAgeMs
+    }
+}
+
+function New-StateRuntimeBridgeBootstrapBudgetV1 {
+    param(
+        [ValidateRange(1,120000)][int]$TotalStageBudgetMs,
+        [ValidateRange(100,30000)][int]$RequestedBootstrapTimeoutMs = 10000,
+        [ValidateRange(100,30000)][int]$CompletionMarginMs = 2000,
+        [ValidateRange(50,5000)][int]$StatusPollIntervalMs = 250
+    )
+    $usableBudgetMs = [Math]::Max(0, $TotalStageBudgetMs - $CompletionMarginMs)
+    $bootstrapTimeoutMs = [Math]::Min($RequestedBootstrapTimeoutMs, [Math]::Max(0, $usableBudgetMs - 1000))
+    $readyPollBudgetMs = [Math]::Max(0, $usableBudgetMs - $bootstrapTimeoutMs)
+    $sufficient = ($bootstrapTimeoutMs -ge 100 -and $readyPollBudgetMs -ge 1000)
+    return [pscustomobject][ordered]@{
+        total_stage_budget_ms=$TotalStageBudgetMs;ready_poll_budget_ms=$readyPollBudgetMs;
+        bootstrap_timeout_ms=$bootstrapTimeoutMs;completion_margin_ms=$CompletionMarginMs;
+        status_poll_interval_ms=$StatusPollIntervalMs;sufficient=$sufficient
+    }
 }
 
 function Get-StateDescendantDepthV1 {
@@ -747,14 +814,43 @@ function Invoke-Pr90McpStartupStateMachine {
         $enterPlayModeAttempted = $true
         $enter = Invoke-RecordedRpc -ToolName 'enter_play_mode' -Arguments @{mode='custom';scene_path=$ProbeScenePath} -TimeoutSeconds ([Math]::Max(1,[int]($m9Deadline - [DateTimeOffset]::UtcNow).TotalSeconds))
         $enteredPlayMode = $true
-        if ([DateTimeOffset]::UtcNow -ge $m9Deadline) { throw 'M9 timeout expired before runtime stream bootstrap request.' }
-        $bootstrap = Invoke-RecordedRpc -ToolName 'get_runtime_events' -Arguments @{max_events=100;timeout_msec=10000} -TimeoutSeconds ([Math]::Max(1,[int]($m9Deadline - [DateTimeOffset]::UtcNow).TotalSeconds))
+        $m9RemainingBudgetMs = [int][Math]::Floor(($m9Deadline - [DateTimeOffset]::UtcNow).TotalMilliseconds)
+        $m9BootstrapBudget = New-StateRuntimeBridgeBootstrapBudgetV1 -TotalStageBudgetMs ([Math]::Max(1,$m9RemainingBudgetMs))
+        if (-not [bool]$m9BootstrapBudget.sufficient) { throw 'M9 budget is insufficient for bounded heartbeat polling and runtime stream bootstrap.' }
+        $runtimeBridgeReadyDeadline = [DateTimeOffset]::UtcNow.AddMilliseconds([int]$m9BootstrapBudget.ready_poll_budget_ms)
+        $runtimeBridgeStatusCall = $null
+        $runtimeBridgeStatus = $null
+        $runtimeBridgeStatusSummary = Get-StateRuntimeBridgeStatusSummaryV1 -Status $null
+        $runtimeBridgeStatusAttemptCount = 0
+        while ([DateTimeOffset]::UtcNow -lt $runtimeBridgeReadyDeadline) {
+            $statusRpcTimeoutSeconds = [Math]::Min(5,[Math]::Max(1,[int][Math]::Ceiling(($runtimeBridgeReadyDeadline - [DateTimeOffset]::UtcNow).TotalSeconds)))
+            $runtimeBridgeStatusCall = Invoke-RecordedRpc -ToolName 'get_runtime_bridge_status' -Arguments @{} -TimeoutSeconds $statusRpcTimeoutSeconds
+            $runtimeBridgeStatus = Get-StateRpcStructuredContent -Json $runtimeBridgeStatusCall.json -ToolName 'get_runtime_bridge_status'
+            $runtimeBridgeStatusSummary = Get-StateRuntimeBridgeStatusSummaryV1 -Status $runtimeBridgeStatus
+            $runtimeBridgeStatusAttemptCount += 1
+            if ([bool]$runtimeBridgeStatusSummary.ready) { break }
+            $sleepMs = [Math]::Min([int]$m9BootstrapBudget.status_poll_interval_ms,[Math]::Max(0,[int][Math]::Floor(($runtimeBridgeReadyDeadline - [DateTimeOffset]::UtcNow).TotalMilliseconds)))
+            if ($sleepMs -gt 0) { Start-Sleep -Milliseconds $sleepMs }
+        }
+        if (-not [bool]$runtimeBridgeStatusSummary.ready) { throw 'Runtime bridge did not publish a fresh heartbeat before the bounded M9 readiness deadline.' }
+        $runtimeBridgeStatusPath = Join-Path $evidence 'witnesses/runtime-bridge-ready-status.json'
+        $runtimeBridgeStatusWitness = [ordered]@{
+            schema='McpStartupRuntimeBridgeReadyStatusWitnessV1';run_id=$RunId;attempt_count=$runtimeBridgeStatusAttemptCount;
+            ready_status=$runtimeBridgeStatusSummary;status_raw_path=$runtimeBridgeStatusCall.raw;status_raw_sha256=$runtimeBridgeStatusCall.raw_sha256;
+            budget=$m9BootstrapBudget;observed_utc=[DateTimeOffset]::UtcNow.ToString('o')
+        }
+        Write-StartupImmutableJson -Path $runtimeBridgeStatusPath -Value $runtimeBridgeStatusWitness -WriteSha256Sidecar | Out-Null
+        $bootstrapAvailableMs = [int][Math]::Floor(($m9Deadline - [DateTimeOffset]::UtcNow).TotalMilliseconds) - [int]$m9BootstrapBudget.completion_margin_ms
+        $bootstrapTimeoutMs = [Math]::Min([int]$m9BootstrapBudget.bootstrap_timeout_ms,[Math]::Max(100,$bootstrapAvailableMs))
+        if ($bootstrapAvailableMs -lt 100) { throw 'M9 timeout expired before runtime stream bootstrap request.' }
+        $bootstrapRpcTimeoutSeconds = [Math]::Max(1,[int][Math]::Ceiling(($bootstrapTimeoutMs + 1000) / 1000.0))
+        $bootstrap = Invoke-RecordedRpc -ToolName 'get_runtime_events' -Arguments @{max_events=100;timeout_msec=$bootstrapTimeoutMs} -TimeoutSeconds $bootstrapRpcTimeoutSeconds
         $bootstrapResult = Get-StateRpcResult -Json $bootstrap.json
         if ([string]::IsNullOrWhiteSpace([string]$bootstrapResult.stream_id) -or [string]$bootstrapResult.event_sequence_mode -cne 'snapshot_only') { throw 'Runtime stream bootstrap contract failed.' }
         $streamId = [string]$bootstrapResult.stream_id
         $m9RawPath = $bootstrap.raw; $m9RawSha = $bootstrap.raw_sha256
         $streamPath = Join-Path $evidence 'witnesses/runtime-stream-bootstrap.json'
-        $streamWitness = [ordered]@{schema='McpStartupRuntimeStreamWitnessV1';run_id=$RunId;stream_id=$streamId;event_sequence_mode=[string]$bootstrapResult.event_sequence_mode;bootstrap_raw_path=$bootstrap.raw;bootstrap_raw_sha256=$bootstrap.raw_sha256}
+        $streamWitness = [ordered]@{schema='McpStartupRuntimeStreamWitnessV1';run_id=$RunId;stream_id=$streamId;event_sequence_mode=[string]$bootstrapResult.event_sequence_mode;runtime_bridge_ready_status_path=$runtimeBridgeStatusPath;runtime_bridge_ready_status_sha256=(Get-StartupSha256 $runtimeBridgeStatusPath);bootstrap_raw_path=$bootstrap.raw;bootstrap_raw_sha256=$bootstrap.raw_sha256}
         Write-StartupImmutableJson -Path $streamPath -Value $streamWitness -WriteSha256Sidecar | Out-Null
         Save-Pass -MilestoneId 'M9' -Started $stageStarted -Extra @{request_id=$bootstrap.id;response_id=$bootstrap.id;stream_id=$streamId;evidence_path=$streamPath;evidence_sha256=(Get-StartupSha256 $streamPath)} | Out-Null
 

@@ -21,8 +21,8 @@ if (@(& git -C $root status --porcelain=v1 --untracked-files=all).Count -ne 0) {
 $toolingHead = (& git -C $root rev-parse HEAD).Trim()
 $toolingTree = (& git -C $root rev-parse 'HEAD^{tree}').Trim()
 if ($toolingHead -notmatch '^[0-9a-f]{40}$' -or $toolingTree -notmatch '^[0-9a-f]{40}$') { throw 'Tooling git identity is invalid.' }
-$baseToolingHead = '06cb058c7c4b5d6c2b71df09790a8874cb093364'
-$baseToolingTree = '90dde536e9805fff59ed2f3061ca5a1a402a4089'
+$baseToolingHead = 'd7386e901f2d0f4fdf994f640f6e91b49d7d5ed8'
+$baseToolingTree = '7b756bb9f3039125e63d035d49eb5776ca60178a'
 $toolingParent = (& git -C $root rev-parse 'HEAD^').Trim()
 $newToolingCommitCount = [int](& git -C $root rev-list --count "$baseToolingHead..HEAD")
 if ($toolingParent -cne $baseToolingHead -or $newToolingCommitCount -ne 1 -or (& git -C $root rev-parse "$baseToolingHead^{tree}").Trim() -cne $baseToolingTree) { throw 'Tooling is not the single authorized child of the frozen base identity.' }
@@ -74,46 +74,42 @@ $files = @(
     }
 )
 $specs = @(Get-McpStartupMilestoneSpecs)
-$newProbeEvidence = ([string]$probe.probe_id -ceq 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-003')
-$newProbeExecutionCount = if ($newProbeEvidence) { [int]$probe.post_repair_probe_execution_count } else { 0 }
-$probePass = (
-    [string]$probe.status -ceq 'PASS' -and $newProbeEvidence -and [int]$probe.post_repair_probe_execution_count -eq 1 -and
-    [int]$probe.new_probe_execution_count -eq 1 -and [int]$probe.cumulative_post_repair_probe_execution_count -eq 3 -and -not [bool]$probe.automatic_retry_allowed -and -not [bool]$probe.second_new_probe_created -and
-    [int]$probe.milestone_count -eq 12 -and [bool]$probe.startup_milestone_complete -and [bool]$probe.startup_milestone_order_green -and [bool]$probe.stops_cleanly -and
-    [bool]$probe.endpoint_ownership_contract_v2_implemented -and [int]$probe.endpoint_ownership_contract_version -eq 2 -and
-    [int]$probe.total_listener_sample_count -ge 5 -and [int]$probe.consecutive_parity_sample_count -ge 3 -and [double]$probe.endpoint_owner_stable_window_ms -ge 1000 -and
-    [int]$probe.endpoint_listener_observer_source_count -eq 2 -and [bool]$probe.endpoint_listener_observer_parity -and [int]$probe.endpoint_listener_a_only_count -eq 0 -and [int]$probe.endpoint_listener_b_only_count -eq 0 -and
-    [bool]$probe.endpoint_owner_is_gui_engine -and -not [bool]$probe.endpoint_owner_is_console_wrapper -and [bool]$probe.endpoint_owner_is_descendant_of_launcher -and
-    [bool]$probe.endpoint_owner_command_line_fixture_match -and [bool]$probe.endpoint_owner_windows_session_match -and [bool]$probe.endpoint_owner_user_sid_match -and
-    [int]$probe.endpoint_owner_pid_changed_count -eq 0 -and [int]$probe.endpoint_owner_creation_identity_changed_count -eq 0 -and [int]$probe.endpoint_owner_process_lineage_changed_count -eq 0 -and
-    [int]$probe.multiple_active_endpoint_owner_count -eq 0 -and [int]$probe.prelaunch_godot_process_count -eq 0 -and [int]$probe.prelaunch_protected_port_listener_count -eq 0 -and
-    [bool]$probe.first_jsonrpc_request_sent -and [bool]$probe.first_jsonrpc_response_received -and [int]$probe.m6_to_m11_execution_count -eq 6 -and
-    [bool]$probe.first_mcp_raw_evidence_persisted -and [bool]$probe.runtime_stream_bootstrap_received -and [bool]$probe.ready_witness_persisted -and [bool]$probe.phase0_evidence_persisted -and
-    [int]$probe.play_main_scene_count -eq 0 -and [int]$probe.product_match_count -eq 0 -and [int]$probe.formal_mcp_execution_count -eq 0 -and [int]$probe.authorized_run_count_consumed -eq 0 -and
-    -not [bool]$probe.forced_stop -and [int]$probe.godot_process_count_after -eq 0 -and [int]$probe.port_7576_count_after -eq 0 -and [int]$probe.port_7586_count_after -eq 0 -and [int]$probe.unrelated_process_termination_count -eq 0
+$frozenProbeEvidence = (
+    [string]$probe.probe_id -ceq 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-003' -and
+    [string]$probe.status -ceq 'BLOCKED' -and [string]$probe.first_failure_class -ceq 'STARTUP_M9_RUNTIME_STREAM_MISSING' -and
+    [int]$probe.post_repair_probe_execution_count -eq 1 -and [int]$probe.new_probe_execution_count -eq 1 -and
+    [int]$probe.cumulative_post_repair_probe_execution_count -eq 3 -and -not [bool]$probe.automatic_retry_allowed -and
+    -not [bool]$probe.second_new_probe_created -and [bool]$probe.stops_cleanly -and -not [bool]$probe.forced_stop -and
+    [int]$probe.godot_process_count_after -eq 0 -and [int]$probe.port_7576_count_after -eq 0 -and
+    [int]$probe.port_7586_count_after -eq 0 -and [int]$probe.unrelated_process_termination_count -eq 0
 )
+if (-not $frozenProbeEvidence) { throw 'Probe 003 is not the exact frozen M9 failure witness.' }
+$newProbeExecutionCount = 0
+$probePass = $false
 $selftestPass = (
-    [string]$selftest.status -ceq 'PASS' -and [int]$selftest.case_count -ge 75 -and [int]$selftest.pass_count -eq [int]$selftest.case_count -and
+    [string]$selftest.status -ceq 'PASS' -and [int]$selftest.case_count -ge 100 -and [int]$selftest.pass_count -eq [int]$selftest.case_count -and
     [int]$selftest.endpoint_ownership_contract_version -eq 2 -and [int]$selftest.endpoint_ownership_v2_case_count -ge 15 -and
     [int]$selftest.endpoint_ownership_v2_pass_count -eq [int]$selftest.endpoint_ownership_v2_case_count -and [int]$selftest.endpoint_ownership_v2_false_green_count -eq 0 -and
     [int]$selftest.zero_cardinality_case_count -ge 13 -and [int]$selftest.zero_cardinality_pass_count -eq [int]$selftest.zero_cardinality_case_count -and
     [int]$selftest.zero_cardinality_false_green_count -eq 0 -and
     [int]$selftest.optional_property_case_count -ge 12 -and [int]$selftest.optional_property_pass_count -eq [int]$selftest.optional_property_case_count -and [int]$selftest.optional_property_false_green_count -eq 0 -and
+    [int]$selftest.runtime_bridge_bootstrap_case_count -ge 16 -and [int]$selftest.runtime_bridge_bootstrap_pass_count -eq [int]$selftest.runtime_bridge_bootstrap_case_count -and [int]$selftest.runtime_bridge_bootstrap_false_green_count -eq 0 -and
     [int]$selftest.failure_cleanup_case_count -ge 12 -and [int]$selftest.failure_cleanup_pass_count -eq [int]$selftest.failure_cleanup_case_count -and [int]$selftest.failure_cleanup_false_green_count -eq 0 -and [int]$selftest.failure_cleanup_unrelated_termination_count -eq 0 -and
     [int]$selftest.powershell_parse_error_count -eq 0 -and
     [int]$selftest.startup_failure_stage_false_report_count -eq 0 -and [int]$selftest.startup_stall_false_green_count -eq 0
 )
-$probeBReady = ($probePass -and $selftestPass)
+if (-not $selftestPass) { throw 'M9 runtime bridge tooling self-test is not an exact PASS.' }
+$probeBReady = $false
 $manifest = [ordered]@{
     schema='SpaceSyndicatePr90McpStartupToolingManifestV2'
-    status=if($probeBReady){'READY_FOR_PR90_STARTUP_PROBE_B_AUTHORIZATION'}else{'BLOCKED_PENDING_NEW_POST_REPAIR_M0_M11_PROBE'}
+    status='BLOCKED_PENDING_NEW_POST_REPAIR_M0_M11_PROBE_AUTHORIZATION'
     authorization_eligible=$false
     startup_probe_b_authorization_eligible=$probeBReady
     ready_for_new_exact_sha_mcp_authorization=$false
-    authorization_id='PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_M9_OPTIONAL_ERROR_PROPERTY_AND_FAILURE_CLEANUP_TOOLING_REPAIR_AND_NEW_PROBE_AUTHORIZATION'
-    authorized_post_repair_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-003'
-    authorized_post_repair_probe_count=1
-    authorized_new_probe_count=1
+    authorization_id='PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_M9_RUNTIME_BRIDGE_HEARTBEAT_BOOTSTRAP_TOOLING_REPAIR_AUTHORIZATION'
+    authorized_post_repair_probe_id=''
+    authorized_post_repair_probe_count=0
+    authorized_new_probe_count=0
     new_probe_execution_count=$newProbeExecutionCount
     automatic_retry_allowed=$false
     created_at_utc=[DateTimeOffset]::UtcNow.ToString('o')
@@ -124,14 +120,29 @@ $manifest = [ordered]@{
     base_tooling_head_sha=$baseToolingHead
     base_tooling_tree_sha=$baseToolingTree
     new_tooling_commit_count=$newToolingCommitCount
-    frozen_failed_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-002'
+    frozen_failed_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-003'
     frozen_failed_probe_execution_count=1
-    frozen_failed_probe_failure_evidence_sha256='0603603b7266dd6c3eaefad2cd1b44d3433feb59d31262f540ad4b4de6159e82'
-    frozen_failed_probe_terminal_manifest_sha256='a06d126cbe8d332a504345f56da8499b61bb1a4cf20bb6593d09802b27769e07'
-    frozen_failed_probe_result_sha256='fb16f15aee696abaff486c7af1111c2220d1fa35c718cf77ea3b3d3cfc5778b2'
-    frozen_failed_probe_attestation_sha256='cffae8eafc2f2100c96e48dce6780f11a6bdca17e399ea2ad1f311d506708a96'
-    frozen_failed_probe_cleanup_sha256='54369ba69f7f551a701df5a549c45d1c5815ee0cb0f0e5ef7e1750c997da0f06'
+    frozen_failed_probe_cumulative_execution_count=3
+    frozen_failed_probe_tooling_head_sha='d7386e901f2d0f4fdf994f640f6e91b49d7d5ed8'
+    frozen_failed_probe_tooling_tree_sha='7b756bb9f3039125e63d035d49eb5776ca60178a'
+    frozen_failed_probe_failure_evidence_sha256='4a7ef49aa6ac64dd61b90ac51f32fa1938c78894b312f7b3c776c485e1a0f6f8'
+    frozen_failed_probe_terminal_manifest_sha256='39138585999d6f5e403df1a897ef0163fe48964c22ab3f1a7a81730cbac2e689'
+    frozen_failed_probe_result_sha256='2846a76ca673095b08c045875d921d0059034f78557a95fcf73ec9ad2072b5b8'
+    frozen_failed_probe_attestation_sha256='d669b5fe0791e4ee1bf1cb1475417ee2a708db53741d07158647339e22818321'
+    frozen_failed_probe_cleanup_sha256='39138585999d6f5e403df1a897ef0163fe48964c22ab3f1a7a81730cbac2e689'
     frozen_failed_probe_enter_play_mode_raw_sha256='85b67a9d08541358c69f4874835acd69a39aa974db53cb5444d6ad120a7141fd'
+    frozen_failed_probe_get_runtime_events_raw_sha256='c6e306d57ca02c9d6644c3507db7ada7f1c8e79d87bc248b17a0e8fdae1f9825'
+    frozen_failed_probe_exit_play_mode_raw_sha256='ffa160d30fa8b7c0cfb31e297c4fd08a9d8b1a345a0288641473d6b30d663eb7'
+    frozen_failed_probe_watchdog_timeline_sha256='7e24b20197727a29706d31b51dcbccbafa4ab7e47041b59e923f319ee58908e7'
+    frozen_failed_probe_watchdog_summary_sha256='f593ff7b56595fa11dd6e0034e8e54a7f57af4a5ed8608ca70e15c99eaf8eccb'
+    m9_root_cause_class='TOOLING_MAIN_THREAD_RUNTIME_BOOTSTRAP_SCHEDULING_RACE'
+    m9_root_cause_formally_attested=$true
+    m9_root_cause_detail='enter_play_mode returned before the runtime bridge published state; the immediate synchronous get_runtime_events request blocked the editor main-thread poll loop for its full timeout.'
+    runtime_bridge_ready_status_poll_before_event_bootstrap=$true
+    runtime_bridge_ready_status_max_age_ms=3000
+    runtime_bridge_status_poll_interval_ms=250
+    runtime_bridge_bootstrap_requested_timeout_ms=10000
+    runtime_bridge_m9_completion_margin_ms=2000
     frozen_attempt_id='PR90_ATTEMPT20_EXACT_SHA_MCP'
     frozen_tooling_head_sha='657febd3a044b9040f629a98a1b9069d05a35d6a'
     frozen_tooling_tree_sha='da1fd8dfc750b5915ce67e3c7342ff2f014cb08b'
@@ -166,6 +177,9 @@ $manifest = [ordered]@{
     optional_property_selftest_case_count=[int]$selftest.optional_property_case_count
     optional_property_selftest_pass_count=[int]$selftest.optional_property_pass_count
     optional_property_false_green_count=[int]$selftest.optional_property_false_green_count
+    runtime_bridge_bootstrap_selftest_case_count=[int]$selftest.runtime_bridge_bootstrap_case_count
+    runtime_bridge_bootstrap_selftest_pass_count=[int]$selftest.runtime_bridge_bootstrap_pass_count
+    runtime_bridge_bootstrap_false_green_count=[int]$selftest.runtime_bridge_bootstrap_false_green_count
     failure_cleanup_selftest_case_count=[int]$selftest.failure_cleanup_case_count
     failure_cleanup_selftest_pass_count=[int]$selftest.failure_cleanup_pass_count
     failure_cleanup_false_green_count=[int]$selftest.failure_cleanup_false_green_count

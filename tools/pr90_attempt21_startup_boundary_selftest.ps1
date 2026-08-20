@@ -244,7 +244,7 @@ $controllerIdentityGreen = (
     $controllerText.Contains("`$authorizedProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-003'") -and
     $controllerText.Contains("`$authorizationId = 'PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_M9_OPTIONAL_ERROR_PROPERTY_AND_FAILURE_CLEANUP_TOOLING_REPAIR_AND_NEW_PROBE_AUTHORIZATION'")
 )
-Add-ZeroCardinalityBooleanCase 'controller_uses_new_authorization_and_probe_identity' $true $controllerIdentityGreen
+Add-ZeroCardinalityBooleanCase 'controller_remains_frozen_to_consumed_probe_003_identity' $true $controllerIdentityGreen
 $controllerTokens = $null
 $controllerParseErrors = $null
 $null = [Management.Automation.Language.Parser]::ParseFile($controllerPath,[ref]$controllerTokens,[ref]$controllerParseErrors)
@@ -279,6 +279,49 @@ $cases.Add([pscustomobject]@{name='rpc_missing_structured_content_rejected';fami
 $missingNestedResultRejected = $false
 try { & $stateModule { param($value) Get-StateRpcResult -Json $value | Out-Null } ([pscustomobject]@{result=[pscustomobject]@{isError=$false;structuredContent=[pscustomobject]@{}}}) } catch { $missingNestedResultRejected=$true }
 $cases.Add([pscustomobject]@{name='rpc_missing_structured_result_rejected';family='optional_property';expected_green=$false;actual_green=(-not$missingNestedResultRejected);pass=$missingNestedResultRejected})
+
+function New-RuntimeBridgeStatusFixture {
+    param(
+        [bool]$Installed=$true,[bool]$ScriptExists=$true,[bool]$StateExists=$true,
+        [string]$RuntimeStatus='ready',[int]$StateAgeMs=100,[int64]$StateModifiedUnix=1770000000
+    )
+    return [pscustomobject]@{
+        installed=$Installed;script_exists=$ScriptExists;state_exists=$StateExists;
+        state_age_msec=$StateAgeMs;state_modified_unix=$StateModifiedUnix;
+        state=[pscustomobject]@{status=$RuntimeStatus}
+    }
+}
+function Add-RuntimeBridgeStatusCase {
+    param([string]$Name,[AllowNull()][object]$Status,[bool]$ExpectedReady)
+    $summary=& $stateModule { param($value) Get-StateRuntimeBridgeStatusSummaryV1 -Status $value -MaxStateAgeMs 3000 } $Status
+    $actualReady=[bool]$summary.ready
+    $cases.Add([pscustomobject]@{name=$Name;family='runtime_bridge_bootstrap';expected_green=$ExpectedReady;actual_green=$actualReady;pass=($actualReady-eq$ExpectedReady)})
+}
+
+Add-RuntimeBridgeStatusCase 'runtime_bridge_ready_status_qualifies' (New-RuntimeBridgeStatusFixture -RuntimeStatus 'ready') $true
+Add-RuntimeBridgeStatusCase 'runtime_bridge_running_status_qualifies' (New-RuntimeBridgeStatusFixture -RuntimeStatus 'running') $true
+Add-RuntimeBridgeStatusCase 'runtime_bridge_command_status_qualifies' (New-RuntimeBridgeStatusFixture -RuntimeStatus 'command') $true
+Add-RuntimeBridgeStatusCase 'runtime_bridge_null_status_fails_closed' $null $false
+Add-RuntimeBridgeStatusCase 'runtime_bridge_not_installed_fails_closed' (New-RuntimeBridgeStatusFixture -Installed $false) $false
+Add-RuntimeBridgeStatusCase 'runtime_bridge_script_missing_fails_closed' (New-RuntimeBridgeStatusFixture -ScriptExists $false) $false
+Add-RuntimeBridgeStatusCase 'runtime_bridge_state_missing_fails_closed' (New-RuntimeBridgeStatusFixture -StateExists $false) $false
+Add-RuntimeBridgeStatusCase 'runtime_bridge_wrong_status_fails_closed' (New-RuntimeBridgeStatusFixture -RuntimeStatus 'exit') $false
+Add-RuntimeBridgeStatusCase 'runtime_bridge_stale_heartbeat_fails_closed' (New-RuntimeBridgeStatusFixture -StateAgeMs 3001) $false
+Add-RuntimeBridgeStatusCase 'runtime_bridge_negative_age_fails_closed' (New-RuntimeBridgeStatusFixture -StateAgeMs -1) $false
+Add-RuntimeBridgeStatusCase 'runtime_bridge_missing_modified_time_fails_closed' (New-RuntimeBridgeStatusFixture -StateModifiedUnix 0) $false
+Add-RuntimeBridgeStatusCase 'runtime_bridge_freshness_boundary_qualifies' (New-RuntimeBridgeStatusFixture -StateAgeMs 3000) $true
+
+$fullM9Budget=& $stateModule { New-StateRuntimeBridgeBootstrapBudgetV1 -TotalStageBudgetMs 30000 }
+$fullM9BudgetGreen=([bool]$fullM9Budget.sufficient-and[int]$fullM9Budget.ready_poll_budget_ms-eq18000-and[int]$fullM9Budget.bootstrap_timeout_ms-eq10000-and[int]$fullM9Budget.completion_margin_ms-eq2000)
+$cases.Add([pscustomobject]@{name='runtime_bridge_full_m9_budget_is_bounded_and_sufficient';family='runtime_bridge_bootstrap';expected_green=$true;actual_green=$fullM9BudgetGreen;pass=$fullM9BudgetGreen})
+$shortM9Budget=& $stateModule { New-StateRuntimeBridgeBootstrapBudgetV1 -TotalStageBudgetMs 2000 }
+$shortM9BudgetGreen=(-not[bool]$shortM9Budget.sufficient-and[int]$shortM9Budget.ready_poll_budget_ms-lt1000)
+$cases.Add([pscustomobject]@{name='runtime_bridge_short_m9_budget_fails_closed';family='runtime_bridge_bootstrap';expected_green=$true;actual_green=$shortM9BudgetGreen;pass=$shortM9BudgetGreen})
+$statusStructured=[pscustomobject]@{installed=$true;script_exists=$true;state_exists=$true;state_age_msec=0;state_modified_unix=1770000000;state=[pscustomobject]@{status='ready'}}
+$statusEnvelope=[pscustomobject]@{result=[pscustomobject]@{isError=$false;structuredContent=$statusStructured}}
+$parsedStatus=& $stateModule { param($value) Get-StateRpcStructuredContent -Json $value -ToolName 'get_runtime_bridge_status' } $statusEnvelope
+$statusStructuredGreen=([bool]$parsedStatus.installed-and[bool]$parsedStatus.state_exists)
+$cases.Add([pscustomobject]@{name='runtime_bridge_status_structured_content_parses_without_nested_result';family='runtime_bridge_bootstrap';expected_green=$true;actual_green=$statusStructuredGreen;pass=$statusStructuredGreen})
 
 function New-CleanupIdentity {
     param([int]$PidValue,[int]$ParentPid,[string]$Path,[string]$Root,[string]$CreationFiletime,[int]$SessionId=1,[string]$Sid='S-1-5-21-selftest')
@@ -336,6 +379,14 @@ $stateMachineText=Get-Content -Raw -LiteralPath $stateMachinePath
 $directOptionalPropertyAccessCount=@([regex]::Matches($stateMachineText,'\$[A-Za-z][A-Za-z0-9]*\.(?:error|result)(?:\.|\b)|\.isError\b')).Count
 $optionalStaticGreen=($directOptionalPropertyAccessCount-eq0-and$stateMachineText.Contains('Get-StatePropertyDescriptor'))
 $cases.Add([pscustomobject]@{name='rpc_optional_properties_have_no_direct_strictmode_access';family='optional_property';expected_green=$true;actual_green=$optionalStaticGreen;direct_access_count=$directOptionalPropertyAccessCount;pass=$optionalStaticGreen})
+$m9StartIndex=$stateMachineText.IndexOf("Set-Stage 'M9'",[StringComparison]::Ordinal)
+$m10StartIndex=$stateMachineText.IndexOf("Set-Stage 'M10'",[StringComparison]::Ordinal)
+$m9Text=if($m9StartIndex-ge0-and$m10StartIndex-gt$m9StartIndex){$stateMachineText.Substring($m9StartIndex,$m10StartIndex-$m9StartIndex)}else{''}
+$m9EnterIndex=$m9Text.IndexOf("-ToolName 'enter_play_mode'",[StringComparison]::Ordinal)
+$m9StatusIndex=$m9Text.IndexOf("-ToolName 'get_runtime_bridge_status'",[StringComparison]::Ordinal)
+$m9BootstrapIndex=$m9Text.IndexOf("-ToolName 'get_runtime_events'",[StringComparison]::Ordinal)
+$heartbeatSchedulingStaticGreen=($m9EnterIndex-ge0-and$m9StatusIndex-gt$m9EnterIndex-and$m9BootstrapIndex-gt$m9StatusIndex-and$m9Text.Contains('Start-Sleep -Milliseconds')-and$m9Text.Contains('New-StateRuntimeBridgeBootstrapBudgetV1'))
+$cases.Add([pscustomobject]@{name='runtime_bridge_status_poll_precedes_blocking_event_bootstrap';family='runtime_bridge_bootstrap';expected_green=$true;actual_green=$heartbeatSchedulingStaticGreen;pass=$heartbeatSchedulingStaticGreen})
 $stateTokens=$null
 $stateParseErrors=$null
 $null=[Management.Automation.Language.Parser]::ParseFile($stateMachinePath,[ref]$stateTokens,[ref]$stateParseErrors)
@@ -347,11 +398,13 @@ $zeroCardinalityCases=@($cases|Where-Object{[string]$_.family-ceq'zero_cardinali
 $zeroCardinalityPassCount=@($zeroCardinalityCases|Where-Object{[bool]$_.pass}).Count
 $optionalPropertyCases=@($cases|Where-Object{[string]$_.family-ceq'optional_property'})
 $optionalPropertyPassCount=@($optionalPropertyCases|Where-Object{[bool]$_.pass}).Count
+$runtimeBridgeBootstrapCases=@($cases|Where-Object{[string]$_.family-ceq'runtime_bridge_bootstrap'})
+$runtimeBridgeBootstrapPassCount=@($runtimeBridgeBootstrapCases|Where-Object{[bool]$_.pass}).Count
 $failureCleanupCases=@($cases|Where-Object{[string]$_.family-ceq'failure_cleanup'})
 $failureCleanupPassCount=@($failureCleanupCases|Where-Object{[bool]$_.pass}).Count
 $result = [ordered]@{
     schema='SpaceSyndicateStartupBoundarySelfTestV2'
-    status=if($passCount -eq $cases.Count -and $cases.Count -ge 75 -and $v2PassCount -eq $v2Cases.Count -and $zeroCardinalityPassCount -eq $zeroCardinalityCases.Count -and $optionalPropertyPassCount -eq $optionalPropertyCases.Count -and $failureCleanupPassCount -eq $failureCleanupCases.Count){'PASS'}else{'FAIL'}
+    status=if($passCount -eq $cases.Count -and $cases.Count -ge 90 -and $v2PassCount -eq $v2Cases.Count -and $zeroCardinalityPassCount -eq $zeroCardinalityCases.Count -and $optionalPropertyPassCount -eq $optionalPropertyCases.Count -and $runtimeBridgeBootstrapPassCount -eq $runtimeBridgeBootstrapCases.Count -and $failureCleanupPassCount -eq $failureCleanupCases.Count){'PASS'}else{'FAIL'}
     case_count=$cases.Count
     pass_count=$passCount
     endpoint_ownership_contract_version=2
@@ -364,6 +417,9 @@ $result = [ordered]@{
     optional_property_case_count=$optionalPropertyCases.Count
     optional_property_pass_count=$optionalPropertyPassCount
     optional_property_false_green_count=@($optionalPropertyCases|Where-Object{-not[bool]$_.expected_green-and[bool]$_.actual_green}).Count
+    runtime_bridge_bootstrap_case_count=$runtimeBridgeBootstrapCases.Count
+    runtime_bridge_bootstrap_pass_count=$runtimeBridgeBootstrapPassCount
+    runtime_bridge_bootstrap_false_green_count=@($runtimeBridgeBootstrapCases|Where-Object{-not[bool]$_.expected_green-and[bool]$_.actual_green}).Count
     failure_cleanup_case_count=$failureCleanupCases.Count
     failure_cleanup_pass_count=$failureCleanupPassCount
     failure_cleanup_false_green_count=@($failureCleanupCases|Where-Object{-not[bool]$_.expected_green-and[bool]$_.actual_green}).Count
