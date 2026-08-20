@@ -1,0 +1,148 @@
+{
+  "schema_version": "space_syndicate.v076.inherited_green_ledger.v1",
+  "ledger_id": "v076-inherited-green-ledger-20260821",
+  "recorded_on": "2026-08-21",
+  "candidate": {
+    "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+    "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+    "tree_sha": "0a7c885023b75bb3f67d892b79fb8914ef87da6c",
+    "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
+    "pull_request_state": "OPEN_DRAFT"
+  },
+  "discipline": {
+    "point_inertia": "ACTIVE",
+    "historical_reuse": "ACTIVE",
+    "change_class": "DOCS_ONLY",
+    "full_reproof_performed": false,
+    "godot_execution_count": 0,
+    "production_composition_changed": false
+  },
+  "status_vocabulary": [
+    "INHERITED_GREEN",
+    "CURRENT_DELTA_GREEN",
+    "ISOLATED_GREEN",
+    "PENDING",
+    "UNVERIFIED"
+  ],
+  "stages": [
+    {
+      "stage_id": "V076_STAGE_1_DETERMINISTIC_KERNEL",
+      "ledger_status": "INHERITED_GREEN",
+      "origin_head_sha": "553a89a1fd37170eecee50dbb373e0978604ef9f",
+      "origin_tree_sha": "80e526a36020a057c6679d625d0cddd8990b47d7",
+      "current_direct_owner_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+      "current_owner": "V076DeterministicKernel",
+      "current_owner_path": "scripts/v076/simulation/v076_deterministic_kernel.gd",
+      "change_note": "Stage 3 directly upgraded Kernel V2 root/derived/outbox/fizzle and replay ownership; this is not an unchanged-byte inheritance claim.",
+      "evidence": [
+        {
+          "evidence_id": "stage1-origin-focused",
+          "result": "PASS",
+          "checks": "57/57",
+          "replay_count": 2000,
+          "state_hash_mismatch_count": 0,
+          "evidence_scope": "origin_stage"
+        },
+        {
+          "evidence_id": "stage3-kernel-v2-direct-owner-regression",
+          "result": "PASS",
+          "checks": "74/74",
+          "replay_count": 2000,
+          "state_hash_mismatch_count": 0,
+          "evidence_scope": "current_direct_owner_delta"
+        }
+      ],
+      "not_claimed": [
+        "production_composition_cutover",
+        "human_playtest_pass",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_STAGE_2_SHARED_HALF_EDGE_SPHERICAL_PARTITION",
+      "ledger_status": "INHERITED_GREEN",
+      "origin_head_sha": "98165f09228b3ddb0cd4c09d86e52ec1a1fe5ca7",
+      "origin_tree_sha": "8516523f086c7c56ce8c2e7476c50826d1106783",
+      "current_owner": "V076SharedHalfEdgePartitionV1",
+      "current_owner_path": "scripts/v076/map/v076_shared_half_edge_partition_v1.gd",
+      "topology_sha256": "5cbd98e4027bc2cfd058c857e1a24a5f7c8c61291f1cb7ae7336bcf6851f6452",
+      "change_note": "Stage 3 did not change the Stage 2 generator, topology, validator, or codec; it changed only the map reducer for the Kernel V2 reducer ABI.",
+      "evidence": [
+        {
+          "evidence_id": "stage2-focused",
+          "result": "PASS",
+          "checks": "90/90",
+          "evidence_scope": "origin_and_current_sentinel"
+        },
+        {
+          "evidence_id": "stage2-distinct-seed-audit",
+          "result": "PASS",
+          "distinct_seed_count": 2000,
+          "fresh_same_seed_regeneration_count": 2000,
+          "generation_failure_count": 0,
+          "validation_failure_count": 0,
+          "partition_replay_mismatch_count": 0,
+          "terrain_replay_mismatch_count": 0,
+          "float_authority_field_count": 0,
+          "evidence_scope": "inherited_origin_evidence"
+        }
+      ],
+      "not_claimed": [
+        "production_map_cutover",
+        "production_presentation_cutover",
+        "human_playtest_pass",
+        "docs_only_full_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_STAGE_3_DETERMINISTIC_MONSTER_L1_DIRECTIONAL_GEODESIC_MOVE",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+      "tree_sha": "0a7c885023b75bb3f67d892b79fb8914ef87da6c",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "current_owner": "V076MonsterL1ReducerV1",
+      "current_owner_path": "scripts/v076/monster/v076_monster_l1_reducer_v1.gd",
+      "evidence": [
+        {
+          "evidence_id": "stage3-focused",
+          "result": "PASS",
+          "checks": "47/47"
+        },
+        {
+          "evidence_id": "stage3-distinct-seed-replay",
+          "result": "PASS",
+          "distinct_seed_count": 1000,
+          "replay_count_per_seed": 2,
+          "total_replay_count": 2000,
+          "replay_state_hash_mismatch_count": 0,
+          "aggregate_receipt_sha256": "bc3ebb6c182e5ee49a8aa7437562482447bfd232d9f46fd2fc765f0a4fcabca8",
+          "arc_class_table_sha256": "33ec702946b6d4bb5c417e4203b85ccb4d787547cb543c1f133f9c23ff1d07d5"
+        },
+        {
+          "evidence_id": "stage3-isolated-warning-clean-bench",
+          "result": "PASS",
+          "evidence_scope": "isolated_diagnostic_only",
+          "errors": [],
+          "human_golden_step_06_09": false,
+          "production_composition_cutover": false,
+          "manifest_sha256": "75fd0debfbb400debb3a4b0e1dffabd1cf465526a1402146be4d29dd5a87f912",
+          "runtime_log_sha256": "3244c2446a1d5b176acc59c3646af75d7134a1f4e417cc8b68e2e59a870d876d",
+          "screenshot_sha256": "262690ef1c2424b6219548a885d816170a1f0b511b5781e848fad41edd2f823c"
+        }
+      ],
+      "not_claimed": [
+        "human_golden_step_06_09",
+        "human_playtest_pass",
+        "production_composition_cutover",
+        "full_repository_reproof"
+      ]
+    }
+  ],
+  "docs_only_inheritance": {
+    "source_bytes_changed_after_stage3": false,
+    "test_bytes_changed_after_stage3": false,
+    "evidence_reexecuted": false,
+    "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
+    "current_claim": "No full reproof was run or implied for this DOCS_ONLY candidate."
+  }
+}

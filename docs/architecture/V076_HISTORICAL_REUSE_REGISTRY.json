@@ -1,0 +1,405 @@
+{
+  "schema_version": "space_syndicate.v076.historical_reuse_registry.v1",
+  "registry_id": "v076-historical-reuse-registry-20260821",
+  "recorded_on": "2026-08-21",
+  "candidate_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+  "change_class": "DOCS_ONLY",
+  "historical_reuse": "ACTIVE",
+  "point_inertia": "ACTIVE",
+  "whole_branch_merge_allowed": false,
+  "full_reproof_performed": false,
+  "owner_cardinality_rule": "Every active current domain has exactly one Owner. Future, retired, and reference-only domains are explicitly unassigned or externally owned and may not gain an implicit product Owner.",
+  "allowed_dispositions": [
+    "ADOPT_AS_OWNER",
+    "ADAPT_AS_CONSUMER",
+    "REUSE_AS_TEST",
+    "REFERENCE_ONLY",
+    "RETIRED"
+  ],
+  "unique_owner_domains": [
+    {
+      "domain_id": "v076.execution_order_tick_rng_snapshot_replay",
+      "unique_owner": "V076DeterministicKernel",
+      "owner_path": "scripts/v076/simulation/v076_deterministic_kernel.gd"
+    },
+    {
+      "domain_id": "v076.spherical_partition_authority",
+      "unique_owner": "V076SharedHalfEdgePartitionV1",
+      "owner_path": "scripts/v076/map/v076_shared_half_edge_partition_v1.gd"
+    },
+    {
+      "domain_id": "v076.monster_l1_directional_geodesic_move",
+      "unique_owner": "V076MonsterL1ReducerV1",
+      "owner_path": "scripts/v076/monster/v076_monster_l1_reducer_v1.gd"
+    },
+    {
+      "domain_id": "current.gameplay_card_definitions",
+      "unique_owner": "CardRuntimeCatalogService",
+      "owner_path": "scripts/runtime/card_runtime_catalog_service.gd",
+      "root_resource": "resources/cards/runtime/card_runtime_catalog_v04.tres"
+    },
+    {
+      "domain_id": "current.v06_semantic_card_source",
+      "unique_owner": "CardRuntimeCatalogV06Resource",
+      "owner_path": "scripts/cards/card_runtime_catalog_v06_resource.gd",
+      "root_resource": "resources/cards/runtime/card_runtime_catalog_v06.tres",
+      "source_json": "data/cards/card_runtime_catalog_v06.json"
+    },
+    {
+      "domain_id": "current.card_semantic_transform_cache",
+      "unique_owner": "CardSemanticCatalogService",
+      "owner_path": "scripts/runtime/card_semantic_catalog_service.gd"
+    },
+    {
+      "domain_id": "current.card_codex_playerface_presentation",
+      "unique_owner": "CardCodexPublicSourceService",
+      "owner_path": "scripts/runtime/card_codex_public_source_service.gd"
+    },
+    {
+      "domain_id": "v076.stage2_debug_presentation",
+      "unique_owner": "V076SharedHalfEdgePartitionBench",
+      "owner_path": "scripts/tools/v076/v076_shared_half_edge_partition_bench.gd"
+    },
+    {
+      "domain_id": "v076.stage3_diagnostic_presentation",
+      "unique_owner": "V076MonsterL1DirectionalGeodesicMoveBench",
+      "owner_path": "scripts/tools/v076/v076_monster_l1_directional_geodesic_move_bench.gd"
+    },
+    {
+      "domain_id": "current.v075_production_combat_candidate",
+      "unique_owner": "V075RuntimeOwner",
+      "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "owner_count": 1,
+      "binding_status": "REFERENCE_BASE_OWNER"
+    },
+    {
+      "domain_id": "external.release_probe_tooling",
+      "unique_owner": "EXTERNAL_SEALED_SOURCE_70CCB5C0",
+      "owner_count": 1,
+      "binding_status": "EXTERNAL_REFERENCE_ONLY"
+    },
+    {
+      "domain_id": "future.private_direct_action_input",
+      "unique_owner": "UNASSIGNED_PENDING_ATOMIC_CUTOVER",
+      "owner_count": 0,
+      "binding_status": "PENDING"
+    },
+    {
+      "domain_id": "future.v076_adapter_acceptance",
+      "unique_owner": "UNASSIGNED_TEST_OWNER",
+      "owner_count": 0,
+      "binding_status": "PENDING"
+    },
+    {
+      "domain_id": "future.v076_domain_reducers_and_ports",
+      "unique_owner": "UNASSIGNED_PER_DOMAIN",
+      "owner_count": 0,
+      "binding_status": "PENDING"
+    },
+    {
+      "domain_id": "future.v076_end_to_end_acceptance",
+      "unique_owner": "UNASSIGNED_TEST_OWNER",
+      "owner_count": 0,
+      "binding_status": "PENDING"
+    },
+    {
+      "domain_id": "future.v076_human_playtest_evidence",
+      "unique_owner": "UNASSIGNED_OBSERVATION_ONLY_OWNER",
+      "owner_count": 0,
+      "binding_status": "PENDING"
+    },
+    {
+      "domain_id": "future.v077_save_resume_recovery",
+      "unique_owner": "UNASSIGNED_PENDING_NEW_AUTHORIZED_IMPLEMENTATION",
+      "owner_count": 0,
+      "binding_status": "OWNERSHIP_FROZEN_IMPLEMENTATION_PENDING"
+    },
+    {
+      "domain_id": "retired.card_batch_reference",
+      "unique_owner": "NONE_RETIRED",
+      "owner_count": 0,
+      "binding_status": "RETIRED"
+    }
+  ],
+  "reuse_entries": [
+    {
+      "reuse_id": "reuse.v076.kernel.current",
+      "domain_id": "v076.execution_order_tick_rng_snapshot_replay",
+      "disposition": "ADOPT_AS_OWNER",
+      "source": {
+        "stage1_head_sha": "553a89a1fd37170eecee50dbb373e0978604ef9f",
+        "current_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "pull_request": 93
+      },
+      "adopted_scope": "The current V076 Kernel V2 is the only V076 tick, Authority Sequence, Domain RNG, snapshot, outbox, and replay owner.",
+      "forbidden_scope": "No historical semantic kernel, track core, or adapter may create a second tick loop, RNG owner, dispatch owner, or replay source."
+    },
+    {
+      "reuse_id": "reuse.v076.map.current",
+      "domain_id": "v076.spherical_partition_authority",
+      "disposition": "ADOPT_AS_OWNER",
+      "source": {
+        "head_sha": "98165f09228b3ddb0cd4c09d86e52ec1a1fe5ca7",
+        "pull_request": 93
+      },
+      "adopted_scope": "Pure-integer half-edge topology, partition, terrain, validation, and canonical audit.",
+      "forbidden_scope": "No V074 float or Vector value enters gameplay authority."
+    },
+    {
+      "reuse_id": "reuse.v076.monster_l1.current",
+      "domain_id": "v076.monster_l1_directional_geodesic_move",
+      "disposition": "ADOPT_AS_OWNER",
+      "source": {
+        "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "pull_request": 93
+      },
+      "adopted_scope": "Isolated integer directional geodesic movement, preferred-color asset activation, cooldown, and physical trample ledger.",
+      "forbidden_scope": "No production V075/V074 composition cutover and no dual write with the current production asset ledger."
+    },
+    {
+      "reuse_id": "reuse.pr62.semantic_compiler",
+      "domain_id": "current.card_semantic_transform_cache",
+      "disposition": "ADOPT_AS_OWNER",
+      "source": {
+        "pull_request": 62,
+        "head_sha": "5a4fadb5e76ee6c1e5be50a2529ea64dfea63537",
+        "merge_sha": "b53223ea722bb21556f38b73614d665cc33e957d"
+      },
+      "paths": [
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd",
+        "scripts/cards/semantic/card_semantic_schema_v1.gd",
+        "scripts/runtime/card_semantic_catalog_service.gd"
+      ],
+      "adopted_scope": "Deterministic projection compiler and cache only; historical readiness was 256 active and 92 projection-only.",
+      "forbidden_scope": "It is not a gameplay executor, rule owner, or V076 command handler."
+    },
+    {
+      "reuse_id": "reuse.pr63.passive_projections",
+      "domain_id": "current.card_codex_playerface_presentation",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "pull_request": 63,
+        "head_sha": "94c9aefbdab11abb33df9b3528aefe0e4b3c8f5c",
+        "merge_sha": "a8208af68d82471825dc535f4ec3f43df2bad637"
+      },
+      "adapted_scope": "Viewer-scoped AI and PlayerFace projection, privacy, authorization, and fail-closed patterns.",
+      "forbidden_scope": "PASSIVE_PROJECTIONS_ONLY; no production AI, gameplay execution, rules, Save, or RNG ownership."
+    },
+    {
+      "reuse_id": "reuse.pr65.authorized_semantic_envelope",
+      "domain_id": "future.private_direct_action_input",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "pull_request": 65,
+        "head_sha": "186c675ccef9de96f5236f1c0d9faf633b96af28",
+        "merge_sha": "46b356f99da5b536f877d96a946ceddd1720fef4"
+      },
+      "adapted_scope": "Capability-bound own-hand membership, exact source revalidation, replay/collision rejection, and private authorization patterns.",
+      "forbidden_scope": "The legacy v06 source port may not become an execution owner."
+    },
+    {
+      "reuse_id": "reuse.pr66.codex_playerface",
+      "domain_id": "current.card_codex_playerface_presentation",
+      "disposition": "ADOPT_AS_OWNER",
+      "source": {
+        "pull_request": 66,
+        "head_sha": "74ea78f11f994f2c040c1125fc8669e2dc9d79ad",
+        "merge_sha": "56b572ac8b1d52ae71a43c53dfc7a4d875d7282b"
+      },
+      "adopted_scope": "Current descendant for Codex and PlayerFace presentation only.",
+      "forbidden_scope": "Presentation aliases and DTOs cannot become gameplay rule authority."
+    },
+    {
+      "reuse_id": "reuse.pr79.v07_domain_cores",
+      "domain_id": "future.v076_domain_reducers_and_ports",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "pull_request": 79,
+        "head_sha": "be7c4c5b8ee3e0556a01115fe6d93616a7928103",
+        "merge_sha": "2e38764791cb37cdc45b2eb0836957f550822dd5"
+      },
+      "adapted_scope": "Current-descendant domain reducer and port concepts from the unified track, DBG deck, asset batch, solar, and track acquisition cores.",
+      "forbidden_scope": "Requires V076 ABI, replay, and RNG tests before use; cannot create a parallel Kernel, tick loop, Domain RNG, or public/private action path."
+    },
+    {
+      "reuse_id": "reuse.pr64.semantic_kernel_tests",
+      "domain_id": "v076.execution_order_tick_rng_snapshot_replay",
+      "disposition": "REUSE_AS_TEST",
+      "source": {
+        "pull_request": 64,
+        "head_sha": "0aaa9540b980bf7887dacadd3f62361f29a0f91b",
+        "merge_sha": "6bb2842791bdd1592f17c308111caffab93c087b"
+      },
+      "reused_scope": "Closed pure-data and fail-closed adversarial test patterns.",
+      "forbidden_scope": "OperationHandlerRegistry is metadata-only and register_handler remains rejecting; it must not become a second V076 Kernel or dispatcher."
+    },
+    {
+      "reuse_id": "reuse.pr80.canonical_adapter_tests",
+      "domain_id": "future.v076_adapter_acceptance",
+      "disposition": "REUSE_AS_TEST",
+      "source": {
+        "pull_request": 80,
+        "head_sha": "74bfcaf3331849ce94ac00ab704ad4ea3b6bf7d6",
+        "merge_sha": "dcedaae97e3faad7114aaa174c941f6b878f02bb"
+      },
+      "reused_scope": "Canonical adapter data, RNG, Save, AI, and player acceptance patterns only.",
+      "forbidden_scope": "The historical manifest has drifted; V076 remains NEW_GAME_ONLY and does not connect PR80 Save or RNG adapters."
+    },
+    {
+      "reuse_id": "reuse.pr70.card_batch_reference",
+      "domain_id": "retired.card_batch_reference",
+      "disposition": "RETIRED",
+      "source": {
+        "pull_request": 70,
+        "head_sha": "e19eb4af8b1bbc4375e71a8e6ce2b3d254f0b43a",
+        "state": "CLOSED_UNMERGED"
+      },
+      "retirement_scope": "The final PR70 implementation is not a current ancestor and its runtime/state/contextual-table files are absent.",
+      "forbidden_scope": "Do not revive it, merge its branch, or rebuild a parallel card batch. Only already-ancestral current descendants may be evaluated in their present form."
+    },
+    {
+      "reuse_id": "reuse.v074.geodesic_presentation",
+      "domain_id": "v076.stage2_debug_presentation",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "source_commit_sha": "7cf2faadb5484e6374a472ce340c149e349c70cb",
+        "merged_pull_request": 89,
+        "merge_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
+        "source_path": "scripts/v074/map/v074_geodesic_microgrid.gd",
+        "source_sha256": "8b01795036a94320ca9d485e8f42b11994befa3b10a7edcec49179748959c7c4"
+      },
+      "adapted_scope": "Float geometry is consumed only by isolated debug presentation after exact vertex/face mapping parity.",
+      "forbidden_scope": "It is not V076 authority and cannot be indexed without the mapping fingerprint gate."
+    },
+    {
+      "reuse_id": "reuse.v075.combat_candidate",
+      "domain_id": "current.v075_production_combat_candidate",
+      "disposition": "REFERENCE_ONLY",
+      "source": {
+        "pull_request": 90,
+        "product_head_sha": "770d741f05964facda4afcbddcdeb3e7f40571d5",
+        "state": "OPEN_DRAFT"
+      },
+      "reference_scope": "Exact base product lineage and V075 production combat/card capability history.",
+      "forbidden_scope": "V076 isolated owners do not cut over, dual-write, or imply PR90 merge readiness."
+    },
+    {
+      "reuse_id": "reuse.v073.human_playtest_instrumentation",
+      "domain_id": "future.v076_human_playtest_evidence",
+      "disposition": "REFERENCE_ONLY",
+      "source": {
+        "pull_request": 87,
+        "merge_sha": "f5990809cd59d3aad7d2d5f726363c76f8788094"
+      },
+      "reference_scope": "Observation-only telemetry, privacy, questionnaire, and clean-stop patterns.",
+      "forbidden_scope": "Historical agent sanity and instrumentation do not establish a V076 human Golden pass."
+    },
+    {
+      "reuse_id": "reuse.v06.fullrun_settlement_tests",
+      "domain_id": "future.v076_end_to_end_acceptance",
+      "disposition": "REUSE_AS_TEST",
+      "source": {
+        "pull_request": 68,
+        "merge_sha": "b5763bbfb96994aa55ab36ae4335db332d9818a8"
+      },
+      "reused_scope": "Typed fixed-seed full-run, exact-once settlement, quiescence, and clean-stop acceptance patterns.",
+      "forbidden_scope": "Historical V06 production results do not certify V076 composition or gameplay."
+    },
+    {
+      "reuse_id": "reuse.pr90.external_sealed_tooling",
+      "domain_id": "external.release_probe_tooling",
+      "disposition": "REFERENCE_ONLY",
+      "source": {
+        "source_mode": "EXTERNAL_SEALED_SOURCE",
+        "head_sha": "70ccb5c0ae91460ffcdd1448685f579b8027a457",
+        "tree_sha": "1ecbe01475cace247cd64907b909ec9f474010d1",
+        "parent_sha": "00a7cdfff28fafc2700d1dc3e284aab537194bbe",
+        "product_repo_pr90_tool_file_count": 0,
+        "paths": [
+          "tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1",
+          "tools/pr90_probe_b_attempt22_contract_v1.psm1",
+          "tools/pr90_probe_b_attempt22_selftest_v1.ps1",
+          "tools/pr90_probe_b_attempt22_tooling_manifest_builder_v1.ps1",
+          "tools/pr90_probe_b_attempt22_tooling_seal_builder_v1.ps1"
+        ]
+      },
+      "reference_scope": "Exact external sealed source identity only.",
+      "forbidden_scope": "Do not copy, rewrite, replay, regenerate historical seals as current, import Track A files into this repository, or make release tooling a V076 production Owner. A future invocation requires a new explicit exact-SHA authorization."
+    },
+    {
+      "reuse_id": "reuse.pr88.responsive_globe_consumer_patterns",
+      "domain_id": "v076.stage2_debug_presentation",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "pull_request": 88,
+        "source_sha": "558cc1107881c993468ad9a5670016e5a7534f50",
+        "head_sha": "82334b9b43fc608de5863b13af58750c41b5e4b8",
+        "merge_sha": "05c2415014187e902592bf3a8d1291222f738694"
+      },
+      "adapted_scope": "Responsive globe presentation, typed target binding, deterministic hit selection, drag rotation, zoom, UI collision auditing, and no-gameplay-mutation acceptance patterns.",
+      "reusable_tests": [
+        "tests/v073_map_no_gameplay_mutation_test.gd",
+        "tests/v073_map_target_binding_test.gd",
+        "tests/v073_planet_region_hit_test.gd",
+        "tests/v073_planet_drag_rotation_test.gd",
+        "tests/v073_planet_zoom_test.gd",
+        "tests/v073_ui_rect_collision_audit_test.gd"
+      ],
+      "legacy_authority_status": "RETIRED_AS_AUTHORITY",
+      "forbidden_scope": "Do not copy a PR88 controller, revive the V073 six-region float Voronoi as authority, or replace the Stage 2 integer half-edge partition Owner."
+    },
+    {
+      "reuse_id": "reuse.alpha04c.save_resume_frozen_reference",
+      "domain_id": "future.v077_save_resume_recovery",
+      "disposition": "REFERENCE_ONLY",
+      "reference_status": "REFERENCE_ONLY_BLOCKED_UNVERIFIED",
+      "source": {
+        "representative_head_sha": "744b541840dc370ef4af6f93e8af6a024e66ecb3",
+        "formal_full_run": false,
+        "ownership_status": "ownership_frozen_implementation_pending",
+        "official_eligibility": "BLOCKED"
+      },
+      "v076_boundary": {
+        "lifecycle": "NEW_GAME_ONLY",
+        "save_schema_change_count": 0,
+        "save_delete_change_count": 0,
+        "save_overwrite_change_count": 0,
+        "save_migration_change_count": 0
+      },
+      "future_v077_test_disposition": "REUSE_AS_TEST",
+      "reusable_test_scope_for_v077": "Ownership, dependency, privacy, and fault-injection acceptance patterns may be reused as tests only after a new V077 authorization.",
+      "forbidden_scope": "Do not import the historical coordinator, registry, barrier, or flow; do not mix bytes or evidence from other Alpha 0.4-C attempts; do not claim an official or formal pass."
+    }
+  ],
+  "catalog_owner_bindings": {
+    "gameplay_catalog": {
+      "unique_owner": "CardRuntimeCatalogService",
+      "root_sha256": "a468dd4231906904f521232e4c58ee8882c4fa834f958c43438eeaf3338136a6",
+      "definition_count": 230,
+      "family_count": 113,
+      "runtime_pack_count": 10,
+      "runtime_packs_are_owner": false
+    },
+    "v06_semantic_source": {
+      "unique_owner": "CardRuntimeCatalogV06Resource",
+      "resource_sha256": "5872ffc01a91860d697deb4fe23765c80feb5697e085b2873dd0872136fb04e8",
+      "json_sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40",
+      "card_count": 348,
+      "family_count": 87
+    },
+    "semantic_transform_cache": {
+      "unique_owner": "CardSemanticCatalogService",
+      "service_sha256": "394df72343341739622fb2c7899d30b0c0f12cd8d2acd52b91e0fecae7d50323",
+      "compiler_sha256": "3b70ee639390d7ee64e76f18510f77bca066b3f7b64ad1a897dc08bab9be5a63",
+      "schema_sha256": "fa0bf2580209e6efaa4280a4330298bb5ab5ae57f68c292d5afd7e30ed90b5fa",
+      "owns_execution": false
+    }
+  },
+  "unverified_boundaries": [
+    "Exact V076 mapping for all 32 v06 monster card records",
+    "Exact V076 DirectAction mapping for all 28 v06 military card records",
+    "Public/private classification for every individual card",
+    "Final atomic cutover choice between current asset owners and V076 reducer state",
+    "Current-head rerun of historical catalog suites and fingerprints"
+  ]
+}

@@ -1,0 +1,212 @@
+{
+  "schema_version": "space_syndicate.v076.card_certification_matrix.v1",
+  "matrix_id": "v076-card-certification-matrix-20260821",
+  "recorded_on": "2026-08-21",
+  "candidate_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+  "change_class": "DOCS_ONLY",
+  "point_inertia": "ACTIVE",
+  "historical_reuse": "ACTIVE",
+  "full_reproof_performed": false,
+  "current_head_catalog_suites_executed": false,
+  "per_card_production_pass_claim_count": 0,
+  "catalog_snapshot": {
+    "catalog_id": "space_syndicate.card_runtime_catalog.v06",
+    "source_path": "data/cards/card_runtime_catalog_v06.json",
+    "source_sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40",
+    "resource_path": "resources/cards/runtime/card_runtime_catalog_v06.tres",
+    "resource_sha256": "5872ffc01a91860d697deb4fe23765c80feb5697e085b2873dd0872136fb04e8",
+    "card_count": 348,
+    "family_count": 87,
+    "rank_set": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "implementation_status": {
+      "catalog_ready_runtime_wiring_pending": 348
+    },
+    "effect_review_status": {
+      "rule_confirmed": 216,
+      "rent_rate_review_pending": 64,
+      "unit_profile_review_pending": 60,
+      "legacy_effect_review_pending": 8
+    },
+    "effect_review_pending_total": 132
+  },
+  "certification_dimensions": [
+    "CATALOG_IDENTITY_AND_SHAPE",
+    "SEMANTIC_COMPILE_READINESS",
+    "PASSIVE_PROJECTION",
+    "RUNTIME_OWNER_ROUTE",
+    "V076_EXACT_MAPPING",
+    "PRODUCTION_HUMAN_PLAY"
+  ],
+  "inherited_evidence": [
+    {
+      "evidence_id": "pr62-deterministic-semantic-compiler",
+      "pull_request": 62,
+      "merge_sha": "b53223ea722bb21556f38b73614d665cc33e957d",
+      "status": "INHERITED_GREEN",
+      "claim": "348 definitions compile deterministically into the historical semantic cache; 256 were active and 92 projection-only.",
+      "does_not_prove": [
+        "runtime execution",
+        "V076 exact mapping",
+        "per-card production pass",
+        "human play"
+      ]
+    },
+    {
+      "evidence_id": "pr63-passive-projection",
+      "pull_request": 63,
+      "merge_sha": "a8208af68d82471825dc535f4ec3f43df2bad637",
+      "status": "INHERITED_GREEN",
+      "claim": "Passive AI and PlayerFace projection, privacy, authorization, and fail-closed boundaries.",
+      "does_not_prove": [
+        "production AI cutover",
+        "gameplay execution",
+        "per-card production pass"
+      ]
+    },
+    {
+      "evidence_id": "pr65-source-authorization-pattern",
+      "pull_request": 65,
+      "merge_sha": "46b356f99da5b536f877d96a946ceddd1720fef4",
+      "status": "INHERITED_GREEN",
+      "claim": "Capability-bound own-hand authorization and exact membership/replay/collision rejection patterns.",
+      "does_not_prove": [
+        "gameplay execution",
+        "V076 private DirectAction cutover"
+      ]
+    },
+    {
+      "evidence_id": "v075-combat-capability-lineage",
+      "pull_request": 90,
+      "product_head_sha": "770d741f05964facda4afcbddcdeb3e7f40571d5",
+      "status": "REFERENCE_ONLY_GROUP_EVIDENCE",
+      "claim": "V075 candidate has closed monster-mode and military-mission capability lineage and production-chain focused evidence.",
+      "does_not_prove": [
+        "one-to-one mapping of 32 v06 monster card records to V076 Stage 3",
+        "one-to-one mapping of 28 v06 military card records to V076 DirectAction",
+        "V076 production cutover"
+      ]
+    }
+  ],
+  "category_matrix": [
+    {
+      "category_id": "commodity",
+      "card_count": 184,
+      "family_count": 46,
+      "catalog_runtime_owner_label": "commodity_flow_runtime_controller",
+      "semantic_readiness": "ACTIVE_COMPILE_READINESS",
+      "identity_and_shape": "INHERITED_GREEN",
+      "runtime_route_certification": "ISOLATED_OWNER_ADAPTER_EVIDENCE_ONLY",
+      "v076_exact_mapping": "UNVERIFIED",
+      "production_human_play": "UNVERIFIED",
+      "per_card_green_claimed": false
+    },
+    {
+      "category_id": "facility",
+      "card_count": 64,
+      "family_count": 16,
+      "catalog_runtime_owner_label": "region_infrastructure_runtime_controller",
+      "semantic_readiness": "ACTIVE_COMPILE_READINESS",
+      "identity_and_shape": "INHERITED_GREEN",
+      "runtime_route_certification": "ISOLATED_OWNER_ADAPTER_EVIDENCE_ONLY",
+      "effect_review_pending_count": 64,
+      "v076_exact_mapping": "UNVERIFIED",
+      "production_human_play": "UNVERIFIED",
+      "per_card_green_claimed": false
+    },
+    {
+      "category_id": "supply_demand",
+      "card_count": 8,
+      "family_count": 2,
+      "catalog_runtime_owner_label": "global_supply_demand_runtime_service",
+      "semantic_readiness": "ACTIVE_COMPILE_READINESS",
+      "identity_and_shape": "INHERITED_GREEN",
+      "runtime_route_certification": "ISOLATED_OWNER_AND_BATCH_TEST_EVIDENCE_ONLY",
+      "v076_exact_mapping": "UNVERIFIED",
+      "production_human_play": "UNVERIFIED",
+      "per_card_green_claimed": false
+    },
+    {
+      "category_id": "interaction",
+      "card_count": 12,
+      "family_count": 3,
+      "catalog_runtime_owner_labels": [
+        "player_hand_interaction_runtime_service",
+        "card_counter_runtime_service"
+      ],
+      "semantic_readiness": "PROJECTION_ONLY",
+      "identity_and_shape": "INHERITED_GREEN",
+      "runtime_route_certification": "UNVERIFIED",
+      "effect_review_pending_count": 8,
+      "v076_exact_mapping": "UNVERIFIED",
+      "production_human_play": "UNVERIFIED",
+      "per_card_green_claimed": false
+    },
+    {
+      "category_id": "monster",
+      "card_count": 32,
+      "family_count": 8,
+      "catalog_runtime_owner_label": "monster_runtime_controller",
+      "semantic_readiness": "PROJECTION_ONLY",
+      "identity_and_shape": "INHERITED_GREEN",
+      "runtime_route_certification": "V075_GROUP_CAPABILITY_EVIDENCE_ONLY",
+      "effect_review_pending_count": 32,
+      "v076_exact_mapping": "UNVERIFIED",
+      "directional_move_exact_mapping_claim_count": 0,
+      "production_human_play": "UNVERIFIED",
+      "per_card_green_claimed": false,
+      "honesty_note": "Stage 3 proves an isolated Monster L1 movement domain; it does not certify any of these 32 catalog records."
+    },
+    {
+      "category_id": "military",
+      "card_count": 28,
+      "family_count": 7,
+      "catalog_runtime_owner_label": "military_runtime_controller",
+      "semantic_readiness": "PROJECTION_ONLY",
+      "identity_and_shape": "INHERITED_GREEN",
+      "runtime_route_certification": "V075_GROUP_CAPABILITY_EVIDENCE_ONLY",
+      "effect_review_pending_count": 28,
+      "v076_exact_mapping": "UNVERIFIED",
+      "direct_action_exact_mapping_claim_count": 0,
+      "production_human_play": "UNVERIFIED",
+      "per_card_green_claimed": false
+    },
+    {
+      "category_id": "organization",
+      "card_count": 20,
+      "family_count": 5,
+      "catalog_runtime_owner_label": "organization_runtime_owner_pending",
+      "semantic_readiness": "PROJECTION_ONLY",
+      "identity_and_shape": "INHERITED_GREEN",
+      "runtime_route_certification": "UNVERIFIED",
+      "v076_exact_mapping": "UNVERIFIED",
+      "production_human_play": "UNVERIFIED",
+      "per_card_green_claimed": false
+    }
+  ],
+  "aggregate": {
+    "category_count": 7,
+    "category_card_count_sum": 348,
+    "active_compile_readiness_count": 256,
+    "projection_only_count": 92,
+    "effect_review_pending_count": 132,
+    "v076_exact_per_card_mapping_claim_count": 0,
+    "per_card_production_pass_claim_count": 0,
+    "human_play_certified_card_claim_count": 0
+  },
+  "hard_blocks": [
+    "32 monster records require exact V076 mapping evidence",
+    "28 military records require exact V076 DirectAction mapping evidence",
+    "132 records retain effect-review-pending status",
+    "all 348 records retain catalog_ready_runtime_wiring_pending metadata",
+    "final public/private per-card classification is not proven",
+    "final atomic asset owner migration is not proven",
+    "current-head catalog suites and fingerprints were not rerun for this DOCS_ONLY change"
+  ],
+  "result": "GO_FOR_INHERITED_MATRIX_ONLY",
+  "production_card_certification_complete": false
+}

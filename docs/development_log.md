@@ -9365,3 +9365,49 @@ deleted. Evidence and the remaining action inventory are recorded in
   modifier PPM list frozen at root acceptance; FLYING/PHASE remain exact zero.
 - The isolated headed Bench is explicitly diagnostic only and records
   `human_golden_step_06_09=false`; it is not human Golden evidence.
+
+## V0.7.6 inherited-green and historical-reuse ledgers
+
+- Activated `POINT_INERTIA` and `HISTORICAL_REUSE` as documentation-only
+  development disciplines at clean candidate head
+  `2a365d465f199481da7fa1ef8f734e7525a136f5`. Added stable JSON/Markdown
+  ledgers for inherited Stage 1/2 evidence, the current Stage 3 delta,
+  supersession, one-Owner reuse, duplicate implementation, card certification,
+  and the cumulative 15-step Alpha 0.7 Golden scenario.
+- Classified historical reuse without merging a whole branch: PR #62 remains
+  the deterministic semantic transform/cache only; PR #63 and PR #65 provide
+  consumer-side privacy/authorization patterns; PR #64 and PR #80 are test
+  sources only; PR #70 is retired; PR #79 may be adapted only through V0.7.6
+  reducer ABI/replay/RNG gates. The current V0.4 gameplay catalog and V0.6
+  semantic source retain separate unique Owners.
+- Preserved the exact card debt instead of declaring a blanket green catalog:
+  348 records / 87 families are structurally inherited, 256 are historical
+  compile-active and 92 projection-only, 132 retain effect-review debt, and all
+  32 monster plus all 28 military exact V0.7.6 mappings remain `UNVERIFIED`.
+- Recorded PR90 release Tooling only as the external sealed source
+  `70ccb5c0ae91460ffcdd1448685f579b8027a457`; no `tools/pr90*` controller was
+  copied into the product repository. Historical Tooling, Seal, Manifest, and
+  raw evidence remain non-product references requiring new exact-SHA authority
+  for any future invocation.
+- Golden STEP02-STEP05 are labeled `ISOLATED_GREEN` only. STEP01 and
+  STEP06-STEP15 remain pending human production evidence. The Stage 3 Bench
+  stays diagnostic-only with `human_golden_step_06_09=false`.
+- `CHANGE_CLASS=DOCS_ONLY`: no Godot, Probe, full regression, or full reproof
+  was run; no production composition, gameplay, map, Save, presentation, or
+  test byte changed.
+- Registered merged PR #88 at source
+  `558cc1107881c993468ad9a5670016e5a7534f50`, head
+  `82334b9b43fc608de5863b13af58750c41b5e4b8`, and merge
+  `05c2415014187e902592bf3a8d1291222f738694` as `ADAPT_AS_CONSUMER` for
+  responsive-globe, typed-targeting, hit, rotation, zoom, collision, and
+  no-gameplay-mutation patterns. Its tests may be reused, but the V0.7.3
+  six-region float Voronoi is `RETIRED_AS_AUTHORITY`; no controller copy may
+  replace the Stage 2 integer half-edge Owner.
+- Registered frozen Alpha 0.4-C representative head
+  `744b541840dc370ef4af6f93e8af6a024e66ecb3` as
+  `REFERENCE_ONLY_BLOCKED_UNVERIFIED`: `FORMAL_FULL_RUN=false`, implementation
+  ownership frozen/pending, and official eligibility blocked. V0.7.6 remains
+  `NEW_GAME_ONLY` with zero Save schema/delete/overwrite/migration changes.
+  Coordinator/registry/barrier/flow import and cross-attempt evidence mixing
+  are forbidden; ownership/dependency/privacy/fault tests are only candidate
+  `REUSE_AS_TEST` inputs for a separately authorized V0.7.7.

@@ -1,0 +1,228 @@
+{
+  "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
+  "audit_id": "v076-duplicate-implementation-audit-20260821",
+  "recorded_on": "2026-08-21",
+  "candidate_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+  "candidate_tree_sha": "0a7c885023b75bb3f67d892b79fb8914ef87da6c",
+  "change_class": "DOCS_ONLY",
+  "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
+  "scan_scope": [
+    "scripts/v076/simulation",
+    "scripts/v076/map",
+    "scripts/v076/monster",
+    "scripts/tools/v076",
+    "scenes/tools/v076",
+    "current card catalog and semantic services",
+    "V074 map lineage",
+    "V075 combat lineage",
+    "PR62-PR66 and PR70/PR79/PR80 history",
+    "external PR90 sealed Tooling identity",
+    "PR88 responsive globe lineage",
+    "frozen Alpha 0.4-C Save/resume lineage"
+  ],
+  "static_counts": {
+    "v076_class_name_count": 16,
+    "duplicate_v076_class_name_count": 0,
+    "product_repo_pr90_tool_file_count": 0,
+    "authoritative_domain_duplicate_owner_count": 0,
+    "whole_branch_merge_count": 0,
+    "production_composition_change_count": 0
+  },
+  "authoritative_domains": [
+    {
+      "domain_id": "v076.execution_order_tick_rng_snapshot_replay",
+      "owner_count": 1,
+      "unique_owner": "V076DeterministicKernel",
+      "path": "scripts/v076/simulation/v076_deterministic_kernel.gd",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "v076.spherical_partition_authority",
+      "owner_count": 1,
+      "unique_owner": "V076SharedHalfEdgePartitionV1",
+      "path": "scripts/v076/map/v076_shared_half_edge_partition_v1.gd",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "v076.monster_l1_directional_geodesic_move",
+      "owner_count": 1,
+      "unique_owner": "V076MonsterL1ReducerV1",
+      "path": "scripts/v076/monster/v076_monster_l1_reducer_v1.gd",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "current.gameplay_card_definitions",
+      "owner_count": 1,
+      "unique_owner": "CardRuntimeCatalogService",
+      "root_path": "resources/cards/runtime/card_runtime_catalog_v04.tres",
+      "root_sha256": "a468dd4231906904f521232e4c58ee8882c4fa834f958c43438eeaf3338136a6",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "current.v06_semantic_card_source",
+      "owner_count": 1,
+      "unique_owner": "CardRuntimeCatalogV06Resource",
+      "root_path": "resources/cards/runtime/card_runtime_catalog_v06.tres",
+      "root_sha256": "5872ffc01a91860d697deb4fe23765c80feb5697e085b2873dd0872136fb04e8",
+      "source_json_sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "current.card_semantic_transform_cache",
+      "owner_count": 1,
+      "unique_owner": "CardSemanticCatalogService",
+      "path": "scripts/runtime/card_semantic_catalog_service.gd",
+      "sha256": "394df72343341739622fb2c7899d30b0c0f12cd8d2acd52b91e0fecae7d50323",
+      "owns_execution": false,
+      "duplicate_status": "NONE"
+    }
+  ],
+  "intentional_parallel_scopes": [
+    {
+      "scope_id": "v074-production-map-vs-v076-stage2-isolated",
+      "classification": "SEPARATE_COMPOSITION_SCOPE",
+      "older_owner": "V074MapGenesisCore",
+      "v076_owner": "V076SharedHalfEdgePartitionV1",
+      "dual_write": false,
+      "production_cutover": false
+    },
+    {
+      "scope_id": "v075-production-monster-vs-v076-stage3-isolated",
+      "classification": "SEPARATE_COMPOSITION_SCOPE",
+      "older_owner": "V075RuntimeOwner/V075CombatRuntimeOwner lineage",
+      "v076_owner": "V076MonsterL1ReducerV1",
+      "dual_write": false,
+      "production_cutover": false
+    },
+    {
+      "scope_id": "v04-gameplay-catalog-vs-v06-semantic-source",
+      "classification": "SEPARATE_AUTHORITY_DOMAIN",
+      "gameplay_owner": "CardRuntimeCatalogService",
+      "semantic_source_owner": "CardRuntimeCatalogV06Resource",
+      "silent_supersession": false
+    }
+  ],
+  "historical_reuse_findings": [
+    {
+      "source": "PR62",
+      "disposition": "ADOPT_AS_OWNER",
+      "result": "Existing compiler/cache retained for deterministic transform only; no second compiler or executor created."
+    },
+    {
+      "source": "PR63/PR65",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "Privacy, viewer, capability, membership, replay, and collision patterns only."
+    },
+    {
+      "source": "PR64/PR80",
+      "disposition": "REUSE_AS_TEST",
+      "result": "Test patterns only; no registry execution, Save adapter, RNG adapter, Kernel, or dispatcher imported."
+    },
+    {
+      "source": "PR70",
+      "disposition": "RETIRED",
+      "result": "Closed/unmerged final implementation absent; no revival or branch merge."
+    },
+    {
+      "source": "PR79",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "Only current-descendant reducer/port concepts may be adapted behind V076 ABI/replay/RNG gates."
+    },
+    {
+      "source": "external PR90 sealed Tooling",
+      "disposition": "REFERENCE_ONLY",
+      "result": "External head 70ccb5c0ae91460ffcdd1448685f579b8027a457 recorded; no controller copied into the product repository."
+    },
+    {
+      "source": "PR88",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "Responsive globe, typed target, hit, rotate, zoom, collision, and no-gameplay-mutation patterns may be adapted; the V073 six-region float Voronoi is retired as authority and no controller may replace Stage 2."
+    },
+    {
+      "source": "Alpha0.4-C representative 744b541840dc370ef4af6f93e8af6a024e66ecb3",
+      "disposition": "REFERENCE_ONLY",
+      "reference_status": "REFERENCE_ONLY_BLOCKED_UNVERIFIED",
+      "future_v077_test_disposition": "REUSE_AS_TEST",
+      "result": "FORMAL_FULL_RUN=false; ownership implementation remains frozen and pending, official eligibility is blocked, and only ownership/dependency/privacy/fault tests may be reused for a separately authorized V077."
+    }
+  ],
+  "forbidden_duplicate_patterns": [
+    "second gameplay catalog or catalog service",
+    "second semantic compiler or cache",
+    "second V076 Kernel, tick loop, Domain RNG, Authority Sequence, or replay source",
+    "revived PR70 card batch",
+    "PR64 metadata registry promoted to executor",
+    "PR65 source authorization port promoted to executor",
+    "PR66 presentation DTO promoted to rule authority",
+    "runtime pack promoted to card authority",
+    "Stage3 isolated asset state dual-written with a current production asset core",
+    "PR90 sealed controller copied into this product repository",
+    "PR88 controller or V073 six-region float Voronoi copied as V076 authority",
+    "Alpha0.4-C coordinator, registry, barrier, or flow imported into V076",
+    "bytes or evidence mixed across Alpha0.4-C attempts",
+    "Save schema, delete, overwrite, or migration behavior added to V076"
+  ],
+  "unverified_not_cleared": [
+    {
+      "boundary": "v06 monster card to V076 exact mapping",
+      "record_count": 32,
+      "status": "UNVERIFIED"
+    },
+    {
+      "boundary": "v06 military card to V076 DirectAction exact mapping",
+      "record_count": 28,
+      "status": "UNVERIFIED"
+    },
+    {
+      "boundary": "final atomic asset owner cutover",
+      "status": "UNVERIFIED"
+    },
+    {
+      "boundary": "Alpha0.4-C Save/resume ownership and official eligibility",
+      "representative_head_sha": "744b541840dc370ef4af6f93e8af6a024e66ecb3",
+      "formal_full_run": false,
+      "status": "REFERENCE_ONLY_BLOCKED_UNVERIFIED"
+    }
+  ],
+  "v076_save_boundary": {
+    "lifecycle": "NEW_GAME_ONLY",
+    "save_schema_change_count": 0,
+    "save_delete_change_count": 0,
+    "save_overwrite_change_count": 0,
+    "save_migration_change_count": 0
+  },
+  "future_release_harness_boundary": {
+    "current_path_exists": false,
+    "migration_authorized": false,
+    "registry_only": true,
+    "allowed_future_generic_primitives": [
+      "exact git identity and dirty-state checks",
+      "scoped process and port convergence",
+      "immutable envelope and hash primitives",
+      "cleanup and finalizer ordering",
+      "common manifest codec"
+    ],
+    "must_remain_versioned_or_external": [
+      "release schema",
+      "product gate",
+      "authorization consumption",
+      "pull-request policy",
+      "sealed PR90 controllers"
+    ],
+    "never_owned_by_harness": [
+      "gameplay",
+      "map",
+      "Save",
+      "presentation",
+      "test oracle",
+      "production composition"
+    ]
+  },
+  "result": "GO_WITH_SCOPED_ADOPTION",
+  "no_go": [
+    "WHOLE_BRANCH_MERGE",
+    "CONTROLLER_COPY",
+    "FULL_REPROOF_CLAIM",
+    "PER_CARD_FALSE_GREEN"
+  ]
+}

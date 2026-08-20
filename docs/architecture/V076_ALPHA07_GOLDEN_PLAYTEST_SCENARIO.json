@@ -1,0 +1,199 @@
+{
+  "schema_version": "space_syndicate.v076.alpha07_golden_playtest_scenario.v1",
+  "scenario_id": "v076-alpha07-golden-playtest-scenario-01",
+  "recorded_on": "2026-08-21",
+  "candidate_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+  "change_class": "DOCS_ONLY",
+  "overall_status": "PENDING_HUMAN_PRODUCTION_EXECUTION",
+  "human_execution_count": 0,
+  "production_pass_count": 0,
+  "isolated_green_count": 4,
+  "stage3_diagnostic_only": true,
+  "stage3_human_golden_step_06_09": false,
+  "full_reproof_performed": false,
+  "status_vocabulary": [
+    "ISOLATED_GREEN",
+    "PENDING"
+  ],
+  "steps": [
+    {
+      "step_id": "STEP01",
+      "name": "Launch the exact V076 production candidate",
+      "status": "PENDING",
+      "required_surface": "production main composition",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "A human starts the exact candidate from the player-facing entry with no debug fixture or compatibility fallback."
+    },
+    {
+      "step_id": "STEP02",
+      "name": "Boot deterministic authority and record identity",
+      "status": "ISOLATED_GREEN",
+      "required_surface": "V076DeterministicKernel isolated Bench/test",
+      "human_executed": false,
+      "production_composition": false,
+      "pass_claimed": true,
+      "evidence": "74/74 plus 2,000 replay and zero mismatch",
+      "claim_limit": "Isolated deterministic capability only."
+    },
+    {
+      "step_id": "STEP03",
+      "name": "Generate the shared half-edge spherical partition",
+      "status": "ISOLATED_GREEN",
+      "required_surface": "V076 shared partition isolated Bench/test",
+      "human_executed": false,
+      "production_composition": false,
+      "pass_claimed": true,
+      "evidence": "90/90 and inherited 2,000 distinct-seed audit",
+      "claim_limit": "Isolated map authority capability only."
+    },
+    {
+      "step_id": "STEP04",
+      "name": "Exercise debug-sphere rotate, zoom, hit-test, and highlight",
+      "status": "ISOLATED_GREEN",
+      "required_surface": "V076 Stage 2 Debug Sphere",
+      "human_executed": false,
+      "production_composition": false,
+      "pass_claimed": true,
+      "evidence": "Scripted rotate/zoom/spherical-triangle hit/shared-boundary highlight with mapping parity",
+      "claim_limit": "Isolated scripted debug capability, not production human interaction."
+    },
+    {
+      "step_id": "STEP05",
+      "name": "Exercise one deterministic Monster L1 geodesic route",
+      "status": "ISOLATED_GREEN",
+      "required_surface": "V076 Stage 3 diagnostic Bench",
+      "human_executed": false,
+      "production_composition": false,
+      "pass_claimed": true,
+      "evidence": "47/47, 1,000 seeds x 2 replay with zero mismatch, warning-clean Bench PASS",
+      "claim_limit": "Diagnostic-only; human_golden_step_06_09=false."
+    },
+    {
+      "step_id": "STEP06",
+      "name": "Complete human new-game setup and enter the production table",
+      "status": "PENDING",
+      "required_surface": "production setup and table composition",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "Human choices, AI seats, public setup facts, and private starting state reach the playable table once."
+    },
+    {
+      "step_id": "STEP07",
+      "name": "Inspect the production globe and select a legal target",
+      "status": "PENDING",
+      "required_surface": "production map and typed target binding",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "Rotation, zoom, popup, and target selection use the production surface without changing authority."
+    },
+    {
+      "step_id": "STEP08",
+      "name": "Acquire and submit one legal card through its real owner",
+      "status": "PENDING",
+      "required_surface": "production acquisition, hand, target, and resolution owners",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "One exact card instance moves through acquisition and submission with privacy and exact-once consumption intact."
+    },
+    {
+      "step_id": "STEP09",
+      "name": "Resolve a production Monster directional move and visible consequence",
+      "status": "PENDING",
+      "required_surface": "future production V076 Monster composition",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "A real player action reaches the unique Monster owner, moves over the bound map, and presents crossings/trample once.",
+      "diagnostic_warning": "The current Stage 3 Bench explicitly records human_golden_step_06_09=false and cannot satisfy this step."
+    },
+    {
+      "step_id": "STEP10",
+      "name": "Resolve one military Direct Action",
+      "status": "PENDING",
+      "required_surface": "future private Direct Action channel and military owner",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "The exact card/action binding reaches one military owner without public-batch leakage or retargeting."
+    },
+    {
+      "step_id": "STEP11",
+      "name": "Observe economy, route, and asset consequences",
+      "status": "PENDING",
+      "required_surface": "production economy/route/asset owners and presentation",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "The authoritative consequence is visible exactly once without a duplicate asset ledger or presentation-owned mutation."
+    },
+    {
+      "step_id": "STEP12",
+      "name": "Observe AI action and hidden-information integrity",
+      "status": "PENDING",
+      "required_surface": "production AI and viewer-scoped projections",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "AI takes a legal action while private hands, plans, and cash remain hidden from unauthorized viewers."
+    },
+    {
+      "step_id": "STEP13",
+      "name": "Reach victory qualification and final audit",
+      "status": "PENDING",
+      "required_surface": "production victory owner",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "A full human run reaches the authoritative qualification and final-audit states without fixture injection."
+    },
+    {
+      "step_id": "STEP14",
+      "name": "Present FinalSettlement exactly once",
+      "status": "PENDING",
+      "required_surface": "production settlement and presentation receipt",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "Winner facts, public log, and FinalSettlement agree and present exactly once."
+    },
+    {
+      "step_id": "STEP15",
+      "name": "Record feedback and cleanly stop",
+      "status": "PENDING",
+      "required_surface": "human feedback plus process/port cleanup",
+      "human_executed": false,
+      "production_composition": true,
+      "pass_claimed": false,
+      "acceptance": "Human feedback is captured, terminal state is quiescent, and all scoped processes and endpoints stop cleanly."
+    }
+  ],
+  "summary": {
+    "step_count": 15,
+    "isolated_green_step_ids": [
+      "STEP02",
+      "STEP03",
+      "STEP04",
+      "STEP05"
+    ],
+    "pending_step_ids": [
+      "STEP01",
+      "STEP06",
+      "STEP07",
+      "STEP08",
+      "STEP09",
+      "STEP10",
+      "STEP11",
+      "STEP12",
+      "STEP13",
+      "STEP14",
+      "STEP15"
+    ],
+    "human_pass_step_ids": [],
+    "production_pass_step_ids": []
+  }
+}

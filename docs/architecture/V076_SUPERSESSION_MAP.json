@@ -1,0 +1,192 @@
+{
+  "schema_version": "space_syndicate.v076.supersession_map.v1",
+  "map_id": "v076-supersession-map-20260821",
+  "candidate_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+  "change_class": "DOCS_ONLY",
+  "production_cutover": false,
+  "whole_branch_merge_allowed": false,
+  "supersession_kinds": [
+    "REPLACED_IN_V076_CANDIDATE",
+    "ADAPTED_IN_V076_CANDIDATE",
+    "RETIRED_HISTORICALLY",
+    "NOT_SUPERSEDED_SEPARATE_DOMAIN",
+    "NOT_SUPERSEDED_REFERENCE_ONLY"
+  ],
+  "entries": [
+    {
+      "supersession_id": "v076.kernel.v1-to-v2",
+      "domain_id": "v076.execution_order_tick_rng_snapshot_replay",
+      "kind": "REPLACED_IN_V076_CANDIDATE",
+      "old_identity": {
+        "head_sha": "553a89a1fd37170eecee50dbb373e0978604ef9f",
+        "owner": "V076DeterministicKernel",
+        "contract": "Stage 1 root command kernel"
+      },
+      "new_identity": {
+        "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "owner": "V076DeterministicKernel",
+        "contract": "Kernel V2 root/derived/outbox/fizzle and root-only replay"
+      },
+      "dual_owner_allowed": false,
+      "evidence": "74/74 plus 2,000 deterministic replays with zero mismatch"
+    },
+    {
+      "supersession_id": "v076.map.reducer-kernel-v2-abi",
+      "domain_id": "v076.spherical_partition_reducer",
+      "kind": "ADAPTED_IN_V076_CANDIDATE",
+      "old_identity": {
+        "head_sha": "98165f09228b3ddb0cd4c09d86e52ec1a1fe5ca7",
+        "path": "scripts/v076/map/v076_partition_reducer_v1.gd"
+      },
+      "new_identity": {
+        "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "path": "scripts/v076/map/v076_partition_reducer_v1.gd"
+      },
+      "unchanged_bound_dependencies": [
+        "scripts/v076/map/v076_shared_half_edge_partition_v1.gd",
+        "scripts/v076/map/v076_spherical_microgrid_index_v1.gd",
+        "scripts/v076/map/v076_partition_validator_v1.gd",
+        "scripts/v076/map/v076_partition_authority_codec_v1.gd"
+      ],
+      "dual_owner_allowed": false,
+      "evidence": "Stage 2 focused sentinel 90/90"
+    },
+    {
+      "supersession_id": "historical.pr70-card-batch",
+      "domain_id": "retired.card_batch_reference",
+      "kind": "RETIRED_HISTORICALLY",
+      "old_identity": {
+        "pull_request": 70,
+        "head_sha": "e19eb4af8b1bbc4375e71a8e6ce2b3d254f0b43a",
+        "state": "CLOSED_UNMERGED"
+      },
+      "new_identity": {
+        "pull_request": 79,
+        "merge_sha": "2e38764791cb37cdc45b2eb0836957f550822dd5",
+        "scope": "Only current-descendant domain cores and ports may be adapted"
+      },
+      "whole_branch_merge_allowed": false,
+      "revival_allowed": false
+    },
+    {
+      "supersession_id": "catalog.v04-gameplay-vs-v06-semantic",
+      "domain_id": "card_definition_sources",
+      "kind": "NOT_SUPERSEDED_SEPARATE_DOMAIN",
+      "old_identity": {
+        "owner": "CardRuntimeCatalogService",
+        "root": "resources/cards/runtime/card_runtime_catalog_v04.tres",
+        "sha256": "a468dd4231906904f521232e4c58ee8882c4fa834f958c43438eeaf3338136a6",
+        "role": "current gameplay definition graph"
+      },
+      "new_identity": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "root": "resources/cards/runtime/card_runtime_catalog_v06.tres",
+        "sha256": "5872ffc01a91860d697deb4fe23765c80feb5697e085b2873dd0872136fb04e8",
+        "role": "v06 semantic source"
+      },
+      "dual_owner_allowed": false,
+      "explanation": "The two sources own different domains. V06 semantic declarations do not silently supersede V04 gameplay execution."
+    },
+    {
+      "supersession_id": "v074-production-map-vs-v076-stage2",
+      "domain_id": "production_map_composition",
+      "kind": "NOT_SUPERSEDED_REFERENCE_ONLY",
+      "old_identity": {
+        "pull_request": 89,
+        "merge_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
+        "role": "current inherited production map lineage"
+      },
+      "new_identity": {
+        "head_sha": "98165f09228b3ddb0cd4c09d86e52ec1a1fe5ca7",
+        "role": "isolated V076 candidate partition authority and debug presentation"
+      },
+      "production_supersession": false,
+      "dual_write_allowed": false
+    },
+    {
+      "supersession_id": "v075-production-combat-vs-v076-stage3",
+      "domain_id": "production_combat_composition",
+      "kind": "NOT_SUPERSEDED_REFERENCE_ONLY",
+      "old_identity": {
+        "pull_request": 90,
+        "product_head_sha": "770d741f05964facda4afcbddcdeb3e7f40571d5",
+        "role": "V075 production combat candidate"
+      },
+      "new_identity": {
+        "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "role": "isolated V076 Monster L1 deterministic domain"
+      },
+      "production_supersession": false,
+      "asset_ledger_dual_write_allowed": false
+    },
+    {
+      "supersession_id": "pr90-sealed-tooling-vs-product-repository",
+      "domain_id": "external.release_probe_tooling",
+      "kind": "NOT_SUPERSEDED_REFERENCE_ONLY",
+      "old_identity": {
+        "external_head_sha": "70ccb5c0ae91460ffcdd1448685f579b8027a457",
+        "tree_sha": "1ecbe01475cace247cd64907b909ec9f474010d1"
+      },
+      "new_identity": {
+        "product_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "pr90_tool_file_count": 0
+      },
+      "copy_or_migration_allowed": false,
+      "future_invocation_requires_new_exact_sha_authorization": true
+    },
+    {
+      "supersession_id": "pr88-v073-float-voronoi-vs-v076-stage2",
+      "domain_id": "v076.spherical_partition_authority",
+      "kind": "RETIRED_HISTORICALLY",
+      "old_identity": {
+        "pull_request": 88,
+        "source_sha": "558cc1107881c993468ad9a5670016e5a7534f50",
+        "head_sha": "82334b9b43fc608de5863b13af58750c41b5e4b8",
+        "merge_sha": "05c2415014187e902592bf3a8d1291222f738694",
+        "role": "V073 six-region float Voronoi authority"
+      },
+      "new_identity": {
+        "head_sha": "98165f09228b3ddb0cd4c09d86e52ec1a1fe5ca7",
+        "owner": "V076SharedHalfEdgePartitionV1",
+        "role": "Stage 2 integer half-edge partition authority"
+      },
+      "old_authority_status": "RETIRED_AS_AUTHORITY",
+      "consumer_pattern_reuse_allowed": true,
+      "test_reuse_allowed": true,
+      "controller_copy_allowed": false,
+      "stage2_replacement_allowed": false
+    },
+    {
+      "supersession_id": "alpha04c-frozen-save-resume-vs-v076-new-game-only",
+      "domain_id": "future.v077_save_resume_recovery",
+      "kind": "NOT_SUPERSEDED_REFERENCE_ONLY",
+      "old_identity": {
+        "representative_head_sha": "744b541840dc370ef4af6f93e8af6a024e66ecb3",
+        "reference_status": "REFERENCE_ONLY_BLOCKED_UNVERIFIED",
+        "formal_full_run": false,
+        "ownership_status": "ownership_frozen_implementation_pending",
+        "official_eligibility": "BLOCKED"
+      },
+      "new_identity": {
+        "product_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "lifecycle": "NEW_GAME_ONLY",
+        "save_schema_change_count": 0,
+        "save_delete_change_count": 0,
+        "save_overwrite_change_count": 0,
+        "save_migration_change_count": 0
+      },
+      "implementation_import_allowed": false,
+      "cross_attempt_mix_allowed": false,
+      "v077_test_pattern_reuse_allowed": true
+    }
+  ],
+  "summary": {
+    "entry_count": 9,
+    "production_owner_supersession_count": 0,
+    "whole_branch_merge_count": 0,
+    "dual_owner_allowed_count": 0,
+    "retired_branch_revival_count": 0,
+    "retired_authority_count": 1,
+    "blocked_unverified_reference_count": 1
+  }
+}
