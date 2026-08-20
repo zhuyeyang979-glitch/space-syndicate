@@ -134,6 +134,97 @@ function Test-Pr90ProbeBToolingEligibilityV1 {
         $PowerShellParseErrorCount -eq 0 -and $ParameterBindingExceptionCount -eq 0)
 }
 
+function Test-Pr90FormalM5InvocationBindingV1 {
+    [CmdletBinding()]
+    param(
+        [AllowNull()][object]$M5Receipt,
+        [AllowNull()][object]$Connection,
+        [AllowNull()][object]$EndpointOwnershipAttestation,
+        [Parameter(Mandatory=$true)][string]$ExpectedRunId,
+        [Parameter(Mandatory=$true)][string]$ExpectedExecutionMode,
+        [Parameter(Mandatory=$true)][int]$ExpectedPort,
+        [Parameter(Mandatory=$true)][int]$ExpectedGodotPid,
+        [Parameter(Mandatory=$true)][string]$ExpectedLaunchSessionId,
+        [Parameter(Mandatory=$true)][int]$ExpectedEndpointOwnerPid
+    )
+    try {
+        if($null-eq$M5Receipt-or$null-eq$Connection-or$null-eq$EndpointOwnershipAttestation-or$ExpectedGodotPid-le0-or$ExpectedEndpointOwnerPid-le0){return $false}
+        if([string]$M5Receipt.schema-cne'McpStartupMilestoneV1'-or[string]$M5Receipt.status-cne'PASS'-or
+           [string]$M5Receipt.run_id-cne$ExpectedRunId-or[string]$M5Receipt.execution_mode-cne$ExpectedExecutionMode-or
+           [int]$M5Receipt.milestone_index-ne5-or[string]$M5Receipt.milestone_id-cne'M5'-or[string]$M5Receipt.milestone_name-cne'mcp_endpoint_owner_v2_verified'-or
+           [int]$M5Receipt.port-ne$ExpectedPort-or-not[bool]$M5Receipt.port_bound-or[int]$M5Receipt.endpoint_ownership_contract_version-ne2-or
+           -not[bool]$M5Receipt.connection_exists-or[string]$M5Receipt.session_id-cne$ExpectedLaunchSessionId-or
+           [int]$M5Receipt.pid-ne$ExpectedGodotPid-or[int]$M5Receipt.endpoint_owner_pid-ne$ExpectedEndpointOwnerPid-or
+           [string]$M5Receipt.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $M5Receipt)){return $false}
+        if([string]$Connection.schema-cne'McpStartupConnectionV2'-or[int]$Connection.endpoint_ownership_contract_version-ne2-or
+           [int]$Connection.port-ne$ExpectedPort-or[int]$Connection.pid-ne$ExpectedGodotPid-or[int]$Connection.control_process_pid-ne$ExpectedGodotPid-or
+           [string]$Connection.launch_session_id-cne$ExpectedLaunchSessionId-or[int]$Connection.endpoint_owner_pid-ne$ExpectedEndpointOwnerPid){return $false}
+        if([string]$EndpointOwnershipAttestation.schema-cne'SpaceSyndicatePr90McpEndpointOwnershipBracketedV2Attestation'-or
+           [string]$EndpointOwnershipAttestation.status-cne'PASS'-or-not[bool]$EndpointOwnershipAttestation.green-or
+           [int]$EndpointOwnershipAttestation.endpoint_ownership_contract_version-ne2-or[int]$EndpointOwnershipAttestation.endpoint_owner_pid-ne$ExpectedEndpointOwnerPid){return $false}
+        return $true
+    } catch {return $false}
+}
+
+function Test-Pr90McpV2BoundInvocationIdentityV1 {
+    [CmdletBinding()]
+    param(
+        [AllowNull()][object]$Connection,
+        [AllowNull()][object]$EndpointOwnerIdentity,
+        [AllowNull()][object]$EndpointOwnershipAttestation,
+        [int[]]$ListenerOwnerPids=@(),
+        [int]$AlternateProtectedListenerCount=0,
+        [Parameter(Mandatory=$true)][string]$ExpectedWorktree,
+        [Parameter(Mandatory=$true)][int]$ExpectedPort,
+        [Parameter(Mandatory=$true)][int]$ExpectedControlProcessId,
+        [Parameter(Mandatory=$true)][string]$ExpectedControlProcessStartUtc,
+        [Parameter(Mandatory=$true)][string]$ExpectedLaunchSessionId,
+        [Parameter(Mandatory=$true)][int]$ExpectedEndpointOwnerPid,
+        [Parameter(Mandatory=$true)][string]$ExpectedEndpointOwnerPath,
+        [Parameter(Mandatory=$true)][string]$ExpectedEndpointOwnerSha256,
+        [Parameter(Mandatory=$true)][string]$ExpectedEndpointOwnerCreationFiletimeUtc,
+        [Parameter(Mandatory=$true)][int]$ExpectedEndpointOwnerSessionId,
+        [Parameter(Mandatory=$true)][string]$ExpectedEndpointOwnerUserSid
+    )
+    try {
+        if($null-eq$Connection-or$null-eq$EndpointOwnerIdentity-or$null-eq$EndpointOwnershipAttestation){return $false}
+        $root=[IO.Path]::GetFullPath($ExpectedWorktree).TrimEnd('\','/')
+        $ownerPath=[IO.Path]::GetFullPath($ExpectedEndpointOwnerPath)
+        $endpoint="http://127.0.0.1:$ExpectedPort/"
+        $requiredConnectionFields=@('schema','endpoint','port','pid','control_process_pid','worktree','godot_path','process_start_time_utc','command_line','endpoint_ownership_contract_version','endpoint_owner_pid','endpoint_owner_process_role','endpoint_owner_executable_path','endpoint_owner_command_line','endpoint_owner_creation_time_filetime_utc','endpoint_owner_parent_pid','endpoint_owner_windows_session_id','endpoint_owner_user_sid','launch_session_id','token_path')
+        $connectionFields=@($Connection.PSObject.Properties.Name)
+        if(@($requiredConnectionFields|Where-Object{$connectionFields-cnotcontains$_}).Count-ne0-or
+           [string]$Connection.schema-cne'McpStartupConnectionV2'-or[int]$Connection.endpoint_ownership_contract_version-ne2-or
+           [string]$Connection.endpoint_owner_process_role-cne'GUI_ENGINE'-or[string]$Connection.endpoint-cne$endpoint-or[int]$Connection.port-ne$ExpectedPort-or
+           [IO.Path]::GetFullPath([string]$Connection.worktree).TrimEnd('\','/')-cne$root-or
+           [int]$Connection.pid-ne$ExpectedControlProcessId-or[int]$Connection.control_process_pid-ne$ExpectedControlProcessId-or
+           [string]$Connection.process_start_time_utc-cne$ExpectedControlProcessStartUtc-or[string]$Connection.launch_session_id-cne$ExpectedLaunchSessionId-or
+           [int]$Connection.endpoint_owner_pid-ne$ExpectedEndpointOwnerPid-or$ExpectedEndpointOwnerPid-le0-or$ExpectedEndpointOwnerPid-eq$ExpectedControlProcessId-or
+           -not([IO.Path]::GetFullPath([string]$Connection.endpoint_owner_executable_path).Equals($ownerPath,[StringComparison]::OrdinalIgnoreCase))-or
+           [string]$Connection.endpoint_owner_creation_time_filetime_utc-cne$ExpectedEndpointOwnerCreationFiletimeUtc-or
+           [int]$Connection.endpoint_owner_parent_pid-ne$ExpectedControlProcessId-or[int]$Connection.endpoint_owner_windows_session_id-ne$ExpectedEndpointOwnerSessionId-or
+           [string]$Connection.endpoint_owner_user_sid-cne$ExpectedEndpointOwnerUserSid-or
+           -not([IO.Path]::GetFullPath([string]$Connection.token_path).Equals((Join-Path $root '.codex-godot/auth.token'),[StringComparison]::OrdinalIgnoreCase))){return $false}
+        $escapedRoot=[Regex]::Escape($root);if([string]$Connection.endpoint_owner_command_line-notmatch("(?i)(?:^|\s)--path(?:\s+|=)(?:`"$escapedRoot`"|$escapedRoot)(?=\s|$)")){return $false}
+        if($ListenerOwnerPids.Count-ne1-or[int]$ListenerOwnerPids[0]-ne$ExpectedEndpointOwnerPid-or$AlternateProtectedListenerCount-ne0){return $false}
+        if(-not[bool]$EndpointOwnerIdentity.exists-or-not[bool]$EndpointOwnerIdentity.identity_read_green-or[int]$EndpointOwnerIdentity.pid-ne$ExpectedEndpointOwnerPid-or
+           -not([IO.Path]::GetFullPath([string]$EndpointOwnerIdentity.executable_path).Equals($ownerPath,[StringComparison]::OrdinalIgnoreCase))-or
+           [string]$EndpointOwnerIdentity.executable_sha256-cne$ExpectedEndpointOwnerSha256-or[string]$EndpointOwnerIdentity.creation_time_filetime_utc-cne$ExpectedEndpointOwnerCreationFiletimeUtc-or
+           [int]$EndpointOwnerIdentity.parent_pid-ne$ExpectedControlProcessId-or[int]$EndpointOwnerIdentity.windows_session_id-ne$ExpectedEndpointOwnerSessionId-or
+           [string]$EndpointOwnerIdentity.user_sid-cne$ExpectedEndpointOwnerUserSid-or[string]$EndpointOwnerIdentity.command_line-cne[string]$Connection.endpoint_owner_command_line){return $false}
+        if([string]$EndpointOwnershipAttestation.schema-cne'SpaceSyndicatePr90McpEndpointOwnershipBracketedV2Attestation'-or[string]$EndpointOwnershipAttestation.status-cne'PASS'-or
+           -not[bool]$EndpointOwnershipAttestation.green-or[int]$EndpointOwnershipAttestation.endpoint_ownership_contract_version-ne2-or[int]$EndpointOwnershipAttestation.endpoint_owner_pid-ne$ExpectedEndpointOwnerPid-or
+           [int]$EndpointOwnershipAttestation.endpoint_owner_identity.pid-ne$ExpectedEndpointOwnerPid-or[string]$EndpointOwnershipAttestation.endpoint_owner_identity.creation_time_filetime_utc-cne$ExpectedEndpointOwnerCreationFiletimeUtc-or
+           [string]$EndpointOwnershipAttestation.endpoint_owner_identity.executable_sha256-cne$ExpectedEndpointOwnerSha256-or-not[bool]$EndpointOwnershipAttestation.endpoint_owner_is_gui_engine-or
+           [bool]$EndpointOwnershipAttestation.endpoint_owner_is_console_wrapper-or-not[bool]$EndpointOwnershipAttestation.endpoint_owner_is_descendant_of_launcher-or
+           -not[bool]$EndpointOwnershipAttestation.endpoint_owner_project_match-or-not[bool]$EndpointOwnershipAttestation.endpoint_owner_mcp_session_match-or
+           -not[bool]$EndpointOwnershipAttestation.endpoint_owner_windows_session_match-or-not[bool]$EndpointOwnershipAttestation.endpoint_owner_user_sid_match-or
+           -not[bool]$EndpointOwnershipAttestation.endpoint_owner_creation_identity_match-or[int]$EndpointOwnershipAttestation.foreign_listener_count-ne0-or
+           [int]$EndpointOwnershipAttestation.multiple_active_endpoint_owner_count-ne0-or[int]$EndpointOwnershipAttestation.protected_port_multiple_owner_count-ne0){return $false}
+        return $true
+    } catch {return $false}
+}
+
 function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
     param([AllowNull()][object]$Receipt)
     $requiredCases=@(
@@ -153,6 +244,15 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
         'FORMAL_MCP_SUPPORT_CLASSIFIER_ACCEPTS_ALL_FILE_MODE_PREFIXES',
         'FORMAL_MCP_SUPPORT_CLASSIFIER_REJECTS_WRONG_ROOT_WATCHDOG',
         'FORMAL_PRESTART_BLOCKER_EMITS_PROCESS_ROWS',
+        'FORMAL_V2_BOUND_INVOKER_ACCEPTS_DISTINCT_CONTROL_AND_GUI_OWNER',
+        'NEGATIVE_FORMAL_V2_INVOKER_REJECTS_WRAPPER_AS_OWNER',
+        'NEGATIVE_FORMAL_V2_INVOKER_REJECTS_OWNER_IDENTITY_DRIFT',
+        'FORMAL_RUNBOOK_USES_SEALED_TOOLING_V2_INVOKER',
+        'FORMAL_V2_M5_BINDING_FAILURE_PREVENTS_HTTP',
+        'FORMAL_M5_INVOCATION_BINDING_ACCEPTED',
+        'NEGATIVE_FORMAL_M5_WRONG_RUN_REJECTED',
+        'NEGATIVE_FORMAL_M5_CONTROL_PID_DRIFT_REJECTED',
+        'FORMAL_MILESTONE_SNAPSHOT_USES_EXPLICIT_PROCESS_ID',
         'STALE_326_SELFTEST_REJECTED',
         'STALE_V1_SELFTEST_REJECTED'
     )
@@ -161,7 +261,7 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
     if(@(Compare-Object -ReferenceObject $requiredFields -DifferenceObject @($Receipt.PSObject.Properties.Name)).Count-ne0){return $false}
     $revision=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Receipt -Name 'selftest_revision'
     if([string]$Receipt.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSelfTestV1'-or[string]$Receipt.status-cne'PASS'-or
-       [string]$revision-cne'PR90_ATTEMPT22_WATCHDOG_CLASSIFIER_REPAIR_V3'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
+       [string]$revision-cne'PR90_ATTEMPT22_V2_INVOKER_AND_RECEIPT_PID_REPAIR_V4'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
        [int]$Receipt.new_selftest_case_count-ne@($Receipt.cases).Count-or[int]$Receipt.new_selftest_pass_count-ne[int]$Receipt.new_selftest_case_count-or
        [int]$Receipt.new_selftest_failure_count-ne0-or[int]$Receipt.total_tooling_selftest_pass_count-ne(326+[int]$Receipt.new_selftest_case_count)-or[int]$Receipt.total_tooling_selftest_failure_count-ne0-or
        [int]$Receipt.authorization_negative_test_fail_count-ne0-or[int]$Receipt.false_green_count-ne0-or[int]$Receipt.missing_prerequisite_false_accept_count-ne0-or
@@ -190,15 +290,15 @@ function Test-Pr90Attempt22ToolingManifestStructureV2 {
         [Parameter(Mandatory = $true)][string]$ExpectedNewSelfTestSha256,[Parameter(Mandatory = $true)][string]$ExpectedFrozenInputSha256
     )
     if($null-eq$Manifest-or$null-eq$BaseManifest-or$null-eq$BaseSeal-or$null-eq$NewSelfTest-or$null-eq$FrozenInput){return $false}
-    $expectedDiff=@('tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1','tools/pr90_probe_b_attempt22_contract_v1.psm1','tools/pr90_probe_b_attempt22_selftest_v1.ps1','tools/pr90_probe_b_attempt22_tooling_manifest_builder_v1.ps1','tools/pr90_probe_b_attempt22_tooling_seal_builder_v1.ps1')|Sort-Object
+    $expectedDiff=@('tools/invoke_role_godot_mcp.ps1','tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1','tools/pr90_attempt21_mcp_startup_contract.psm1','tools/pr90_probe_b_attempt22_contract_v1.psm1','tools/pr90_probe_b_attempt22_selftest_v1.ps1','tools/pr90_probe_b_attempt22_tooling_manifest_builder_v1.ps1','tools/pr90_probe_b_attempt22_tooling_seal_builder_v1.ps1')|Sort-Object
     try{
         if([string]$Manifest.schema-cne'Pr90ProbeBV2ResultRecoveryToolingManifestV1'-or[string]$Manifest.status-cne'READY'-or-not[bool]$Manifest.preformal_authorization_eligible-or[bool]$Manifest.startup_probe_b_authorization_eligible-or
            [string]$Manifest.tooling_head_sha-cne$ExpectedHead-or[string]$Manifest.tooling_tree_sha-cne$ExpectedTree-or[string]$Manifest.tooling_parent_sha-cne$ExpectedParent-or
            [string]$Manifest.base_tooling_head_sha-cne$ExpectedParent-or[string]$Manifest.base_tooling_manifest_sha256-cne$ExpectedBaseManifestSha256-or[string]$Manifest.base_tooling_seal_sha256-cne$ExpectedBaseSealSha256-or
            [string]$Manifest.new_selftest_sha256-cne$ExpectedNewSelfTestSha256-or[string]$Manifest.frozen_input_inventory_sha256-cne$ExpectedFrozenInputSha256-or
-           [int]$Manifest.new_tooling_commit_count-ne1-or[int]$Manifest.new_tooling_diff_count-ne5-or[int]$Manifest.new_tooling_modified_count-ne5-or[int]$Manifest.new_tooling_added_count-ne0-or
+            [int]$Manifest.new_tooling_commit_count-ne1-or[int]$Manifest.new_tooling_diff_count-ne7-or[int]$Manifest.new_tooling_modified_count-ne7-or[int]$Manifest.new_tooling_added_count-ne0-or
            [int]$Manifest.tooling_scope_violation_count-ne0-or[int]$Manifest.product_code_change_count-ne0-or[int]$Manifest.product_test_change_count-ne0-or[int]$Manifest.tooling_file_hash_mismatch_count-ne0-or
-           [int]$Manifest.authorized_runtime_reachable_change_count-ne2-or[int]$Manifest.runtime_reachable_tooling_hash_mismatch_count-ne0-or
+            [int]$Manifest.authorized_runtime_reachable_change_count-ne4-or[int]$Manifest.runtime_reachable_tooling_hash_mismatch_count-ne0-or
            [string]$Manifest.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $Manifest)){return $false}
         if([string]$BaseManifest.schema-cne'Pr90ProbeBV2ResultRecoveryToolingManifestV1'-or[string]$BaseManifest.status-cne'READY'-or[string]$BaseManifest.tooling_head_sha-cne$ExpectedParent-or
            [string]$BaseManifest.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $BaseManifest)-or[string]$BaseSeal.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSealV1'-or[string]$BaseSeal.status-cne'SEALED'-or
@@ -209,7 +309,7 @@ function Test-Pr90Attempt22ToolingManifestStructureV2 {
            [string]$Manifest.frozen_input_tooling_head_sha-cne[string]$FrozenInput.tooling_head_sha-or[string]$Manifest.frozen_input_tooling_tree_sha-cne[string]$FrozenInput.tooling_tree_sha-or
            [int]$Manifest.frozen_input_count-ne[int]$FrozenInput.input_count-or[string]$Manifest.frozen_input_hash_inventory_sha256-cne[string]$FrozenInput.input_inventory_sha256){return $false}
         $diffRows=@($Manifest.new_tooling_diff);$diffPaths=@($diffRows|ForEach-Object{[string]$_.relative_path}|Sort-Object)
-        if($diffRows.Count-ne5-or@($diffRows|Where-Object{[string]$_.status-cne'M'}).Count-ne0-or@($diffPaths|Select-Object -Unique).Count-ne5-or@(Compare-Object $expectedDiff $diffPaths).Count-ne0){return $false}
+        if($diffRows.Count-ne7-or@($diffRows|Where-Object{[string]$_.status-cne'M'}).Count-ne0-or@($diffPaths|Select-Object -Unique).Count-ne7-or@(Compare-Object $expectedDiff $diffPaths).Count-ne0){return $false}
         $rows=@($Manifest.tooling_files);$paths=@($rows|ForEach-Object{([string]$_.relative_path).Replace('\','/')}|Sort-Object);$basePaths=@($BaseManifest.tooling_files|ForEach-Object{([string]$_.relative_path).Replace('\','/')}|Sort-Object)
         if([int]$Manifest.tooling_file_count-ne$rows.Count-or$rows.Count-ne@($paths|Select-Object -Unique).Count-or@(Compare-Object $basePaths $paths).Count-ne0){return $false}
         return $true

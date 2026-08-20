@@ -220,14 +220,28 @@ if ($ExecutionMode -ceq 'PRE_FORMAL_EXACT_MCP_DRY_RUN') {
     if([string]$state.summary.status-ceq'PASS'){exit 0}else{exit 2}
 }
 
-$invokeScript = Join-Path $root 'tools/invoke_role_godot_mcp.ps1'
+$invokeScript = Join-Path $PSScriptRoot 'invoke_role_godot_mcp.ps1'
+$invokeBindingFailure=$null;$m5Receipt=$null;$m5Connection=$null;$endpointOwnershipAttestation=$null;$endpointOwnershipAttestationPath=Join-Path $EvidenceRoot 'endpoint-ownership-v2-attestation.json'
+try {
+    $m5ReceiptPath=Join-Path $EvidenceRoot 'milestones/05-M5-mcp_endpoint_owner_v2_verified.receipt.json'
+    if(-not(Test-Pr90ProbeBShaSidecar -TargetPath $m5ReceiptPath -SidecarPath "$m5ReceiptPath.sha256")-or-not(Test-Pr90ProbeBShaSidecar -TargetPath $endpointOwnershipAttestationPath -SidecarPath "$endpointOwnershipAttestationPath.sha256")){throw 'Formal V2 invoker M5 evidence sidecar mismatch.'}
+    $m5Receipt=Get-Content -Raw -LiteralPath $m5ReceiptPath|ConvertFrom-Json -Depth 100
+    $m5ConnectionPath=[IO.Path]::GetFullPath([string]$m5Receipt.connection_path);$expectedConnectionPath=[IO.Path]::GetFullPath((Join-Path $root '.codex-godot/connection.json'))
+    if($m5ConnectionPath-cne$expectedConnectionPath-or-not(Test-Path -LiteralPath $m5ConnectionPath -PathType Leaf)-or(Get-Pr90ProbeBSha256 $m5ConnectionPath)-cne[string]$m5Receipt.connection_sha256){throw 'Formal V2 invoker connection evidence identity mismatch.'}
+    $m5Connection=Get-Content -Raw -LiteralPath $m5ConnectionPath|ConvertFrom-Json -Depth 100;$endpointOwnershipAttestation=Get-Content -Raw -LiteralPath $endpointOwnershipAttestationPath|ConvertFrom-Json -Depth 100
+    if([IO.Path]::GetFullPath([string]$m5Receipt.evidence_path)-cne[IO.Path]::GetFullPath($endpointOwnershipAttestationPath)-or
+       (Get-Pr90ProbeBSha256 $endpointOwnershipAttestationPath)-cne[string]$m5Receipt.evidence_sha256-or
+       -not(Test-Pr90FormalM5InvocationBindingV1 -M5Receipt $m5Receipt -Connection $m5Connection -EndpointOwnershipAttestation $endpointOwnershipAttestation `
+        -ExpectedRunId $RunId -ExpectedExecutionMode $ExecutionMode -ExpectedPort $Port -ExpectedGodotPid ([int]$state.godot_pid) `
+        -ExpectedLaunchSessionId ([string]$state.launch_session_id) -ExpectedEndpointOwnerPid ([int]$state.endpoint_owner_pid))){throw 'Formal V2 invoker M5 evidence identity mismatch.'}
+} catch {$invokeBindingFailure=$_}
 $callIndex = 1000
 $streamId = [string]$state.stream_id
 $cursor = [int64]$state.cursor_after
 $allEvents = [Collections.Generic.List[object]]::new()
 $readyWitnesses = [Collections.Generic.List[object]]::new()
 $pollCount = 0
-$primaryFailure = if($null-ne$stateInvocationFailure){$stateInvocationFailure}elseif([string]$state.summary.status-cne'PASS'){[InvalidOperationException]::new("Formal startup state machine blocked: $([string]$state.summary.failure_detail)")}else{$null}
+$primaryFailure = if($null-ne$stateInvocationFailure){$stateInvocationFailure}elseif([string]$state.summary.status-cne'PASS'){[InvalidOperationException]::new("Formal startup state machine blocked: $([string]$state.summary.failure_detail)")}elseif($null-ne$invokeBindingFailure){$invokeBindingFailure}else{$null}
 $formalPayload=$null
 
 function Get-FormalStructured {
@@ -238,10 +252,17 @@ function Get-FormalStructured {
 
 function Invoke-FormalMcp {
     param([string]$ToolName, [hashtable]$Arguments = @{}, [int]$TimeoutSeconds = 60)
+    if($null-ne$script:invokeBindingFailure-or$null-eq$script:m5Receipt-or$null-eq$script:m5Connection-or$null-eq$script:endpointOwnershipAttestation){throw 'Formal V2 invoker M5 identity binding is not green; no HTTP request is permitted.'}
     $script:callIndex += 1
     $raw = Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-{1}.jsonrpc.json' -f $script:callIndex,$ToolName)
     $json = $Arguments | ConvertTo-Json -Depth 40 -Compress
-    $output = @(& pwsh -NoProfile -File $script:invokeScript -Worktree $root -ToolName $ToolName -ArgumentsJson $json -TimeoutSeconds $TimeoutSeconds -RawResponsePath $raw 2>&1)
+    $output = @(& pwsh -NoProfile -File $script:invokeScript -Worktree $root -ToolName $ToolName -ArgumentsJson $json -TimeoutSeconds $TimeoutSeconds -RawResponsePath $raw `
+        -ExpectedControlProcessId ([int]$m5Connection.control_process_pid) -ExpectedControlProcessStartUtc ([string]$m5Connection.process_start_time_utc) -ExpectedLaunchSessionId ([string]$m5Connection.launch_session_id) `
+        -ExpectedControlProcessSha256 ([string]$formalSeal.godot_console_sha256) -ExpectedPort $Port -ExpectedConnectionSha256 ([string]$m5Receipt.connection_sha256) `
+        -EndpointOwnershipAttestationPath $endpointOwnershipAttestationPath -ExpectedEndpointOwnershipAttestationSha256 ([string]$m5Receipt.evidence_sha256) `
+        -ExpectedEndpointOwnerPid ([int]$m5Connection.endpoint_owner_pid) -ExpectedEndpointOwnerPath $GodotGuiPath -ExpectedEndpointOwnerSha256 ([string]$formalSeal.godot_executable_sha256) `
+        -ExpectedEndpointOwnerCreationFiletimeUtc ([string]$m5Connection.endpoint_owner_creation_time_filetime_utc) -ExpectedEndpointOwnerSessionId ([int]$m5Connection.endpoint_owner_windows_session_id) `
+        -ExpectedEndpointOwnerUserSid ([string]$m5Connection.endpoint_owner_user_sid) 2>&1)
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $raw)) { throw "Formal v5 MCP call $ToolName failed: $($output -join ' ')" }
     return Get-Content -Raw -LiteralPath $raw | ConvertFrom-Json -Depth 100
 }

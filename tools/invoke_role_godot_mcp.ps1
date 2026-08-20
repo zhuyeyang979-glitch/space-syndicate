@@ -12,7 +12,49 @@ param(
 
     [switch]$PassThroughToolErrors,
 
-    [string]$RawResponsePath = ""
+    [string]$RawResponsePath = "",
+
+    [Parameter(Mandatory = $true)]
+    [int]$ExpectedControlProcessId,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedControlProcessStartUtc,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedControlProcessSha256,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedLaunchSessionId,
+
+    [Parameter(Mandatory = $true)]
+    [int]$ExpectedPort,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedConnectionSha256,
+
+    [Parameter(Mandatory = $true)]
+    [string]$EndpointOwnershipAttestationPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedEndpointOwnershipAttestationSha256,
+
+    [Parameter(Mandatory = $true)]
+    [int]$ExpectedEndpointOwnerPid,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedEndpointOwnerPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedEndpointOwnerSha256,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedEndpointOwnerCreationFiletimeUtc,
+
+    [Parameter(Mandatory = $true)]
+    [int]$ExpectedEndpointOwnerSessionId,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedEndpointOwnerUserSid
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,6 +63,14 @@ $processIdentityModule = Join-Path `
     $PSScriptRoot `
     "role_godot_mcp_process_identity.psm1"
 Import-Module -Name $processIdentityModule -Force -ErrorAction Stop
+$listenerIdentityModule = Join-Path `
+    $PSScriptRoot `
+    "pr90_listener_process_identity_reader_v1.psm1"
+Import-Module -Name $listenerIdentityModule -Force -ErrorAction Stop
+$attempt22ContractModule = Join-Path `
+    $PSScriptRoot `
+    "pr90_probe_b_attempt22_contract_v1.psm1"
+Import-Module -Name $attempt22ContractModule -Force -ErrorAction Stop
 
 $root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd("\")
 $localRoot = Join-Path $root ".codex-godot"
@@ -88,11 +138,44 @@ if (-not (Test-Path -LiteralPath $tokenPath)) {
 }
 
 $connection = Get-Content -Raw -LiteralPath $connectionPath | ConvertFrom-Json
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath $connectionPath).Hash.ToLowerInvariant() -cne $ExpectedConnectionSha256.ToLowerInvariant()) {
+    throw "Role-local MCP connection bytes no longer match the M5 receipt."
+}
+$attestationFullPath = [IO.Path]::GetFullPath($EndpointOwnershipAttestationPath)
+if (-not (Test-Path -LiteralPath $attestationFullPath -PathType Leaf) `
+    -or (Get-FileHash -Algorithm SHA256 -LiteralPath $attestationFullPath).Hash.ToLowerInvariant() -cne $ExpectedEndpointOwnershipAttestationSha256.ToLowerInvariant()) {
+    throw "Role-local MCP endpoint ownership attestation bytes no longer match M5."
+}
+$endpointOwnershipAttestation = Get-Content -Raw -LiteralPath $attestationFullPath | ConvertFrom-Json -Depth 100
+$connectionFields = @($connection.PSObject.Properties.Name)
+$requiredConnectionFields = @(
+    'schema', 'endpoint', 'port', 'pid', 'control_process_pid', 'worktree',
+    'godot_path', 'process_start_time_utc', 'command_line',
+    'endpoint_ownership_contract_version', 'endpoint_owner_pid',
+    'endpoint_owner_process_role', 'endpoint_owner_executable_path',
+    'endpoint_owner_command_line', 'endpoint_owner_creation_time_filetime_utc',
+    'endpoint_owner_parent_pid', 'endpoint_owner_windows_session_id',
+    'endpoint_owner_user_sid', 'launch_session_id'
+)
+if (@($requiredConnectionFields | Where-Object { $connectionFields -cnotcontains $_ }).Count -ne 0 `
+    -or [string]$connection.schema -cne 'McpStartupConnectionV2' `
+    -or [int]$connection.endpoint_ownership_contract_version -ne 2 `
+    -or [string]$connection.endpoint_owner_process_role -cne 'GUI_ENGINE' `
+    -or [int]$connection.port -ne $ExpectedPort) {
+    throw "Role-local MCP connection metadata is not the sealed V2 identity contract."
+}
 $reportedWorktree = ([string]$connection.worktree).TrimEnd("\")
 if (-not $reportedWorktree.Equals($root, [StringComparison]::OrdinalIgnoreCase)) {
     throw "Role-local MCP metadata belongs to another worktree: $reportedWorktree"
 }
 $rolePid = [int]$connection.pid
+if ($ExpectedControlProcessId -le 0 `
+    -or $rolePid -ne $ExpectedControlProcessId `
+    -or [int]$connection.control_process_pid -ne $ExpectedControlProcessId `
+    -or [string]$connection.process_start_time_utc -cne $ExpectedControlProcessStartUtc `
+    -or [string]$connection.launch_session_id -cne $ExpectedLaunchSessionId) {
+    throw "Role-local MCP control-process identity is not the authorized startup identity."
+}
 $roleProcess = Get-Process -Id $rolePid -ErrorAction SilentlyContinue
 if ($null -eq $roleProcess -or $roleProcess.HasExited) {
     throw "Role-local Godot process is not running: PID $($connection.pid)"
@@ -114,6 +197,9 @@ if (-not ([string]$roleProcess.Path).Equals(
 )) {
     throw "Role-local Godot executable identity does not match the stored role."
 }
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath $expectedGodotPath).Hash.ToLowerInvariant() -cne $ExpectedControlProcessSha256.ToLowerInvariant()) {
+    throw "Role-local Godot control executable bytes changed after authorization."
+}
 $processRow = Get-CimInstance `
     Win32_Process `
     -Filter "ProcessId = $rolePid" `
@@ -122,7 +208,8 @@ if ($null -eq $processRow) {
     throw "Role-local Godot process identity could not be enumerated."
 }
 $commandLine = [string]$processRow.CommandLine
-if (-not (Test-CommandLineWorktreeBinding -CommandLine $commandLine -ExpectedRoot $root)) {
+if ($commandLine -cne [string]$connection.command_line `
+    -or -not (Test-CommandLineWorktreeBinding -CommandLine $commandLine -ExpectedRoot $root)) {
     throw "Role-local Godot command line is not bound to this worktree."
 }
 $port = [int]$connection.port
@@ -134,16 +221,82 @@ if (
 ) {
     throw "Role-local MCP endpoint metadata is not the expected local role endpoint."
 }
+$alternateProtectedPort = if ($ExpectedPort -eq 7576) { 7586 } else { 7576 }
+$alternateListeners = @(Get-NetTCPConnection -State Listen -LocalPort $alternateProtectedPort -ErrorAction SilentlyContinue)
+if ($alternateListeners.Count -ne 0) {
+    throw "The alternate protected MCP port is unexpectedly occupied."
+}
 $listeners = @(
     Get-NetTCPConnection -State Listen -ErrorAction Stop |
         Where-Object { [int]$_.LocalPort -eq $port }
 )
-if (
-    $listeners.Count -ne 1 -or
-    [int]$listeners[0].OwningProcess -ne $rolePid -or
-    [int]$connection.endpoint_owner_pid -ne $rolePid
-) {
-    throw "Role-local MCP endpoint is not exclusively owned by the stored Godot process."
+if ($ExpectedEndpointOwnerPid -le 0 `
+    -or $ExpectedEndpointOwnerPid -eq $ExpectedControlProcessId `
+    -or [int]$connection.endpoint_owner_pid -ne $ExpectedEndpointOwnerPid `
+    -or $listeners.Count -ne 1 `
+    -or [int]$listeners[0].OwningProcess -ne $ExpectedEndpointOwnerPid) {
+    throw "Role-local MCP endpoint is not exclusively owned by the authorized GUI engine."
+}
+$expectedOwnerPath = (Resolve-Path -LiteralPath $ExpectedEndpointOwnerPath).Path
+$ownerIdentity = Read-EndpointListenerOwnerIdentityV1 -PidValue $ExpectedEndpointOwnerPid
+if (-not [bool]$ownerIdentity.exists `
+    -or -not [bool]$ownerIdentity.identity_read_green `
+    -or [int]$ownerIdentity.pid -ne $ExpectedEndpointOwnerPid `
+    -or -not ([string]$ownerIdentity.executable_path).Equals($expectedOwnerPath, [StringComparison]::OrdinalIgnoreCase) `
+    -or [string]$ownerIdentity.executable_sha256 -cne $ExpectedEndpointOwnerSha256 `
+    -or -not ([string]$connection.endpoint_owner_executable_path).Equals($expectedOwnerPath, [StringComparison]::OrdinalIgnoreCase) `
+    -or [string]$ownerIdentity.creation_time_filetime_utc -cne $ExpectedEndpointOwnerCreationFiletimeUtc `
+    -or [string]$connection.endpoint_owner_creation_time_filetime_utc -cne $ExpectedEndpointOwnerCreationFiletimeUtc `
+    -or [int]$ownerIdentity.parent_pid -ne $ExpectedControlProcessId `
+    -or [int]$connection.endpoint_owner_parent_pid -ne $ExpectedControlProcessId `
+    -or [int]$ownerIdentity.windows_session_id -ne $ExpectedEndpointOwnerSessionId `
+    -or [int]$connection.endpoint_owner_windows_session_id -ne $ExpectedEndpointOwnerSessionId `
+    -or [string]$ownerIdentity.user_sid -cne $ExpectedEndpointOwnerUserSid `
+    -or [string]$connection.endpoint_owner_user_sid -cne $ExpectedEndpointOwnerUserSid `
+    -or [string]$ownerIdentity.command_line -cne [string]$connection.endpoint_owner_command_line `
+    -or -not (Test-CommandLineWorktreeBinding -CommandLine ([string]$ownerIdentity.command_line) -ExpectedRoot $root)) {
+    throw "Role-local MCP GUI owner identity no longer matches the authorized V2 process proof."
+}
+if ([string]$endpointOwnershipAttestation.schema -cne 'SpaceSyndicatePr90McpEndpointOwnershipBracketedV2Attestation' `
+    -or [string]$endpointOwnershipAttestation.status -cne 'PASS' `
+    -or -not [bool]$endpointOwnershipAttestation.green `
+    -or [int]$endpointOwnershipAttestation.endpoint_ownership_contract_version -ne 2 `
+    -or [int]$endpointOwnershipAttestation.endpoint_owner_pid -ne $ExpectedEndpointOwnerPid `
+    -or [int]$endpointOwnershipAttestation.endpoint_owner_identity.pid -ne $ExpectedEndpointOwnerPid `
+    -or [string]$endpointOwnershipAttestation.endpoint_owner_identity.creation_time_filetime_utc -cne $ExpectedEndpointOwnerCreationFiletimeUtc `
+    -or [string]$endpointOwnershipAttestation.endpoint_owner_identity.executable_sha256 -cne $ExpectedEndpointOwnerSha256 `
+    -or -not [bool]$endpointOwnershipAttestation.endpoint_owner_is_gui_engine `
+    -or [bool]$endpointOwnershipAttestation.endpoint_owner_is_console_wrapper `
+    -or -not [bool]$endpointOwnershipAttestation.endpoint_owner_is_descendant_of_launcher `
+    -or -not [bool]$endpointOwnershipAttestation.endpoint_owner_project_match `
+    -or -not [bool]$endpointOwnershipAttestation.endpoint_owner_mcp_session_match `
+    -or -not [bool]$endpointOwnershipAttestation.endpoint_owner_windows_session_match `
+    -or -not [bool]$endpointOwnershipAttestation.endpoint_owner_user_sid_match `
+    -or -not [bool]$endpointOwnershipAttestation.endpoint_owner_creation_identity_match `
+    -or [int]$endpointOwnershipAttestation.foreign_listener_count -ne 0 `
+    -or [int]$endpointOwnershipAttestation.multiple_active_endpoint_owner_count -ne 0 `
+    -or [int]$endpointOwnershipAttestation.protected_port_multiple_owner_count -ne 0) {
+    throw "Role-local MCP endpoint ownership attestation is not the exact V2 PASS identity."
+}
+$v2IdentityGreen = Test-Pr90McpV2BoundInvocationIdentityV1 `
+    -Connection $connection `
+    -EndpointOwnerIdentity $ownerIdentity `
+    -EndpointOwnershipAttestation $endpointOwnershipAttestation `
+    -ListenerOwnerPids @($listeners | ForEach-Object { [int]$_.OwningProcess }) `
+    -AlternateProtectedListenerCount $alternateListeners.Count `
+    -ExpectedWorktree $root `
+    -ExpectedPort $ExpectedPort `
+    -ExpectedControlProcessId $ExpectedControlProcessId `
+    -ExpectedControlProcessStartUtc $ExpectedControlProcessStartUtc `
+    -ExpectedLaunchSessionId $ExpectedLaunchSessionId `
+    -ExpectedEndpointOwnerPid $ExpectedEndpointOwnerPid `
+    -ExpectedEndpointOwnerPath $expectedOwnerPath `
+    -ExpectedEndpointOwnerSha256 $ExpectedEndpointOwnerSha256 `
+    -ExpectedEndpointOwnerCreationFiletimeUtc $ExpectedEndpointOwnerCreationFiletimeUtc `
+    -ExpectedEndpointOwnerSessionId $ExpectedEndpointOwnerSessionId `
+    -ExpectedEndpointOwnerUserSid $ExpectedEndpointOwnerUserSid
+if (-not $v2IdentityGreen) {
+    throw "Role-local MCP V2 invocation identity contract rejected the live endpoint."
 }
 $token = [System.IO.File]::ReadAllText($tokenPath).Trim()
 $arguments = $ArgumentsJson | ConvertFrom-Json -AsHashtable

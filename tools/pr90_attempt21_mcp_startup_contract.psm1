@@ -368,7 +368,7 @@ function Get-McpStartupProcessSnapshot {
     $stdoutTail = @(Get-StartupFileTail -Path $StdoutPath -MaximumLines 10)
     $stderrTail = @(Get-StartupFileTail -Path $StderrPath -MaximumLines 10)
     return [pscustomobject][ordered]@{
-        pid = if ($Pid -gt 0) { $Pid } else { $null }
+        pid = if ($ProcessId -gt 0) { $ProcessId } else { $null }
         process_alive = $null -ne $process
         process_exit_code = if ($null -ne $process) { $null } else { 'UNKNOWN' }
         cpu_time_delta_ms = if ($null -ne $process) {
