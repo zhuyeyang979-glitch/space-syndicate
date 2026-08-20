@@ -77,7 +77,7 @@ function Get-McpStartupMilestoneSpecs {
         [pscustomobject]@{ index=2;  id='M2';  name='godot_process_created';                      timeout_seconds=15; failure_class='STARTUP_M2_GODOT_PROCESS_CREATE_FAILED' },
         [pscustomobject]@{ index=3;  id='M3';  name='godot_process_identity_verified';            timeout_seconds=15; failure_class='STARTUP_M3_PROCESS_IDENTITY_FAILED' },
         [pscustomobject]@{ index=4;  id='M4';  name='mcp_endpoint_bound';                         timeout_seconds=90; failure_class='STARTUP_M4_ENDPOINT_BIND_TIMEOUT' },
-        [pscustomobject]@{ index=5;  id='M5';  name='mcp_endpoint_owner_verified';                timeout_seconds=15; failure_class='STARTUP_M5_ENDPOINT_OWNER_MISMATCH' },
+        [pscustomobject]@{ index=5;  id='M5';  name='mcp_endpoint_owner_v2_verified';             timeout_seconds=30; failure_class='STARTUP_M5_ENDPOINT_OWNERSHIP_V2_FAILED' },
         [pscustomobject]@{ index=6;  id='M6';  name='jsonrpc_initialize_or_health_request_sent'; timeout_seconds=15; failure_class='STARTUP_M6_FIRST_JSONRPC_NOT_SENT' },
         [pscustomobject]@{ index=7;  id='M7';  name='first_jsonrpc_response_received';            timeout_seconds=30; failure_class='STARTUP_M7_FIRST_JSONRPC_RESPONSE_TIMEOUT' },
         [pscustomobject]@{ index=8;  id='M8';  name='first_mcp_raw_evidence_persisted';           timeout_seconds=15; failure_class='STARTUP_M8_RAW_WRITER_FAILED' },
@@ -142,6 +142,13 @@ function New-McpStartupReceipt {
         port = Get-StartupContextValue $Context 'port'
         port_bound = Get-StartupContextValue $Context 'port_bound'
         endpoint_owner_pid = Get-StartupContextValue $Context 'endpoint_owner_pid'
+        endpoint_ownership_contract_version = Get-StartupContextValue $Context 'endpoint_ownership_contract_version'
+        endpoint_owner_process_role = Get-StartupContextValue $Context 'endpoint_owner_process_role'
+        total_listener_sample_count = Get-StartupContextValue $Context 'total_listener_sample_count' 0
+        consecutive_parity_sample_count = Get-StartupContextValue $Context 'consecutive_parity_sample_count' 0
+        endpoint_owner_stable_window_ms = Get-StartupContextValue $Context 'endpoint_owner_stable_window_ms' 0
+        connection_path = Get-StartupContextValue $Context 'connection_path'
+        connection_sha256 = Get-StartupContextValue $Context 'connection_sha256'
         session_id = Get-StartupContextValue $Context 'session_id'
         session_id_source = Get-StartupContextValue $Context 'session_id_source' 'tooling_generated'
         stream_id = Get-StartupContextValue $Context 'stream_id'
@@ -500,7 +507,8 @@ function Get-McpStartupBoundaryClassification {
     if (-not [bool](Fact 'process_identity_verified')) { return [pscustomobject]@{ milestone='M3'; failure_class='STARTUP_M3_PROCESS_IDENTITY_FAILED'; green=$false } }
     if (-not [bool](Fact 'process_alive_before_endpoint')) { return [pscustomobject]@{ milestone='M4'; failure_class='STARTUP_M4_PROCESS_EXITED_BEFORE_ENDPOINT'; green=$false } }
     if (-not [bool](Fact 'endpoint_bound')) { return [pscustomobject]@{ milestone='M4'; failure_class='STARTUP_M4_ENDPOINT_BIND_TIMEOUT'; green=$false } }
-    if (-not [bool](Fact 'endpoint_owner_match')) { return [pscustomobject]@{ milestone='M5'; failure_class='STARTUP_M5_ENDPOINT_OWNER_MISMATCH'; green=$false } }
+    $ownershipV2Green = if ($Facts.ContainsKey('endpoint_ownership_v2_green')) { [bool](Fact 'endpoint_ownership_v2_green') } else { [bool](Fact 'endpoint_owner_match') }
+    if (-not $ownershipV2Green) { return [pscustomobject]@{ milestone='M5'; failure_class='STARTUP_M5_ENDPOINT_OWNERSHIP_V2_FAILED'; green=$false } }
     if (-not [bool](Fact 'connection_file_exists')) { return [pscustomobject]@{ milestone='M5'; failure_class='STARTUP_M5_CONNECTION_FILE_MISSING'; green=$false } }
     if (-not [bool](Fact 'session_id_match')) { return [pscustomobject]@{ milestone='M5'; failure_class='STARTUP_M5_SESSION_ID_MISMATCH'; green=$false } }
     if (-not [bool](Fact 'first_request_sent')) { return [pscustomobject]@{ milestone='M6'; failure_class='STARTUP_M6_FIRST_JSONRPC_NOT_SENT'; green=$false } }

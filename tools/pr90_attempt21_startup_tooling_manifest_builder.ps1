@@ -39,11 +39,20 @@ $relativePaths = @(
     'tools/invoke_role_godot_mcp.ps1',
     'tools/stop_role_godot_mcp.ps1',
     'tools/launch_role_godot_mcp.ps1',
+    'tools/pr90_endpoint_listener_record_v1.psm1',
+    'tools/pr90_endpoint_listener_key_formatter_v1.psm1',
+    'tools/pr90_getnettcp_listener_adapter_v1.psm1',
+    'tools/pr90_netstat_listener_adapter_v1.psm1',
+    'tools/pr90_listener_process_identity_reader_v1.psm1',
+    'tools/pr90_listener_parity_validator_v1.psm1',
+    'tools/pr90_m5_passive_contract_v1.psm1',
+    'tools/pr90_mcp_endpoint_ownership_v2.psm1',
     'tools/pr90_attempt21_mcp_startup_contract.psm1',
     'tools/pr90_mcp_startup_state_machine_v1.psm1',
     'tools/pr90_attempt21_mcp_startup_watchdog.ps1',
     'tools/pr90_attempt21_mcp_startup_probe.ps1',
     'tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1',
+    'tools/pr90_endpoint_ownership_v2_post_repair_probe.ps1',
     'tools/pr90_attempt21_startup_boundary_selftest.ps1',
     'tools/pr90_attempt21_startup_tooling_manifest_builder.ps1',
     'tools/pr90_attempt21_startup_tooling_validator.ps1',
@@ -60,13 +69,32 @@ $files = @(
     }
 )
 $specs = @(Get-McpStartupMilestoneSpecs)
-$probePass = ([string]$probe.status -ceq 'PASS' -and [int]$probe.milestone_count -eq 12 -and [bool]$probe.startup_milestone_complete -and [bool]$probe.stops_cleanly)
-$selftestPass = ([string]$selftest.status -ceq 'PASS' -and [int]$selftest.case_count -ge 28 -and [int]$selftest.pass_count -eq [int]$selftest.case_count -and [int]$selftest.startup_failure_stage_false_report_count -eq 0 -and [int]$selftest.startup_stall_false_green_count -eq 0)
-$eligible = ($probePass -and $selftestPass)
+$probePass = (
+    [string]$probe.status -ceq 'PASS' -and [string]$probe.probe_id -ceq 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-001' -and
+    [int]$probe.post_repair_probe_execution_count -eq 1 -and -not [bool]$probe.automatic_retry_allowed -and
+    [int]$probe.milestone_count -eq 12 -and [bool]$probe.startup_milestone_complete -and [bool]$probe.stops_cleanly -and
+    [bool]$probe.endpoint_ownership_contract_v2_implemented -and [int]$probe.endpoint_ownership_contract_version -eq 2 -and
+    [int]$probe.total_listener_sample_count -ge 5 -and [int]$probe.consecutive_parity_sample_count -ge 3 -and [double]$probe.endpoint_owner_stable_window_ms -ge 1000 -and
+    [bool]$probe.first_jsonrpc_request_sent -and [bool]$probe.first_jsonrpc_response_received -and [int]$probe.m6_to_m11_execution_count -eq 6 -and
+    [int]$probe.formal_mcp_execution_count -eq 0 -and [int]$probe.authorized_run_count_consumed -eq 0
+)
+$selftestPass = (
+    [string]$selftest.status -ceq 'PASS' -and [int]$selftest.case_count -ge 50 -and [int]$selftest.pass_count -eq [int]$selftest.case_count -and
+    [int]$selftest.endpoint_ownership_contract_version -eq 2 -and [int]$selftest.endpoint_ownership_v2_case_count -ge 15 -and
+    [int]$selftest.endpoint_ownership_v2_pass_count -eq [int]$selftest.endpoint_ownership_v2_case_count -and [int]$selftest.endpoint_ownership_v2_false_green_count -eq 0 -and
+    [int]$selftest.startup_failure_stage_false_report_count -eq 0 -and [int]$selftest.startup_stall_false_green_count -eq 0
+)
+$probeBReady = ($probePass -and $selftestPass)
 $manifest = [ordered]@{
-    schema='SpaceSyndicatePr90McpStartupToolingManifestV1'
-    status=if($eligible){'READY'}else{'BLOCKED_PENDING_FULL_M0_M11_PROBE'}
-    authorization_eligible=$eligible
+    schema='SpaceSyndicatePr90McpStartupToolingManifestV2'
+    status=if($probeBReady){'READY_FOR_PR90_STARTUP_PROBE_B_AUTHORIZATION'}else{'BLOCKED_PENDING_POST_REPAIR_M0_M11_PROBE'}
+    authorization_eligible=$false
+    startup_probe_b_authorization_eligible=$probeBReady
+    ready_for_new_exact_sha_mcp_authorization=$false
+    authorization_id='PR90_MCP_ENDPOINT_OWNERSHIP_V2_CONTRACT_REPAIR_AND_POST_REPAIR_M0_M11_PROBE_AUTHORIZATION'
+    authorized_post_repair_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-001'
+    authorized_post_repair_probe_count=1
+    automatic_retry_allowed=$false
     created_at_utc=[DateTimeOffset]::UtcNow.ToString('o')
     product_head_sha=$ProductHeadSha
     product_tree_sha=$ProductTreeSha
@@ -96,6 +124,10 @@ $manifest = [ordered]@{
     startup_selftest_status=[string]$selftest.status
     startup_selftest_case_count=[int]$selftest.case_count
     startup_selftest_pass_count=[int]$selftest.pass_count
+    endpoint_ownership_contract_version=2
+    endpoint_ownership_v2_selftest_case_count=[int]$selftest.endpoint_ownership_v2_case_count
+    endpoint_ownership_v2_selftest_pass_count=[int]$selftest.endpoint_ownership_v2_pass_count
+    endpoint_ownership_v2_false_green_count=[int]$selftest.endpoint_ownership_v2_false_green_count
     startup_failure_stage_false_report_count=[int]$selftest.startup_failure_stage_false_report_count
     startup_stall_false_green_count=[int]$selftest.startup_stall_false_green_count
     probe_a_evidence_path=[IO.Path]::GetFullPath($ProbeAEvidencePath)
@@ -106,6 +138,9 @@ $manifest = [ordered]@{
     probe_a_formal_authorization_consumed=[bool]$probe.formal_authorization_consumed
     probe_a_formal_mcp_execution_count=[int]$probe.formal_mcp_execution_count
     probe_a_authorized_run_count_consumed=[int]$probe.authorized_run_count_consumed
+    post_repair_probe_execution_count=[int]$probe.post_repair_probe_execution_count
+    post_repair_probe_m0_m11_green=$probePass
+    endpoint_ownership_contract_v2_implemented=[bool]$probe.endpoint_ownership_contract_v2_implemented
     product_code_change_count=0
     product_test_change_count=0
     gate_manifest_change_count=0
@@ -123,6 +158,8 @@ $manifest = [ordered]@{
     new_startup_watchdog_sha256=($files|Where-Object{$_.relative_path -ceq 'tools/pr90_attempt21_mcp_startup_watchdog.ps1'}).sha256
     new_startup_state_machine_sha256=($files|Where-Object{$_.relative_path -ceq 'tools/pr90_mcp_startup_state_machine_v1.psm1'}).sha256
     new_startup_contract_sha256=($files|Where-Object{$_.relative_path -ceq 'tools/pr90_attempt21_mcp_startup_contract.psm1'}).sha256
+    new_endpoint_ownership_v2_sha256=($files|Where-Object{$_.relative_path -ceq 'tools/pr90_mcp_endpoint_ownership_v2.psm1'}).sha256
+    new_post_repair_probe_controller_sha256=($files|Where-Object{$_.relative_path -ceq 'tools/pr90_endpoint_ownership_v2_post_repair_probe.ps1'}).sha256
     canonical_payload_sha256=''
 }
 $manifest.canonical_payload_sha256 = Get-StartupCanonicalSha256 $manifest
