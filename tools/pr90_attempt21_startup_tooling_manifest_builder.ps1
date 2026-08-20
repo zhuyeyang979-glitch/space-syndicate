@@ -21,8 +21,8 @@ if (@(& git -C $root status --porcelain=v1 --untracked-files=all).Count -ne 0) {
 $toolingHead = (& git -C $root rev-parse HEAD).Trim()
 $toolingTree = (& git -C $root rev-parse 'HEAD^{tree}').Trim()
 if ($toolingHead -notmatch '^[0-9a-f]{40}$' -or $toolingTree -notmatch '^[0-9a-f]{40}$') { throw 'Tooling git identity is invalid.' }
-$baseToolingHead = 'd7386e901f2d0f4fdf994f640f6e91b49d7d5ed8'
-$baseToolingTree = '7b756bb9f3039125e63d035d49eb5776ca60178a'
+$baseToolingHead = 'd0264a1b819b6acc4f1857d79b15f6a95b0c6ecc'
+$baseToolingTree = 'fd1117ddf7bbc254dedfa5e160f34e0f2c9fd3d1'
 $toolingParent = (& git -C $root rev-parse 'HEAD^').Trim()
 $newToolingCommitCount = [int](& git -C $root rev-list --count "$baseToolingHead..HEAD")
 if ($toolingParent -cne $baseToolingHead -or $newToolingCommitCount -ne 1 -or (& git -C $root rev-parse "$baseToolingHead^{tree}").Trim() -cne $baseToolingTree) { throw 'Tooling is not the single authorized child of the frozen base identity.' }
@@ -102,14 +102,14 @@ if (-not $selftestPass) { throw 'M9 runtime bridge tooling self-test is not an e
 $probeBReady = $false
 $manifest = [ordered]@{
     schema='SpaceSyndicatePr90McpStartupToolingManifestV2'
-    status='BLOCKED_PENDING_NEW_POST_REPAIR_M0_M11_PROBE_AUTHORIZATION'
+    status='SEALED_FOR_AUTHORIZED_POST_REPAIR_M0_M11_PROBE'
     authorization_eligible=$false
     startup_probe_b_authorization_eligible=$probeBReady
     ready_for_new_exact_sha_mcp_authorization=$false
-    authorization_id='PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_M9_RUNTIME_BRIDGE_HEARTBEAT_BOOTSTRAP_TOOLING_REPAIR_AUTHORIZATION'
-    authorized_post_repair_probe_id=''
-    authorized_post_repair_probe_count=0
-    authorized_new_probe_count=0
+    authorization_id='PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_M9_RUNTIME_BRIDGE_HEARTBEAT_BOOTSTRAP_NEW_PROBE_CONTROLLER_AND_M0_M11_PROBE_AUTHORIZATION'
+    authorized_post_repair_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-004'
+    authorized_post_repair_probe_count=1
+    authorized_new_probe_count=1
     new_probe_execution_count=$newProbeExecutionCount
     automatic_retry_allowed=$false
     created_at_utc=[DateTimeOffset]::UtcNow.ToString('o')

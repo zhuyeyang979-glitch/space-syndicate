@@ -241,10 +241,14 @@ $controllerNormalizationGreen = (
 )
 Add-ZeroCardinalityBooleanCase 'controller_all_nullable_collections_explicitly_normalized' $true $controllerNormalizationGreen
 $controllerIdentityGreen = (
-    $controllerText.Contains("`$authorizedProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-003'") -and
-    $controllerText.Contains("`$authorizationId = 'PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_M9_OPTIONAL_ERROR_PROPERTY_AND_FAILURE_CLEANUP_TOOLING_REPAIR_AND_NEW_PROBE_AUTHORIZATION'")
+    $controllerText.Contains("[string]`$ProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-004'") -and
+    $controllerText.Contains("`$authorizedProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-004'") -and
+    $controllerText.Contains("`$authorizationId = 'PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_M9_RUNTIME_BRIDGE_HEARTBEAT_BOOTSTRAP_NEW_PROBE_CONTROLLER_AND_M0_M11_PROBE_AUTHORIZATION'") -and
+    $controllerText.Contains('cumulative_post_repair_probe_execution_count_before=3') -and
+    $controllerText.Contains('cumulative_post_repair_probe_execution_count=4') -and
+    $controllerText.Contains("frozen_failed_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-003'")
 )
-Add-ZeroCardinalityBooleanCase 'controller_remains_frozen_to_consumed_probe_003_identity' $true $controllerIdentityGreen
+Add-ZeroCardinalityBooleanCase 'controller_exactly_authorizes_probe_004_and_freezes_probe_003' $true $controllerIdentityGreen
 $controllerTokens = $null
 $controllerParseErrors = $null
 $null = [Management.Automation.Language.Parser]::ParseFile($controllerPath,[ref]$controllerTokens,[ref]$controllerParseErrors)
