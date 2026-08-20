@@ -259,6 +259,71 @@ function Test-Pr90McpV2BoundInvocationIdentityV1 {
     } catch {return $false}
 }
 
+function Test-Pr90CanonicalImportEndpointOwnershipV2 {
+    param(
+        [AllowNull()][object]$ControlIdentity,
+        [AllowNull()][object]$EndpointOwnerIdentity,
+        [Parameter(Mandatory=$true)][AllowEmptyCollection()][int[]]$ListenerOwnerPids,
+        [Parameter(Mandatory=$true)][int]$AlternateProtectedListenerCount,
+        [Parameter(Mandatory=$true)][int]$ExpectedControlProcessId,
+        [Parameter(Mandatory=$true)][string]$ExpectedControlPath,
+        [Parameter(Mandatory=$true)][string]$ExpectedControlSha256,
+        [Parameter(Mandatory=$true)][string]$ExpectedControlCreationFiletimeUtc,
+        [Parameter(Mandatory=$true)][int]$ExpectedEndpointOwnerPid,
+        [Parameter(Mandatory=$true)][string]$ExpectedEndpointOwnerPath,
+        [Parameter(Mandatory=$true)][string]$ExpectedEndpointOwnerSha256,
+        [Parameter(Mandatory=$true)][string]$ExpectedRoot
+    )
+    if($null-eq$ControlIdentity-or$null-eq$EndpointOwnerIdentity){return $false}
+    try{
+        $pathBinding={param([string]$CommandLine,[string]$Root)
+            if([string]::IsNullOrWhiteSpace($CommandLine)){return $false}
+            foreach($form in @($Root,$Root.Replace('\','/'))){
+                $escaped=[Regex]::Escape($form.TrimEnd('\','/'))
+                if([Regex]::IsMatch($CommandLine,'(?i)(?:^|\s)--path(?:\s+|=)(?:"'+$escaped+'"|'+$escaped+')(?=\s|$)')){return $true}
+            }
+            return $false
+        }
+        if($ListenerOwnerPids.Count-ne1-or[int]$ListenerOwnerPids[0]-ne$ExpectedEndpointOwnerPid-or$AlternateProtectedListenerCount-ne0){return $false}
+        if(-not[bool]$ControlIdentity.exists-or-not[bool]$ControlIdentity.identity_read_green-or[int]$ControlIdentity.pid-ne$ExpectedControlProcessId-or
+           [string]$ControlIdentity.executable_path-ine$ExpectedControlPath-or[string]$ControlIdentity.executable_sha256-cne$ExpectedControlSha256-or
+           [string]$ControlIdentity.creation_time_filetime_utc-cne$ExpectedControlCreationFiletimeUtc-or-not(& $pathBinding ([string]$ControlIdentity.command_line) $ExpectedRoot)){return $false}
+        if(-not[bool]$EndpointOwnerIdentity.exists-or-not[bool]$EndpointOwnerIdentity.identity_read_green-or[int]$EndpointOwnerIdentity.pid-ne$ExpectedEndpointOwnerPid-or
+           $ExpectedEndpointOwnerPid-eq$ExpectedControlProcessId-or[string]$EndpointOwnerIdentity.executable_path-ine$ExpectedEndpointOwnerPath-or
+           [string]$EndpointOwnerIdentity.executable_sha256-cne$ExpectedEndpointOwnerSha256-or[int]$EndpointOwnerIdentity.parent_pid-ne$ExpectedControlProcessId-or
+           [int]$EndpointOwnerIdentity.windows_session_id-ne[int]$ControlIdentity.windows_session_id-or[string]::IsNullOrWhiteSpace([string]$EndpointOwnerIdentity.user_sid)-or
+           [string]$EndpointOwnerIdentity.user_sid-cne[string]$ControlIdentity.user_sid-or[long]$EndpointOwnerIdentity.creation_time_filetime_utc-lt[long]$ExpectedControlCreationFiletimeUtc-or
+           -not(& $pathBinding ([string]$EndpointOwnerIdentity.command_line) $ExpectedRoot)){return $false}
+        return $true
+    }catch{return $false}
+}
+
+function Resolve-Pr90CanonicalImportFallbackControlV1 {
+    param(
+        [AllowNull()][object[]]$CandidateIdentities,
+        [Parameter(Mandatory=$true)][string]$ExpectedControlPath,
+        [Parameter(Mandatory=$true)][string]$ExpectedRoot
+    )
+    $rows=@($CandidateIdentities)
+    if($rows.Count-ne1){return [pscustomobject][ordered]@{accepted=$false;pid=0;creation_time_utc='';failure_class='CONTROL_CANDIDATE_CARDINALITY'}}
+    $candidate=$rows[0]
+    try{
+        $pathGreen=$false
+        foreach($form in @($ExpectedRoot,$ExpectedRoot.Replace('\','/'))){
+            $escaped=[Regex]::Escape($form.TrimEnd('\','/'))
+            if([Regex]::IsMatch([string]$candidate.command_line,'(?i)(?:^|\s)--path(?:\s+|=)(?:"'+$escaped+'"|'+$escaped+')(?=\s|$)')){$pathGreen=$true;break}
+        }
+        $accepted=([bool]$candidate.exists-and[bool]$candidate.identity_read_green-and[int]$candidate.pid-gt0-and
+            [string]$candidate.executable_path-ieq$ExpectedControlPath-and-not[string]::IsNullOrWhiteSpace([string]$candidate.creation_time_utc)-and$pathGreen)
+        return [pscustomobject][ordered]@{
+            accepted=$accepted
+            pid=if($accepted){[int]$candidate.pid}else{0}
+            creation_time_utc=if($accepted){[string]$candidate.creation_time_utc}else{''}
+            failure_class=if($accepted){''}else{'CONTROL_CANDIDATE_IDENTITY'}
+        }
+    }catch{return [pscustomobject][ordered]@{accepted=$false;pid=0;creation_time_utc='';failure_class='CONTROL_CANDIDATE_UNREADABLE'}}
+}
+
 function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
     param([AllowNull()][object]$Receipt)
     $requiredCases=@(
@@ -293,6 +358,26 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
         'FORMAL_MAIN_STREAM_REBIND_PRECEDES_PHASE1',
         'FORMAL_REQUEST_ENVELOPES_IMMUTABLY_PERSISTED',
         'FORMAL_MILESTONE_SNAPSHOT_USES_EXPLICIT_PROCESS_ID',
+        'CANONICAL_IMPORT_V2_DISTINCT_GUI_OWNER_ACCEPTED',
+        'NEGATIVE_CANONICAL_IMPORT_WRAPPER_OWNER_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_WRONG_ROOT_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_FOREIGN_LISTENER_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_ALTERNATE_PORT_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_CONTROL_IDENTITY_DRIFT_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_OWNER_BINARY_DRIFT_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_OWNER_PARENT_DRIFT_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_OWNER_SESSION_DRIFT_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_OWNER_SID_DRIFT_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_OWNER_CREATION_ORDER_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_NULL_OWNER_REJECTED',
+        'CANONICAL_IMPORT_FALLBACK_SINGLE_EXACT_CONTROL_ACCEPTED',
+        'NEGATIVE_CANONICAL_IMPORT_FALLBACK_EMPTY_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_FALLBACK_MULTIPLE_REJECTED',
+        'NEGATIVE_CANONICAL_IMPORT_FALLBACK_FOREIGN_REJECTED',
+        'CANONICAL_RELEASE_HARNESS_SINGLE_IMPLEMENTATION',
+        'CANONICAL_IMPORT_HARNESS_REUSES_SEALED_LAUNCH_AND_SCOPED_STOP',
+        'CANONICAL_IMPORT_HARNESS_FAILURE_PATH_SCOPED_CLEANUP',
+        'CANONICAL_IMPORT_V2_CONNECTION_REQUIRED_FIELDS_PRESENT',
         'STALE_326_SELFTEST_REJECTED',
         'STALE_V1_SELFTEST_REJECTED'
     )
@@ -301,7 +386,7 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
     if(@(Compare-Object -ReferenceObject $requiredFields -DifferenceObject @($Receipt.PSObject.Properties.Name)).Count-ne0){return $false}
     $revision=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Receipt -Name 'selftest_revision'
     if([string]$Receipt.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSelfTestV1'-or[string]$Receipt.status-cne'PASS'-or
-       [string]$revision-cne'PR90_ATTEMPT22_MAIN_RUNTIME_STREAM_REBIND_REPAIR_V5'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
+       [string]$revision-cne'PR90_ATTEMPT22_CANONICAL_IMPORT_V2_OWNER_REPAIR_V6'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
        [int]$Receipt.new_selftest_case_count-ne@($Receipt.cases).Count-or[int]$Receipt.new_selftest_pass_count-ne[int]$Receipt.new_selftest_case_count-or
        [int]$Receipt.new_selftest_failure_count-ne0-or[int]$Receipt.total_tooling_selftest_pass_count-ne(326+[int]$Receipt.new_selftest_case_count)-or[int]$Receipt.total_tooling_selftest_failure_count-ne0-or
        [int]$Receipt.authorization_negative_test_fail_count-ne0-or[int]$Receipt.false_green_count-ne0-or[int]$Receipt.missing_prerequisite_false_accept_count-ne0-or
@@ -330,13 +415,13 @@ function Test-Pr90Attempt22ToolingManifestStructureV2 {
         [Parameter(Mandatory = $true)][string]$ExpectedNewSelfTestSha256,[Parameter(Mandatory = $true)][string]$ExpectedFrozenInputSha256
     )
     if($null-eq$Manifest-or$null-eq$BaseManifest-or$null-eq$BaseSeal-or$null-eq$NewSelfTest-or$null-eq$FrozenInput){return $false}
-        $expectedDiff=@('tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1','tools/pr90_probe_b_attempt22_contract_v1.psm1','tools/pr90_probe_b_attempt22_selftest_v1.ps1','tools/pr90_probe_b_attempt22_tooling_manifest_builder_v1.ps1','tools/pr90_probe_b_attempt22_tooling_seal_builder_v1.ps1')|Sort-Object
+        $expectedDiff=@('tools/pr90_probe_b_attempt22_contract_v1.psm1','tools/pr90_probe_b_attempt22_selftest_v1.ps1','tools/pr90_probe_b_attempt22_tooling_manifest_builder_v1.ps1','tools/pr90_probe_b_attempt22_tooling_seal_builder_v1.ps1','tools/release_harness/pr90_canonical_import_authority_v3.ps1')|Sort-Object
     try{
         if([string]$Manifest.schema-cne'Pr90ProbeBV2ResultRecoveryToolingManifestV1'-or[string]$Manifest.status-cne'READY'-or-not[bool]$Manifest.preformal_authorization_eligible-or[bool]$Manifest.startup_probe_b_authorization_eligible-or
            [string]$Manifest.tooling_head_sha-cne$ExpectedHead-or[string]$Manifest.tooling_tree_sha-cne$ExpectedTree-or[string]$Manifest.tooling_parent_sha-cne$ExpectedParent-or
            [string]$Manifest.base_tooling_head_sha-cne$ExpectedParent-or[string]$Manifest.base_tooling_manifest_sha256-cne$ExpectedBaseManifestSha256-or[string]$Manifest.base_tooling_seal_sha256-cne$ExpectedBaseSealSha256-or
            [string]$Manifest.new_selftest_sha256-cne$ExpectedNewSelfTestSha256-or[string]$Manifest.frozen_input_inventory_sha256-cne$ExpectedFrozenInputSha256-or
-            [int]$Manifest.new_tooling_commit_count-ne1-or[int]$Manifest.new_tooling_diff_count-ne5-or[int]$Manifest.new_tooling_modified_count-ne5-or[int]$Manifest.new_tooling_added_count-ne0-or
+            [int]$Manifest.new_tooling_commit_count-ne1-or[int]$Manifest.new_tooling_diff_count-ne5-or[int]$Manifest.new_tooling_modified_count-ne4-or[int]$Manifest.new_tooling_added_count-ne1-or
            [int]$Manifest.tooling_scope_violation_count-ne0-or[int]$Manifest.product_code_change_count-ne0-or[int]$Manifest.product_test_change_count-ne0-or[int]$Manifest.tooling_file_hash_mismatch_count-ne0-or
             [int]$Manifest.authorized_runtime_reachable_change_count-ne2-or[int]$Manifest.runtime_reachable_tooling_hash_mismatch_count-ne0-or
            [string]$Manifest.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $Manifest)){return $false}
@@ -349,9 +434,11 @@ function Test-Pr90Attempt22ToolingManifestStructureV2 {
            [string]$Manifest.frozen_input_tooling_head_sha-cne[string]$FrozenInput.tooling_head_sha-or[string]$Manifest.frozen_input_tooling_tree_sha-cne[string]$FrozenInput.tooling_tree_sha-or
            [int]$Manifest.frozen_input_count-ne[int]$FrozenInput.input_count-or[string]$Manifest.frozen_input_hash_inventory_sha256-cne[string]$FrozenInput.input_inventory_sha256){return $false}
         $diffRows=@($Manifest.new_tooling_diff);$diffPaths=@($diffRows|ForEach-Object{[string]$_.relative_path}|Sort-Object)
-        if($diffRows.Count-ne5-or@($diffRows|Where-Object{[string]$_.status-cne'M'}).Count-ne0-or@($diffPaths|Select-Object -Unique).Count-ne5-or@(Compare-Object $expectedDiff $diffPaths).Count-ne0){return $false}
+        if($diffRows.Count-ne5-or@($diffRows|Where-Object{[string]$_.status-ceq'M'}).Count-ne4-or@($diffRows|Where-Object{[string]$_.status-ceq'A'}).Count-ne1-or
+           @($diffRows|Where-Object{[string]$_.status-notin@('M','A')}).Count-ne0-or@($diffPaths|Select-Object -Unique).Count-ne5-or@(Compare-Object $expectedDiff $diffPaths).Count-ne0){return $false}
         $rows=@($Manifest.tooling_files);$paths=@($rows|ForEach-Object{([string]$_.relative_path).Replace('\','/')}|Sort-Object);$basePaths=@($BaseManifest.tooling_files|ForEach-Object{([string]$_.relative_path).Replace('\','/')}|Sort-Object)
-        if([int]$Manifest.tooling_file_count-ne$rows.Count-or$rows.Count-ne@($paths|Select-Object -Unique).Count-or@(Compare-Object $basePaths $paths).Count-ne0){return $false}
+        $expectedToolingPaths=@($basePaths+'tools/release_harness/pr90_canonical_import_authority_v3.ps1'|Sort-Object -Unique)
+        if([int]$Manifest.tooling_file_count-ne$rows.Count-or$rows.Count-ne@($paths|Select-Object -Unique).Count-or@(Compare-Object $expectedToolingPaths $paths).Count-ne0){return $false}
         return $true
     }catch{return $false}
 }
