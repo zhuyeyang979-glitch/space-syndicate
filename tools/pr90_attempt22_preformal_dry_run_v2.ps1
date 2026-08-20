@@ -63,15 +63,16 @@ $p004a=Test-HashBinding $config.probe004_attestation_path $config.probe004_attes
 if($p004a){$v=Get-Content -Raw -LiteralPath $config.probe004_attestation_path|ConvertFrom-Json -Depth 100;$p004a=[string]$v.status-ceq'SEALED'}
 Add-PreformalCheck 15 'PROBE004_ATTESTATION_BOUND' $p004a ([string]$config.probe004_attestation_sha256)
 $pb=Test-HashBinding $config.probe_b_result_path $config.probe_b_result_sha256
-if($pb){$v=Get-Content -Raw -LiteralPath $config.probe_b_result_path|ConvertFrom-Json -Depth 100;$pb=[string]$v.status-ceq'PASS'-and[int]$v.milestone_pass_count-eq12-and[string]$v.import_finalizer_status-ceq'PASS'-and
+if($pb){$v=Get-Content -Raw -LiteralPath $config.probe_b_result_path|ConvertFrom-Json -Depth 100;$pb=[string]$v.schema-ceq'Pr90ExactCloneProbeBV2ResultV1'-and[string]$v.probe_id-ceq'pr90-exact-clone-startup-probe-b-v2-001'-and[string]$v.status-ceq'PASS'-and[int]$v.milestone_pass_count-eq12-and[string]$v.import_finalizer_status-ceq'PASS'-and
     [string]$v.product_head_sha-ceq[string]$config.product_head_sha-and[string]$v.product_tree_sha-ceq[string]$config.product_tree_sha-and[string]$v.tooling_head_sha-ceq$toolingHead-and[string]$v.tooling_tree_sha-ceq$toolingTree-and
     [string]$v.tooling_seal_sha256-ceq[string]$config.tooling_seal_sha256-and[string]$v.godot_gui_sha256-ceq[string]$config.godot_gui_sha256-and[string]$v.godot_console_sha256-ceq[string]$config.godot_console_sha256-and
+    [bool]$v.bracketed_sample_model-and[int]$v.total_listener_cohort_attempt_count-ge5-and[int]$v.consecutive_stable_parity_cohort_count-ge5-and[double]$v.stable_parity_window_ms-ge1000-and[bool]$v.endpoint_listener_core_parity-and[int]$v.matched_listener_process_enrichment_count-eq1-and[int]$v.duplicate_source_process_enrichment_count-eq0-and
     (Test-HashBinding $config.godot_gui_path $config.godot_gui_sha256)-and(Test-HashBinding $config.godot_console_path $config.godot_console_sha256)}
 Add-PreformalCheck 16 'PROBE_B_RESULT_BOUND' $pb ([string]$config.probe_b_result_sha256)
 $pba=Test-HashBinding $config.probe_b_attestation_path $config.probe_b_attestation_sha256
-if($pba){$v=Get-Content -Raw -LiteralPath $config.probe_b_attestation_path|ConvertFrom-Json -Depth 100;$pba=[string]$v.status-ceq'SEALED'-and[int]$v.unbound_evidence_count-eq0}
+if($pba){$v=Get-Content -Raw -LiteralPath $config.probe_b_attestation_path|ConvertFrom-Json -Depth 100;$pba=[string]$v.schema-ceq'Pr90ExactCloneProbeBV2AttestationV1'-and[string]$v.status-ceq'SEALED'-and[int]$v.unbound_evidence_count-eq0-and[bool]$v.bracketed_sample_model-and[int]$v.matched_listener_process_enrichment_count-eq1}
 Add-PreformalCheck 17 'PROBE_B_ATTESTATION_BOUND' $pba ([string]$config.probe_b_attestation_sha256)
-$endpointGreen=([int]$config.endpoint_ownership_contract_version-eq2)-and(Test-HashBinding $config.endpoint_ownership_validator_path $config.endpoint_ownership_validator_sha256)
+$endpointGreen=([int]$config.endpoint_ownership_contract_version-eq2)-and([int]$config.listener_parity_contract_version-eq2)-and(Test-HashBinding $config.endpoint_ownership_validator_path $config.endpoint_ownership_validator_sha256)-and(Test-HashBinding $config.listener_core_normalizer_path $config.listener_core_normalizer_sha256)-and(Test-HashBinding $config.bracketed_cohort_controller_path $config.bracketed_cohort_controller_sha256)-and(Test-HashBinding $config.listener_forensics_path $config.listener_forensics_sha256)
 Add-PreformalCheck 18 'ENDPOINT_OWNERSHIP_CONTRACT_V2_BOUND' $endpointGreen ([string]$config.endpoint_ownership_validator_sha256)
 $cursorGreen=(Test-HashBinding $config.cursor_runbook_path $config.cursor_runbook_sha256)-and(Test-PowerShellLoad $config.cursor_runbook_path)
 Add-PreformalCheck 19 'CURSOR_AWARE_RUNBOOK_LOADABLE_AND_BOUND' $cursorGreen ([string]$config.cursor_runbook_sha256)
@@ -138,7 +139,7 @@ $boundaryGreen=$processesBefore.Count-eq0-and$mcpProcessesBefore.Count-eq0-and$l
 Add-PreformalCheck 22 'FORMAL_START_BOUNDARY_REACHED_WITHOUT_PROCESS' $boundaryGreen ([string]$config.formal_evidence_root)
 $passCount=@($checks|Where-Object{$_.pass}).Count
 $result=[pscustomobject][ordered]@{
-    schema='Pr90Attempt22PreformalDryRunV2';run_id='pr90-attempt22-preformal-dry-run-v2-001';status=if($passCount-eq22-and$processesAfter.Count-eq0){'PASS'}else{'BLOCKED'};created_at_utc=[DateTimeOffset]::UtcNow.ToString('o')
+    schema='Pr90Attempt22PreformalDryRunV2';run_id='pr90-attempt22-preformal-dry-run-v2-002';status=if($passCount-eq22-and$processesAfter.Count-eq0-and$mcpProcessesAfter.Count-eq0-and$listenersAfter.Count-eq0){'PASS'}else{'BLOCKED'};created_at_utc=[DateTimeOffset]::UtcNow.ToString('o')
     product_head_sha=[string]$config.product_head_sha;product_tree_sha=[string]$config.product_tree_sha;tooling_head_sha=[string]$config.tooling_head_sha;tooling_tree_sha=[string]$config.tooling_tree_sha;tooling_seal_sha256=[string]$config.tooling_seal_sha256
     check_count=22;pass_count=$passCount;fail_count=22-$passCount;checks=@($checks);formal_plan=$plan;product_process_count_before=$processesBefore.Count;product_process_count_after=$processesAfter.Count;mcp_product_process_count_before=$mcpProcessesBefore.Count;mcp_product_process_count=$mcpProcessesAfter.Count
     protected_listener_count_before=$listenersBefore.Count;protected_listener_count_after=$listenersAfter.Count;play_main_scene_count=0;product_match_count=0;formal_authorization_consumed=$false;reaches_formal_start_boundary=[bool]$boundaryGreen;formal_mcp_execution_count=0;canonical_payload_sha256=''

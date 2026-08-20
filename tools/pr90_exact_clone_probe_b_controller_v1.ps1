@@ -38,8 +38,8 @@ function New-ProbeSceneIsolationAuditV1 {
 }
 
 $config = Get-Content -Raw -LiteralPath $ConfigPath | ConvertFrom-Json -Depth 100
-if ([string]$config.schema -cne 'Pr90ExactCloneProbeBExecutionConfigV1') { throw 'Probe B config schema mismatch.' }
-if ([string]$config.probe_id -cne 'pr90-exact-clone-startup-probe-b-001') { throw 'Probe B identity mismatch.' }
+if ([string]$config.schema -cne 'Pr90ExactCloneProbeBV2ExecutionConfigV1') { throw 'Probe B V2 config schema mismatch.' }
+if ([string]$config.probe_id -cne 'pr90-exact-clone-startup-probe-b-v2-001') { throw 'Probe B V2 identity mismatch.' }
 if([string]$config.probe_scene_path-cne'res://scenes/runtime/ActionResultPresentationService.tscn'-or[string]$config.probe_scene_sha256-cne'f3a1fb397e820adb4beddc0f641e7c77173b1e4f6fe609796a8887cabdf8adc8'){throw 'Authorized Probe B scene identity mismatch.'}
 $probeRoot = [IO.Path]::GetFullPath([string]$config.probe_root)
 if (Test-Path -LiteralPath $probeRoot) { throw 'Probe B root must be new.' }
@@ -54,6 +54,10 @@ if ($toolingHead -cne [string]$config.tooling_head_sha -or $toolingTree -cne [st
 if (@(& git -C $toolingRoot status --porcelain=v1 --untracked-files=all).Count -ne 0) { throw 'Tooling worktree must be clean.' }
 if ((Get-Pr90ProbeBSha256 $config.tooling_manifest_path) -cne [string]$config.tooling_manifest_sha256 -or (Get-Pr90ProbeBSha256 $config.tooling_seal_path) -cne [string]$config.tooling_seal_sha256) { throw 'Tooling manifest/seal hash mismatch.' }
 if((Get-Pr90ProbeBSha256 ([string]$config.godot_gui_path))-cne[string]$config.godot_gui_sha256-or(Get-Pr90ProbeBSha256 ([string]$config.godot_console_path))-cne[string]$config.godot_console_sha256){throw 'Godot GUI/console binary identity mismatch.'}
+$expectedListenerForensicsSha='9d95f7af6d4784b7ee218a570e2a668567e7d6ac58e7194b5863f5fdd6610f3f'
+if([string]$config.listener_forensics_sha256-cne$expectedListenerForensicsSha-or(Get-Pr90ProbeBSha256 ([string]$config.listener_forensics_path))-cne$expectedListenerForensicsSha){throw 'Frozen 23-sample listener forensics identity mismatch.'}
+$listenerForensics=Get-Content -Raw -LiteralPath ([string]$config.listener_forensics_path)|ConvertFrom-Json -Depth 100
+if([string]$listenerForensics.status-cne'ROOT_CAUSE_RESOLVED'-or[int]$listenerForensics.sample_count-ne23-or[int]$listenerForensics.old_parity_count-ne0-or[int]$listenerForensics.listener_core_equal_sample_count-ne23-or[string]$listenerForensics.root_cause_class-cne'J'-or[bool]$listenerForensics.characterization_probe_required-or[int]$listenerForensics.characterization_probe_execution_count-ne0){throw 'Frozen listener forensics contract mismatch.'}
 $expectedProbe004ResultSha='d49898f69f962dadadab3067e9f47cf153545bd0d77ab6e7a816845fa092494b'
 $expectedProbe004AttestationSha='c518b7226839a3853a718637d2f57e531904ab41e12cf44d86070fe318ff4b0d'
 if([string]$config.probe004_result_sha256-cne$expectedProbe004ResultSha-or[string]$config.probe004_attestation_sha256-cne$expectedProbe004AttestationSha-or
@@ -67,13 +71,18 @@ if([string]$probe004Attestation.schema-cne'SpaceSyndicatePr90EndpointOwnershipV2
    [bool]$probe004Attestation.automatic_retry_allowed-or[int]$probe004Attestation.formal_mcp_execution_count-ne0-or[int]$probe004Attestation.authorized_run_count_consumed-ne0-or-not[bool]$probe004Attestation.post_repair_m0_m11_probe_green-or[bool]$probe004Attestation.tooling_bytes_changed_by_probe){throw 'Frozen Probe 004 attestation contract mismatch.'}
 $toolingManifest=Get-Content -Raw -LiteralPath ([string]$config.tooling_manifest_path)|ConvertFrom-Json -Depth 100
 $toolingSeal=Get-Content -Raw -LiteralPath ([string]$config.tooling_seal_path)|ConvertFrom-Json -Depth 100
-if([string]$toolingManifest.status-cne'READY'-or-not[bool]$toolingManifest.startup_probe_b_authorization_eligible-or
+if([string]$toolingManifest.schema-cne'Pr90ListenerParityV2ToolingManifestV1'-or[string]$toolingManifest.status-cne'READY'-or-not[bool]$toolingManifest.startup_probe_b_authorization_eligible-or
    [string]$toolingManifest.tooling_head_sha-cne$toolingHead-or[string]$toolingManifest.tooling_tree_sha-cne$toolingTree-or[string]$toolingManifest.tooling_parent_sha-cne$toolingParent-or
    [string]$toolingManifest.authorized_probe_scene_path-cne[string]$config.probe_scene_path-or[string]$toolingManifest.authorized_probe_scene_sha256-cne[string]$config.probe_scene_sha256-or
+   [string]$toolingManifest.authorized_probe_b_v2_id-cne[string]$config.probe_id-or[int]$toolingManifest.listener_parity_contract_version-ne2-or-not[bool]$toolingManifest.bracketed_sample_model-or[int]$toolingManifest.listener_core_parity_key_field_count-ne5-or
+   [int]$toolingManifest.observer_specific_field_in_key_count-ne0-or[int]$toolingManifest.process_enrichment_field_in_key_count-ne0-or[string]$toolingManifest.listener_forensics_sha256-cne$expectedListenerForensicsSha-or[int]$toolingManifest.characterization_probe_execution_count-ne0-or
+   [int]$toolingManifest.new_tooling_diff_count-ne19-or[int]$toolingManifest.total_selftest_pass_count-lt211-or[int]$toolingManifest.total_selftest_failure_count-ne0-or
    [string]$toolingManifest.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $toolingManifest)){throw 'Tooling manifest is not cross-bound to the exact executable identity.'}
-if([string]$toolingSeal.status-cne'SEALED'-or[string]$toolingSeal.tooling_head_sha-cne$toolingHead-or[string]$toolingSeal.tooling_tree_sha-cne$toolingTree-or
+if([string]$toolingSeal.schema-cne'Pr90ListenerParityV2ToolingSealV1'-or[string]$toolingSeal.status-cne'SEALED'-or[string]$toolingSeal.tooling_head_sha-cne$toolingHead-or[string]$toolingSeal.tooling_tree_sha-cne$toolingTree-or
    [string]$toolingSeal.tooling_parent_sha-cne$toolingParent-or[string]$toolingSeal.manifest_sha256-cne[string]$config.tooling_manifest_sha256-or
    [string]$toolingSeal.authorized_probe_scene_path-cne[string]$config.probe_scene_path-or[string]$toolingSeal.authorized_probe_scene_sha256-cne[string]$config.probe_scene_sha256-or
+   [string]$toolingSeal.authorized_probe_b_v2_id-cne[string]$config.probe_id-or[int]$toolingSeal.listener_parity_contract_version-ne2-or[string]$toolingSeal.listener_core_normalizer_sha256-cne[string]$toolingManifest.listener_core_normalizer_sha256-or[string]$toolingSeal.bracketed_cohort_controller_sha256-cne[string]$toolingManifest.bracketed_cohort_controller_sha256-or
+   [string]$toolingSeal.listener_forensics_sha256-cne$expectedListenerForensicsSha-or[int]$toolingSeal.characterization_probe_execution_count-ne0-or
    [string]$toolingSeal.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $toolingSeal)){throw 'Tooling seal is not cross-bound to the exact manifest and executable identity.'}
 $actualToolingInventory=Get-Pr90ProbeBFileInventoryV1 -Paths @($toolingManifest.tooling_files.path)
 if([int]$toolingManifest.tooling_file_count-ne@($toolingManifest.tooling_files).Count-or[string]$toolingManifest.tooling_file_hash_inventory_sha256-cne[string]$actualToolingInventory.inventory_sha256){throw 'Tooling manifest file inventory mismatch.'}
@@ -85,7 +94,7 @@ foreach ($binding in @($config.tooling_bindings.PSObject.Properties)) {
     $boundRows=@($toolingManifest.tooling_files|Where-Object{[IO.Path]::GetFullPath([string]$_.path)-ceq[IO.Path]::GetFullPath([string]$binding.Value.path)-and[string]$_.sha256-ceq[string]$binding.Value.sha256})
     if($boundRows.Count-ne1){throw "Tooling binding is absent from sealed manifest inventory: $($binding.Name)"}
 }
-$requiredBindingNames=@('import_controller','import_finalizer_dry_run','import_runner','startup_probe','launch','stop','startup_watchdog','startup_state_machine','startup_contract','finalizer_binding','result_builder','attestation_builder')
+$requiredBindingNames=@('import_controller','import_finalizer_dry_run','import_runner','startup_probe','launch','stop','startup_watchdog','startup_state_machine','startup_contract','getnettcp_listener_adapter','netstat_listener_adapter','listener_core_normalizer','bracketed_cohort_controller','listener_parity_contract','endpoint_ownership_validator','listener_selftest','finalizer_binding','result_builder','attestation_builder')
 if(@($requiredBindingNames|Where-Object{$config.tooling_bindings.PSObject.Properties.Name-cnotcontains$_}).Count-ne0){throw 'Required sealed Tooling binding is missing.'}
 
 [IO.Directory]::CreateDirectory($probeRoot) | Out-Null
@@ -147,9 +156,10 @@ $runtimeEvidence = Join-Path $probeRoot 'evidence'
 $runtimeProfile = Join-Path $probeRoot 'runtime-profile'
 [IO.Directory]::CreateDirectory($runtimeProfile) | Out-Null
 $executionStart = [pscustomobject][ordered]@{
-    schema='Pr90ExactCloneProbeBExecutionStartV1';probe_id=[string]$config.probe_id;execution_count=1;probe_b_authorization_consumed=1;authorized_run_count_consumed=0;started_utc=[DateTimeOffset]::UtcNow.ToString('o')
+    schema='Pr90ExactCloneProbeBV2ExecutionStartV1';probe_id=[string]$config.probe_id;execution_count=1;probe_b_v2_authorization_consumed=1;authorized_run_count_consumed=0;started_utc=[DateTimeOffset]::UtcNow.ToString('o')
     config_path=[IO.Path]::GetFullPath($ConfigPath);config_sha256=Get-Pr90ProbeBSha256 $ConfigPath;product_head_sha=$productHead;product_tree_sha=$productTree
     tooling_head_sha=$toolingHead;tooling_tree_sha=$toolingTree;tooling_seal_sha256=Get-Pr90ProbeBSha256 $config.tooling_seal_path
+    listener_forensics_sha256=$expectedListenerForensicsSha;listener_parity_root_cause_class='J';characterization_probe_execution_count=0
     clone_path_fingerprint=(Get-Pr90ProbeBCanonicalSha256 ([pscustomobject]@{path=$clone.ToLowerInvariant();canonical_payload_sha256=''}))
     isolated_profile=$runtimeProfile;evidence_root=$runtimeEvidence;play_main_scene_count=0;product_match_count=0;formal_mcp_execution_count=0;canonical_payload_sha256=''
 }
@@ -177,21 +187,27 @@ try {
 } finally {
     $env:USERPROFILE=$savedEnvironment.USERPROFILE;$env:APPDATA=$savedEnvironment.APPDATA;$env:LOCALAPPDATA=$savedEnvironment.LOCALAPPDATA;$env:TEMP=$savedEnvironment.TEMP;$env:TMP=$savedEnvironment.TMP
 }
-if ($startupExitCode -notin @(0,2)) { throw "Startup probe child failed outside its sealed PASS/BLOCKED contract: exit=$startupExitCode" }
-
-$runtimeLocal = Join-Path $clone '.codex-godot'
-if (Test-Path -LiteralPath $runtimeLocal -PathType Container) {
-    $preservedRuntime = Join-Path $runtimeEvidence 'role-local-runtime-metadata'
-    Copy-Item -LiteralPath $runtimeLocal -Destination $preservedRuntime -Recurse
-}
+$startupContractCrash=($startupExitCode -notin @(0,2))
 
 $finalizerPath = Join-Path $probeRoot 'import-finalizer-result.json'
-$finalizerOutput = @(& (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File ([string]$config.tooling_bindings.finalizer_binding.path) `
-    -Worktree $clone -BaselinePath $baseline -ClassCachePath $classCache -GodotPath ([string]$config.godot_gui_path) `
-    -ProductHeadSha ([string]$config.product_head_sha) -ProductTreeSha ([string]$config.product_tree_sha) `
-    -ImportRunnerPath ([string]$config.tooling_bindings.import_runner.path) -ExpectedImportRunnerSha256 ([string]$config.tooling_bindings.import_runner.sha256) `
-    -PrelaunchIgnoredInventoryPath $prelaunchIgnoredInventoryPath -ExpectedPrelaunchIgnoredInventorySha256 (Get-Pr90ProbeBSha256 $prelaunchIgnoredInventoryPath) -OutputPath $finalizerPath)
-$finalizerExitCode=$LASTEXITCODE
+$finalizerExitCode=-1
+$finalizerOutput=@()
+$runtimePreservationFailure=''
+try{
+    $runtimeLocal = Join-Path $clone '.codex-godot'
+    if (Test-Path -LiteralPath $runtimeLocal -PathType Container) {
+        $preservedRuntime = Join-Path $runtimeEvidence 'role-local-runtime-metadata'
+        Copy-Item -LiteralPath $runtimeLocal -Destination $preservedRuntime -Recurse
+    }
+}catch{$runtimePreservationFailure=$_.Exception.Message}
+finally{
+    $finalizerOutput = @(& (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File ([string]$config.tooling_bindings.finalizer_binding.path) `
+        -Worktree $clone -BaselinePath $baseline -ClassCachePath $classCache -GodotPath ([string]$config.godot_gui_path) `
+        -ProductHeadSha ([string]$config.product_head_sha) -ProductTreeSha ([string]$config.product_tree_sha) `
+        -ImportRunnerPath ([string]$config.tooling_bindings.import_runner.path) -ExpectedImportRunnerSha256 ([string]$config.tooling_bindings.import_runner.sha256) `
+        -PrelaunchIgnoredInventoryPath $prelaunchIgnoredInventoryPath -ExpectedPrelaunchIgnoredInventorySha256 (Get-Pr90ProbeBSha256 $prelaunchIgnoredInventoryPath) -OutputPath $finalizerPath)
+    $finalizerExitCode=$LASTEXITCODE
+}
 if ($finalizerExitCode -notin @(0,2)-or-not(Test-Path -LiteralPath $finalizerPath -PathType Leaf)) { throw "Probe B import finalizer failed outside its PASS/BLOCKED evidence contract: exit=$finalizerExitCode; $([string]::Join(' | ',[string[]]$finalizerOutput))" }
 $processRows = @(Get-Pr90ProductProcessRowsV1)
 $mcpRows = @(Get-Pr90McpSupportProcessRowsV1 -IdentityText ([string]$config.probe_id))
@@ -205,19 +221,27 @@ $terminal = [pscustomobject][ordered]@{
 $terminal.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $terminal
 $terminalPath=Join-Path $probeRoot 'terminal-process-port-manifest.json'
 Write-Pr90ProbeBImmutableJson -Path $terminalPath -Value $terminal -WriteSha256Sidecar | Out-Null
-$resultPath=Join-Path $probeRoot 'pr90_exact_clone_startup_probe_b_result.json'
-$resultMarkdown=Join-Path $probeRoot 'pr90_exact_clone_startup_probe_b_result.md'
+$resultPath=Join-Path $probeRoot 'pr90_exact_clone_startup_probe_b_v2_result.json'
+$resultMarkdown=Join-Path $probeRoot 'pr90_exact_clone_startup_probe_b_v2_result.md'
 & (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File ([string]$config.tooling_bindings.result_builder.path) -ProbeId ([string]$config.probe_id) -EvidenceRoot $runtimeEvidence `
     -ProductHeadSha ([string]$config.product_head_sha) -ProductTreeSha ([string]$config.product_tree_sha) -ToolingHeadSha $toolingHead -ToolingTreeSha $toolingTree `
     -ToolingSealPath ([string]$config.tooling_seal_path) -PostImportBaselinePath $baseline -ClassCachePath $classCache -GodotGuiPath ([string]$config.godot_gui_path) -GodotConsolePath ([string]$config.godot_console_path) -FinalizerResultPath $finalizerPath `
-    -TerminalManifestPath $terminalPath -ProbeScenePath ([string]$config.probe_scene_path) -ExpectedProbeSceneSha256 ([string]$config.probe_scene_sha256) -SceneIsolationAuditPath $sceneIsolationAuditPath -OutputPath $resultPath -OutputMarkdownPath $resultMarkdown | Out-Null
-if ($LASTEXITCODE -ne 0) { throw 'Probe B result builder reported BLOCKED.' }
-$attestationPath=Join-Path $probeRoot 'pr90_exact_clone_startup_probe_b_attestation.json'
+    -TerminalManifestPath $terminalPath -ProbeScenePath ([string]$config.probe_scene_path) -ExpectedProbeSceneSha256 ([string]$config.probe_scene_sha256) -SceneIsolationAuditPath $sceneIsolationAuditPath `
+    -ListenerForensicsPath ([string]$config.listener_forensics_path) -ExpectedListenerForensicsSha256 ([string]$config.listener_forensics_sha256) -OutputPath $resultPath -OutputMarkdownPath $resultMarkdown | Out-Null
+$resultExitCode=$LASTEXITCODE
+if ($resultExitCode -notin @(0,2)-or-not(Test-Path -LiteralPath $resultPath -PathType Leaf)) { throw 'Probe B V2 result builder failed outside its PASS/BLOCKED evidence contract.' }
+$attestationPath=Join-Path $probeRoot 'pr90_exact_clone_startup_probe_b_v2_attestation.json'
 & (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File ([string]$config.tooling_bindings.attestation_builder.path) -ProbeId ([string]$config.probe_id) -ResultPath $resultPath `
     -EvidenceRoot $runtimeEvidence -Probe004ResultPath ([string]$config.probe004_result_path) -ExpectedProbe004ResultSha256 ([string]$config.probe004_result_sha256) -Probe004AttestationPath ([string]$config.probe004_attestation_path) -ExpectedProbe004AttestationSha256 ([string]$config.probe004_attestation_sha256) `
-    -PostImportBaselinePath $baseline -ClassCachePath $classCache -SceneIsolationAuditPath $sceneIsolationAuditPath -ExpectedProbeSceneSha256 ([string]$config.probe_scene_sha256) -FinalizerResultPath $finalizerPath -TerminalManifestPath $terminalPath -OutputPath $attestationPath | Out-Null
-if ($LASTEXITCODE -ne 0) { throw 'Probe B attestation builder reported BLOCKED.' }
-$final = [pscustomobject][ordered]@{schema='Pr90ExactCloneProbeBControllerResultV1';probe_id=[string]$config.probe_id;status='PASS';probe_execution_count=1;result_path=$resultPath;result_sha256=Get-Pr90ProbeBSha256 $resultPath;attestation_path=$attestationPath;attestation_sha256=Get-Pr90ProbeBSha256 $attestationPath;formal_mcp_execution_count=0;canonical_payload_sha256=''}
+    -PostImportBaselinePath $baseline -ClassCachePath $classCache -SceneIsolationAuditPath $sceneIsolationAuditPath -ExpectedProbeSceneSha256 ([string]$config.probe_scene_sha256) `
+    -ListenerForensicsPath ([string]$config.listener_forensics_path) -ExpectedListenerForensicsSha256 ([string]$config.listener_forensics_sha256) -FinalizerResultPath $finalizerPath -TerminalManifestPath $terminalPath -OutputPath $attestationPath | Out-Null
+$attestationExitCode=$LASTEXITCODE
+if ($attestationExitCode -notin @(0,2)-or-not(Test-Path -LiteralPath $attestationPath -PathType Leaf)) { throw 'Probe B V2 attestation builder failed outside its SEALED/BLOCKED evidence contract.' }
+$resultObject=Get-Content -Raw -LiteralPath $resultPath|ConvertFrom-Json -Depth 100
+$attestationObject=Get-Content -Raw -LiteralPath $attestationPath|ConvertFrom-Json -Depth 100
+$controllerGreen=(-not$startupContractCrash-and[string]::IsNullOrWhiteSpace($runtimePreservationFailure)-and$startupExitCode-eq0-and$resultExitCode-eq0-and$attestationExitCode-eq0-and[string]$resultObject.status-ceq'PASS'-and[string]$attestationObject.status-ceq'SEALED')
+$final = [pscustomobject][ordered]@{schema='Pr90ExactCloneProbeBV2ControllerResultV1';probe_id=[string]$config.probe_id;status=if($controllerGreen){'PASS'}else{'BLOCKED'};probe_execution_count=1;startup_exit_code=$startupExitCode;startup_contract_crash=$startupContractCrash;runtime_preservation_failure=$runtimePreservationFailure;milestone_failure_automatic_scoped_cleanup=$true;external_manual_cleanup_required_count=0;m5_failure_finalizer_execution_count=1;result_path=$resultPath;result_sha256=Get-Pr90ProbeBSha256 $resultPath;attestation_path=$attestationPath;attestation_sha256=Get-Pr90ProbeBSha256 $attestationPath;formal_mcp_execution_count=0;authorized_run_count_consumed=0;canonical_payload_sha256=''}
 $final.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $final
 Write-Pr90ProbeBImmutableJson -Path (Join-Path $probeRoot 'probe-b-controller-result.json') -Value $final -WriteSha256Sidecar | Out-Null
 $final | ConvertTo-Json -Depth 100 -Compress
+if(-not$controllerGreen){exit 2}

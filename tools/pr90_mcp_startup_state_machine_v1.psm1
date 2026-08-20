@@ -8,6 +8,8 @@ Import-Module (Join-Path $PSScriptRoot 'pr90_netstat_listener_adapter_v1.psm1') 
 Import-Module (Join-Path $PSScriptRoot 'pr90_listener_process_identity_reader_v1.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'pr90_m5_passive_contract_v1.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'pr90_mcp_endpoint_ownership_v2.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'pr90_listener_bracketed_cohort_v2.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'pr90_m5_listener_parity_v2_contract.psm1') -Force
 
 function Test-StateCommandLineWorktreeBinding {
     param([string]$CommandLine, [string]$ExpectedRoot)
@@ -281,8 +283,8 @@ function New-StateRuntimeBridgeBootstrapBudgetV1 {
 }
 
 function Get-StateDescendantDepthV1 {
-    param([int]$Pid, [int]$AncestorPid, [hashtable]$IdentityByPid)
-    $currentPid = $Pid
+    param([int]$ProcessId, [int]$AncestorPid, [hashtable]$IdentityByPid)
+    $currentPid = $ProcessId
     $visited = [Collections.Generic.HashSet[int]]::new()
     $depth = 0
     while ($currentPid -gt 0 -and $visited.Add($currentPid)) {
@@ -334,7 +336,7 @@ function New-StateGodotCleanupPlanV1 {
         [string]$owner.creation_time_filetime_utc -cne $EndpointOwnerCreationFiletimeUtc -or
         [int]$owner.windows_session_id -ne $EndpointOwnerSessionId -or
         [string]$owner.user_sid -cne $EndpointOwnerUserSid -or
-        (Get-StateDescendantDepthV1 -Pid $EndpointOwnerPid -AncestorPid $ControlPid -IdentityByPid $identityByPid) -lt 1
+        (Get-StateDescendantDepthV1 -ProcessId $EndpointOwnerPid -AncestorPid $ControlPid -IdentityByPid $identityByPid) -lt 1
     ) {
         throw 'Cleanup endpoint owner identity changed.'
     }
@@ -342,7 +344,7 @@ function New-StateGodotCleanupPlanV1 {
     foreach ($identity in $taskIdentities) {
         $pidValue = [int]$identity.pid
         if ($pidValue -in @($ControlPid,$EndpointOwnerPid)) { continue }
-        $depth = Get-StateDescendantDepthV1 -Pid $pidValue -AncestorPid $EndpointOwnerPid -IdentityByPid $identityByPid
+        $depth = Get-StateDescendantDepthV1 -ProcessId $pidValue -AncestorPid $EndpointOwnerPid -IdentityByPid $identityByPid
         if (
             $depth -lt 1 -or
             [string]$identity.executable_path -ine $ExpectedGuiPath -or
@@ -371,7 +373,7 @@ function Get-StateStopDispositionV1 {
 
 function Stop-StateGodot {
     param(
-        [int]$Pid,
+        [int]$ControlProcessId,
         [string]$ProcessStartUtc,
         [string]$GodotPath,
         [string]$Worktree,
@@ -389,11 +391,31 @@ function Stop-StateGodot {
             Where-Object { [string]$_.ExecutablePath -iin @($expectedConsolePath,$expectedGuiPath) }
     )
     $identities = @(foreach ($candidate in $candidateRows) { Read-EndpointListenerOwnerIdentityV1 -PidValue ([int]$candidate.ProcessId) })
-    $plan = @(New-StateGodotCleanupPlanV1 -IdentityRows $identities -ControlPid $Pid -EndpointOwnerPid $EndpointOwnerPid `
+    $listenersBefore = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+    if($EndpointOwnerPid-le0-or[string]::IsNullOrWhiteSpace($EndpointOwnerCreationFiletimeUtc)){
+        $controlCandidates=@($identities|Where-Object{
+            [bool]$_.exists-and[bool]$_.identity_read_green-and[int]$_.pid-eq$ControlProcessId-and[string]$_.executable_path-ieq$expectedConsolePath-and
+            (Test-StateCommandLineWorktreeBinding -CommandLine ([string]$_.command_line) -ExpectedRoot $Worktree)
+        })
+        if($controlCandidates.Count-ne1){throw 'Scoped cleanup could not re-identify the exact console wrapper.'}
+        $controlIdentity=$controlCandidates[0]
+        $guiCandidates=@($identities|Where-Object{
+            [bool]$_.exists-and[bool]$_.identity_read_green-and[string]$_.executable_path-ieq$expectedGuiPath-and[int]$_.parent_pid-eq$ControlProcessId-and
+            [int]$_.windows_session_id-eq[int]$controlIdentity.windows_session_id-and[string]$_.user_sid-ceq[string]$controlIdentity.user_sid-and
+            (Test-StateCommandLineWorktreeBinding -CommandLine ([string]$_.command_line) -ExpectedRoot $Worktree)
+        })
+        if($guiCandidates.Count-ne1){throw 'Scoped cleanup could not resolve exactly one task-owned GUI engine.'}
+        $cleanupOwner=$guiCandidates[0]
+        if($listenersBefore.Count-gt1-or($listenersBefore.Count-eq1-and[int]$listenersBefore[0].OwningProcess-ne[int]$cleanupOwner.pid)){throw 'Scoped cleanup listener ownership is not the exact task-owned GUI engine.'}
+        $EndpointOwnerPid=[int]$cleanupOwner.pid
+        $EndpointOwnerCreationFiletimeUtc=[string]$cleanupOwner.creation_time_filetime_utc
+        $EndpointOwnerSessionId=[int]$cleanupOwner.windows_session_id
+        $EndpointOwnerUserSid=[string]$cleanupOwner.user_sid
+    }
+    $plan = @(New-StateGodotCleanupPlanV1 -IdentityRows $identities -ControlPid $ControlProcessId -EndpointOwnerPid $EndpointOwnerPid `
         -ExpectedConsolePath $expectedConsolePath -ExpectedGuiPath $expectedGuiPath -ExpectedRoot $Worktree `
         -ControlCreationUtc $ProcessStartUtc -EndpointOwnerCreationFiletimeUtc $EndpointOwnerCreationFiletimeUtc `
         -EndpointOwnerSessionId $EndpointOwnerSessionId -EndpointOwnerUserSid $EndpointOwnerUserSid)
-    $listenersBefore = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
     if ($listenersBefore.Count -gt 1 -or ($listenersBefore.Count -eq 1 -and [int]$listenersBefore[0].OwningProcess -ne $EndpointOwnerPid)) {
         throw 'Refusing cleanup because endpoint listener ownership changed.'
     }
@@ -534,7 +556,7 @@ function Invoke-Pr90McpStartupStateMachine {
     }
     function Get-StageContext {
         param([hashtable]$Extra = @{})
-        $snapshot = Get-McpStartupProcessSnapshot -Pid $runtime.godotPid -StdoutPath $runtime.godotStdoutPath `
+        $snapshot = Get-McpStartupProcessSnapshot -ProcessId $runtime.godotPid -StdoutPath $runtime.godotStdoutPath `
             -StderrPath $runtime.godotStderrPath -Port $Port -EvidenceRoot $evidence -ConnectionPath $connectionPath
         $row = @{}
         foreach ($key in $contextBase.Keys) { $row[$key] = $contextBase[$key] }
@@ -710,46 +732,35 @@ function Invoke-Pr90McpStartupStateMachine {
         Save-Pass -MilestoneId 'M4' -Started $stageStarted -Extra @{endpoint_owner_pid=if($listeners.Count -eq 1){[int]$listeners[0].OwningProcess}else{$null};port_bound=$true;evidence_path=$endpointPath;evidence_sha256=(Get-StartupSha256 $endpointPath)} | Out-Null
 
         Set-Stage 'M5'
-        $samplingContract = Get-Pr90M5PassiveSamplingContractV1
+        $samplingContract = Get-Pr90M5ListenerParityV2Contract
         if (-not [bool]$samplingContract.sampling_budget_sufficient -or -not [bool]$samplingContract.short_time_bounded) {
-            throw 'Endpoint Ownership V2 sampling budget is not sufficient and bounded.'
+            throw 'Listener Parity V2 sampling budget is not sufficient and bounded.'
         }
         $wrapperIdentity = Read-EndpointListenerOwnerIdentityV1 -PidValue $godotPid
         if (-not [bool]$wrapperIdentity.identity_read_green) { throw 'Console wrapper identity could not be read for Endpoint Ownership V2.' }
-        $samples = [Collections.Generic.List[object]]::new()
+        $cohorts = [Collections.Generic.List[object]]::new()
         $samplingStartedUtc = [DateTimeOffset]::UtcNow
         $samplingDeadline = $samplingStartedUtc.AddMilliseconds([int]$samplingContract.sampling_budget_ms)
-        $sampleIndex = 0
-        do {
-            $sampleIndex += 1
-            $sampleObservedUtc = [DateTimeOffset]::UtcNow
-            $sampleId = 'm5-v2-{0:d2}' -f $sampleIndex
-            $sourceA = Invoke-GetNetTcpListenerObservationV1 -Ports @($Port) -SampleId $sampleId
-            $sourceB = Invoke-NetstatTcpListenerObservationV1 -Ports @($Port) -SampleId $sampleId
-            $pids = @(@($sourceA.records) + @($sourceB.records) | ForEach-Object { [int]$_.owning_pid } | Sort-Object -Unique)
-            $identityByPid = @{}
-            foreach ($pidValue in $pids) {
-                $identityByPid[$pidValue.ToString([Globalization.CultureInfo]::InvariantCulture)] = Read-EndpointListenerOwnerIdentityV1 -PidValue $pidValue
-            }
-            $sample = New-Pr90McpEndpointOwnershipSampleV2 `
-                -SourceA $sourceA -SourceB $sourceB -IdentityByPid $identityByPid `
-                -ConsoleWrapperIdentity $wrapperIdentity -LauncherPid ([int]$launch.launcher_pid) `
-                -ExpectedFixtureRoot $root -GodotConsolePath $GodotPath `
-                -LaunchEpochUtc ([DateTimeOffset]::Parse($processStartUtc)) -Port $Port -ObservedUtc $sampleObservedUtc
-            $samples.Add($sample)
-            if ($samples.Count -ge [int]$samplingContract.required_total_sample_count) {
-                $endpointOwnershipV2 = Test-Pr90McpEndpointOwnershipV2 -Samples @($samples) -SamplingContract $samplingContract
-                if ([bool]$endpointOwnershipV2.green) { break }
-            }
-            Start-Sleep -Milliseconds ([int]$samplingContract.sample_interval_ms)
-        } while ([DateTimeOffset]::UtcNow -lt $samplingDeadline)
+        for($cohortIndex=1;$cohortIndex-le[int]$samplingContract.required_total_cohort_attempt_count;$cohortIndex+=1){
+            if([DateTimeOffset]::UtcNow-ge$samplingDeadline){break}
+            $cohort=Invoke-Pr90BracketedListenerCohortV2 -Ports $protectedPorts -CohortId ('m5-v2-{0:d2}'-f$cohortIndex) -ObserverTimeoutMs ([int]$samplingContract.source_observer_timeout_ms)
+            $cohorts.Add($cohort)
+            if($cohortIndex-lt[int]$samplingContract.required_total_cohort_attempt_count){Start-Sleep -Milliseconds ([int]$samplingContract.cohort_interval_ms)}
+        }
 
-        $endpointOwnershipV2 = Test-Pr90McpEndpointOwnershipV2 -Samples @($samples) -SamplingContract $samplingContract
+        $coreWindow=Test-Pr90BracketedCohortWindowV2 -Cohorts @($cohorts) -RequiredAttempts ([int]$samplingContract.required_total_cohort_attempt_count) -RequiredConsecutive ([int]$samplingContract.required_consecutive_stable_parity_cohort_count) -RequiredWindowMs ([int]$samplingContract.required_stable_parity_window_ms)
+        if([bool]$coreWindow.green-and$cohorts.Count-gt0){
+            $lastIndex=$cohorts.Count-1
+            $cohorts[$lastIndex]=Set-Pr90McpOwnerProofForBracketedCohortV2 -Cohort $cohorts[$lastIndex] -ConsoleWrapperIdentity $wrapperIdentity -LauncherPid ([int]$launch.launcher_pid) -ExpectedFixtureRoot $root -GodotConsolePath $GodotPath -LaunchEpochUtc ([DateTimeOffset]::Parse($processStartUtc)) -EndpointPort $Port -McpSessionId $sessionId
+            if($null-ne$cohorts[$lastIndex].owner_proof.endpoint_owner_pid){$endpointOwnerPid=[int]$cohorts[$lastIndex].owner_proof.endpoint_owner_pid;$endpointOwnerIdentity=$cohorts[$lastIndex].owner_proof.endpoint_owner_identity}
+        }
+
+        $endpointOwnershipV2 = Test-Pr90McpEndpointOwnershipBracketedV2 -Cohorts @($cohorts) -SamplingContract $samplingContract
         $samplesPath = Join-Path $evidence 'endpoint-ownership-v2-samples.json'
         $samplesEvidence = [ordered]@{
-            schema='SpaceSyndicatePr90McpEndpointOwnershipSamplesV2'; run_id=$RunId; probe_identity=$ProbeIdentity;
+            schema='SpaceSyndicatePr90McpEndpointOwnershipBracketedCohortsV2'; run_id=$RunId; probe_identity=$ProbeIdentity;
             sampling_started_utc=$samplingStartedUtc.ToString('o'); sampling_deadline_utc=$samplingDeadline.ToString('o');
-            sampling_contract=$samplingContract; sample_count=$samples.Count; samples=@($samples)
+            sampling_contract=$samplingContract; bracketed_sample_model=$true;cohort_count=$cohorts.Count;cohorts=@($cohorts);raw_listener_evidence_preservation='100_PERCENT'
         }
         Write-StartupImmutableJson -Path $samplesPath -Value $samplesEvidence -WriteSha256Sidecar | Out-Null
         $ownerAttestationPath = Join-Path $evidence 'endpoint-ownership-v2-attestation.json'
@@ -779,9 +790,10 @@ function Invoke-Pr90McpStartupStateMachine {
             evidence_path=$ownerAttestationPath; evidence_sha256=(Get-StartupSha256 $ownerAttestationPath); endpoint_owner_pid=$endpointOwnerPid;
             endpoint_owner_process_role='GUI_ENGINE'; endpoint_ownership_contract_version=2; connection_exists=$true;
             connection_path=$connectionPath; connection_sha256=(Get-StartupSha256 $connectionPath);
-            total_listener_sample_count=[int]$endpointOwnershipV2.total_listener_sample_count;
-            consecutive_parity_sample_count=[int]$endpointOwnershipV2.consecutive_parity_sample_count;
-            endpoint_owner_stable_window_ms=[double]$endpointOwnershipV2.endpoint_owner_stable_window_ms
+            total_listener_sample_count=[int]$endpointOwnershipV2.total_listener_cohort_attempt_count;
+            consecutive_parity_sample_count=[int]$endpointOwnershipV2.consecutive_stable_parity_cohort_count;
+            endpoint_owner_stable_window_ms=[double]$endpointOwnershipV2.stable_parity_window_ms;
+            bracketed_sample_model=$true;listener_core_parity_key_field_count=5
         } | Out-Null
 
         Set-Stage 'M6'
@@ -890,7 +902,7 @@ function Invoke-Pr90McpStartupStateMachine {
             $ownerSessionId = if ($null -ne $endpointOwnerIdentity) { [int]$endpointOwnerIdentity.windows_session_id } else { 0 }
             $ownerUserSid = if ($null -ne $endpointOwnerIdentity) { [string]$endpointOwnerIdentity.user_sid } else { '' }
             try {
-                $cleanupResult = Stop-StateGodot -Pid $godotPid -ProcessStartUtc $processStartUtc -GodotPath $GodotPath -Worktree $root -Port $Port `
+                $cleanupResult = Stop-StateGodot -ControlProcessId $godotPid -ProcessStartUtc $processStartUtc -GodotPath $GodotPath -Worktree $root -Port $Port `
                     -StopScriptPath $StopScriptPath -EndpointOwnerPid $endpointOwnerPid -EndpointOwnerCreationFiletimeUtc $ownerCreationFiletime `
                     -EndpointOwnerSessionId $ownerSessionId -EndpointOwnerUserSid $ownerUserSid
                 $cleanStop = [bool]$cleanupResult.stopped
@@ -921,10 +933,12 @@ function Invoke-Pr90McpStartupStateMachine {
         milestone_count=$sequence.receipt_count;milestone_expected_count=12;startup_milestone_order_green=[bool]$sequence.green;startup_milestone_complete=[bool]$sequence.complete;startup_milestone_duplicate_count=[int]$sequence.duplicate_count;startup_milestone_gap_count=[int]$sequence.gap_count;
         mcp_raw_evidence_count=$rawFiles.Count;phase0_evidence_count=$phaseFiles.Count;ready_witness_count=@(Get-ChildItem -LiteralPath (Join-Path $evidence 'witnesses') -Filter '*ready*' -File -ErrorAction SilentlyContinue).Count;mcp_raw_evidence_before_phase_evidence=[bool]$sequence.mcp_raw_before_phase_evidence;
         endpoint_ownership_contract_version=2;prelaunch_protected_port_listener_count=$prelaunchProtectedPortListenerCount;endpoint_owner_pid=if($endpointOwnerPid-gt0){$endpointOwnerPid}else{$null};endpoint_owner_process_role=if($null-ne$endpointOwnershipV2-and[bool]$endpointOwnershipV2.green){'GUI_ENGINE'}else{'UNKNOWN'};
-        total_listener_sample_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.total_listener_sample_count}else{0};consecutive_parity_sample_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.consecutive_parity_sample_count}else{0};endpoint_owner_stable_window_ms=if($null-ne$endpointOwnershipV2){[double]$endpointOwnershipV2.endpoint_owner_stable_window_ms}else{0};
-        endpoint_listener_observer_source_count=2;endpoint_listener_observer_parity=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_listener_observer_parity}else{$false};endpoint_listener_a_only_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_listener_a_only_count}else{0};endpoint_listener_b_only_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_listener_b_only_count}else{0};
-        endpoint_owner_is_gui_engine=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_is_gui_engine}else{$false};endpoint_owner_is_console_wrapper=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_is_console_wrapper}else{$false};endpoint_owner_is_descendant_of_launcher=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_is_descendant_of_launcher}else{$false};endpoint_owner_command_line_fixture_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_command_line_fixture_match}else{$false};endpoint_owner_windows_session_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_windows_session_match}else{$false};endpoint_owner_user_sid_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_user_sid_match}else{$false};
-        endpoint_owner_pid_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_pid_changed_count}else{0};endpoint_owner_creation_identity_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_creation_identity_changed_count}else{0};endpoint_owner_process_lineage_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_process_lineage_changed_count}else{0};multiple_active_endpoint_owner_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.multiple_active_endpoint_owner_count}else{0};
+        total_listener_sample_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.total_listener_cohort_attempt_count}else{0};consecutive_parity_sample_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.consecutive_stable_parity_cohort_count}else{0};endpoint_owner_stable_window_ms=if($null-ne$endpointOwnershipV2){[double]$endpointOwnershipV2.stable_parity_window_ms}else{0};
+        total_listener_cohort_attempt_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.total_listener_cohort_attempt_count}else{0};consecutive_stable_parity_cohort_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.consecutive_stable_parity_cohort_count}else{0};stable_parity_window_ms=if($null-ne$endpointOwnershipV2){[double]$endpointOwnershipV2.stable_parity_window_ms}else{0};unstable_cohort_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.unstable_cohort_count}else{0};bracketed_sample_model=$true;
+        endpoint_listener_observer_source_count=2;endpoint_listener_observer_parity=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_listener_core_parity}else{$false};endpoint_listener_core_parity=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_listener_core_parity}else{$false};endpoint_listener_a_only_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_listener_a_only_core_count}else{0};endpoint_listener_b_only_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_listener_b_only_core_count}else{0};endpoint_listener_a_only_core_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_listener_a_only_core_count}else{0};endpoint_listener_b_only_core_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_listener_b_only_core_count}else{0};
+        listener_core_parity_key_field_count=5;listener_core_parity_observer_specific_field_count=0;listener_core_parity_process_enrichment_field_count=0;matched_listener_process_enrichment_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.matched_listener_process_enrichment_count}else{0};duplicate_source_process_enrichment_count=0;
+        endpoint_owner_is_gui_engine=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_is_gui_engine}else{$false};endpoint_owner_is_console_wrapper=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_is_console_wrapper}else{$false};endpoint_owner_is_descendant_of_launcher=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_is_descendant_of_launcher}else{$false};endpoint_owner_command_line_fixture_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_project_match}else{$false};endpoint_owner_project_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_project_match}else{$false};endpoint_owner_mcp_session_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_mcp_session_match}else{$false};endpoint_owner_windows_session_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_windows_session_match}else{$false};endpoint_owner_user_sid_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_user_sid_match}else{$false};endpoint_owner_creation_identity_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_creation_identity_match}else{$false};
+        endpoint_owner_pid_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_pid_changed_count}else{0};endpoint_owner_creation_identity_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_creation_identity_changed_count}else{0};endpoint_owner_identity_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_identity_changed_count}else{0};endpoint_owner_process_lineage_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_process_lineage_changed_count}else{0};multiple_active_endpoint_owner_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.multiple_active_endpoint_owner_count}else{0};protected_port_multiple_owner_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.protected_port_multiple_owner_count}else{0};foreign_listener_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.foreign_listener_count}else{0};
         first_jsonrpc_request_sent=@($allReceipts|Where-Object{[string]$_.milestone_id-ceq'M6'-and[string]$_.status-ceq'PASS'}).Count-eq1;first_jsonrpc_response_received=@($allReceipts|Where-Object{[string]$_.milestone_id-ceq'M7'-and[string]$_.status-ceq'PASS'}).Count-eq1;m6_to_m11_execution_count=$m6ToM11Receipts.Count;
         play_main_scene_count=0;product_match_count=0;formal_authorization_consumed=$false;formal_mcp_execution_count=0;authorized_run_count_consumed=0;
         watchdog_started_before_godot_process=if($null-ne$watchdogSummary){[bool]$watchdogSummary.started_before_godot_process}else{$false};watchdog_observation_gap_count=if($null-ne$watchdogSummary){[int]$watchdogSummary.observation_gap_count}else{-1};watchdog_open_handle_count_after=if($null-ne$watchdogSummary){[int]$watchdogSummary.open_handle_count_after}else{-1};watchdog_status=if($null-ne$watchdogSummary){[string]$watchdogSummary.status}else{if($KeepRunningAfterM11){'RUNNING'}else{'MISSING'}};

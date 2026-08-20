@@ -79,10 +79,18 @@ function ConvertFrom-NetstatListenerRecordsV1 {
     )
     $records = [Collections.Generic.List[object]]::new()
     $failures = [Collections.Generic.List[object]]::new()
+    $rawRecords = [Collections.Generic.List[object]]::new()
+    $targetNonListeners = [Collections.Generic.List[object]]::new()
     $ignored = 0
     $ignoredOutsideTargetPort = 0
     $index = 0
     foreach ($raw in @($InputObject)) {
+        $rawRecords.Add([pscustomobject][ordered]@{
+            record_index=$index
+            raw_text=if($raw -is [string]){[string]$raw}else{$null}
+            raw_dotnet_type=if($null-eq$raw){$null}else{$raw.GetType().FullName}
+            raw_fingerprint=if($raw-is[string]){Get-Pr90TextSha256 ([string]$raw)}else{$null}
+        })
         if ($raw -is [string] -and [string]$raw -notmatch '^\s*TCP\s+') { $ignored += 1; $index += 1; continue }
         try {
             $lexical = ConvertFrom-NetstatTcpLexicalRecordV1 -InputObject $raw
@@ -90,6 +98,20 @@ function ConvertFrom-NetstatListenerRecordsV1 {
                 $ignoredOutsideTargetPort += 1
                 $index += 1
                 continue
+            }
+            $stateText=([string]$lexical.state).Trim().ToUpperInvariant()
+            if($stateText -notin @('LISTEN','LISTENING')){
+                $knownNonListenerStates=@('ESTABLISHED','SYN_SENT','SYN_RECEIVED','FIN_WAIT_1','FIN_WAIT_2','TIME_WAIT','CLOSE_WAIT','CLOSING','LAST_ACK','DELETE_TCB','BOUND')
+                if($stateText -in $knownNonListenerStates){
+                    $targetNonListeners.Add([pscustomobject][ordered]@{
+                        record_index=$index;local_address_raw=[string]$lexical.local_address;local_port=[int]$lexical.local_port;
+                        tcp_state_raw=[string]$lexical.state;owning_pid_raw=[string]$lexical.pid;raw_text=[string]$lexical.raw_line;
+                        raw_fingerprint=Get-Pr90TextSha256 ([string]$lexical.raw_line);classification='KNOWN_TARGET_PORT_NON_LISTENER'
+                    })
+                    $index+=1
+                    continue
+                }
+                throw "Unknown protected-port TCP state: $stateText"
             }
             $record = New-EndpointListenerRecordV1 `
                 -ObserverSource 'netstat-ano-p-TCP' `
@@ -116,9 +138,16 @@ function ConvertFrom-NetstatListenerRecordsV1 {
         observer_source='netstat-ano-p-TCP'
         sample_id=$SampleId
         observed_utc=$ObservedUtc.ToUniversalTime().ToString('o')
+        observer_started_utc=$ObservedUtc.ToUniversalTime().ToString('o')
+        observer_completed_utc=[DateTimeOffset]::UtcNow.ToUniversalTime().ToString('o')
         raw_record_count=@($InputObject).Count
+        raw_records=@($rawRecords)
+        raw_evidence_preserved=$true
         ignored_non_tcp_line_count=$ignored
         ignored_outside_target_port_count=$ignoredOutsideTargetPort
+        ignored_target_non_listener_count=$targetNonListeners.Count
+        ignored_target_non_listener_records=@($targetNonListeners)
+        protected_port_unknown_state_count=@($failures|Where-Object{[string]$_.detail-like'Unknown protected-port TCP state:*'}).Count
         records=@($records)
         parse_failures=@($failures)
         parse_failure_count=$failures.Count

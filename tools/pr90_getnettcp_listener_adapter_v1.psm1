@@ -61,8 +61,24 @@ function ConvertFrom-GetNetTcpConnectionRecordsV1 {
     )
     $records = [Collections.Generic.List[object]]::new()
     $failures = [Collections.Generic.List[object]]::new()
+    $rawRecords = [Collections.Generic.List[object]]::new()
     $index = 0
     foreach ($raw in @($InputObject)) {
+        $rawProjection = [ordered]@{
+            local_address=$null;local_port=$null;state=$null;owning_pid=$null;creation_time=$null
+        }
+        if ($null -ne $raw) {
+            $rawProjection.local_address=[string](Get-EndpointSourcePropertyValueV1 -InputObject $raw -Name 'LocalAddress')
+            $rawProjection.local_port=[string](Get-EndpointSourcePropertyValueV1 -InputObject $raw -Name 'LocalPort')
+            $rawProjection.state=[string](Get-EndpointSourcePropertyValueV1 -InputObject $raw -Name 'State')
+            $rawProjection.owning_pid=[string](Get-EndpointSourcePropertyValueV1 -InputObject $raw -Name 'OwningProcess')
+            $rawProjection.creation_time=[string](Get-EndpointSourcePropertyValueV1 -InputObject $raw -Name 'CreationTime')
+        }
+        $rawRecords.Add([pscustomobject][ordered]@{
+            record_index=$index
+            raw_projection=$rawProjection
+            raw_inventory=Get-ListenerRawObjectInventoryV1 $raw
+        })
         try {
             $records.Add((ConvertFrom-GetNetTcpConnectionRecordV1 -InputObject $raw -SampleId $SampleId -ObservedUtc $ObservedUtc))
         } catch {
@@ -78,7 +94,14 @@ function ConvertFrom-GetNetTcpConnectionRecordsV1 {
         observer_source='Get-NetTCPConnection'
         sample_id=$SampleId
         observed_utc=$ObservedUtc.ToUniversalTime().ToString('o')
+        observer_started_utc=$ObservedUtc.ToUniversalTime().ToString('o')
+        observer_completed_utc=[DateTimeOffset]::UtcNow.ToUniversalTime().ToString('o')
         raw_record_count=@($InputObject).Count
+        raw_records=@($rawRecords)
+        raw_evidence_preserved=$true
+        ignored_target_non_listener_count=0
+        ignored_target_non_listener_records=@()
+        protected_port_unknown_state_count=0
         records=@($records)
         parse_failures=@($failures)
         parse_failure_count=$failures.Count

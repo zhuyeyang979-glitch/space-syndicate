@@ -5,6 +5,9 @@ Import-Module (Join-Path $PSScriptRoot 'pr90_endpoint_listener_key_formatter_v1.
 Import-Module (Join-Path $PSScriptRoot 'pr90_listener_parity_validator_v1.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'pr90_listener_process_identity_reader_v1.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'pr90_m5_passive_contract_v1.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'pr90_endpoint_listener_core_v2.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'pr90_listener_bracketed_cohort_v2.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'pr90_m5_listener_parity_v2_contract.psm1') -Force
 
 function Test-Pr90McpCommandLinePathBindingV2 {
     [CmdletBinding()]
@@ -251,8 +254,104 @@ function Test-Pr90McpEndpointOwnershipV2 {
     }
 }
 
+function Set-Pr90McpOwnerProofForBracketedCohortV2 {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][object]$Cohort,
+        [Parameter(Mandatory=$true)][object]$ConsoleWrapperIdentity,
+        [Parameter(Mandatory=$true)][int]$LauncherPid,
+        [Parameter(Mandatory=$true)][string]$ExpectedFixtureRoot,
+        [Parameter(Mandatory=$true)][string]$GodotConsolePath,
+        [Parameter(Mandatory=$true)][DateTimeOffset]$LaunchEpochUtc,
+        [Parameter(Mandatory=$true)][ValidateRange(1,65535)][int]$EndpointPort,
+        [Parameter(Mandatory=$true)][string]$McpSessionId,
+        [scriptblock]$IdentityReader={param($pidValue) Read-EndpointListenerOwnerIdentityV1 -PidValue $pidValue},
+        [scriptblock]$AncestorReader={param($pidValue) @(Get-EndpointProcessAncestorChainV1 -PidValue $pidValue)}
+    )
+    $proof=[pscustomobject][ordered]@{
+        schema='Pr90SharedEndpointOwnerProofV2';status='BLOCKED';qualified=$false;failure_class='LISTENER_CORE_PARITY_NOT_ESTABLISHED';
+        endpoint_owner_pid=$null;endpoint_owner_identity=$null;ancestor_chain=@();owner_instance_key='';lineage_fingerprint='';
+        owner_is_gui_engine=$false;owner_is_console_wrapper=$false;owner_descendant_of_launcher=$false;owner_parent_is_wrapper=$false;wrapper_parent_is_launcher=$false;
+        project_match=$false;mcp_session_match=$false;windows_session_match=$false;user_sid_match=$false;creation_identity_match=$false;created_after_launch_epoch=$false;
+        matched_listener_process_enrichment_count=0;duplicate_source_process_enrichment_count=0;process_identity_used_to_prove_owner=$false;process_identity_used_to_define_source_parity=$false;
+        protected_port_multiple_owner_count=0;foreign_listener_count=0
+    }
+    if(-not[bool]$Cohort.stable_parity-or$null-eq$Cohort.source_parity){$Cohort.owner_proof=$proof;return $Cohort}
+    $matched=@($Cohort.source_parity.matched_records)
+    $target=@($matched|Where-Object{[int]$_.core.local_port-eq$EndpointPort})
+    $ownerPids=@($matched|ForEach-Object{[int]$_.core.owning_pid}|Sort-Object -Unique)
+    $proof.protected_port_multiple_owner_count=[Math]::Max(0,$ownerPids.Count-1)
+    if($target.Count-ne1-or$ownerPids.Count-ne1){$proof.failure_class=if($target.Count-ne1){'ENDPOINT_LISTENER_CARDINALITY_INVALID'}else{'PROTECTED_PORT_MULTIPLE_OWNER'};$Cohort.owner_proof=$proof;return $Cohort}
+    $ownerPid=[int]$target[0].core.owning_pid
+    $proof.endpoint_owner_pid=$ownerPid
+    $proof.matched_listener_process_enrichment_count=1
+    $identity=&$IdentityReader $ownerPid
+    $proof.endpoint_owner_identity=$identity
+    if($null-eq$identity-or-not[bool]$identity.identity_read_green){$proof.failure_class='PROCESS_IDENTITY_ENRICHMENT_FAILED';$Cohort.owner_proof=$proof;$Cohort.matched_listener_process_enrichment_count=1;return $Cohort}
+    $chain=@(&$AncestorReader $ownerPid)
+    $proof.ancestor_chain=$chain
+    $wrapperPid=[int](Get-EndpointSourcePropertyValueV1 $ConsoleWrapperIdentity 'pid' -Required)
+    $wrapperParentIsLauncher=([int](Get-EndpointSourcePropertyValueV1 $ConsoleWrapperIdentity 'parent_pid' -Required)-eq$LauncherPid)
+    $chainPids=@($chain|ForEach-Object{[int](Get-EndpointSourcePropertyValueV1 $_ 'pid' -Required)})
+    $expectedGuiPath=Resolve-Pr90McpGuiEnginePathV2 $GodotConsolePath
+    $proof.owner_is_console_wrapper=($ownerPid-eq$wrapperPid)
+    $proof.owner_is_gui_engine=(-not$proof.owner_is_console_wrapper-and[string]$identity.executable_path-ieq$expectedGuiPath)
+    $proof.owner_parent_is_wrapper=([int]$identity.parent_pid-eq$wrapperPid)
+    $proof.wrapper_parent_is_launcher=$wrapperParentIsLauncher
+    $proof.owner_descendant_of_launcher=($proof.owner_parent_is_wrapper-and$wrapperParentIsLauncher-and$wrapperPid-in$chainPids-and$LauncherPid-in$chainPids)
+    $proof.project_match=Test-Pr90McpCommandLinePathBindingV2 -CommandLine ([string]$identity.command_line) -ExpectedRoot $ExpectedFixtureRoot
+    $proof.mcp_session_match=(-not[string]::IsNullOrWhiteSpace($McpSessionId)-and$proof.owner_descendant_of_launcher)
+    $proof.windows_session_match=([int]$identity.windows_session_id-eq[int]$ConsoleWrapperIdentity.windows_session_id)
+    $proof.user_sid_match=(-not[string]::IsNullOrWhiteSpace([string]$identity.user_sid)-and[string]$identity.user_sid-ceq[string]$ConsoleWrapperIdentity.user_sid)
+    $proof.created_after_launch_epoch=([DateTimeOffset]::Parse([string]$identity.creation_time_utc)-ge$LaunchEpochUtc)
+    $proof.creation_identity_match=(-not[string]::IsNullOrWhiteSpace([string]$identity.creation_time_filetime_utc))
+    $proof.owner_instance_key='{0}|{1}'-f$ownerPid,[string]$identity.creation_time_filetime_utc
+    $proof.lineage_fingerprint=Get-Pr90McpLineageFingerprintV2 -AncestorChain $chain
+    $proof.process_identity_used_to_prove_owner=$true
+    $proof.foreign_listener_count=if($proof.owner_is_gui_engine-and$proof.owner_descendant_of_launcher-and$proof.project_match){0}else{1}
+    $proof.qualified=($proof.owner_is_gui_engine-and-not$proof.owner_is_console_wrapper-and$proof.owner_descendant_of_launcher-and$proof.project_match-and$proof.mcp_session_match-and$proof.windows_session_match-and$proof.user_sid_match-and$proof.creation_identity_match-and$proof.created_after_launch_epoch-and$proof.protected_port_multiple_owner_count-eq0)
+    $proof.status=if($proof.qualified){'PASS'}else{'BLOCKED'}
+    $proof.failure_class=if($proof.qualified){''}else{'ENDPOINT_OWNER_SHARED_IDENTITY_CONTRACT_FAILED'}
+    $Cohort.owner_proof=$proof
+    $Cohort.matched_listener_process_enrichment_count=1
+    $Cohort.duplicate_source_process_enrichment_count=0
+    return $Cohort
+}
+
+function Test-Pr90McpEndpointOwnershipBracketedV2 {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][AllowEmptyCollection()][object[]]$Cohorts,
+        [object]$SamplingContract=(Get-Pr90M5ListenerParityV2Contract)
+    )
+    $rows=@($Cohorts)
+    $window=Test-Pr90BracketedCohortWindowV2 -Cohorts $rows -RequiredAttempts ([int]$SamplingContract.required_total_cohort_attempt_count) -RequiredConsecutive ([int]$SamplingContract.required_consecutive_stable_parity_cohort_count) -RequiredWindowMs ([int]$SamplingContract.required_stable_parity_window_ms)
+    $proofRows=@($rows|Where-Object{$null-ne$_.owner_proof-and[bool]$_.owner_proof.qualified})
+    $ownerPids=@($rows|Where-Object{$null-ne$_.source_parity}|ForEach-Object{@($_.source_parity.matched_records|ForEach-Object{[int]$_.core.owning_pid})}|Sort-Object -Unique)
+    $ownerKeys=@($proofRows|ForEach-Object{[string]$_.owner_proof.owner_instance_key}|Sort-Object -Unique)
+    $lineages=@($proofRows|ForEach-Object{[string]$_.owner_proof.lineage_fingerprint}|Sort-Object -Unique)
+    $last=@($proofRows|Select-Object -Last 1)
+    $aOnly=[int](@($rows|ForEach-Object{if($null-ne$_.source_parity){[int]$_.source_parity.a_only_count}else{0}}|Measure-Object -Sum).Sum)
+    $bOnly=[int](@($rows|ForEach-Object{if($null-ne$_.source_parity){[int]$_.source_parity.b_only_count}else{0}}|Measure-Object -Sum).Sum)
+    $multiple=[int](@($rows|Where-Object{$null-ne$_.owner_proof}|ForEach-Object{[int]$_.owner_proof.protected_port_multiple_owner_count}|Measure-Object -Sum).Sum)
+    $foreign=[int](@($rows|Where-Object{$null-ne$_.owner_proof}|ForEach-Object{[int]$_.owner_proof.foreign_listener_count}|Measure-Object -Sum).Sum)
+    $enrichCount=[int](@($rows|ForEach-Object{[int]$_.matched_listener_process_enrichment_count}|Measure-Object -Sum).Sum)
+    $green=([bool]$SamplingContract.sampling_budget_sufficient-and[bool]$SamplingContract.short_time_bounded-and[bool]$window.green-and$proofRows.Count-eq1-and$ownerPids.Count-eq1-and$ownerKeys.Count-eq1-and$lineages.Count-eq1-and$aOnly-eq0-and$bOnly-eq0-and$multiple-eq0-and$foreign-eq0-and$enrichCount-eq1)
+    $failure=if($green){''}elseif($rows.Count-lt[int]$SamplingContract.required_total_cohort_attempt_count){'STARTUP_M5_COHORT_COUNT_INSUFFICIENT'}elseif([int]$window.observer_timeout_count-gt0){'STARTUP_M5_LISTENER_OBSERVER_TIMEOUT'}elseif([int]$window.source_disagreement_count-gt0-or$aOnly-gt0-or$bOnly-gt0){'STARTUP_M5_ENDPOINT_LISTENER_CORE_DISAGREEMENT'}elseif($multiple-gt0-or$foreign-gt0){'STARTUP_M5_MULTIPLE_OR_FOREIGN_ENDPOINT_OWNER'}elseif($proofRows.Count-ne1-or$enrichCount-ne1){'STARTUP_M5_ENDPOINT_OWNER_SHARED_IDENTITY_FAILED'}elseif($ownerPids.Count-ne1-or$ownerKeys.Count-ne1-or$lineages.Count-ne1){'STARTUP_M5_ENDPOINT_OWNER_IDENTITY_CHANGED'}else{'STARTUP_M5_STABLE_PARITY_WINDOW_INSUFFICIENT'}
+    return [pscustomobject][ordered]@{
+        schema='SpaceSyndicatePr90McpEndpointOwnershipBracketedV2Attestation';status=if($green){'PASS'}else{'FAIL'};green=$green;failure_class=$failure;endpoint_ownership_contract_version=2;listener_parity_contract_version=2;bracketed_sample_model=$true;
+        total_listener_cohort_attempt_count=$rows.Count;consecutive_stable_parity_cohort_count=[int]$window.consecutive_stable_parity_cohort_count;stable_parity_window_ms=[double]$window.stable_parity_window_ms;unstable_cohort_count=[int]$window.unstable_cohort_count;observer_timeout_count=[int]$window.observer_timeout_count;
+        endpoint_listener_observer_source_count=2;endpoint_listener_core_parity=($window.source_disagreement_count-eq0-and$aOnly-eq0-and$bOnly-eq0);endpoint_listener_a_only_core_count=$aOnly;endpoint_listener_b_only_core_count=$bOnly;
+        listener_core_parity_key_field_count=5;listener_core_parity_observer_specific_field_count=0;listener_core_parity_process_enrichment_field_count=0;matched_listener_process_enrichment_count=$enrichCount;duplicate_source_process_enrichment_count=0;process_identity_used_to_prove_owner=$true;process_identity_used_to_define_source_parity=$false;
+        endpoint_owner_pid=if($ownerPids.Count-eq1){$ownerPids[0]}else{$null};endpoint_owner_identity=if($last.Count-eq1){$last[0].owner_proof.endpoint_owner_identity}else{$null};endpoint_owner_ancestor_chain=if($last.Count-eq1){@($last[0].owner_proof.ancestor_chain)}else{@()};
+        endpoint_owner_is_gui_engine=if($last.Count-eq1){[bool]$last[0].owner_proof.owner_is_gui_engine}else{$false};endpoint_owner_is_console_wrapper=if($last.Count-eq1){[bool]$last[0].owner_proof.owner_is_console_wrapper}else{$false};endpoint_owner_is_descendant_of_launcher=if($last.Count-eq1){[bool]$last[0].owner_proof.owner_descendant_of_launcher}else{$false};endpoint_owner_project_match=if($last.Count-eq1){[bool]$last[0].owner_proof.project_match}else{$false};endpoint_owner_mcp_session_match=if($last.Count-eq1){[bool]$last[0].owner_proof.mcp_session_match}else{$false};endpoint_owner_windows_session_match=if($last.Count-eq1){[bool]$last[0].owner_proof.windows_session_match}else{$false};endpoint_owner_user_sid_match=if($last.Count-eq1){[bool]$last[0].owner_proof.user_sid_match}else{$false};endpoint_owner_creation_identity_match=if($last.Count-eq1){[bool]$last[0].owner_proof.creation_identity_match}else{$false};
+        endpoint_owner_pid_changed_count=[Math]::Max(0,$ownerPids.Count-1);endpoint_owner_identity_changed_count=[Math]::Max(0,$ownerKeys.Count-1);endpoint_owner_creation_identity_changed_count=[Math]::Max(0,$ownerKeys.Count-1);endpoint_owner_process_lineage_changed_count=[Math]::Max(0,$lineages.Count-1);protected_port_multiple_owner_count=$multiple;multiple_active_endpoint_owner_count=$multiple;foreign_listener_count=$foreign;sampling_contract=$SamplingContract
+    }
+}
+
 Export-ModuleMember -Function @(
     'Test-Pr90McpCommandLinePathBindingV2', 'Resolve-Pr90McpGuiEnginePathV2',
     'Add-Pr90McpIdentityToListenerObservationV2', 'Get-Pr90McpLineageFingerprintV2',
-    'New-Pr90McpEndpointOwnershipSampleV2', 'Test-Pr90McpEndpointOwnershipV2'
+    'New-Pr90McpEndpointOwnershipSampleV2', 'Test-Pr90McpEndpointOwnershipV2',
+    'Set-Pr90McpOwnerProofForBracketedCohortV2','Test-Pr90McpEndpointOwnershipBracketedV2'
 )

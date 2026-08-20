@@ -337,7 +337,7 @@ function Get-StartupFileTail {
 function Get-McpStartupProcessSnapshot {
     [CmdletBinding()]
     param(
-        [int]$Pid = 0,
+        [int]$ProcessId = 0,
         [double]$BaselineCpuSeconds = 0,
         [string]$StdoutPath = '',
         [string]$StderrPath = '',
@@ -347,7 +347,7 @@ function Get-McpStartupProcessSnapshot {
         [string[]]$LockPaths = @(),
         [string[]]$HeartbeatPaths = @()
     )
-    $process = if ($Pid -gt 0) { Get-Process -Id $Pid -ErrorAction SilentlyContinue } else { $null }
+    $process = if ($ProcessId -gt 0) { Get-Process -Id $ProcessId -ErrorAction SilentlyContinue } else { $null }
     $listeners = @()
     if ($Port -gt 0) {
         $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)

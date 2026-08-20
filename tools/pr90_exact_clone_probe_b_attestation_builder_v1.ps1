@@ -11,6 +11,8 @@ param(
     [Parameter(Mandatory = $true)][string]$ClassCachePath,
     [Parameter(Mandatory = $true)][string]$SceneIsolationAuditPath,
     [Parameter(Mandatory = $true)][string]$ExpectedProbeSceneSha256,
+    [Parameter(Mandatory = $true)][string]$ListenerForensicsPath,
+    [Parameter(Mandatory = $true)][string]$ExpectedListenerForensicsSha256,
     [Parameter(Mandatory = $true)][string]$FinalizerResultPath,
     [Parameter(Mandatory = $true)][string]$TerminalManifestPath,
     [Parameter(Mandatory = $true)][string]$OutputPath
@@ -31,6 +33,9 @@ $ready = Join-Path $EvidenceRoot 'witnesses/ready-witness.json'
 $phase0 = Join-Path $EvidenceRoot 'phases/000-phase-0-ready.json'
 $endpointAttestation = Join-Path $EvidenceRoot 'endpoint-ownership-v2-attestation.json'
 $endpointSamples = Join-Path $EvidenceRoot 'endpoint-ownership-v2-samples.json'
+$endpointAttestationObject=if(Test-Path -LiteralPath $endpointAttestation -PathType Leaf){Get-Content -Raw -LiteralPath $endpointAttestation|ConvertFrom-Json -Depth 100}else{$null}
+$endpointSamplesObject=if(Test-Path -LiteralPath $endpointSamples -PathType Leaf){Get-Content -Raw -LiteralPath $endpointSamples|ConvertFrom-Json -Depth 100}else{$null}
+$listenerForensics=Get-Content -Raw -LiteralPath $ListenerForensicsPath|ConvertFrom-Json -Depth 100
 $probe004Result=Get-Content -Raw -LiteralPath $Probe004ResultPath|ConvertFrom-Json -Depth 100
 $probe004Attestation=Get-Content -Raw -LiteralPath $Probe004AttestationPath|ConvertFrom-Json -Depth 100
 $sceneIsolation=Get-Content -Raw -LiteralPath $SceneIsolationAuditPath|ConvertFrom-Json -Depth 100
@@ -38,13 +43,18 @@ $sceneIsolationGreen=Test-Pr90ProbeBSceneIsolationContractV1 -Audit $sceneIsolat
 $probe004Bound=((Get-Pr90ProbeBSha256 $Probe004ResultPath)-ceq$ExpectedProbe004ResultSha256-and(Get-Pr90ProbeBSha256 $Probe004AttestationPath)-ceq$ExpectedProbe004AttestationSha256-and
     [string]$probe004Result.status-ceq'PASS'-and[string]$probe004Result.probe_id-ceq'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-004'-and[string]$probe004Attestation.status-ceq'SEALED'-and
     [string]$probe004Attestation.probe_id-ceq'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-004'-and[string]$probe004Attestation.result_sha256-ceq$ExpectedProbe004ResultSha256)
-$allBound = ([string]$result.status -ceq 'PASS' -and $receipts.count -eq 12 -and[bool]$result.milestone_sequence_green-and[int]$result.milestone_duplicate_count-eq0-and $raw.count -gt 0 -and
+$listenerV2Bound=((Get-Pr90ProbeBSha256 $ListenerForensicsPath)-ceq$ExpectedListenerForensicsSha256-and[string]$listenerForensics.status-ceq'ROOT_CAUSE_RESOLVED'-and[int]$listenerForensics.sample_count-eq23-and[string]$listenerForensics.root_cause_class-ceq'J'-and-not[bool]$listenerForensics.characterization_probe_required-and
+    $null-ne$endpointAttestationObject-and[string]$endpointAttestationObject.status-ceq'PASS'-and[bool]$endpointAttestationObject.bracketed_sample_model-and[int]$endpointAttestationObject.listener_core_parity_key_field_count-eq5-and[int]$endpointAttestationObject.matched_listener_process_enrichment_count-eq1-and[int]$endpointAttestationObject.duplicate_source_process_enrichment_count-eq0-and
+    $null-ne$endpointSamplesObject-and[string]$endpointSamplesObject.schema-ceq'SpaceSyndicatePr90McpEndpointOwnershipBracketedCohortsV2'-and[bool]$endpointSamplesObject.bracketed_sample_model-and[string]$endpointSamplesObject.raw_listener_evidence_preservation-ceq'100_PERCENT'-and[int]$endpointSamplesObject.cohort_count-ge5-and
+    [int]$result.total_listener_cohort_attempt_count-ge5-and[int]$result.consecutive_stable_parity_cohort_count-ge5-and[double]$result.stable_parity_window_ms-ge1000-and[bool]$result.endpoint_listener_core_parity-and[int]$result.endpoint_listener_a_only_core_count-eq0-and[int]$result.endpoint_listener_b_only_core_count-eq0-and
+    [bool]$result.endpoint_owner_project_match-and[bool]$result.endpoint_owner_mcp_session_match-and[bool]$result.endpoint_owner_creation_identity_match-and[int]$result.protected_port_multiple_owner_count-eq0-and[int]$result.foreign_listener_count-eq0)
+$allBound = ([string]$result.schema-ceq'Pr90ExactCloneProbeBV2ResultV1'-and[string]$result.status -ceq 'PASS' -and $receipts.count -eq 12 -and[bool]$result.milestone_sequence_green-and[int]$result.milestone_duplicate_count-eq0-and $raw.count -gt 0 -and
     $requests.count-gt0-and[string]$result.request_inventory_sha256-ceq[string]$requests.inventory_sha256-and[int]$result.request_count-eq[int]$requests.count-and
     $probe004Bound-and$sceneIsolationGreen-and[string]$result.authorized_probe_scene_sha256-ceq$ExpectedProbeSceneSha256-and[string]$result.scene_isolation_audit_sha256-ceq(Get-Pr90ProbeBSha256 $SceneIsolationAuditPath)-and-not[string]::IsNullOrWhiteSpace([string]$result.godot_gui_sha256)-and-not[string]::IsNullOrWhiteSpace([string]$result.godot_console_sha256)-and
-    (Test-Path -LiteralPath $endpointAttestation -PathType Leaf) -and (Test-Path -LiteralPath $endpointSamples -PathType Leaf) -and
+    $listenerV2Bound-and(Test-Path -LiteralPath $endpointAttestation -PathType Leaf) -and (Test-Path -LiteralPath $endpointSamples -PathType Leaf) -and
     (Test-Path -LiteralPath $bridgeReady -PathType Leaf) -and (Test-Path -LiteralPath $bootstrap -PathType Leaf) -and (Test-Path -LiteralPath $ready -PathType Leaf) -and (Test-Path -LiteralPath $phase0 -PathType Leaf))
 $attestation = [pscustomobject][ordered]@{
-    schema='Pr90ExactCloneProbeBAttestationV1';probe_id=$ProbeId;status=if($allBound){'SEALED'}else{'BLOCKED'};created_at_utc=[DateTimeOffset]::UtcNow.ToString('o')
+    schema='Pr90ExactCloneProbeBV2AttestationV1';probe_id=$ProbeId;status=if($allBound){'SEALED'}else{'BLOCKED'};created_at_utc=[DateTimeOffset]::UtcNow.ToString('o')
     result_path=[IO.Path]::GetFullPath($ResultPath);result_sha256=Get-Pr90ProbeBSha256 $ResultPath
     milestone_receipt_count=$receipts.count;milestone_receipt_inventory_sha256=$receipts.inventory_sha256;milestone_receipts=$receipts.rows
     probe004_result_sha256=Get-Pr90ProbeBSha256 $Probe004ResultPath;probe004_attestation_sha256=Get-Pr90ProbeBSha256 $Probe004AttestationPath
@@ -55,6 +65,9 @@ $attestation = [pscustomobject][ordered]@{
     request_count=$requests.count;request_inventory_sha256=$requests.inventory_sha256;request_inventory=$requests.rows
     endpoint_ownership_attestation_sha256=if(Test-Path -LiteralPath $endpointAttestation){Get-Pr90ProbeBSha256 $endpointAttestation}else{''}
     endpoint_ownership_samples_sha256=if(Test-Path -LiteralPath $endpointSamples){Get-Pr90ProbeBSha256 $endpointSamples}else{''}
+    listener_forensics_sha256=Get-Pr90ProbeBSha256 $ListenerForensicsPath;listener_parity_root_cause_class=[string]$listenerForensics.root_cause_class;characterization_probe_execution_count=0
+    bracketed_sample_model=[bool]$result.bracketed_sample_model;total_listener_cohort_attempt_count=[int]$result.total_listener_cohort_attempt_count;consecutive_stable_parity_cohort_count=[int]$result.consecutive_stable_parity_cohort_count;stable_parity_window_ms=[double]$result.stable_parity_window_ms
+    listener_core_parity_key_field_count=[int]$result.listener_core_parity_key_field_count;matched_listener_process_enrichment_count=[int]$result.matched_listener_process_enrichment_count;duplicate_source_process_enrichment_count=[int]$result.duplicate_source_process_enrichment_count;raw_listener_evidence_preservation=[string]$result.raw_listener_evidence_preservation
     runtime_bridge_ready_status_sha256=if(Test-Path -LiteralPath $bridgeReady){Get-Pr90ProbeBSha256 $bridgeReady}else{''}
     runtime_bootstrap_sha256=if(Test-Path -LiteralPath $bootstrap){Get-Pr90ProbeBSha256 $bootstrap}else{''}
     ready_witness_sha256=if(Test-Path -LiteralPath $ready){Get-Pr90ProbeBSha256 $ready}else{''}
