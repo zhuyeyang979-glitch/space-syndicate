@@ -238,6 +238,11 @@ try {
 $callIndex = 1000
 $streamId = [string]$state.stream_id
 $cursor = [int64]$state.cursor_after
+$startupStreamId = $streamId
+$startupCursorAfter = $cursor
+$mainRuntimeStreamId = ''
+$mainStreamTransitionPath = ''
+$mainStreamTransitionSha = ''
 $allEvents = [Collections.Generic.List[object]]::new()
 $readyWitnesses = [Collections.Generic.List[object]]::new()
 $pollCount = 0
@@ -255,6 +260,10 @@ function Invoke-FormalMcp {
     if($null-ne$script:invokeBindingFailure-or$null-eq$script:m5Receipt-or$null-eq$script:m5Connection-or$null-eq$script:endpointOwnershipAttestation){throw 'Formal V2 invoker M5 identity binding is not green; no HTTP request is permitted.'}
     $script:callIndex += 1
     $raw = Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-{1}.jsonrpc.json' -f $script:callIndex,$ToolName)
+    $requestPath = Join-Path $EvidenceRoot ('requests/{0:D4}-{1}.json' -f $script:callIndex,$ToolName)
+    $requestRow=[pscustomobject][ordered]@{schema='SpaceSyndicateFormalMcpRequestV1';run_id=$RunId;call_index=$script:callIndex;tool_name=$ToolName;arguments=[pscustomobject]$Arguments;timeout_seconds=$TimeoutSeconds;canonical_payload_sha256=''}
+    $requestRow.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $requestRow
+    Write-StartupImmutableJson -Path $requestPath -Value $requestRow -WriteSha256Sidecar|Out-Null
     $json = $Arguments | ConvertTo-Json -Depth 40 -Compress
     $output = @(& pwsh -NoProfile -File $script:invokeScript -Worktree $root -ToolName $ToolName -ArgumentsJson $json -TimeoutSeconds $TimeoutSeconds -RawResponsePath $raw `
         -ExpectedControlProcessId ([int]$m5Connection.control_process_pid) -ExpectedControlProcessStartUtc ([string]$m5Connection.process_start_time_utc) -ExpectedLaunchSessionId ([string]$m5Connection.launch_session_id) `
@@ -307,6 +316,33 @@ function Poll-FormalCursor {
     return $result
 }
 
+function Set-FormalMainRuntimeStream {
+    $snapshotCallIndex=$script:callIndex+1
+    $snapshotPayload=Get-FormalStructured (Invoke-FormalMcp -ToolName 'get_runtime_events' -Arguments @{max_events=100;timeout_msec=10000} -TimeoutSeconds 60)
+    $snapshotPage=$snapshotPayload.result
+    $candidateStreamId=[string]$snapshotPage.stream_id
+    $readyCallIndex=$script:callIndex+1
+    $readyPayload=Get-FormalStructured (Invoke-FormalMcp -ToolName 'get_runtime_events' -Arguments @{max_events=100;timeout_msec=10000;stream_id=$candidateStreamId;since_sequence=0} -TimeoutSeconds 60)
+    $readyPage=$readyPayload.result
+    if(-not(Test-Pr90FormalMainRuntimeStreamTransitionV1 -StartupStreamId $startupStreamId -SnapshotPage $snapshotPage -ReadyPage $readyPage)){throw 'Formal main runtime stream transition or fresh ready witness is invalid.'}
+    $readyCheck=Test-FormalPageContract -Page $readyPage -ExpectedStream $candidateStreamId -ExpectedCursor 0
+    if(-not$readyCheck.green){throw "Formal main runtime ready page failed: $($readyCheck.issues -join ',')"}
+    $snapshotRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-get_runtime_events.json' -f $snapshotCallIndex)
+    $snapshotRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-get_runtime_events.jsonrpc.json' -f $snapshotCallIndex)
+    $readyRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-get_runtime_events.json' -f $readyCallIndex)
+    $readyRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-get_runtime_events.jsonrpc.json' -f $readyCallIndex)
+    foreach($requiredPath in @($snapshotRequestPath,$snapshotRawPath,$readyRequestPath,$readyRawPath)){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal stream transition evidence missing: $requiredPath"}}
+    $transition=[pscustomobject][ordered]@{schema='SpaceSyndicateMainRuntimeStreamTransitionV1';run_id=$RunId;status='PASS';intentional_restart_reason='exit_probe_then_play_main_scene';transition_index=1;expected_transition_count=1;unexpected_transition_count=0;startup_stream_id=$startupStreamId;startup_cursor_after=$startupCursorAfter;main_runtime_stream_id=$candidateStreamId;main_cursor_after=[int64]$readyPage.event_sequence_last;main_stream_id_stable=$true;snapshot_request_path=[IO.Path]::GetFullPath($snapshotRequestPath);snapshot_request_sha256=Get-Pr90ProbeBSha256 $snapshotRequestPath;snapshot_raw_path=[IO.Path]::GetFullPath($snapshotRawPath);snapshot_raw_sha256=Get-Pr90ProbeBSha256 $snapshotRawPath;ready_request_path=[IO.Path]::GetFullPath($readyRequestPath);ready_request_sha256=Get-Pr90ProbeBSha256 $readyRequestPath;ready_raw_path=[IO.Path]::GetFullPath($readyRawPath);ready_raw_sha256=Get-Pr90ProbeBSha256 $readyRawPath;canonical_payload_sha256=''}
+    $transition.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $transition
+    $transitionPath=Join-Path $EvidenceRoot 'phases/000-main-runtime-stream-transition.json'
+    Write-StartupImmutableJson -Path $transitionPath -Value $transition -WriteSha256Sidecar|Out-Null
+    $script:streamId=$candidateStreamId
+    $script:cursor=[int64]$readyPage.event_sequence_last
+    $script:mainRuntimeStreamId=$candidateStreamId
+    $script:mainStreamTransitionPath=[IO.Path]::GetFullPath($transitionPath)
+    $script:mainStreamTransitionSha=Get-Pr90ProbeBSha256 $transitionPath
+}
+
 function Get-FormalNode {
     param([string]$Path, [string[]]$Properties=@())
     $payload = Get-FormalStructured (Invoke-FormalMcp -ToolName 'query_runtime_node' -Arguments @{node_path=$Path;properties=@($Properties);include_children=$false;timeout_msec=30000} -TimeoutSeconds 45)
@@ -337,6 +373,7 @@ try {
     $null = Invoke-FormalMcp -ToolName 'exit_play_mode' -Arguments @{} -TimeoutSeconds 30
     $null = Invoke-FormalMcp -ToolName 'play_main_scene' -Arguments @{} -TimeoutSeconds 60
     $null = Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=2000} -TimeoutSeconds 30
+    Set-FormalMainRuntimeStream
     Poll-FormalCursor -Phase 'phase-1-main-scene' | Out-Null
     $rootNode = Get-FormalNode -Path 'current_scene'
     if ([string]$rootNode.scene_file_path -cne 'res://scenes/main.tscn') { throw 'Formal v5 main-scene identity mismatch.' }
@@ -371,7 +408,7 @@ try {
     if (-not $green) { throw 'Formal v5 production acceptance/presentation gate failed.' }
     Poll-FormalCursor -Phase 'phase-7-final-settlement' | Out-Null
     if ($pollCount -le 8) { throw 'Formal v5 cursor polling count is insufficient.' }
-    $formalPayload = [ordered]@{startup_milestones=12;startup_raw_count=@(Get-ChildItem -LiteralPath (Join-Path $EvidenceRoot 'mcp-raw') -File -ErrorAction SilentlyContinue).Count;startup_phase0_count=1;stream_id=$streamId;stream_id_stable=$true;ready_witness_count=@($readyWitnesses).Count;formal_event_poll_count=$pollCount;natural_match_reached_settled=$true;final_settlement_count=[int]$debug.final_settlement_count;presentation_receipt_count=[int]$presentation.applied_receipt_count;presentation_collision_count=[int]$presentation.collision_receipt_count;duplicate_presentation_effect_count=([int]$presentation.duplicate_receipt_count+[int]$surface.presentation_cue_duplicate_count);required_presentation_edge_count=$requiredEdges;legacy_presentation_edge_count=$legacyEdges;duplicate_presentation_edge_count=$duplicateEdges;runtime_error_count=[int]$debug.runtime_error_count;hidden_info_violation_count=[int]$debug.hidden_info_violation_count;invalid_action_count=[int]$debug.invalid_action_count;nonfinite_count=[int]$debug.nonfinite_count;duplicate_settlement_count=[int]$debug.duplicate_settlement_count}
+    $formalPayload = [ordered]@{startup_milestones=12;startup_raw_count=@(Get-ChildItem -LiteralPath (Join-Path $EvidenceRoot 'mcp-raw') -File -ErrorAction SilentlyContinue).Count;startup_phase0_count=1;startup_stream_id=$startupStreamId;main_runtime_stream_id=$mainRuntimeStreamId;expected_stream_transition_count=1;unexpected_stream_transition_count=0;main_stream_id_stable=$true;main_stream_transition_path=$mainStreamTransitionPath;main_stream_transition_sha256=$mainStreamTransitionSha;ready_witness_count=@($readyWitnesses).Count;formal_event_poll_count=$pollCount;natural_match_reached_settled=$true;final_settlement_count=[int]$debug.final_settlement_count;presentation_receipt_count=[int]$presentation.applied_receipt_count;presentation_collision_count=[int]$presentation.collision_receipt_count;duplicate_presentation_effect_count=([int]$presentation.duplicate_receipt_count+[int]$surface.presentation_cue_duplicate_count);required_presentation_edge_count=$requiredEdges;legacy_presentation_edge_count=$legacyEdges;duplicate_presentation_edge_count=$duplicateEdges;runtime_error_count=[int]$debug.runtime_error_count;hidden_info_violation_count=[int]$debug.hidden_info_violation_count;invalid_action_count=[int]$debug.invalid_action_count;nonfinite_count=[int]$debug.nonfinite_count;duplicate_settlement_count=[int]$debug.duplicate_settlement_count}
 } catch {
     $primaryFailure = $_
 } finally {
