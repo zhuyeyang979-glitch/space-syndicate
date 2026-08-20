@@ -17,6 +17,7 @@ class CounterDomain extends RefCounted:
 			"replay_safe": true,
 			"external_side_effects_allowed": false,
 			"owns_presentation": false,
+			"derived_only_command_types": [],
 		}
 
 	func v076_apply_command(state: Dictionary, command: Dictionary, rng: Variant) -> Dictionary:
@@ -27,12 +28,14 @@ class CounterDomain extends RefCounted:
 			"draw_add":
 				state["value"] = int(state.get("value", 0)) + rng.randi_range(1, int(payload.get("maximum", 1)))
 			_:
-				return {"accepted": false, "reason": "unknown_bench_command", "state": state, "receipt": {}}
+				return {"accepted": false, "reason": "unknown_bench_command", "outcome": "REJECT", "state": state, "receipt": {}, "derived_commands": []}
 		return {
 			"accepted": true,
 			"reason": "",
+			"outcome": "COMMIT",
 			"state": state,
 			"receipt": {"kind": str(command.get("command_type", "")), "value": int(state.get("value", 0))},
+			"derived_commands": [],
 		}
 
 

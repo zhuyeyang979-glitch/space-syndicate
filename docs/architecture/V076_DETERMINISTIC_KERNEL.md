@@ -40,6 +40,23 @@ Only after that stable order is closed does the kernel allocate its monotonic
 Authority Sequence. Duplicate identical command IDs are acknowledged without a
 second effect; a same-ID/different-payload collision fails closed.
 
+Kernel schema V2 separates externally accepted `root_commands` from reducer
+emitted `derived_commands`. Only roots are replay inputs. Each derived command
+is emitted into a sealed append-only outbox, scheduled strictly after its
+source tick, and cross-bound to the source Authority Sequence, command SHA, and
+outbox SHA. Fresh replay regenerates and compares the complete derived command
+inventory and outbox; it never submits those expected derived bytes as a
+second input source. A domain contract may reserve command types as
+derived-only; the kernel rejects those types at root submission before they can
+enter the pending queue. Domain registration closes permanently at tick zero.
+
+Reducers return one exact outcome: `COMMIT`, `FIZZLE`, or `REJECT`. A legal
+`FIZZLE` is accepted, carries a non-empty reason, consumes its command and
+Authority Sequence, and may persist a deterministic receipt/state transition,
+but emits no derived command. `REJECT` aborts the complete tick transaction.
+This distinction lets stale revisions, cooldowns, and other expected gameplay
+misses remain replay-visible without leaving commands pending forever.
+
 Authority values are restricted to `null`, Boolean, integer, String, Array, and
 String-keyed Dictionary. Float, StringName, Vector, Color, Object, Callable,
 and presentation fields fail validation with an exact path. Dictionary keys are
@@ -69,7 +86,9 @@ fingerprint, every sequenced command record, and every tick hash byte-for-byte.
 The focused gate covers the integer 20Hz clock, zero-float authority, stable
 same-tick ordering, domain RNG isolation, exact-once commands, collision
 rejection, tick-boundary save/restore, tamper rejection, per-command before and
-after hashes, and at least 2,000 independent deterministic replays.
+after hashes, root/derived single-source replay, sealed outbox lineage, legal
+fizzle consumption, tick-zero domain registration, and at least 2,000
+independent deterministic replays.
 
 Stage 1 deliberately does not modify `main.tscn`, project autoloads, V0.7.5
 composition, or current production gameplay. Stage 7 will perform one atomic

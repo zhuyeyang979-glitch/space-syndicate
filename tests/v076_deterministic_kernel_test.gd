@@ -18,10 +18,12 @@ class CounterDomain extends RefCounted:
 			"replay_safe": true,
 			"external_side_effects_allowed": false,
 			"owns_presentation": false,
+			"derived_only_command_types": [],
 		}
 
 	func v076_apply_command(state: Dictionary, command: Dictionary, rng: Variant) -> Dictionary:
 		var payload := command.get("payload", {}) as Dictionary
+		var derived_commands: Array = []
 		match str(command.get("command_type", "")):
 			"add":
 				state["value"] = int(state.get("value", 0)) + int(payload.get("amount", 0))
@@ -31,10 +33,26 @@ class CounterDomain extends RefCounted:
 				state["value"] = int(state.get("value", 0)) + rng.randi_range(1, int(payload.get("maximum", 1)))
 			"draw_then_reject":
 				state["value"] = int(state.get("value", 0)) + rng.randi_range(1, int(payload.get("maximum", 1)))
-				return {"accepted": false, "reason": "intentional_transaction_rejection", "state": state, "receipt": {}}
+				return {"accepted": false, "reason": "intentional_transaction_rejection", "outcome": "REJECT", "state": state, "receipt": {}, "derived_commands": []}
+			"fizzle":
+				return {"accepted": true, "reason": "intentional_legal_fizzle", "outcome": "FIZZLE", "state": state, "receipt": {"outcome": "FIZZLE"}, "derived_commands": []}
+			"emit_add":
+				var built := AuthorityCommand.build(
+					"derived.%s" % str(command.get("command_id", "")),
+					str(command.get("domain_id", "")),
+					"add",
+					str(command.get("actor_id", "")),
+					int(command.get("scheduled_tick", 0)) + 1,
+					int(command.get("domain_priority", 0)),
+					int(command.get("authority_sequence", 0)),
+					{"amount": int(payload.get("amount", 0))}
+				)
+				if not bool(built.get("accepted", false)):
+					return {"accepted": false, "reason": "test_derived_build_failed", "outcome": "REJECT", "state": state, "receipt": {}, "derived_commands": []}
+				derived_commands.append(built.get("command", {}))
 			_:
-				return {"accepted": false, "reason": "unknown_test_command", "state": state, "receipt": {}}
-		return {"accepted": true, "reason": "", "state": state, "receipt": {"value": int(state.get("value", 0))}}
+				return {"accepted": false, "reason": "unknown_test_command", "outcome": "REJECT", "state": state, "receipt": {}, "derived_commands": []}
+		return {"accepted": true, "reason": "", "outcome": "COMMIT", "state": state, "receipt": {"value": int(state.get("value", 0))}, "derived_commands": derived_commands}
 
 
 class UnsafeDomain extends CounterDomain:
@@ -72,6 +90,8 @@ func _run() -> void:
 	_test_stable_same_tick_order()
 	_test_domain_rng_isolation()
 	_test_tick_transaction_rollback()
+	_test_legal_fizzle_consumption()
+	_test_root_derived_outbox_replay()
 	_test_snapshot_restore_and_pending_queue()
 	_test_duplicate_and_collision_contract()
 	_test_replay_tamper_detection()
@@ -124,7 +144,10 @@ func _test_domain_handler_purity_contract() -> void:
 	_check(not bool(reusing_kernel.register_domain("combat", {"value": 0}, CachedChildFactory.new()).get("accepted", true)), "cached-child factories cannot enter the Script-only fresh reducer API")
 	var unsafe_seed_kernel := Kernel.new()
 	_check(not bool(unsafe_seed_kernel.configure(9_007_199_254_740_992).get("accepted", true)), "kernel rejects an unsafe root seed before configuration becomes permanent")
-	unsafe_kernel.free(); reusing_kernel.free(); unsafe_seed_kernel.free()
+	var registration_kernel: Variant = _new_kernel(71, ["combat"]).get("kernel")
+	registration_kernel.submit_command(_command("registration-freeze", "combat", "add", "actor", 1, 1, 1, {"amount": 1}))
+	_check(not bool(registration_kernel.register_domain("late", {"value": 0}, CounterDomain).get("accepted", true)), "domain registration freezes at tick zero before the first root command")
+	unsafe_kernel.free(); reusing_kernel.free(); unsafe_seed_kernel.free(); registration_kernel.free()
 
 
 func _test_twenty_hz_integer_clock() -> void:
@@ -198,6 +221,60 @@ func _test_tick_transaction_rollback() -> void:
 	_check(kernel.current_tick() == 0 and int(debug.get("next_authority_sequence", 0)) == 1 and int(debug.get("pending_command_count", 0)) == 1, "failed tick preserves tick, Authority Sequence, and pending command")
 	_check(kernel.state_fingerprint() == before_hash and kernel.domain_state("combat") == before_state and kernel.execution_log().is_empty(), "failed tick rolls back staged state, Domain RNG, and execution log")
 	kernel.free()
+
+
+func _test_legal_fizzle_consumption() -> void:
+	var fixture := _new_kernel(516, ["combat"])
+	var kernel: Variant = fixture.get("kernel")
+	var command := _command("legal-fizzle", "combat", "fizzle", "actor", 1, 1, 1, {})
+	_check(bool(kernel.submit_command(command).get("accepted", false)), "legal fizzle enters the root command inventory")
+	var before_state: Dictionary = kernel.domain_state("combat")
+	var advanced: Dictionary = kernel.advance_ticks(1)
+	var debug: Dictionary = kernel.debug_snapshot()
+	var log: Array = kernel.execution_log()
+	_check(bool(advanced.get("accepted", false)) and int(advanced.get("fizzle_count", 0)) == 1, "legal fizzle commits the tick as a consumed outcome")
+	_check(kernel.domain_state("combat") == before_state and int(debug.get("pending_command_count", -1)) == 0, "legal fizzle consumes the command without inventing a gameplay mutation")
+	_check(log.size() == 1 and str((log[0] as Dictionary).get("outcome", "")) == "FIZZLE" and str((log[0] as Dictionary).get("fizzle_reason", "")).is_empty() == false, "legal fizzle receives one Authority Sequence and a non-empty reason")
+	var duplicate: Dictionary = kernel.submit_command(command)
+	_check(bool(duplicate.get("accepted", false)) and bool(duplicate.get("duplicate", false)) and int(kernel.debug_snapshot().get("pending_command_count", -1)) == 0, "re-submitting a consumed fizzle is acknowledged without a second enqueue")
+	var recipe: Dictionary = kernel.build_replay_recipe()
+	var replay := ReplayRunner.new().verify(recipe.get("recipe", {}) as Dictionary, str(recipe.get("recipe_sha256", "")), {"combat": CounterDomain})
+	_check(str(replay.get("status", "")) == "PASS", "legal fizzle is reproduced exactly by root-only replay")
+	kernel.free()
+
+
+func _test_root_derived_outbox_replay() -> void:
+	var fixture := _new_kernel(517, ["combat"])
+	var kernel: Variant = fixture.get("kernel")
+	var root_command := _command("emit-root", "combat", "emit_add", "actor", 1, 1, 7, {"amount": 9})
+	_check(bool(kernel.submit_command(root_command).get("accepted", false)), "derived-command fixture accepts exactly one root command")
+	var first_tick: Dictionary = kernel.advance_ticks(1)
+	var after_first: Dictionary = kernel.debug_snapshot()
+	_check(bool(first_tick.get("accepted", false)) and int(first_tick.get("emitted_derived_command_count", 0)) == 1, "root command emits exactly one future derived command")
+	_check(int(after_first.get("root_command_count", -1)) == 1 and int(after_first.get("derived_command_count", -1)) == 1 and int(after_first.get("derived_outbox_count", -1)) == 1 and int(after_first.get("pending_command_count", -1)) == 1, "root, derived, outbox and pending inventories are distinct and cross-counted")
+	var envelope: Dictionary = kernel.capture_snapshot()
+	var restored: Variant = _new_kernel(517, ["combat"]).get("kernel")
+	_check(bool(restored.restore_snapshot(envelope.get("snapshot", {}) as Dictionary, str(envelope.get("snapshot_sha256", ""))).get("accepted", false)), "snapshot replay submits only roots and regenerates the pending derived outbox")
+	kernel.advance_ticks(1)
+	restored.advance_ticks(1)
+	_check(kernel.state_fingerprint() == restored.state_fingerprint() and kernel.execution_log() == restored.execution_log(), "derived continuation after snapshot restore has one source and one effect")
+	_check(int(kernel.domain_state("combat").get("value", 0)) == 9 and kernel.execution_log().size() == 2, "derived command executes exactly once on its scheduled future tick")
+	var log: Array = kernel.execution_log()
+	_check(str((log[0] as Dictionary).get("command_source", "")) == "ROOT" and str((log[1] as Dictionary).get("command_source", "")) == "DERIVED" and not str((log[1] as Dictionary).get("source_outbox_sha256", "")).is_empty(), "execution log binds ROOT then DERIVED lineage")
+	var recipe_envelope: Dictionary = kernel.build_replay_recipe()
+	var recipe := recipe_envelope.get("recipe", {}) as Dictionary
+	_check((recipe.get("root_commands", []) as Array).size() == 1 and (recipe.get("expected_derived_commands", []) as Array).size() == 1 and (recipe.get("expected_derived_outbox", []) as Array).size() == 1, "replay recipe exposes only roots as inputs and derived bytes as expected evidence")
+	var replay := ReplayRunner.new().verify(recipe, str(recipe_envelope.get("recipe_sha256", "")), {"combat": CounterDomain})
+	_check(str(replay.get("status", "")) == "PASS" and int(replay.get("root_command_count", -1)) == 1 and int(replay.get("derived_command_count", -1)) == 1, "root-only replay deterministically regenerates one derived command")
+	var double_source := recipe.duplicate(true)
+	var forged_roots := (double_source.get("root_commands", []) as Array).duplicate(true)
+	forged_roots.append((double_source.get("expected_derived_commands", []) as Array)[0])
+	double_source["root_commands"] = forged_roots
+	double_source["expected_root_command_count"] = 2
+	double_source["expected_accepted_command_count"] = 3
+	var rejected_double_source := ReplayRunner.new().verify(double_source, StateCodec.fingerprint(double_source), {"combat": CounterDomain})
+	_check(str(rejected_double_source.get("status", "")) == "FAIL", "re-signed recipe cannot inject a derived command as a second root source")
+	kernel.free(); restored.free()
 
 
 func _test_snapshot_restore_and_pending_queue() -> void:
@@ -302,7 +379,7 @@ func _test_replay_tamper_detection() -> void:
 	var schema_replay := runner.verify(wrong_schema, StateCodec.fingerprint(wrong_schema), {"combat": CounterDomain})
 	_check(str(schema_replay.get("status", "")) == "FAIL" and str(schema_replay.get("reason", "")) == "replay_recipe_schema_mismatch", "re-signed unknown replay schema fails before kernel execution")
 	var wrong_recipe_shape := (run.recipe as Dictionary).duplicate(true)
-	wrong_recipe_shape["commands"] = {}
+	wrong_recipe_shape["root_commands"] = {}
 	var shape_replay := runner.verify(wrong_recipe_shape, StateCodec.fingerprint(wrong_recipe_shape), {"combat": CounterDomain})
 	_check(str(shape_replay.get("status", "")) == "FAIL" and str(shape_replay.get("reason", "")).begins_with("replay_recipe_field_type_mismatch"), "hash-valid wrong-shape replay recipe fails closed")
 	var pending_kernel: Variant = _new_kernel(771, ["combat"]).get("kernel")

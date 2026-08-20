@@ -9326,3 +9326,42 @@ deleted. Evidence and the remaining action inventory are recorded in
   completes the full 2,000-seed gate, and cleanly stops with empty runtime and
   final error arrays. Presentation float geometry remains excluded from
   authority and production composition remains untouched.
+
+## V0.7.6 Stage 3 deterministic Monster L1 movement
+
+- Upgraded the isolated Stage 1 kernel to schema V2. Replay inputs now contain
+  root commands only; reducer-emitted derived commands live in a sealed outbox
+  with source command, Authority Sequence, and SHA lineage. Fresh replay
+  regenerates and compares the derived inventory/outbox instead of submitting
+  a second source. Domain registration freezes at tick zero, and legal
+  `FIZZLE` outcomes consume expected gameplay misses without weakening
+  transactional `REJECT` rollback.
+- Added an integer-only directional geodesic metric and canonical route over
+  the Stage 2 face graph, bound to topology SHA
+  `5cbd98e4027bc2cfd058c857e1a24a5f7c8c61291f1cb7ae7336bcf6851f6452`.
+  Authority stores segment index/progress, target, maximum distance, speed,
+  accepted tick/sequence, region crossings, and exact physical distance.
+- Added Script-only fresh Monster L1 reducer authority. A root move activates
+  an asset exactly once and future movement advances are derived through the
+  Kernel V2 outbox. Cooldown/stale gameplay conflicts become recorded legal
+  fizzles. GROUND trample is allocated by exact half-segment region overlap;
+  FLYING and PHASE retain exact zero trample.
+- Added focused semantic/replay gates, a 1,000-distinct-seed gate with two
+  fresh replays per seed, and an isolated headed Godot route Bench. Production
+  main/composition remains untouched; results are recorded only after the final
+  verification pass.
+- Classified the Stage 3 direction correction as `CROSS_DOMAIN_INTEGRATION`.
+  Monster authority now uses a sealed six-class great-circle face-center arc
+  table (`33ec7029…`) in integer microradians and a closed exact spherical
+  target-point projection instead of a uniform hop metric or face label alone.
+  Kernel V2 and replay are direct Owner changes for root/derived/outbox/fizzle
+  semantics; their focused gate passes `74/74` with `2,000` deterministic
+  replays. Stage 2 generator, topology, validator, and codec bytes remain
+  unchanged; only the map reducer changes for the Kernel V2 reducer-ABI
+  adaptation, and the Stage 2 focused sentinel passes `90/90`.
+- Added preferred-color asset quantities with exact one-unit activation
+  decrement and positive reuse after cooldown. GROUND damage is independently
+  derived from physical per-region arc distance, monster efficiency, and the
+  modifier PPM list frozen at root acceptance; FLYING/PHASE remain exact zero.
+- The isolated headed Bench is explicitly diagnostic only and records
+  `human_golden_step_06_09=false`; it is not human Golden evidence.

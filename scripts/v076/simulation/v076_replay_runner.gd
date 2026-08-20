@@ -30,7 +30,7 @@ func verify(recipe: Dictionary, expected_recipe_sha256: String, domain_handlers:
 		if not bool(registered.get("accepted", false)):
 			kernel.free()
 			return _failure(str(registered.get("reason", "replay_domain_register_failed")))
-	for command_variant in recipe.get("commands", []) as Array:
+	for command_variant in recipe.get("root_commands", []) as Array:
 		var submitted := kernel.submit_command(command_variant as Dictionary)
 		if not bool(submitted.get("accepted", false)):
 			kernel.free()
@@ -42,6 +42,12 @@ func verify(recipe: Dictionary, expected_recipe_sha256: String, domain_handlers:
 	var actual_log := kernel.execution_log()
 	var expected_log := recipe.get("expected_execution_log", []) as Array
 	var mismatch_count := 0
+	if kernel.derived_commands() != recipe.get("expected_derived_commands", []):
+		mismatch_count += 1
+	if kernel.derived_outbox() != recipe.get("expected_derived_outbox", []):
+		mismatch_count += 1
+	if str(recipe.get("expected_derived_outbox_sha256", "")) != StateCodec.fingerprint(kernel.derived_outbox()):
+		mismatch_count += 1
 	if actual_log.size() != expected_log.size():
 		mismatch_count += 1
 	var shared_count: int = mini(actual_log.size(), expected_log.size())
@@ -61,6 +67,12 @@ func verify(recipe: Dictionary, expected_recipe_sha256: String, domain_handlers:
 		mismatch_count += 1
 	if int(recipe.get("expected_accepted_command_count", -1)) != int(debug.get("accepted_command_count", -2)):
 		mismatch_count += 1
+	if int(recipe.get("expected_root_command_count", -1)) != int(debug.get("root_command_count", -2)):
+		mismatch_count += 1
+	if int(recipe.get("expected_derived_command_count", -1)) != int(debug.get("derived_command_count", -2)):
+		mismatch_count += 1
+	if int(recipe.get("expected_derived_command_count", -1)) != int(debug.get("derived_outbox_count", -2)):
+		mismatch_count += 1
 	if int(recipe.get("expected_executed_command_count", -1)) != int(debug.get("executed_command_count", -2)):
 		mismatch_count += 1
 	var result := {
@@ -68,6 +80,9 @@ func verify(recipe: Dictionary, expected_recipe_sha256: String, domain_handlers:
 		"reason": "" if mismatch_count == 0 else "replay_state_or_log_mismatch",
 		"replay_state_hash_mismatch_count": mismatch_count,
 		"command_count": actual_log.size(),
+		"root_command_count": int(debug.get("root_command_count", -1)),
+		"derived_command_count": int(debug.get("derived_command_count", -1)),
+		"derived_outbox_count": int(debug.get("derived_outbox_count", -1)),
 		"pending_command_count": int(debug.get("pending_command_count", -1)),
 		"execution_log_sha256": StateCodec.fingerprint(actual_log),
 		"terminal_state_sha256": actual_terminal_hash,
@@ -92,10 +107,15 @@ func _validate_recipe(recipe: Dictionary, domain_handlers: Dictionary) -> Dictio
 		"schema_version": TYPE_INT,
 		"root_seed": TYPE_INT,
 		"initial_domain_states": TYPE_DICTIONARY,
-		"commands": TYPE_ARRAY,
+		"root_commands": TYPE_ARRAY,
+		"expected_derived_commands": TYPE_ARRAY,
+		"expected_derived_outbox": TYPE_ARRAY,
+		"expected_derived_outbox_sha256": TYPE_STRING,
 		"final_tick": TYPE_INT,
 		"expected_pending_command_count": TYPE_INT,
 		"expected_accepted_command_count": TYPE_INT,
+		"expected_root_command_count": TYPE_INT,
+		"expected_derived_command_count": TYPE_INT,
 		"expected_executed_command_count": TYPE_INT,
 		"expected_execution_log": TYPE_ARRAY,
 		"expected_execution_log_sha256": TYPE_STRING,
@@ -118,22 +138,41 @@ func _validate_recipe(recipe: Dictionary, domain_handlers: Dictionary) -> Dictio
 	for domain_id_variant in initial_states.keys():
 		if typeof(domain_id_variant) != TYPE_STRING or not (initial_states[domain_id_variant] is Dictionary) or not domain_handlers.has(str(domain_id_variant)):
 			return {"valid": false, "reason": "replay_recipe_domain_binding_invalid"}
-	var commands := recipe.get("commands", []) as Array
+	var root_commands := recipe.get("root_commands", []) as Array
+	var derived_commands := recipe.get("expected_derived_commands", []) as Array
 	var command_ids := {}
-	for command_variant in commands:
-		if not (command_variant is Dictionary):
-			return {"valid": false, "reason": "replay_recipe_command_shape_invalid"}
-		var command := command_variant as Dictionary
-		var command_validation := AuthorityCommand.validate(command)
-		var command_id := str(command.get("command_id", ""))
-		if not bool(command_validation.get("valid", false)) or not initial_states.has(str(command.get("domain_id", ""))) or command_ids.has(command_id):
-			return {"valid": false, "reason": "replay_recipe_command_invalid"}
-		command_ids[command_id] = true
+	for command_inventory_variant in [root_commands, derived_commands]:
+		for command_variant in command_inventory_variant as Array:
+			if not (command_variant is Dictionary):
+				return {"valid": false, "reason": "replay_recipe_command_shape_invalid"}
+			var command := command_variant as Dictionary
+			var command_validation := AuthorityCommand.validate(command)
+			var command_id := str(command.get("command_id", ""))
+			if not bool(command_validation.get("valid", false)) or not initial_states.has(str(command.get("domain_id", ""))) or command_ids.has(command_id):
+				return {"valid": false, "reason": "replay_recipe_command_invalid"}
+			command_ids[command_id] = true
+	var expected_outbox := recipe.get("expected_derived_outbox", []) as Array
+	if (
+		expected_outbox.size() != derived_commands.size()
+		or str(recipe.get("expected_derived_outbox_sha256", "")).is_empty()
+		or str(recipe.get("expected_derived_outbox_sha256", "")) != StateCodec.fingerprint(expected_outbox)
+	):
+		return {"valid": false, "reason": "replay_recipe_derived_outbox_identity_mismatch"}
 	var final_tick := int(recipe.get("final_tick", -1))
 	var pending_count := int(recipe.get("expected_pending_command_count", -1))
 	var accepted_count := int(recipe.get("expected_accepted_command_count", -1))
+	var root_count := int(recipe.get("expected_root_command_count", -1))
+	var derived_count := int(recipe.get("expected_derived_command_count", -1))
 	var executed_count := int(recipe.get("expected_executed_command_count", -1))
-	if final_tick < 0 or pending_count < 0 or executed_count < 0 or accepted_count != commands.size() or accepted_count != pending_count + executed_count:
+	if (
+		final_tick < 0
+		or pending_count < 0
+		or executed_count < 0
+		or root_count != root_commands.size()
+		or derived_count != derived_commands.size()
+		or accepted_count != root_count + derived_count
+		or accepted_count != pending_count + executed_count
+	):
 		return {"valid": false, "reason": "replay_recipe_count_contract_mismatch"}
 	var expected_log := recipe.get("expected_execution_log", []) as Array
 	if expected_log.size() != executed_count or str(recipe.get("expected_execution_log_sha256", "")).is_empty() or str(recipe.get("expected_execution_log_sha256", "")) != StateCodec.fingerprint(expected_log):

@@ -16,6 +16,7 @@ func v076_domain_contract(domain_id: String) -> Dictionary:
 		"replay_safe": true,
 		"external_side_effects_allowed": false,
 		"owns_presentation": false,
+		"derived_only_command_types": [],
 	}
 
 
@@ -66,6 +67,7 @@ func v076_apply_command(
 	return {
 		"accepted": true,
 		"reason": "",
+		"outcome": "COMMIT",
 		"state": next_state,
 		"receipt": {
 			"schema_version": AuthorityCodec.SCHEMA_VERSION,
@@ -79,6 +81,7 @@ func v076_apply_command(
 			"ocean_region_count": _terrain_count(partition.get("terrain_by_region", []) as Array, "Ocean"),
 			"terrain_feature_counts": _terrain_feature_counts(partition.get("terrain_features", {}) as Dictionary),
 		},
+		"derived_commands": [],
 	}
 
 
@@ -108,6 +111,8 @@ static func _rejection(reason: String, state: Dictionary) -> Dictionary:
 	return {
 		"accepted": false,
 		"reason": reason,
+		"outcome": "REJECT",
 		"state": state.duplicate(true),
 		"receipt": {},
+		"derived_commands": [],
 	}

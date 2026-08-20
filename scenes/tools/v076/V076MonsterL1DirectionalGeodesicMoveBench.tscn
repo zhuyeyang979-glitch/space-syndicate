@@ -1,0 +1,74 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/v076/v076_monster_l1_directional_geodesic_move_bench.gd" id="1_bench"]
+
+[sub_resource type="Environment" id="Environment_stage3"]
+background_mode = 1
+background_color = Color(0.006, 0.01, 0.025, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.2, 0.31, 0.55, 1)
+ambient_light_energy = 0.8
+
+[node name="V076MonsterL1DirectionalGeodesicMoveBench" type="Node3D"]
+script = ExtResource("1_bench")
+
+[node name="PlanetSurface" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+
+[node name="RouteRender" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+
+[node name="MonsterMarker" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+
+[node name="DebugCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.984808, 0.173648, 0, -0.173648, 0.984808, 0, 0.25, 3.25)
+current = true
+fov = 42.0
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-38, -32, 0)
+light_color = Color(0.72, 0.86, 1, 1)
+light_energy = 1.45
+shadow_enabled = true
+
+[node name="RimLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(28, 146, 0)
+light_color = Color(1, 0.34, 0.12, 1)
+light_energy = 0.85
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_stage3")
+
+[node name="DebugHud" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="PanelContainer" parent="DebugHud"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 1110.0
+offset_bottom = 190.0
+
+[node name="Margin" type="MarginContainer" parent="DebugHud/Panel"]
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="Rows" type="VBoxContainer" parent="DebugHud/Panel/Margin"]
+theme_override_constants/separation = 7
+
+[node name="Title" type="Label" parent="DebugHud/Panel/Margin/Rows"]
+text = "V0.7.6  Deterministic Monster L1 Directional Geodesic Move"
+theme_override_font_sizes/font_size = 22
+
+[node name="EvidenceClass" type="Label" parent="DebugHud/Panel/Margin/Rows"]
+text = "DIAGNOSTIC ONLY — NOT HUMAN GOLDEN STEP06–09"
+theme_override_colors/font_color = Color(1, 0.56, 0.18, 1)
+
+[node name="AuthorityStatus" type="Label" parent="DebugHud/Panel/Margin/Rows"]
+unique_name_in_owner = true
+text = "Loading sealed integer topology and route…"
+
+[node name="MovementStatus" type="Label" parent="DebugHud/Panel/Margin/Rows"]
+unique_name_in_owner = true
+text = "Running root-only replay and movement audit…"
