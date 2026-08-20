@@ -25,22 +25,147 @@ param(
     [string]$ExpectedStartupToolingSealSha256 = '',
     [string]$FormalAuthorizationValidationReceiptPath = '',
     [string]$ExpectedFormalAuthorizationValidationReceiptSha256 = '',
+    [string]$FormalAuthorizationSealPath = '',
+    [string]$ExpectedFormalAuthorizationSealSha256 = '',
+    [string]$FormalAuthorizationConsumptionReceiptPath = '',
+    [string]$Attempt22ContractScriptPath = '',
+    [string]$ExpectedAttempt22ContractSha256 = '',
+    [string]$ExpectedRunbookSha256 = '',
+    [string]$ImportFinalizerBindingPath = '',
+    [string]$ExpectedImportFinalizerBindingSha256 = '',
+    [string]$ImportRunnerPath = '',
+    [string]$ExpectedImportRunnerSha256 = '',
+    [string]$ClassCachePath = '',
+    [string]$ExpectedClassCacheSha256 = '',
+    [string]$GodotGuiPath = '',
+    [string]$ExpectedGodotGuiSha256 = '',
+    [string]$FormalPrelaunchIgnoredInventoryPath = '',
+    [string]$FormalTerminalManifestPath = '',
+    [string]$FormalFinalizerResultPath = '',
     [switch]$AllowFormalContinuation,
     [ValidateRange(1,65535)][int]$Port = 7576
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-Import-Module (Resolve-Path -LiteralPath $StateMachineScriptPath).Path -Force
-Import-Module (Resolve-Path -LiteralPath $ContractScriptPath).Path -Force
 
 if ($ExecutionMode -ceq 'FORMAL_EXACT_SHA_MCP' -and -not $AllowFormalContinuation) {
     throw 'Formal v5 continuation requires explicit AllowFormalContinuation; dry-run never crosses play_main_scene.'
 }
-if ($ExecutionMode -ceq 'FORMAL_EXACT_SHA_MCP' -and [string]::IsNullOrWhiteSpace($FormalAuthorizationValidationReceiptPath)) {
-    throw 'Formal v5 requires a separately sealed unconsumed authorization validation receipt.'
+if ($ExecutionMode -ceq 'FORMAL_EXACT_SHA_MCP' -and @(
+    $FormalAuthorizationValidationReceiptPath,$FormalAuthorizationSealPath,$FormalAuthorizationConsumptionReceiptPath,
+    $Attempt22ContractScriptPath,$ExpectedAttempt22ContractSha256,$ExpectedRunbookSha256,$ImportFinalizerBindingPath,
+    $ExpectedImportFinalizerBindingSha256,$ImportRunnerPath,$ExpectedImportRunnerSha256,$ClassCachePath,
+    $ExpectedClassCacheSha256,$GodotGuiPath,$ExpectedGodotGuiSha256,$FormalPrelaunchIgnoredInventoryPath,
+    $FormalTerminalManifestPath,$FormalFinalizerResultPath
+    | Where-Object { [string]::IsNullOrWhiteSpace([string]$_) }).Count -ne 0) {
+    throw 'Formal v5 requires the complete sealed authorization, consumption, cleanup, and finalizer plan.'
 }
 
+function Assert-FormalHashBinding {
+    param([Parameter(Mandatory=$true)][string]$Path,[Parameter(Mandatory=$true)][string]$Expected,[Parameter(Mandatory=$true)][string]$Name)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Formal v5 missing $Name file: $Path" }
+    $actual=(Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actual -cne $Expected.ToLowerInvariant()) { throw "Formal v5 $Name hash mismatch." }
+    return $actual
+}
+
+$root=(Resolve-Path -LiteralPath $Worktree).Path.TrimEnd('\')
+$formalAuthorizationSealSha='';$consumptionSha='';$prelaunchSha='';$prelaunchFull='';$terminalFull='';$finalizerFull='';$currentToolingHead='';$currentToolingTree='';$formalSeal=$null
+if($ExecutionMode -ceq 'FORMAL_EXACT_SHA_MCP'){
+$null=Assert-FormalHashBinding -Path $PSCommandPath -Expected $ExpectedRunbookSha256 -Name 'runbook'
+$null=Assert-FormalHashBinding -Path $StateMachineScriptPath -Expected $ExpectedStateMachineSha256 -Name 'state machine'
+$null=Assert-FormalHashBinding -Path $ContractScriptPath -Expected $ExpectedContractSha256 -Name 'startup contract'
+$null=Assert-FormalHashBinding -Path $Attempt22ContractScriptPath -Expected $ExpectedAttempt22ContractSha256 -Name 'Attempt 22 contract'
+$null=Assert-FormalHashBinding -Path $ImportFinalizerBindingPath -Expected $ExpectedImportFinalizerBindingSha256 -Name 'formal finalizer binding'
+$null=Assert-FormalHashBinding -Path $ImportRunnerPath -Expected $ExpectedImportRunnerSha256 -Name 'import runner'
+$null=Assert-FormalHashBinding -Path $ClassCachePath -Expected $ExpectedClassCacheSha256 -Name 'class cache'
+$null=Assert-FormalHashBinding -Path $GodotGuiPath -Expected $ExpectedGodotGuiSha256 -Name 'Godot GUI executable'
+$null=Assert-FormalHashBinding -Path $FormalAuthorizationValidationReceiptPath -Expected $ExpectedFormalAuthorizationValidationReceiptSha256 -Name 'authorization validation receipt'
+$formalAuthorizationSealSha=Assert-FormalHashBinding -Path $FormalAuthorizationSealPath -Expected $ExpectedFormalAuthorizationSealSha256 -Name 'authorization seal'
+$formalSeal=Get-Content -Raw -LiteralPath $FormalAuthorizationSealPath|ConvertFrom-Json -Depth 100
+$null=Assert-FormalHashBinding -Path $GodotPath -Expected ([string]$formalSeal.godot_console_sha256) -Name 'Godot console executable'
+$null=Assert-FormalHashBinding -Path $StartupToolingManifestPath -Expected $ExpectedStartupToolingManifestSha256 -Name 'Tooling manifest'
+$null=Assert-FormalHashBinding -Path $StartupToolingSealPath -Expected $ExpectedStartupToolingSealSha256 -Name 'Tooling seal'
+
+Import-Module (Resolve-Path -LiteralPath $Attempt22ContractScriptPath).Path -Force
+Import-Module (Resolve-Path -LiteralPath $StateMachineScriptPath).Path -Force
+Import-Module (Resolve-Path -LiteralPath $ContractScriptPath).Path -Force
+Import-Module (Join-Path $PSScriptRoot 'pr90_attempt19_authority_contract.psm1') -Force
+
+$evidenceFull=[IO.Path]::GetFullPath($EvidenceRoot)
+$consumptionFull=[IO.Path]::GetFullPath($FormalAuthorizationConsumptionReceiptPath)
+$prelaunchFull=[IO.Path]::GetFullPath($FormalPrelaunchIgnoredInventoryPath)
+$terminalFull=[IO.Path]::GetFullPath($FormalTerminalManifestPath)
+$finalizerFull=[IO.Path]::GetFullPath($FormalFinalizerResultPath)
+if($terminalFull-cne[IO.Path]::GetFullPath((Join-Path $evidenceFull 'terminal-process-port-manifest.json'))-or
+   $finalizerFull-cne[IO.Path]::GetFullPath((Join-Path $evidenceFull 'formal-import-finalizer-result.json'))){throw 'Formal terminal/finalizer paths must be the exact authorized EvidenceRoot children.'}
+foreach($path in @($evidenceFull,$consumptionFull,$prelaunchFull,$terminalFull,$finalizerFull)){if(Test-Path -LiteralPath $path){throw "Formal v5 authorized output path already exists: $path"}}
+if($consumptionFull.StartsWith("$evidenceFull\",[StringComparison]::OrdinalIgnoreCase)-or$prelaunchFull.StartsWith("$evidenceFull\",[StringComparison]::OrdinalIgnoreCase)){throw 'Formal consumption and prelaunch inventory evidence must be outside the runtime EvidenceRoot.'}
+
+$head=(& git -C $root rev-parse HEAD).Trim();$tree=(& git -C $root rev-parse 'HEAD^{tree}').Trim()
+if($LASTEXITCODE-ne0-or$head-cne$ExpectedHeadSha-or$tree-cne$ExpectedTreeSha){throw 'Formal product worktree identity mismatch.'}
+$expectedClassCachePath=[IO.Path]::GetFullPath((Join-Path $root '.godot/global_script_class_cache.cfg'))
+if([IO.Path]::GetFullPath($ClassCachePath)-cne$expectedClassCachePath){throw 'Formal class-cache path is not inside the exact product worktree.'}
+$validation=Get-Content -Raw -LiteralPath $FormalAuthorizationValidationReceiptPath|ConvertFrom-Json -Depth 100
+$toolingManifest=Get-Content -Raw -LiteralPath $StartupToolingManifestPath|ConvertFrom-Json -Depth 100
+$toolingSeal=Get-Content -Raw -LiteralPath $StartupToolingSealPath|ConvertFrom-Json -Depth 100
+$currentToolingHead=(& git -C $PSScriptRoot rev-parse HEAD).Trim();$currentToolingTree=(& git -C $PSScriptRoot rev-parse 'HEAD^{tree}').Trim()
+$toolingStatus=@(& git -C $PSScriptRoot status --porcelain=v1 --untracked-files=all)
+$toolingInventoryMismatch=[Collections.Generic.List[string]]::new()
+foreach($row in @($toolingManifest.tooling_files)){
+    $relative=([string]$row.relative_path).Replace('/','\');$path=Join-Path (Split-Path -Parent $PSScriptRoot) $relative
+    if(-not(Test-Path -LiteralPath $path -PathType Leaf)-or(Get-Pr90ProbeBSha256 $path)-cne[string]$row.sha256){$toolingInventoryMismatch.Add([string]$row.relative_path);continue}
+    $blob=(& git -C $PSScriptRoot rev-parse "HEAD:$([string]$row.relative_path)").Trim();if($LASTEXITCODE-ne0-or$blob-cne[string]$row.git_blob_sha){$toolingInventoryMismatch.Add([string]$row.relative_path)}
+}
+$authorityGreen=([string]$validation.schema-ceq'Pr90Attempt22AuthorizationValidationV4'-and[string]$validation.status-ceq'PASS'-and-not[bool]$validation.authorization_consumed-and
+    [string]$validation.authorized_run_id-ceq$RunId-and[IO.Path]::GetFullPath([string]$validation.formal_evidence_root)-ceq$evidenceFull-and
+    [string]$validation.product_head_sha-ceq$ExpectedHeadSha-and[string]$validation.product_tree_sha-ceq$ExpectedTreeSha-and
+    [string]$validation.tooling_head_sha-ceq$currentToolingHead-and[string]$validation.tooling_tree_sha-ceq$currentToolingTree-and
+    [string]$formalSeal.schema-ceq'Pr90Attempt22AuthorizationSealV4'-and[string]$formalSeal.status-ceq'SEALED'-and[string]$formalSeal.authorized_run_id-ceq$RunId-and
+    [IO.Path]::GetFullPath([string]$formalSeal.formal_evidence_root)-ceq$evidenceFull-and[string]$formalSeal.product_head_sha-ceq$ExpectedHeadSha-and[string]$formalSeal.product_tree_sha-ceq$ExpectedTreeSha-and
+    [string]$formalSeal.tooling_head_sha-ceq$currentToolingHead-and[string]$formalSeal.tooling_tree_sha-ceq$currentToolingTree-and
+    [string]$formalSeal.tooling_manifest_sha256-ceq$ExpectedStartupToolingManifestSha256-and[string]$formalSeal.tooling_seal_sha256-ceq$ExpectedStartupToolingSealSha256-and
+    [string]$formalSeal.attempt22_contract_module_sha256-ceq$ExpectedAttempt22ContractSha256-and
+    [string]$formalSeal.validation_receipt_sha256-ceq$ExpectedFormalAuthorizationValidationReceiptSha256-and
+    [IO.Path]::GetFullPath([string]$formalSeal.authorization_consumption_receipt_path)-ceq$consumptionFull-and
+    [IO.Path]::GetFullPath([string]$formalSeal.formal_prelaunch_ignored_inventory_path)-ceq$prelaunchFull-and
+    [IO.Path]::GetFullPath([string]$formalSeal.formal_terminal_manifest_path)-ceq$terminalFull-and[IO.Path]::GetFullPath([string]$formalSeal.formal_finalizer_result_path)-ceq$finalizerFull-and
+    [string]$formalSeal.sealed_baseline_sha256-ceq$ExpectedSealedBaselineSha256-and[string]$formalSeal.class_cache_sha256-ceq$ExpectedClassCacheSha256-and
+    [string]$formalSeal.godot_executable_sha256-ceq$ExpectedGodotGuiSha256-and[string]$formalSeal.import_finalizer_sha256-ceq$ExpectedImportFinalizerBindingSha256-and[string]$formalSeal.import_runner_sha256-ceq$ExpectedImportRunnerSha256-and
+    [string]$toolingManifest.status-ceq'READY'-and[string]$toolingManifest.tooling_head_sha-ceq$currentToolingHead-and[string]$toolingManifest.tooling_tree_sha-ceq$currentToolingTree-and
+    [string]$toolingManifest.canonical_payload_sha256-ceq(Get-Pr90ProbeBCanonicalSha256 $toolingManifest)-and$toolingStatus.Count-eq0-and$toolingInventoryMismatch.Count-eq0-and
+    [string]$toolingSeal.status-ceq'SEALED'-and[string]$toolingSeal.tooling_head_sha-ceq$currentToolingHead-and[string]$toolingSeal.tooling_tree_sha-ceq$currentToolingTree-and[string]$toolingSeal.manifest_sha256-ceq$ExpectedStartupToolingManifestSha256-and[string]$toolingSeal.canonical_payload_sha256-ceq(Get-Pr90ProbeBCanonicalSha256 $toolingSeal))
+if(-not$authorityGreen){throw 'Formal v5 authorization, Tooling, or planned cleanup identity mismatch.'}
+
+$prestartProductProcesses=@(Get-Pr90ProductProcessRowsV1);$prestartMcpProcesses=@(Get-Pr90McpSupportProcessRowsV1);$prestartListeners=@(Get-Pr90ProtectedListenerRowsV1)
+if($prestartProductProcesses.Count-ne0-or$prestartMcpProcesses.Count-ne0-or$prestartListeners.Count-ne0){throw 'Formal prestart process/port boundary is not empty; authorization remains unconsumed.'}
+$baseline=Get-Content -Raw -LiteralPath $SealedBaselinePath|ConvertFrom-Json -Depth 100
+$baselineState=New-FinalizerStateFromBaseline $baseline
+$prelaunchState=Get-CurrentFinalizerState -Worktree $root
+$prelaunchStateGreen=([string]$prelaunchState.head_sha-ceq[string]$baselineState.head_sha-and[string]$prelaunchState.tree_sha-ceq[string]$baselineState.tree_sha-and
+    [int]$prelaunchState.tracked_non_generated_delta_count-eq0-and[string]$prelaunchState.tracked_import_path_set_sha256-ceq[string]$baselineState.tracked_import_path_set_sha256-and
+    [string]$prelaunchState.tracked_import_byte_map_sha256-ceq[string]$baselineState.tracked_import_byte_map_sha256-and[string]$prelaunchState.untracked_uid_path_set_sha256-ceq[string]$baselineState.untracked_uid_path_set_sha256-and
+    [string]$prelaunchState.untracked_uid_byte_map_sha256-ceq[string]$baselineState.untracked_uid_byte_map_sha256-and[int]$prelaunchState.unknown_untracked_count-eq0-and
+    [int]$prelaunchState.unknown_ignored_count-eq0-and[string]$prelaunchState.class_cache_sha256-ceq[string]$baselineState.class_cache_sha256)
+if(-not$prelaunchStateGreen){throw 'Formal product worktree does not match the complete sealed finalizer baseline before process creation.'}
+$ignoredPaths=@(& git -C $root -c core.quotePath=false ls-files -o -i --exclude-standard|ForEach-Object{$_.Replace('\','/')}|Sort-Object -Unique)
+if($LASTEXITCODE-ne0){throw 'Unable to inventory formal prelaunch ignored paths.'}
+$ignoredHash=Get-Pr90ProbeBStringSetSha256 -Rows $ignoredPaths
+if($ignoredPaths.Count-ne[int]$baseline.ignored_sidecar_count-or$ignoredHash-cne[string]$baseline.ignored_sidecar_path_set_sha256){throw 'Formal prelaunch ignored inventory does not match the sealed post-import baseline.'}
+$prelaunch=[pscustomobject][ordered]@{schema='Pr90ProbeBPrelaunchIgnoredPathInventoryV1';status='SEALED';created_at_utc=[DateTimeOffset]::UtcNow.ToString('o');authorized_run_id=$RunId;product_head_sha=$ExpectedHeadSha;product_tree_sha=$ExpectedTreeSha;baseline_sha256=$ExpectedSealedBaselineSha256;complete_finalizer_state_green=$prelaunchStateGreen;complete_finalizer_state=$prelaunchState;complete_finalizer_state_sha256=Get-Pr90ProbeBCanonicalSha256 $prelaunchState;ignored_path_count=$ignoredPaths.Count;ignored_path_set_sha256=$ignoredHash;ignored_paths=$ignoredPaths;canonical_payload_sha256=''}
+$prelaunch.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $prelaunch
+Write-Pr90ProbeBImmutableJson -Path $prelaunchFull -Value $prelaunch -WriteSha256Sidecar|Out-Null
+$prelaunchSha=Get-Pr90ProbeBSha256 $prelaunchFull
+}else{
+    $null=Assert-FormalHashBinding -Path $StateMachineScriptPath -Expected $ExpectedStateMachineSha256 -Name 'state machine'
+    $null=Assert-FormalHashBinding -Path $ContractScriptPath -Expected $ExpectedContractSha256 -Name 'startup contract'
+    Import-Module (Resolve-Path -LiteralPath $StateMachineScriptPath).Path -Force
+    Import-Module (Resolve-Path -LiteralPath $ContractScriptPath).Path -Force
+}
+
+$state=$null;$stateInvocationFailure=$null
+try{
 $state = Invoke-Pr90McpStartupStateMachine `
     -ExecutionMode $ExecutionMode `
     -RunId $RunId `
@@ -66,19 +191,32 @@ $state = Invoke-Pr90McpStartupStateMachine `
     -ExpectedStartupToolingSealSha256 $ExpectedStartupToolingSealSha256 `
     -FormalAuthorizationValidationReceiptPath $FormalAuthorizationValidationReceiptPath `
     -ExpectedFormalAuthorizationValidationReceiptSha256 $ExpectedFormalAuthorizationValidationReceiptSha256 `
+    -FormalAuthorizationSealPath $FormalAuthorizationSealPath `
+    -ExpectedFormalAuthorizationSealSha256 $ExpectedFormalAuthorizationSealSha256 `
+    -FormalAuthorizationConsumptionReceiptPath $FormalAuthorizationConsumptionReceiptPath `
     -Port $Port `
     -KeepRunningAfterM11:($ExecutionMode -ceq 'FORMAL_EXACT_SHA_MCP')
-
-if ([string]$state.summary.status -cne 'PASS') {
-    $state.summary | ConvertTo-Json -Depth 100 -Compress
-    exit 2
+}catch{$stateInvocationFailure=$_}
+if($null-eq$state){
+    [IO.Directory]::CreateDirectory([IO.Path]::GetFullPath($EvidenceRoot))|Out-Null
+    $state=[pscustomobject]@{summary=[pscustomobject]@{status='BLOCKED';failure_detail=if($null-ne$stateInvocationFailure){$stateInvocationFailure.Exception.Message}else{'state machine returned null'};stop_pending=$false;stops_cleanly=$false;forced_stop=$false;unrelated_process_termination_count=0};godot_pid=0;endpoint_owner_pid=0;endpoint_owner_creation_filetime_utc='';endpoint_owner_session_id=0;endpoint_owner_user_sid='';process_start_utc='';watchdog_child=$null;watchdog_stop_path='';stream_id='';cursor_after=[int64]0}
 }
+$formalAuthorizationConsumed=Test-Path -LiteralPath $FormalAuthorizationConsumptionReceiptPath -PathType Leaf
+$formalMcpExecutionCount=if($formalAuthorizationConsumed){1}else{0};$authorizedRunCountConsumed=$formalMcpExecutionCount
+if($formalAuthorizationConsumed){
+    $consumptionSha=Get-Pr90ProbeBSha256 $FormalAuthorizationConsumptionReceiptPath
+    $consumption=Get-Content -Raw -LiteralPath $FormalAuthorizationConsumptionReceiptPath|ConvertFrom-Json -Depth 100
+    if([string]$consumption.schema-cne'Pr90Attempt22AuthorizationConsumptionV1'-or[string]$consumption.status-cne'CONSUMED'-or[string]$consumption.authorized_run_id-cne$RunId-or
+       [int]$consumption.formal_mcp_execution_count-ne1-or[int]$consumption.authorized_run_count_consumed-ne1-or[string]$consumption.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $consumption)){
+        $stateInvocationFailure=[InvalidOperationException]::new('Formal authorization consumption receipt is malformed after process creation.')
+    }
+}
+
 if ($ExecutionMode -ceq 'PRE_FORMAL_EXACT_MCP_DRY_RUN') {
     $state.summary | ConvertTo-Json -Depth 100 -Compress
-    exit 0
+    if([string]$state.summary.status-ceq'PASS'){exit 0}else{exit 2}
 }
 
-$root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd('\')
 $invokeScript = Join-Path $root 'tools/invoke_role_godot_mcp.ps1'
 $callIndex = 1000
 $streamId = [string]$state.stream_id
@@ -86,7 +224,8 @@ $cursor = [int64]$state.cursor_after
 $allEvents = [Collections.Generic.List[object]]::new()
 $readyWitnesses = [Collections.Generic.List[object]]::new()
 $pollCount = 0
-$primaryFailure = $null
+$primaryFailure = if($null-ne$stateInvocationFailure){$stateInvocationFailure}elseif([string]$state.summary.status-cne'PASS'){[InvalidOperationException]::new("Formal startup state machine blocked: $([string]$state.summary.failure_detail)")}else{$null}
+$formalPayload=$null
 
 function Get-FormalStructured {
     param([object]$Response)
@@ -170,6 +309,7 @@ function Send-FormalTaps {
 }
 
 try {
+    if($null-ne$primaryFailure){throw $primaryFailure}
     $null = Invoke-FormalMcp -ToolName 'exit_play_mode' -Arguments @{} -TimeoutSeconds 30
     $null = Invoke-FormalMcp -ToolName 'play_main_scene' -Arguments @{} -TimeoutSeconds 60
     $null = Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=2000} -TimeoutSeconds 30
@@ -207,17 +347,70 @@ try {
     if (-not $green) { throw 'Formal v5 production acceptance/presentation gate failed.' }
     Poll-FormalCursor -Phase 'phase-7-final-settlement' | Out-Null
     if ($pollCount -le 8) { throw 'Formal v5 cursor polling count is insufficient.' }
-    $formalResult = [ordered]@{schema='SpaceSyndicateCursorAwareExactMcpResultV5';run_id=$RunId;status='PASS';head_sha=$ExpectedHeadSha;tree_sha=$ExpectedTreeSha;startup_milestones=12;startup_raw_count=@(Get-ChildItem -LiteralPath (Join-Path $EvidenceRoot 'mcp-raw') -File -ErrorAction SilentlyContinue).Count;startup_phase0_count=1;stream_id=$streamId;stream_id_stable=$true;ready_witness_count=@($readyWitnesses).Count;formal_event_poll_count=$pollCount;natural_match_reached_settled=$true;final_settlement_count=[int]$debug.final_settlement_count;presentation_receipt_count=[int]$presentation.applied_receipt_count;presentation_collision_count=[int]$presentation.collision_receipt_count;duplicate_presentation_effect_count=([int]$presentation.duplicate_receipt_count+[int]$surface.presentation_cue_duplicate_count);required_presentation_edge_count=$requiredEdges;legacy_presentation_edge_count=$legacyEdges;duplicate_presentation_edge_count=$duplicateEdges;runtime_error_count=[int]$debug.runtime_error_count;hidden_info_violation_count=[int]$debug.hidden_info_violation_count;invalid_action_count=[int]$debug.invalid_action_count;nonfinite_count=[int]$debug.nonfinite_count;duplicate_settlement_count=[int]$debug.duplicate_settlement_count;canonical_payload_sha256=''}
-    $formalResult.canonical_payload_sha256 = Get-StartupCanonicalSha256 $formalResult
-    Write-StartupImmutableJson -Path (Join-Path $EvidenceRoot 'exact-sha-mcp-result.json') -Value $formalResult -WriteSha256Sidecar | Out-Null
+    $formalPayload = [ordered]@{startup_milestones=12;startup_raw_count=@(Get-ChildItem -LiteralPath (Join-Path $EvidenceRoot 'mcp-raw') -File -ErrorAction SilentlyContinue).Count;startup_phase0_count=1;stream_id=$streamId;stream_id_stable=$true;ready_witness_count=@($readyWitnesses).Count;formal_event_poll_count=$pollCount;natural_match_reached_settled=$true;final_settlement_count=[int]$debug.final_settlement_count;presentation_receipt_count=[int]$presentation.applied_receipt_count;presentation_collision_count=[int]$presentation.collision_receipt_count;duplicate_presentation_effect_count=([int]$presentation.duplicate_receipt_count+[int]$surface.presentation_cue_duplicate_count);required_presentation_edge_count=$requiredEdges;legacy_presentation_edge_count=$legacyEdges;duplicate_presentation_edge_count=$duplicateEdges;runtime_error_count=[int]$debug.runtime_error_count;hidden_info_violation_count=[int]$debug.hidden_info_violation_count;invalid_action_count=[int]$debug.invalid_action_count;nonfinite_count=[int]$debug.nonfinite_count;duplicate_settlement_count=[int]$debug.duplicate_settlement_count}
 } catch {
     $primaryFailure = $_
-    $failure = [ordered]@{schema='SpaceSyndicateCursorAwareExactMcpFailureV5';run_id=$RunId;failed_at_utc=[DateTimeOffset]::UtcNow.ToString('o');message=$_.Exception.Message;head_sha=$ExpectedHeadSha;tree_sha=$ExpectedTreeSha;cursor=$cursor;stream_id=$streamId;startup_state_machine_result=$state.summary;disposable_clone_disposition='PRESERVED_FOR_FORENSICS';canonical_payload_sha256=''}
-    $failure.canonical_payload_sha256 = Get-StartupCanonicalSha256 $failure
-    Write-StartupImmutableJson -Path (Join-Path $EvidenceRoot 'exact-sha-mcp-failure.json') -Value $failure -WriteSha256Sidecar | Out-Null
 } finally {
-    try { if (Test-Path -LiteralPath (Join-Path $root '.codex-godot/connection.json')) { & pwsh -NoProfile -File $StopScriptPath -Worktree $root -ShutdownTimeoutSeconds 30 2>&1 | Out-Null } } catch {}
-    $null = Stop-Pr90McpStartupWatchdog -State $state -TimeoutSeconds 15
+    $stateStopPending=($null-ne$state.summary.PSObject.Properties['stop_pending']-and[bool]$state.summary.stop_pending)
+    $stateStopsCleanly=($null-ne$state.summary.PSObject.Properties['stops_cleanly']-and[bool]$state.summary.stops_cleanly)
+    $stateForcedStop=($null-ne$state.summary.PSObject.Properties['forced_stop']-and[bool]$state.summary.forced_stop)
+    $exitPlayGreen=if($stateStopPending){$false}else{$true};$stopGreen=if($stateStopPending){$true}else{$stateStopsCleanly};$stopForced=$stateForcedStop;$stopExitCode=if($stopGreen){0}else{-1};$stopDetail=if($stateStopPending){'formal continuation pending'}else{'startup state-machine cleanup'};$watchdogStopped=$true
+    $unrelatedTerminationCount=if($null-ne$state.summary.PSObject.Properties['unrelated_process_termination_count']){[int]$state.summary.unrelated_process_termination_count}else{0}
+    $connectionMetadataPresent=Test-Path -LiteralPath (Join-Path $root '.codex-godot/connection.json') -PathType Leaf
+    if($stateStopPending){
+        if($connectionMetadataPresent){try{$null=Invoke-FormalMcp -ToolName 'exit_play_mode' -Arguments @{} -TimeoutSeconds 30;$exitPlayGreen=$true}catch{$exitPlayGreen=$false;$stopDetail="exit_play_mode: $($_.Exception.Message)"}}
+        if([int]$state.godot_pid-gt0){
+        try{
+            $stopReceipt=Stop-StateGodot -ControlProcessId ([int]$state.godot_pid) -ProcessStartUtc ([string]$state.process_start_utc) -GodotPath $GodotPath -Worktree $root -Port $Port -StopScriptPath $StopScriptPath `
+                -EndpointOwnerPid ([int]$state.endpoint_owner_pid) -EndpointOwnerCreationFiletimeUtc ([string]$state.endpoint_owner_creation_filetime_utc) -EndpointOwnerSessionId ([int]$state.endpoint_owner_session_id) -EndpointOwnerUserSid ([string]$state.endpoint_owner_user_sid)
+            $stopExitCode=if([bool]$stopReceipt.stopped){0}else{2};$stopGreen=[bool]$stopReceipt.stopped;$stopForced=[bool]$stopReceipt.forced_stop;$stopDetail=ConvertTo-Pr90ProbeBCanonicalJson $stopReceipt
+            $unrelatedTerminationCount+=[int]$stopReceipt.unrelated_process_termination_count
+        }catch{$stopGreen=$false;$stopExitCode=2;$stopDetail="scoped_v2_stop: $($_.Exception.Message)"}
+        }else{$stopGreen=$false;$stopExitCode=2;$stopDetail='scoped_v2_stop: formal continuation did not preserve a control process identity'}
+    }
+    if($null-ne$state-and[bool]$state.summary.stop_pending){$watchdogStopped=Stop-Pr90McpStartupWatchdog -State $state -TimeoutSeconds 15}
 }
-if ($null -ne $primaryFailure) { exit 2 }
-Get-Content -Raw -LiteralPath (Join-Path $EvidenceRoot 'exact-sha-mcp-result.json')
+
+$productBeforeFinalizer=@(Get-Pr90ProductProcessRowsV1);$mcpBeforeFinalizer=@(Get-Pr90McpSupportProcessRowsV1);$listenersBeforeFinalizer=@(Get-Pr90ProtectedListenerRowsV1)
+$preFinalizerZero=($productBeforeFinalizer.Count-eq0-and$mcpBeforeFinalizer.Count-eq0-and$listenersBeforeFinalizer.Count-eq0)
+$finalizerExitCode=-1;$finalizerStatus='BLOCKED';$finalizerInvoked=$false;$finalizerReceiptGreen=$false;$finalizerDetail='cleanup_not_green'
+if($exitPlayGreen-and$stopGreen-and-not$stopForced-and$watchdogStopped-and$preFinalizerZero){
+    $finalizerInvoked=$true
+    $finalizerOutput=@(& (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File $ImportFinalizerBindingPath -Worktree $root -BaselinePath $SealedBaselinePath -ClassCachePath $ClassCachePath -GodotPath $GodotGuiPath -ProductHeadSha $ExpectedHeadSha -ProductTreeSha $ExpectedTreeSha -ImportRunnerPath $ImportRunnerPath -ExpectedImportRunnerSha256 $ExpectedImportRunnerSha256 -PrelaunchIgnoredInventoryPath $prelaunchFull -ExpectedPrelaunchIgnoredInventorySha256 $prelaunchSha -OutputPath $finalizerFull 2>&1)
+    $finalizerExitCode=$LASTEXITCODE
+    if(Test-Path -LiteralPath $finalizerFull -PathType Leaf){
+        try{
+            $finalizerReceipt=Get-Content -Raw -LiteralPath $finalizerFull|ConvertFrom-Json -Depth 100;$finalizerStatus=[string]$finalizerReceipt.status;$finalizerDetail=[string]::Join(' | ',[string[]]$finalizerOutput)
+            $rawFinalizerPath=[string]$finalizerReceipt.raw_state_path;$normalizedFinalizerPath=[string]$finalizerReceipt.normalized_state_path;$runnerFinalizerPath=[string]$finalizerReceipt.runner_result_path
+            $finalizerReceiptGreen=([string]$finalizerReceipt.schema-ceq'Pr90ProbeBImportFinalizerBindingV1'-and$finalizerStatus-ceq'PASS'-and[string]$finalizerReceipt.product_head_sha-ceq$ExpectedHeadSha-and[string]$finalizerReceipt.product_tree_sha-ceq$ExpectedTreeSha-and
+                [string]$finalizerReceipt.baseline_sha256-ceq$ExpectedSealedBaselineSha256-and[string]$finalizerReceipt.class_cache_sha256-ceq$ExpectedClassCacheSha256-and[bool]$finalizerReceipt.raw_state_green-and[bool]$finalizerReceipt.baseline_ignored_path_set_match-and
+                [int]$finalizerReceipt.disallowed_ignored_count-eq0-and[bool]$finalizerReceipt.runner_invoked-and[int]$finalizerReceipt.runner_exit_code-eq0-and[int]$finalizerReceipt.post_run_non_generated_tracked_delta-eq0-and
+                [int]$finalizerReceipt.post_run_tracked_import_metadata_delta_from_baseline-eq0-and[int]$finalizerReceipt.post_run_unknown_untracked_count-eq0-and[int]$finalizerReceipt.post_run_unknown_ignored_count-eq0-and-not[bool]$finalizerReceipt.deletion_performed-and
+                [string]$finalizerReceipt.canonical_payload_sha256-ceq(Get-Pr90ProbeBCanonicalSha256 $finalizerReceipt)-and(Test-Path -LiteralPath $rawFinalizerPath -PathType Leaf)-and(Get-Pr90ProbeBSha256 $rawFinalizerPath)-ceq[string]$finalizerReceipt.raw_state_sha256-and
+                (Test-Path -LiteralPath $normalizedFinalizerPath -PathType Leaf)-and(Get-Pr90ProbeBSha256 $normalizedFinalizerPath)-ceq[string]$finalizerReceipt.normalized_state_sha256-and(Test-Path -LiteralPath $runnerFinalizerPath -PathType Leaf)-and(Get-Pr90ProbeBSha256 $runnerFinalizerPath)-ceq[string]$finalizerReceipt.runner_result_sha256)
+        }catch{$finalizerStatus='BLOCKED';$finalizerReceiptGreen=$false;$finalizerDetail=$_.Exception.Message}
+    }else{$finalizerDetail="Finalizer produced no receipt: $([string]::Join(' | ',[string[]]$finalizerOutput))"}
+}
+if(-not(Test-Path -LiteralPath $finalizerFull)){
+    $skipped=[pscustomobject][ordered]@{schema='Pr90FormalImportFinalizerNotRunV1';status='BLOCKED';created_at_utc=[DateTimeOffset]::UtcNow.ToString('o');authorized_run_id=$RunId;reason=$finalizerDetail;pre_finalizer_process_count=$productBeforeFinalizer.Count;pre_finalizer_mcp_process_count=$mcpBeforeFinalizer.Count;pre_finalizer_protected_listener_count=$listenersBeforeFinalizer.Count;canonical_payload_sha256=''}
+    $skipped.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $skipped;Write-Pr90ProbeBImmutableJson -Path $finalizerFull -Value $skipped -WriteSha256Sidecar|Out-Null
+}
+$finalizerSha=Get-Pr90ProbeBSha256 $finalizerFull
+$productAfter=@(Get-Pr90ProductProcessRowsV1);$mcpAfter=@(Get-Pr90McpSupportProcessRowsV1);$listenersAfter=@(Get-Pr90ProtectedListenerRowsV1)
+$terminalGreen=($exitPlayGreen-and$stopGreen-and-not$stopForced-and$watchdogStopped-and$preFinalizerZero-and$finalizerInvoked-and$finalizerExitCode-eq0-and$finalizerReceiptGreen-and$productAfter.Count-eq0-and$mcpAfter.Count-eq0-and$listenersAfter.Count-eq0-and$unrelatedTerminationCount-eq0)
+$terminal=[pscustomobject][ordered]@{schema='Pr90Attempt22FormalTerminalManifestV1';status=if($terminalGreen){'PASS'}else{'BLOCKED'};created_at_utc=[DateTimeOffset]::UtcNow.ToString('o');authorization_id=[string]$formalSeal.authorization_id;authorized_run_id=$RunId;formal_authorization_consumed=$formalAuthorizationConsumed;formal_mcp_execution_count=$formalMcpExecutionCount;authorized_run_count_consumed=$authorizedRunCountConsumed;connection_metadata_present_at_cleanup=$connectionMetadataPresent;exit_play_mode_clean=$exitPlayGreen;stop_script_exit_code=$stopExitCode;stop_script_green=$stopGreen;stop_script_forced=$stopForced;stop_detail=$stopDetail;watchdog_stopped=$watchdogStopped;product_process_count_before_finalizer=$productBeforeFinalizer.Count;mcp_process_count_before_finalizer=$mcpBeforeFinalizer.Count;protected_listener_count_before_finalizer=$listenersBeforeFinalizer.Count;finalizer_invoked=$finalizerInvoked;finalizer_exit_code=$finalizerExitCode;finalizer_status=$finalizerStatus;finalizer_receipt_green=$finalizerReceiptGreen;finalizer_sha256=$finalizerSha;product_process_count_after=$productAfter.Count;mcp_process_count_after=$mcpAfter.Count;port_7576_count_after=@($listenersAfter|Where-Object{[int]$_.local_port-eq7576}).Count;port_7586_count_after=@($listenersAfter|Where-Object{[int]$_.local_port-eq7586}).Count;unrelated_process_termination_count=$unrelatedTerminationCount;canonical_payload_sha256=''}
+$terminal.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $terminal;Write-Pr90ProbeBImmutableJson -Path $terminalFull -Value $terminal -WriteSha256Sidecar|Out-Null
+$terminalSha=Get-Pr90ProbeBSha256 $terminalFull
+$finalGreen=($null-eq$primaryFailure-and$null-ne$formalPayload-and$formalAuthorizationConsumed-and$terminalGreen-and$finalizerExitCode-eq0-and$finalizerStatus-ceq'PASS')
+if($finalGreen){
+    $formalResult=[ordered]@{schema='SpaceSyndicateCursorAwareExactMcpResultV5';run_id=$RunId;status='PASS';head_sha=$ExpectedHeadSha;tree_sha=$ExpectedTreeSha;tooling_head_sha=$currentToolingHead;tooling_tree_sha=$currentToolingTree;authorization_seal_sha256=$formalAuthorizationSealSha;authorization_consumption_receipt_sha256=$consumptionSha;formal_authorization_consumed=$formalAuthorizationConsumed;formal_mcp_execution_count=$formalMcpExecutionCount;authorized_run_count_consumed=$authorizedRunCountConsumed;automatic_retry_allowed=$false;terminal_manifest_sha256=$terminalSha;terminal_status='PASS';finalizer_result_sha256=$finalizerSha;finalizer_status='PASS';canonical_payload_sha256=''}
+    foreach($entry in $formalPayload.GetEnumerator()){$formalResult[$entry.Key]=$entry.Value}
+    $formalResult.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $formalResult;Write-Pr90ProbeBImmutableJson -Path (Join-Path $EvidenceRoot 'exact-sha-mcp-result.json') -Value $formalResult -WriteSha256Sidecar|Out-Null
+    $formalResult|ConvertTo-Json -Depth 100 -Compress
+    exit 0
+}
+$failureMessage=if($null-eq$primaryFailure){'Formal cleanup, terminal, or finalizer contract failed.'}elseif($null-ne$primaryFailure.Exception){$primaryFailure.Exception.Message}else{[string]$primaryFailure}
+$failure=[ordered]@{schema='SpaceSyndicateCursorAwareExactMcpFailureV5';run_id=$RunId;failed_at_utc=[DateTimeOffset]::UtcNow.ToString('o');message=$failureMessage;head_sha=$ExpectedHeadSha;tree_sha=$ExpectedTreeSha;cursor=$cursor;stream_id=$streamId;startup_state_machine_result=$state.summary;authorization_seal_sha256=$formalAuthorizationSealSha;authorization_consumption_receipt_sha256=$consumptionSha;formal_authorization_consumed=$formalAuthorizationConsumed;formal_mcp_execution_count=$formalMcpExecutionCount;authorized_run_count_consumed=$authorizedRunCountConsumed;automatic_retry_allowed=$false;terminal_manifest_sha256=$terminalSha;terminal_status=[string]$terminal.status;finalizer_result_sha256=$finalizerSha;finalizer_status=$finalizerStatus;disposable_clone_disposition='PRESERVED_FOR_FORENSICS';canonical_payload_sha256=''}
+$failure.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $failure;Write-Pr90ProbeBImmutableJson -Path (Join-Path $EvidenceRoot 'exact-sha-mcp-failure.json') -Value $failure -WriteSha256Sidecar|Out-Null
+$failure|ConvertTo-Json -Depth 100 -Compress
+exit 2

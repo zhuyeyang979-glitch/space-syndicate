@@ -392,6 +392,7 @@ function Stop-StateGodot {
     )
     $identities = @(foreach ($candidate in $candidateRows) { Read-EndpointListenerOwnerIdentityV1 -PidValue ([int]$candidate.ProcessId) })
     $listenersBefore = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+    $controlOnlyPlan=$null
     if($EndpointOwnerPid-le0-or[string]::IsNullOrWhiteSpace($EndpointOwnerCreationFiletimeUtc)){
         $controlCandidates=@($identities|Where-Object{
             [bool]$_.exists-and[bool]$_.identity_read_green-and[int]$_.pid-eq$ControlProcessId-and[string]$_.executable_path-ieq$expectedConsolePath-and
@@ -404,19 +405,27 @@ function Stop-StateGodot {
             [int]$_.windows_session_id-eq[int]$controlIdentity.windows_session_id-and[string]$_.user_sid-ceq[string]$controlIdentity.user_sid-and
             (Test-StateCommandLineWorktreeBinding -CommandLine ([string]$_.command_line) -ExpectedRoot $Worktree)
         })
-        if($guiCandidates.Count-ne1){throw 'Scoped cleanup could not resolve exactly one task-owned GUI engine.'}
+        if($guiCandidates.Count-eq0-and$listenersBefore.Count-eq0){
+            $otherTaskIdentities=@($identities|Where-Object{[bool]$_.exists-and[bool]$_.identity_read_green-and[int]$_.pid-ne$ControlProcessId-and(Test-StateCommandLineWorktreeBinding -CommandLine ([string]$_.command_line) -ExpectedRoot $Worktree)})
+            if($otherTaskIdentities.Count-ne0){throw 'Scoped control-only cleanup found an unexpected task-owned process.'}
+            $expectedControlFiletime=[DateTimeOffset]::Parse($ProcessStartUtc,[Globalization.CultureInfo]::InvariantCulture).UtcDateTime.ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
+            if([string]$controlIdentity.creation_time_filetime_utc-cne$expectedControlFiletime){throw 'Scoped control-only cleanup creation identity changed.'}
+            $controlOnlyPlan=@([pscustomobject]@{role='CONSOLE_WRAPPER';pid=$ControlProcessId;depth=0;creation_time_filetime_utc=[string]$controlIdentity.creation_time_filetime_utc})
+        }elseif($guiCandidates.Count-ne1){throw 'Scoped cleanup could not resolve exactly one task-owned GUI engine.'}
+        if($null-ne$controlOnlyPlan){$EndpointOwnerPid=0}else{
         $cleanupOwner=$guiCandidates[0]
         if($listenersBefore.Count-gt1-or($listenersBefore.Count-eq1-and[int]$listenersBefore[0].OwningProcess-ne[int]$cleanupOwner.pid)){throw 'Scoped cleanup listener ownership is not the exact task-owned GUI engine.'}
         $EndpointOwnerPid=[int]$cleanupOwner.pid
         $EndpointOwnerCreationFiletimeUtc=[string]$cleanupOwner.creation_time_filetime_utc
         $EndpointOwnerSessionId=[int]$cleanupOwner.windows_session_id
         $EndpointOwnerUserSid=[string]$cleanupOwner.user_sid
+        }
     }
-    $plan = @(New-StateGodotCleanupPlanV1 -IdentityRows $identities -ControlPid $ControlProcessId -EndpointOwnerPid $EndpointOwnerPid `
+    $plan=if($null-ne$controlOnlyPlan){@($controlOnlyPlan)}else{@(New-StateGodotCleanupPlanV1 -IdentityRows $identities -ControlPid $ControlProcessId -EndpointOwnerPid $EndpointOwnerPid `
         -ExpectedConsolePath $expectedConsolePath -ExpectedGuiPath $expectedGuiPath -ExpectedRoot $Worktree `
         -ControlCreationUtc $ProcessStartUtc -EndpointOwnerCreationFiletimeUtc $EndpointOwnerCreationFiletimeUtc `
-        -EndpointOwnerSessionId $EndpointOwnerSessionId -EndpointOwnerUserSid $EndpointOwnerUserSid)
-    if ($listenersBefore.Count -gt 1 -or ($listenersBefore.Count -eq 1 -and [int]$listenersBefore[0].OwningProcess -ne $EndpointOwnerPid)) {
+        -EndpointOwnerSessionId $EndpointOwnerSessionId -EndpointOwnerUserSid $EndpointOwnerUserSid)}
+    if ($listenersBefore.Count -gt 1 -or ($listenersBefore.Count -eq 1 -and ($EndpointOwnerPid-le0-or[int]$listenersBefore[0].OwningProcess -ne $EndpointOwnerPid))) {
         throw 'Refusing cleanup because endpoint listener ownership changed.'
     }
     $normalCloseRequests = [Collections.Generic.List[object]]::new()
@@ -498,6 +507,9 @@ function Invoke-Pr90McpStartupStateMachine {
         [string]$ExpectedStartupToolingSealSha256 = '',
         [string]$FormalAuthorizationValidationReceiptPath = '',
         [string]$ExpectedFormalAuthorizationValidationReceiptSha256 = '',
+        [string]$FormalAuthorizationSealPath = '',
+        [string]$ExpectedFormalAuthorizationSealSha256 = '',
+        [string]$FormalAuthorizationConsumptionReceiptPath = '',
         [ValidateRange(1,65535)][int]$Port = 7576,
         [switch]$KeepRunningAfterM11
     )
@@ -539,6 +551,15 @@ function Invoke-Pr90McpStartupStateMachine {
     $endpointOwnerIdentity = $null
     $endpointOwnershipV2 = $null
     $prelaunchProtectedPortListenerCount = 0
+    $formalAuthorizationConsumed = $false
+    $formalAuthorizationSealSha256 = ''
+    $formalAuthorizationConsumptionReceiptSha256 = ''
+    $formalPrelaunchIgnoredInventorySha256 = ''
+    $formalSeal = $null
+    $auth = $null
+    $formalAuthorizationExecutionMutex = $null
+    $formalAuthorizationExecutionMutexHeld = $false
+    $formalAuthorizationExecutionMutexName = ''
     $contextBase = @{
         port=$Port; session_id=$sessionId; session_id_source='tooling_generated'; pid=$null; parent_pid=$null;
         process_creation_identity=$null; stdout_path=''; stderr_path=''; endpoint_owner_pid=$null;
@@ -651,10 +672,34 @@ function Invoke-Pr90McpStartupStateMachine {
             if ([string]$toolSeal.product_head_sha -cne $head -or [string]$toolSeal.product_tree_sha -cne $tree -or [string]$toolSeal.status -cne 'SEALED') { throw 'Startup tooling seal identity/status mismatch.' }
         }
         if ($ExecutionMode -ceq 'FORMAL_EXACT_SHA_MCP') {
-            if ([string]::IsNullOrWhiteSpace($FormalAuthorizationValidationReceiptPath)) { throw 'Formal authorization validation receipt is required.' }
+            if ([string]::IsNullOrWhiteSpace($FormalAuthorizationValidationReceiptPath) -or [string]::IsNullOrWhiteSpace($FormalAuthorizationSealPath) -or [string]::IsNullOrWhiteSpace($FormalAuthorizationConsumptionReceiptPath)) { throw 'Formal authorization validation, seal, and consumption receipts are required.' }
             if ((Get-StartupSha256 -Path $FormalAuthorizationValidationReceiptPath) -cne $ExpectedFormalAuthorizationValidationReceiptSha256.ToLowerInvariant()) { throw 'Formal authorization validation receipt hash mismatch.' }
             $auth = Get-Content -Raw -LiteralPath $FormalAuthorizationValidationReceiptPath | ConvertFrom-Json -Depth 100
-            if ([string]$auth.status -cne 'PASS' -or [string]$auth.product_head_sha -cne $head -or [string]$auth.product_tree_sha -cne $tree -or [bool]$auth.authorization_consumed) { throw 'Formal authorization validation receipt is not an unconsumed exact identity PASS.' }
+            $formalAuthorizationSealSha256=Get-StartupSha256 -Path $FormalAuthorizationSealPath
+            if ($formalAuthorizationSealSha256 -cne $ExpectedFormalAuthorizationSealSha256.ToLowerInvariant()) { throw 'Formal authorization seal hash mismatch.' }
+            $formalSeal=Get-Content -Raw -LiteralPath $FormalAuthorizationSealPath|ConvertFrom-Json -Depth 100
+            if ([string]$auth.status -cne 'PASS' -or [string]$auth.product_head_sha -cne $head -or [string]$auth.product_tree_sha -cne $tree -or [bool]$auth.authorization_consumed -or
+                [string]$auth.authorized_run_id-cne$RunId-or[IO.Path]::GetFullPath([string]$auth.formal_evidence_root)-cne$evidence) { throw 'Formal authorization validation receipt is not an unconsumed exact identity PASS.' }
+            if([string]$formalSeal.schema-cne'Pr90Attempt22AuthorizationSealV4'-or[string]$formalSeal.status-cne'SEALED'-or[string]$formalSeal.authorized_run_id-cne$RunId-or
+               [IO.Path]::GetFullPath([string]$formalSeal.formal_evidence_root)-cne$evidence-or[string]$formalSeal.product_head_sha-cne$head-or[string]$formalSeal.product_tree_sha-cne$tree-or
+               [string]$formalSeal.validation_receipt_sha256-cne$ExpectedFormalAuthorizationValidationReceiptSha256.ToLowerInvariant()-or[IO.Path]::GetFullPath([string]$formalSeal.authorization_consumption_receipt_path)-cne[IO.Path]::GetFullPath($FormalAuthorizationConsumptionReceiptPath)-or
+               [string]$formalSeal.tooling_manifest_sha256-cne$ExpectedStartupToolingManifestSha256.ToLowerInvariant()-or[string]$formalSeal.tooling_seal_sha256-cne$ExpectedStartupToolingSealSha256.ToLowerInvariant()-or
+               [string]$formalSeal.tooling_head_sha-cne[string]$toolManifest.tooling_head_sha-or[string]$formalSeal.tooling_tree_sha-cne[string]$toolManifest.tooling_tree_sha-or
+               [string]$formalSeal.tooling_head_sha-cne[string]$toolSeal.tooling_head_sha-or[string]$formalSeal.tooling_tree_sha-cne[string]$toolSeal.tooling_tree_sha-or
+               [string]$formalSeal.godot_console_sha256-cne(Get-StartupSha256 -Path $GodotPath)-or[string]$formalSeal.sealed_baseline_sha256-cne$ExpectedSealedBaselineSha256.ToLowerInvariant()){throw 'Formal authorization seal identity mismatch.'}
+            $formalAuthorizationExecutionMutexName="Global\SpaceSyndicatePr90Attempt22_$($ExpectedFormalAuthorizationSealSha256.ToLowerInvariant())"
+            $formalAuthorizationExecutionMutex=[Threading.Mutex]::new($false,$formalAuthorizationExecutionMutexName)
+            try{$formalAuthorizationExecutionMutexHeld=$formalAuthorizationExecutionMutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$formalAuthorizationExecutionMutexHeld=$true}
+            if(-not$formalAuthorizationExecutionMutexHeld){throw 'Another formal execution already holds this exact authorization.'}
+            if((Test-Path -LiteralPath $FormalAuthorizationConsumptionReceiptPath)-or(Test-Path -LiteralPath "$FormalAuthorizationConsumptionReceiptPath.sha256")){throw 'Formal authorization was already consumed or has a partial consumption artifact.'}
+            $formalPrelaunchPath=[IO.Path]::GetFullPath([string]$formalSeal.formal_prelaunch_ignored_inventory_path)
+            if(-not(Test-Path -LiteralPath $formalPrelaunchPath -PathType Leaf)){throw 'Formal prelaunch ignored inventory is missing.'}
+            $formalPrelaunch=Get-Content -Raw -LiteralPath $formalPrelaunchPath|ConvertFrom-Json -Depth 100
+            $formalPrelaunchIgnoredInventorySha256=Get-StartupSha256 -Path $formalPrelaunchPath
+            if([string]$formalPrelaunch.schema-cne'Pr90ProbeBPrelaunchIgnoredPathInventoryV1'-or[string]$formalPrelaunch.status-cne'SEALED'-or[string]$formalPrelaunch.authorized_run_id-cne$RunId-or
+               [string]$formalPrelaunch.product_head_sha-cne$head-or[string]$formalPrelaunch.product_tree_sha-cne$tree-or[string]$formalPrelaunch.baseline_sha256-cne$ExpectedSealedBaselineSha256.ToLowerInvariant()-or
+               -not[bool]$formalPrelaunch.complete_finalizer_state_green-or[string]$formalPrelaunch.complete_finalizer_state_sha256-cne(Get-StartupCanonicalSha256 $formalPrelaunch.complete_finalizer_state)-or
+               [string]$formalPrelaunch.canonical_payload_sha256-cne(Get-StartupCanonicalSha256 $formalPrelaunch)){throw 'Formal prelaunch ignored inventory identity mismatch.'}
         }
         $protectedPorts = @($Port,7586) | Sort-Object -Unique
         $prelaunchProtectedListeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { [int]$_.LocalPort -in $protectedPorts })
@@ -663,7 +708,7 @@ function Invoke-Pr90McpStartupStateMachine {
         $m0Path = Join-Path $evidence 'authorization-validation.json'
         $m0 = [ordered]@{
             schema='McpStartupAuthorizationValidationV1'; status='PASS'; execution_mode=$ExecutionMode; probe_identity=$ProbeIdentity;
-            formal_authorization_consumed=$false; head_sha=$head; tree_sha=$tree; session_id=$sessionId; session_id_source='tooling_generated';
+            formal_authorization_consumed=$formalAuthorizationConsumed; formal_authorization_execution_claim_acquired=$formalAuthorizationExecutionMutexHeld;formal_authorization_seal_sha256=$formalAuthorizationSealSha256;formal_authorization_consumption_receipt_sha256=$formalAuthorizationConsumptionReceiptSha256;head_sha=$head; tree_sha=$tree; session_id=$sessionId; session_id_source='tooling_generated';
             endpoint_ownership_contract_version=2; protected_ports=$protectedPorts; prelaunch_protected_port_listener_count=$prelaunchProtectedPortListenerCount;
             startup_tooling_manifest_sha256=if($StartupToolingManifestPath){Get-StartupSha256 $StartupToolingManifestPath}else{''};
             startup_tooling_seal_sha256=if($StartupToolingSealPath){Get-StartupSha256 $StartupToolingSealPath}else{''}
@@ -687,7 +732,7 @@ function Invoke-Pr90McpStartupStateMachine {
             schema='McpStartupExecutionStartV1'; run_id=$RunId; execution_mode=$ExecutionMode; started_utc=$stageStarted.ToString('o');
             session_id=$sessionId; session_id_source='tooling_generated'; worktree=$root; working_directory=(Get-Location).Path;
             userprofile=$env:USERPROFILE; appdata_policy='role_local'; localappdata_policy='role_local'; port=$Port; watchdog_pid=$watchdogChild.process.Id;
-            formal_authorization_consumed=$false; play_main_scene_count=0; product_match_count=0
+            formal_authorization_consumed=$formalAuthorizationConsumed;formal_mcp_execution_count=if($formalAuthorizationConsumed){1}else{0};authorized_run_count_consumed=if($formalAuthorizationConsumed){1}else{0};play_main_scene_count=0; product_match_count=0
         }
         Write-StartupImmutableJson -Path $executionPath -Value $execution -WriteSha256Sidecar | Out-Null
         Save-Pass -MilestoneId 'M1' -Started $stageStarted -Extra @{evidence_path=$executionPath;evidence_sha256=(Get-StartupSha256 $executionPath)} | Out-Null
@@ -703,13 +748,25 @@ function Invoke-Pr90McpStartupStateMachine {
         if (-not $launchCompleted.exited -or $launchCompleted.exit_code -ne 0 -or -not (Test-Path -LiteralPath $launchReceiptPath)) { throw "Create-only launcher failed (exit=$($launchCompleted.exit_code))." }
         $launch = Get-Content -Raw -LiteralPath $launchReceiptPath | ConvertFrom-Json -Depth 40 -DateKind String
         $godotPid = [int]$launch.pid; $processStartUtc = [string]$launch.process_start_time_utc; $godotStdoutPath = [string]$launch.stdout_path; $godotStderrPath = [string]$launch.stderr_path
+        if($godotPid-le0-or[string]::IsNullOrWhiteSpace($processStartUtc)){throw 'Create-only launcher receipt does not prove a created Godot process.'}
+        $process = Get-Process -Id $godotPid -ErrorAction Stop
+        $processRow = Get-CimInstance Win32_Process -Filter "ProcessId=$godotPid" -ErrorAction Stop
+        if([string]$process.Path-ine(Resolve-Path -LiteralPath $GodotPath).Path-or-not(Test-StateCommandLineWorktreeBinding -CommandLine ([string]$processRow.CommandLine) -ExpectedRoot $root)-or
+           $process.StartTime.ToUniversalTime().ToString('o')-cne$processStartUtc){throw 'Created process is not the exact authorized Godot product process.'}
         $contextBase.pid = $godotPid; $contextBase.parent_pid = [int]$launch.parent_pid; $contextBase.process_creation_identity = $processStartUtc; $contextBase.stdout_path = $godotStdoutPath; $contextBase.stderr_path = $godotStderrPath
         $runtime.godotPid = $godotPid; $runtime.godotStdoutPath = $godotStdoutPath; $runtime.godotStderrPath = $godotStderrPath
+        if($ExecutionMode-ceq'FORMAL_EXACT_SHA_MCP'){
+            $formalConsumption=[ordered]@{schema='Pr90Attempt22AuthorizationConsumptionV1';status='CONSUMED';consumed_at_utc=[DateTimeOffset]::UtcNow.ToString('o');consumption_milestone='M2_GODOT_PROCESS_SUCCESSFULLY_CREATED';authorization_id=[string]$formalSeal.authorization_id;authorized_run_id=$RunId;formal_evidence_root=$evidence;product_head_sha=$head;product_tree_sha=$tree;tooling_head_sha=[string]$formalSeal.tooling_head_sha;tooling_tree_sha=[string]$formalSeal.tooling_tree_sha;tooling_manifest_sha256=$ExpectedStartupToolingManifestSha256.ToLowerInvariant();tooling_seal_sha256=$ExpectedStartupToolingSealSha256.ToLowerInvariant();authorization_seal_sha256=$formalAuthorizationSealSha256;validation_receipt_sha256=$ExpectedFormalAuthorizationValidationReceiptSha256.ToLowerInvariant();prelaunch_ignored_inventory_sha256=$formalPrelaunchIgnoredInventorySha256;godot_process_id=$godotPid;godot_process_creation_identity=$processStartUtc;formal_mcp_execution_count=1;authorized_run_count_consumed=1;automatic_retry_allowed=$false;canonical_payload_sha256=''}
+            $formalConsumption.canonical_payload_sha256=Get-StartupCanonicalSha256 -Value $formalConsumption
+            Write-StartupImmutableJson -Path $FormalAuthorizationConsumptionReceiptPath -Value $formalConsumption -WriteSha256Sidecar|Out-Null
+            $formalAuthorizationConsumptionReceiptSha256=Get-StartupSha256 -Path $FormalAuthorizationConsumptionReceiptPath
+            $formalAuthorizationConsumed=$true
+            $consumptionEvidence=[ordered]@{schema='McpFormalAuthorizationConsumptionWitnessV1';status='CONSUMED';run_id=$RunId;godot_process_id=$godotPid;godot_process_creation_identity=$processStartUtc;consumption_receipt_path=[IO.Path]::GetFullPath($FormalAuthorizationConsumptionReceiptPath);consumption_receipt_sha256=$formalAuthorizationConsumptionReceiptSha256;formal_mcp_execution_count=1;authorized_run_count_consumed=1}
+            Write-StartupImmutableJson -Path (Join-Path $evidence 'authorization-consumption.json') -Value $consumptionEvidence -WriteSha256Sidecar|Out-Null
+        }
         Save-Pass -MilestoneId 'M2' -Started $stageStarted -Extra @{evidence_path=$launchReceiptPath;evidence_sha256=(Get-StartupSha256 $launchReceiptPath)} | Out-Null
 
         Set-Stage 'M3'
-        $process = Get-Process -Id $godotPid -ErrorAction Stop
-        $processRow = Get-CimInstance Win32_Process -Filter "ProcessId=$godotPid" -ErrorAction Stop
         if ([string]$process.Path -ine (Resolve-Path -LiteralPath $GodotPath).Path -or -not (Test-StateCommandLineWorktreeBinding -CommandLine ([string]$processRow.CommandLine) -ExpectedRoot $root)) { throw 'Godot process executable or --path identity mismatch.' }
         $identityPath = Join-Path $evidence 'process-identity.json'
         $identity = [ordered]@{schema='McpProcessIdentityV1';pid=$godotPid;parent_pid=[int]$processRow.ParentProcessId;process_creation_identity=$processStartUtc;executable_path=[string]$process.Path;command_line=[string]$processRow.CommandLine;command_line_sha256=(Get-StartupCanonicalSha256 ([pscustomobject]@{command_line=[string]$processRow.CommandLine;canonical_payload_sha256=''}));worktree=$root}
@@ -893,11 +950,12 @@ function Invoke-Pr90McpStartupStateMachine {
         $primaryFailure = $_
         try { Save-Failure -MilestoneId $runtime.currentMilestone -Started $runtime.stageStarted -Detail $_.Exception.Message } catch {}
     } finally {
-        if (-not $KeepRunningAfterM11 -and $enterPlayModeAttempted -and $godotPid -gt 0) {
+        $preserveForFormalContinuation=($KeepRunningAfterM11-and$null-eq$primaryFailure-and$receipts.Count-eq12)
+        if (-not $preserveForFormalContinuation -and $enterPlayModeAttempted -and $godotPid -gt 0) {
             try { Invoke-RecordedRpc -ToolName 'exit_play_mode' -Arguments @{} -TimeoutSeconds 30 | Out-Null } catch {}
             $enteredPlayMode = $false
         }
-        if (-not $KeepRunningAfterM11 -and $godotPid -gt 0) {
+        if (-not $preserveForFormalContinuation -and $godotPid -gt 0) {
             $ownerCreationFiletime = if ($null -ne $endpointOwnerIdentity) { [string]$endpointOwnerIdentity.creation_time_filetime_utc } else { '' }
             $ownerSessionId = if ($null -ne $endpointOwnerIdentity) { [int]$endpointOwnerIdentity.windows_session_id } else { 0 }
             $ownerUserSid = if ($null -ne $endpointOwnerIdentity) { [string]$endpointOwnerIdentity.user_sid } else { '' }
@@ -908,7 +966,7 @@ function Invoke-Pr90McpStartupStateMachine {
                 $cleanStop = [bool]$cleanupResult.stopped
             } catch { $cleanStop = $false }
         }
-        if (-not $KeepRunningAfterM11 -and $null -ne $watchdogChild) {
+        if (-not $preserveForFormalContinuation -and $null -ne $watchdogChild) {
             try {
                 if (-not (Test-Path -LiteralPath (Join-Path $evidence 'watchdog/stop.signal'))) {
                     Write-StateAtomicText -Path (Join-Path $evidence 'watchdog/stop.signal') -Text 'stop' -Immutable
@@ -917,6 +975,8 @@ function Invoke-Pr90McpStartupStateMachine {
                 $watchdogStopped = $watchdogSummary.exited
             } catch { $watchdogStopped = $false }
         }
+        if($formalAuthorizationExecutionMutexHeld-and$null-ne$formalAuthorizationExecutionMutex){try{$formalAuthorizationExecutionMutex.ReleaseMutex()}catch{};$formalAuthorizationExecutionMutexHeld=$false}
+        if($null-ne$formalAuthorizationExecutionMutex){$formalAuthorizationExecutionMutex.Dispose();$formalAuthorizationExecutionMutex=$null}
     }
     $allReceipts = @(Read-McpStartupMilestones -EvidenceRoot $evidence)
     $failureReceipts = @($allReceipts | Where-Object { [string]$_.status -ceq 'FAIL' })
@@ -928,7 +988,7 @@ function Invoke-Pr90McpStartupStateMachine {
     $phaseFiles = @(Get-ChildItem -LiteralPath (Join-Path $evidence 'phases') -File -ErrorAction SilentlyContinue)
     $m6ToM11Receipts = @($allReceipts | Where-Object { [string]$_.milestone_id -match '^M(?:6|7|8|9|10|11)$' -and [string]$_.status -ceq 'PASS' })
     $result = [pscustomobject][ordered]@{
-        schema='McpStartupStateMachineResultV1';run_id=$RunId;probe_identity=$ProbeIdentity;execution_mode=$ExecutionMode;status=if($null -eq $primaryFailure -and $sequence.complete -and ($KeepRunningAfterM11 -or ($cleanStop -and -not[bool]$cleanupResult.forced_stop)) -and ($KeepRunningAfterM11 -or $null -ne $watchdogSummary)){'PASS'}else{'BLOCKED'};
+        schema='McpStartupStateMachineResultV1';run_id=$RunId;probe_identity=$ProbeIdentity;execution_mode=$ExecutionMode;status=if($null -eq $primaryFailure -and $sequence.complete -and ($preserveForFormalContinuation -or ($cleanStop -and -not[bool]$cleanupResult.forced_stop)) -and ($preserveForFormalContinuation -or $null -ne $watchdogSummary)){'PASS'}else{'BLOCKED'};
         product_head_sha=$ExpectedHeadSha;product_tree_sha=$ExpectedTreeSha;launch_session_id=$sessionId;launch_session_id_source='tooling_generated';stream_id=$streamId;cursor_after=$cursor;
         milestone_count=$sequence.receipt_count;milestone_expected_count=12;startup_milestone_order_green=[bool]$sequence.green;startup_milestone_complete=[bool]$sequence.complete;startup_milestone_duplicate_count=[int]$sequence.duplicate_count;startup_milestone_gap_count=[int]$sequence.gap_count;
         mcp_raw_evidence_count=$rawFiles.Count;phase0_evidence_count=$phaseFiles.Count;ready_witness_count=@(Get-ChildItem -LiteralPath (Join-Path $evidence 'witnesses') -Filter '*ready*' -File -ErrorAction SilentlyContinue).Count;mcp_raw_evidence_before_phase_evidence=[bool]$sequence.mcp_raw_before_phase_evidence;
@@ -940,14 +1000,14 @@ function Invoke-Pr90McpStartupStateMachine {
         endpoint_owner_is_gui_engine=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_is_gui_engine}else{$false};endpoint_owner_is_console_wrapper=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_is_console_wrapper}else{$false};endpoint_owner_is_descendant_of_launcher=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_is_descendant_of_launcher}else{$false};endpoint_owner_command_line_fixture_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_project_match}else{$false};endpoint_owner_project_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_project_match}else{$false};endpoint_owner_mcp_session_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_mcp_session_match}else{$false};endpoint_owner_windows_session_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_windows_session_match}else{$false};endpoint_owner_user_sid_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_user_sid_match}else{$false};endpoint_owner_creation_identity_match=if($null-ne$endpointOwnershipV2){[bool]$endpointOwnershipV2.endpoint_owner_creation_identity_match}else{$false};
         endpoint_owner_pid_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_pid_changed_count}else{0};endpoint_owner_creation_identity_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_creation_identity_changed_count}else{0};endpoint_owner_identity_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_identity_changed_count}else{0};endpoint_owner_process_lineage_changed_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.endpoint_owner_process_lineage_changed_count}else{0};multiple_active_endpoint_owner_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.multiple_active_endpoint_owner_count}else{0};protected_port_multiple_owner_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.protected_port_multiple_owner_count}else{0};foreign_listener_count=if($null-ne$endpointOwnershipV2){[int]$endpointOwnershipV2.foreign_listener_count}else{0};
         first_jsonrpc_request_sent=@($allReceipts|Where-Object{[string]$_.milestone_id-ceq'M6'-and[string]$_.status-ceq'PASS'}).Count-eq1;first_jsonrpc_response_received=@($allReceipts|Where-Object{[string]$_.milestone_id-ceq'M7'-and[string]$_.status-ceq'PASS'}).Count-eq1;m6_to_m11_execution_count=$m6ToM11Receipts.Count;
-        play_main_scene_count=0;product_match_count=0;formal_authorization_consumed=$false;formal_mcp_execution_count=0;authorized_run_count_consumed=0;
+        play_main_scene_count=0;product_match_count=0;formal_authorization_consumed=$formalAuthorizationConsumed;formal_authorization_seal_sha256=$formalAuthorizationSealSha256;formal_authorization_consumption_receipt_sha256=$formalAuthorizationConsumptionReceiptSha256;formal_mcp_execution_count=if($formalAuthorizationConsumed){1}else{0};authorized_run_count_consumed=if($formalAuthorizationConsumed){1}else{0};
         watchdog_started_before_godot_process=if($null-ne$watchdogSummary){[bool]$watchdogSummary.started_before_godot_process}else{$false};watchdog_observation_gap_count=if($null-ne$watchdogSummary){[int]$watchdogSummary.observation_gap_count}else{-1};watchdog_open_handle_count_after=if($null-ne$watchdogSummary){[int]$watchdogSummary.open_handle_count_after}else{-1};watchdog_status=if($null-ne$watchdogSummary){[string]$watchdogSummary.status}else{if($KeepRunningAfterM11){'RUNNING'}else{'MISSING'}};
-        stops_cleanly=$cleanStop;forced_stop=[bool]$cleanupResult.forced_stop;forced_stop_process_ids=@($cleanupResult.forced_stop_process_ids);cleanup_normal_close_requests=@($cleanupResult.normal_close_requests);cleanup_runtime_child_count=[int]$cleanupResult.runtime_child_count;cleanup_process_count_after=[int]$cleanupResult.process_count_after;cleanup_endpoint_count_after=[int]$cleanupResult.endpoint_count_after;unrelated_process_termination_count=[int]$cleanupResult.unrelated_process_termination_count;stop_pending=[bool]$KeepRunningAfterM11;opaque_startup_wait_count=0;startup_timeout_exact_stage_reported=$true;first_failure_class=$firstFailureClass;failure_detail=if($null-ne$primaryFailure){$primaryFailure.Exception.Message}else{''};evidence_root=$evidence;canonical_payload_sha256=''
+        stops_cleanly=$cleanStop;forced_stop=[bool]$cleanupResult.forced_stop;forced_stop_process_ids=@($cleanupResult.forced_stop_process_ids);cleanup_normal_close_requests=@($cleanupResult.normal_close_requests);cleanup_runtime_child_count=[int]$cleanupResult.runtime_child_count;cleanup_process_count_after=[int]$cleanupResult.process_count_after;cleanup_endpoint_count_after=[int]$cleanupResult.endpoint_count_after;unrelated_process_termination_count=[int]$cleanupResult.unrelated_process_termination_count;stop_pending=[bool]$preserveForFormalContinuation;opaque_startup_wait_count=0;startup_timeout_exact_stage_reported=$true;first_failure_class=$firstFailureClass;failure_detail=if($null-ne$primaryFailure){$primaryFailure.Exception.Message}else{''};evidence_root=$evidence;canonical_payload_sha256=''
     }
     $result.canonical_payload_sha256 = Get-StartupCanonicalSha256 -Value $result
     $summaryPath = Join-Path $evidence 'startup-state-machine-result.json'
     if (-not (Test-Path -LiteralPath $summaryPath)) { Write-StartupImmutableJson -Path $summaryPath -Value $result -WriteSha256Sidecar | Out-Null }
-    return [pscustomobject]@{summary=$result;godot_pid=$godotPid;endpoint_owner_pid=$endpointOwnerPid;process_start_utc=$processStartUtc;launch_session_id=$sessionId;stream_id=$streamId;cursor_after=$cursor;watchdog_child=$watchdogChild;watchdog_stop_path=(Join-Path $evidence 'watchdog/stop.signal');entered_play_mode=$enteredPlayMode;clean_stop=$cleanStop;cleanup_result=$cleanupResult;primary_failure=$primaryFailure}
+    return [pscustomobject]@{summary=$result;godot_pid=$godotPid;endpoint_owner_pid=$endpointOwnerPid;endpoint_owner_creation_filetime_utc=if($null-ne$endpointOwnerIdentity){[string]$endpointOwnerIdentity.creation_time_filetime_utc}else{''};endpoint_owner_session_id=if($null-ne$endpointOwnerIdentity){[int]$endpointOwnerIdentity.windows_session_id}else{0};endpoint_owner_user_sid=if($null-ne$endpointOwnerIdentity){[string]$endpointOwnerIdentity.user_sid}else{''};process_start_utc=$processStartUtc;launch_session_id=$sessionId;stream_id=$streamId;cursor_after=$cursor;watchdog_child=$watchdogChild;watchdog_stop_path=(Join-Path $evidence 'watchdog/stop.signal');entered_play_mode=$enteredPlayMode;clean_stop=$cleanStop;cleanup_result=$cleanupResult;primary_failure=$primaryFailure}
 }
 
 function Stop-Pr90McpStartupWatchdog {
@@ -966,4 +1026,4 @@ function Stop-Pr90McpStartupWatchdog {
     } catch { return $false }
 }
 
-Export-ModuleMember -Function @('Invoke-Pr90McpStartupStateMachine','Stop-Pr90McpStartupWatchdog')
+Export-ModuleMember -Function @('Invoke-Pr90McpStartupStateMachine','Stop-Pr90McpStartupWatchdog','Stop-StateGodot')
