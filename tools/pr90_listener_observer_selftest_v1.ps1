@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$OutputRoot,
-    [ValidateSet('listener-observer-tooling-revision-001','listener-observer-tooling-revision-002','netstat-target-port-prefilter-revision-001','sealed-final')]
-    [string]$RevisionId = 'netstat-target-port-prefilter-revision-001'
+    [ValidateSet('listener-observer-tooling-revision-001','listener-observer-tooling-revision-002','netstat-target-port-prefilter-revision-001','ancestor-chain-cardinality-revision-001','sealed-final')]
+    [string]$RevisionId = 'ancestor-chain-cardinality-revision-001'
 )
 
 $ErrorActionPreference='Stop'
@@ -160,11 +160,19 @@ try {
     $targetIpv6=ConvertFrom-NetstatListenerRecordsV1 -InputObject @('  TCP    [::1]:7586    [::]:0    LISTEN    7005') -SampleId target-ipv6 -ObservedUtc $observed -Ports @(7576,7586)
     Add-Case 57 'target_ipv6_listen_accepted' netstat_scope ($targetIpv6.records.Count-eq1-and$targetIpv6.parse_failure_count-eq0-and[string]$targetIpv6.records[0].address_family-ceq'IPv6') "records=$($targetIpv6.records.Count);family=$($targetIpv6.records[0].address_family)"
 
+    $liveAncestorChain=@(Get-EndpointProcessAncestorChainV1 -PidValue $PID)
+    $nestedAncestorRows=@($liveAncestorChain|Where-Object{$_-is[Array]})
+    $ancestorPidConversionFailures=0
+    foreach($ancestorRow in $liveAncestorChain){try{[void][int]$ancestorRow.pid}catch{$ancestorPidConversionFailures+=1}}
+    Add-Case 58 'live_ancestor_chain_is_flat' ancestor_chain ($liveAncestorChain.Count-ge1-and$nestedAncestorRows.Count-eq0) "rows=$($liveAncestorChain.Count);nested=$($nestedAncestorRows.Count)"
+    Add-Case 59 'live_ancestor_chain_first_row_is_requested_pid' ancestor_chain ($liveAncestorChain.Count-ge1-and[int]$liveAncestorChain[0].pid-eq$PID) "requested=$PID;actual=$($liveAncestorChain[0].pid)"
+    Add-Case 60 'live_ancestor_chain_pid_projection_is_int_safe' ancestor_chain ($liveAncestorChain.Count-ge1-and$ancestorPidConversionFailures-eq0-and@($liveAncestorChain|ForEach-Object{[int]$_.pid}).Count-eq$liveAncestorChain.Count) "rows=$($liveAncestorChain.Count);conversion_failures=$ancestorPidConversionFailures"
+
     if(-not$realParity.parity){$falseMismatchCount+=1}
     if($aOnly.parity-or$bOnly.parity-or$dup.parity-or$falseGreen.parity){$falseParityCount+=1}
     $passCount=@($cases|Where-Object pass).Count
     $result=[ordered]@{
-        schema='SpaceSyndicatePr90ListenerObserverSelfTestV3';status=if($passCount-eq$cases.Count-and$cases.Count-ge57){'PASS'}else{'FAIL'}
+        schema='SpaceSyndicatePr90ListenerObserverSelfTestV4';status=if($passCount-eq$cases.Count-and$cases.Count-ge60){'PASS'}else{'FAIL'}
         revision_id=$RevisionId;created_at_utc=[DateTimeOffset]::UtcNow.ToString('o');case_count=$cases.Count;pass_count=$passCount
         listener_formatter_exception_count=$formatterExceptionCount;first_nonempty_listener_fixture_green=$firstGreen
         cross_source_false_parity_count=$falseParityCount;cross_source_false_mismatch_count=$falseMismatchCount
@@ -186,8 +194,14 @@ try {
         netstat_non_listener_state_scope_green=(@($cases|Where-Object{[int]$_.case_id-in@(53,54,56,57)-and[bool]$_.pass}).Count-eq4)
         netstat_global_target_parse_failure_count=[int]$globalTargetObservation.parse_failure_count
         netstat_global_target_ignored_outside_port_count=[int]$globalTargetObservation.ignored_outside_target_port_count
+        ancestor_chain_flat_cardinality_green=(@($cases|Where-Object{[int]$_.case_id-in@(58,59,60)-and[bool]$_.pass}).Count-eq3)
+        ancestor_chain_live_sample_count=[int]$liveAncestorChain.Count
+        ancestor_chain_nested_array_count=[int]$nestedAncestorRows.Count
+        ancestor_chain_pid_conversion_failure_count=[int]$ancestorPidConversionFailures
         frozen_characterization_v2_001_modification_count=0
         frozen_characterization_v2_001_rerun_count=0
+        frozen_characterization_v4_001_modification_count=0
+        frozen_characterization_v4_001_rerun_count=0
         cases=@($cases);canonical_payload_sha256=''
     }
     $result.canonical_payload_sha256=Get-Pr90CanonicalSha256 $result

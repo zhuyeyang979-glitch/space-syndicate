@@ -109,7 +109,10 @@ function Get-EndpointProcessAncestorChainV1 {
         if (-not [bool]$identity.exists -or -not [bool]$identity.identity_read_green) { break }
         $current = [int]$identity.parent_pid
     }
-    return ,@($rows)
+    # Emit each identity row into the pipeline. Callers that require stable
+    # cardinality collect the function output with @(...); wrapping the row
+    # array here as one object creates a nested System.Object[] at M5.
+    return @($rows)
 }
 
 Export-ModuleMember -Function @(

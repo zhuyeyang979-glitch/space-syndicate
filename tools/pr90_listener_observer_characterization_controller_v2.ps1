@@ -23,7 +23,7 @@ Import-Module (Join-Path $PSScriptRoot 'pr90_listener_process_identity_reader_v1
 Import-Module (Join-Path $PSScriptRoot 'pr90_endpoint_listener_key_formatter_v1.psm1')
 Import-Module (Join-Path $PSScriptRoot 'pr90_listener_parity_validator_v1.psm1')
 
-$probeId='pr90-m5-endpoint-owner-characterization-v4-001'
+$probeId='pr90-m5-endpoint-owner-characterization-v5-001'
 $expectedFixtureHead='99c53e0ac2663155d24e4c645644f93b08e3fd09'
 $expectedFixtureTree='4435a8d7ed9f824180c12dbae6e489c778f2226a'
 $productHead='770d741f05964facda4afcbddcdeb3e7f40571d5'
@@ -81,7 +81,7 @@ try{
     $toolingHead=(& git -C $tooling rev-parse HEAD).Trim();$toolingTree=(& git -C $tooling rev-parse 'HEAD^{tree}').Trim()
     $gitClean=@(& git -C $tooling status --porcelain=v1 --untracked-files=all).Count-eq0
     $fileMismatch=@($manifest.tooling_files|Where-Object{(Get-Pr90Sha256 $_.path)-cne[string]$_.sha256}).Count
-    $m0Green=([string]$manifest.status-ceq'READY_FOR_ONE_M0_M5_CHARACTERIZATION_ONLY'-and[bool]$manifest.characterization_eligible-and-not[bool]$manifest.formal_authorization_eligible-and[string]$seal.status-ceq'SEALED'-and[bool]$seal.characterization_eligible-and[string]$seal.authorized_characterization_probe_id-ceq$probeId-and[string]$selftest.status-ceq'PASS'-and[int]$selftest.case_count-ge35-and[int]$selftest.pass_count-eq[int]$selftest.case_count-and[string]$manifest.tooling_head_sha-ceq$toolingHead-and[string]$manifest.tooling_tree_sha-ceq$toolingTree-and$gitClean-and$fileMismatch-eq0)
+    $m0Green=([string]$manifest.schema-ceq'SpaceSyndicatePr90ListenerObserverToolingManifestV4'-and[string]$manifest.status-ceq'READY_FOR_ONE_M0_M5_CHARACTERIZATION_ONLY'-and[bool]$manifest.characterization_eligible-and-not[bool]$manifest.formal_authorization_eligible-and[string]$seal.schema-ceq'SpaceSyndicatePr90ListenerObserverToolingSealV4'-and[string]$seal.status-ceq'SEALED'-and[bool]$seal.characterization_eligible-and[string]$seal.authorized_characterization_probe_id-ceq$probeId-and[string]$selftest.schema-ceq'SpaceSyndicatePr90ListenerObserverSelfTestV4'-and[string]$selftest.status-ceq'PASS'-and[int]$selftest.case_count-ge60-and[int]$selftest.pass_count-eq[int]$selftest.case_count-and[bool]$selftest.ancestor_chain_flat_cardinality_green-and[int]$selftest.ancestor_chain_nested_array_count-eq0-and[int]$selftest.ancestor_chain_pid_conversion_failure_count-eq0-and[string]$manifest.tooling_head_sha-ceq$toolingHead-and[string]$manifest.tooling_tree_sha-ceq$toolingTree-and$gitClean-and$fileMismatch-eq0)
     if(-not$m0Green){throw 'M0 characterization-only seal revalidation failed.'}
     Write-Milestone M0 PASS '' ([ordered]@{tooling_head=$toolingHead;tooling_tree=$toolingTree;manifest_sha256=Get-Pr90Sha256 $manifestPath;seal_sha256=Get-Pr90Sha256 $sealPath;selftest_sha256=Get-Pr90Sha256 $selfTestPath;tooling_clean=$gitClean;file_mismatch_count=$fileMismatch})
 
