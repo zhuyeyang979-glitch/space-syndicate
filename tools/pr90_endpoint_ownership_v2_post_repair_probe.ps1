@@ -11,7 +11,7 @@ param(
     [Parameter(Mandatory = $true)][string]$ExpectedProductTreeSha,
     [Parameter(Mandatory = $true)][string]$ExpectedFixtureHeadSha,
     [Parameter(Mandatory = $true)][string]$ExpectedFixtureTreeSha,
-    [string]$ProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-001',
+    [string]$ProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-002',
     [ValidateRange(1,65535)][int]$Port = 7576,
     [ValidateRange(1,65535)][int]$SecondaryPort = 7586
 )
@@ -19,8 +19,8 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$authorizedProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-001'
-$authorizationId = 'PR90_MCP_ENDPOINT_OWNERSHIP_V2_CONTRACT_REPAIR_AND_POST_REPAIR_M0_M11_PROBE_AUTHORIZATION'
+$authorizedProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-002'
+$authorizationId = 'PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_PROBE_CONTROLLER_ZERO_CARDINALITY_TOOLING_REPAIR_AND_NEW_PROBE_AUTHORIZATION'
 if ($ProbeId -cne $authorizedProbeId) { throw 'Probe ID does not match the single authorized post-repair identity.' }
 
 $tooling = (Resolve-Path -LiteralPath $ToolingWorktree).Path.TrimEnd('\')
@@ -67,8 +67,8 @@ if ($productIdentity.head -cne $ExpectedProductHeadSha -or $productIdentity.tree
 if ($fixtureSourceIdentity.head -cne $ExpectedFixtureHeadSha -or $fixtureSourceIdentity.tree -cne $ExpectedFixtureTreeSha -or $fixtureSourceIdentity.dirty_count -ne 0) { throw 'Fixture source identity is not the expected clean exact commit.' }
 if (-not (Test-Path -LiteralPath (Resolve-Pr90McpGuiEnginePathV2 $godot) -PathType Leaf)) { throw 'Godot GUI engine sibling is missing.' }
 
-$prelaunchGodot = Get-GodotRows
-$prelaunchListeners = Get-ProtectedListeners
+$prelaunchGodot = @(Get-GodotRows | Where-Object { $null -ne $_ })
+$prelaunchListeners = @(Get-ProtectedListeners | Where-Object { $null -ne $_ })
 if ($prelaunchGodot.Count -ne 0 -or $prelaunchListeners.Count -ne 0) { throw 'Post-repair probe requires idle Godot and protected ports.' }
 
 [IO.Directory]::CreateDirectory($root) | Out-Null
@@ -90,7 +90,7 @@ foreach ($path in $toolingFiles) { $toolingHashes[[IO.Path]::GetFileName($path)]
 $preflightPath = Join-Path $root 'preflight.json'
 $preflight = [ordered]@{
     schema='SpaceSyndicatePr90EndpointOwnershipV2PostRepairPreflightV1';status='PASS';authorization_id=$authorizationId;probe_id=$ProbeId;
-    observed_utc=[DateTimeOffset]::UtcNow.ToString('o');probe_execution_count_before=0;automatic_retry_allowed=$false;
+    observed_utc=[DateTimeOffset]::UtcNow.ToString('o');probe_execution_count_before=0;new_probe_execution_count_before=0;frozen_failed_probe_execution_count=1;automatic_retry_allowed=$false;
     product_head_sha=$productIdentity.head;product_tree_sha=$productIdentity.tree;tooling_head_sha=$toolingIdentity.head;tooling_tree_sha=$toolingIdentity.tree;
     fixture_head_sha=$fixtureIdentity.head;fixture_tree_sha=$fixtureIdentity.tree;fixture_root=$fixture;fixture_clean=$true;
     prelaunch_godot_process_count=$prelaunchGodot.Count;prelaunch_protected_port_listener_count=$prelaunchListeners.Count;
@@ -127,8 +127,8 @@ try {
 }
 Import-Module $contractPath -Force
 
-$terminalGodot = Get-GodotRows
-$terminalListeners = Get-ProtectedListeners
+$terminalGodot = @(Get-GodotRows | Where-Object { $null -ne $_ })
+$terminalListeners = @(Get-ProtectedListeners | Where-Object { $null -ne $_ })
 $taskOwnedRows = @(
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
         Where-Object { ([string]$_.CommandLine).IndexOf($fixture,[StringComparison]::OrdinalIgnoreCase) -ge 0 }
@@ -147,13 +147,18 @@ Write-ProbeJson $terminalPath $terminal
 
 $summary = if ($null -ne $state) { $state.summary } else { $null }
 $evidenceRoot = Join-Path $root 'evidence'
-$milestones = if (Test-Path -LiteralPath $evidenceRoot) { @(Read-McpStartupMilestones -EvidenceRoot $evidenceRoot) } else { @() }
+$milestones = @(
+    if (Test-Path -LiteralPath $evidenceRoot) {
+        Read-McpStartupMilestones -EvidenceRoot $evidenceRoot | Where-Object { $null -ne $_ }
+    }
+)
 $m6ToM11Pass = @($milestones|Where-Object{[string]$_.milestone_id-match'^M(?:6|7|8|9|10|11)$'-and[string]$_.status-ceq'PASS'})
 $status = if ($null-ne$summary-and[string]$summary.status-ceq'PASS'-and[bool]$summary.startup_milestone_complete-and[bool]$terminal.stopped_cleanly-and[string]::IsNullOrWhiteSpace($controllerFailure)){'PASS'}else{'BLOCKED'}
 $resultPath = Join-Path $root 'post-repair-m0-m11-result.json'
 $result = [ordered]@{
     schema='SpaceSyndicatePr90EndpointOwnershipV2PostRepairM0M11ResultV1';status=$status;authorization_id=$authorizationId;probe_id=$ProbeId;
-    execution_mode='PRE_FORMAL_STARTUP_PROBE';post_repair_probe_execution_count=1;automatic_retry_allowed=$false;second_probe_created=$false;
+    execution_mode='PRE_FORMAL_STARTUP_PROBE';post_repair_probe_execution_count=1;new_probe_execution_count=1;cumulative_post_repair_probe_execution_count=2;automatic_retry_allowed=$false;second_probe_created=$true;second_new_probe_created=$false;
+    frozen_failed_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-001';frozen_failed_probe_execution_count=1;
     product_head_sha=$productIdentity.head;product_tree_sha=$productIdentity.tree;fixture_head_sha=$fixtureIdentity.head;fixture_tree_sha=$fixtureIdentity.tree;
     tooling_head_sha=$toolingIdentity.head;tooling_tree_sha=$toolingIdentity.tree;tooling_hashes=$toolingHashes;
     endpoint_ownership_contract_v2_implemented=$true;endpoint_ownership_contract_version=if($null-ne$summary){[int]$summary.endpoint_ownership_contract_version}else{2};
@@ -162,7 +167,7 @@ $result = [ordered]@{
     endpoint_owner_pid=if($null-ne$summary){$summary.endpoint_owner_pid}else{$null};endpoint_owner_process_role=if($null-ne$summary){[string]$summary.endpoint_owner_process_role}else{'UNKNOWN'};endpoint_owner_is_gui_engine=if($null-ne$summary){[bool]$summary.endpoint_owner_is_gui_engine}else{$false};endpoint_owner_is_console_wrapper=if($null-ne$summary){[bool]$summary.endpoint_owner_is_console_wrapper}else{$false};endpoint_owner_is_descendant_of_launcher=if($null-ne$summary){[bool]$summary.endpoint_owner_is_descendant_of_launcher}else{$false};
     endpoint_owner_command_line_fixture_match=if($null-ne$summary){[bool]$summary.endpoint_owner_command_line_fixture_match}else{$false};endpoint_owner_windows_session_match=if($null-ne$summary){[bool]$summary.endpoint_owner_windows_session_match}else{$false};endpoint_owner_user_sid_match=if($null-ne$summary){[bool]$summary.endpoint_owner_user_sid_match}else{$false};
     endpoint_owner_pid_changed_count=if($null-ne$summary){[int]$summary.endpoint_owner_pid_changed_count}else{0};endpoint_owner_creation_identity_changed_count=if($null-ne$summary){[int]$summary.endpoint_owner_creation_identity_changed_count}else{0};endpoint_owner_process_lineage_changed_count=if($null-ne$summary){[int]$summary.endpoint_owner_process_lineage_changed_count}else{0};multiple_active_endpoint_owner_count=if($null-ne$summary){[int]$summary.multiple_active_endpoint_owner_count}else{0};
-    prelaunch_protected_port_listener_count=$prelaunchListeners.Count;milestone_count=$milestones.Count;milestone_expected_count=12;startup_milestone_complete=if($null-ne$summary){[bool]$summary.startup_milestone_complete}else{$false};startup_milestone_order_green=if($null-ne$summary){[bool]$summary.startup_milestone_order_green}else{$false};
+    prelaunch_godot_process_count=$prelaunchGodot.Count;prelaunch_protected_port_listener_count=$prelaunchListeners.Count;milestone_count=$milestones.Count;milestone_expected_count=12;startup_milestone_complete=if($null-ne$summary){[bool]$summary.startup_milestone_complete}else{$false};startup_milestone_order_green=if($null-ne$summary){[bool]$summary.startup_milestone_order_green}else{$false};
     first_jsonrpc_request_sent=if($null-ne$summary){[bool]$summary.first_jsonrpc_request_sent}else{$false};first_jsonrpc_response_received=if($null-ne$summary){[bool]$summary.first_jsonrpc_response_received}else{$false};m6_to_m11_execution_count=$m6ToM11Pass.Count;
     first_mcp_raw_evidence_persisted=if($null-ne$summary){[int]$summary.mcp_raw_evidence_count-ge1}else{$false};runtime_stream_bootstrap_received=@($milestones|Where-Object{[string]$_.milestone_id-ceq'M9'-and[string]$_.status-ceq'PASS'}).Count-eq1;ready_witness_persisted=if($null-ne$summary){[int]$summary.ready_witness_count-ge1}else{$false};phase0_evidence_persisted=if($null-ne$summary){[int]$summary.phase0_evidence_count-ge1}else{$false};
     play_main_scene_count=0;product_match_count=0;formal_authorization_consumed=$false;formal_mcp_execution_count=0;authorized_run_count_consumed=0;probe_stopped_cleanly=[bool]$terminal.stopped_cleanly;stops_cleanly=[bool]$terminal.stopped_cleanly;forced_stop=$false;godot_process_count_after=[int]$terminal.godot_process_count_after;port_7576_count_after=[int]$terminal.port_7576_count_after;port_7586_count_after=[int]$terminal.port_7586_count_after;unrelated_process_termination_count=0;
@@ -178,7 +183,8 @@ $attestation = [ordered]@{
     authorization_id=$authorizationId;probe_id=$ProbeId;result_path=$resultPath;result_sha256=Get-StartupSha256 $resultPath;preflight_path=$preflightPath;preflight_sha256=Get-StartupSha256 $preflightPath;
     terminal_manifest_path=$terminalPath;terminal_manifest_sha256=Get-StartupSha256 $terminalPath;tooling_head_sha=$toolingIdentity.head;tooling_tree_sha=$toolingIdentity.tree;
     product_head_sha=$productIdentity.head;product_tree_sha=$productIdentity.tree;fixture_head_sha=$fixtureIdentity.head;fixture_tree_sha=$fixtureIdentity.tree;
-    post_repair_probe_execution_count=1;automatic_retry_allowed=$false;formal_mcp_execution_count=0;authorized_run_count_consumed=0;
+    post_repair_probe_execution_count=1;new_probe_execution_count=1;cumulative_post_repair_probe_execution_count=2;automatic_retry_allowed=$false;second_new_probe_created=$false;formal_mcp_execution_count=0;authorized_run_count_consumed=0;
+    frozen_failed_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-001';frozen_failed_probe_execution_count=1;
     endpoint_ownership_contract_v2_implemented=$true;post_repair_m0_m11_probe_green=($status-ceq'PASS');tooling_bytes_changed_by_probe=$false;
     canonical_payload_sha256=''
 }

@@ -202,18 +202,72 @@ foreach($negative in $negativeCases){
     $cases.Add([pscustomobject]@{name=$negative.name;family='endpoint_ownership_v2';expected_green=$false;actual_green=[bool]$actual.qualified;pass=(-not[bool]$actual.qualified)})
 }
 
+function Add-ZeroCardinalityCountCase {
+    param([string]$Name,[scriptblock]$Producer,[int]$ExpectedCount)
+    $items = @(& $Producer | Where-Object { $null -ne $_ })
+    $actualCount = $items.Count
+    $pass = ($actualCount -eq $ExpectedCount)
+    $cases.Add([pscustomobject]@{name=$Name;family='zero_cardinality';expected_green=$true;actual_green=$pass;expected_count=$ExpectedCount;actual_count=$actualCount;pass=$pass})
+}
+function Add-ZeroCardinalityBooleanCase {
+    param([string]$Name,[bool]$ExpectedGreen,[bool]$ActualGreen)
+    $cases.Add([pscustomobject]@{name=$Name;family='zero_cardinality';expected_green=$ExpectedGreen;actual_green=$ActualGreen;pass=($ActualGreen -eq $ExpectedGreen)})
+}
+
+Add-ZeroCardinalityCountCase 'controller_null_output_normalizes_to_zero' { $null } 0
+Add-ZeroCardinalityCountCase 'controller_empty_output_normalizes_to_zero' { @() } 0
+Add-ZeroCardinalityCountCase 'controller_single_output_normalizes_to_one' { [pscustomobject]@{id=1} } 1
+Add-ZeroCardinalityCountCase 'controller_multiple_output_normalizes_to_many' { [pscustomobject]@{id=1};[pscustomobject]@{id=2} } 2
+
+$emptyGodot = @(& { $null } | Where-Object { $null -ne $_ })
+$emptyListeners = @(& { @() } | Where-Object { $null -ne $_ })
+$oneGodot = @([pscustomobject]@{ProcessId=101})
+$oneListener = @([pscustomobject]@{LocalPort=7576;OwningProcess=101})
+Add-ZeroCardinalityBooleanCase 'controller_preflight_idle_zero_collections_pass' $true ($emptyGodot.Count -eq 0 -and $emptyListeners.Count -eq 0)
+Add-ZeroCardinalityBooleanCase 'controller_preflight_godot_present_rejected' $false ($oneGodot.Count -eq 0 -and $emptyListeners.Count -eq 0)
+Add-ZeroCardinalityBooleanCase 'controller_preflight_listener_present_rejected' $false ($emptyGodot.Count -eq 0 -and $oneListener.Count -eq 0)
+Add-ZeroCardinalityBooleanCase 'controller_terminal_zero_collections_clean' $true ($emptyGodot.Count -eq 0 -and $emptyListeners.Count -eq 0)
+Add-ZeroCardinalityBooleanCase 'controller_terminal_process_residual_rejected' $false ($oneGodot.Count -eq 0 -and $emptyListeners.Count -eq 0)
+Add-ZeroCardinalityBooleanCase 'controller_terminal_listener_residual_rejected' $false ($emptyGodot.Count -eq 0 -and $oneListener.Count -eq 0)
+
+$controllerPath = Join-Path $PSScriptRoot 'pr90_endpoint_ownership_v2_post_repair_probe.ps1'
+$controllerText = Get-Content -Raw -LiteralPath $controllerPath
+$controllerNormalizationGreen = (
+    $controllerText.Contains('$prelaunchGodot = @(Get-GodotRows | Where-Object { $null -ne $_ })') -and
+    $controllerText.Contains('$prelaunchListeners = @(Get-ProtectedListeners | Where-Object { $null -ne $_ })') -and
+    $controllerText.Contains('$terminalGodot = @(Get-GodotRows | Where-Object { $null -ne $_ })') -and
+    $controllerText.Contains('$terminalListeners = @(Get-ProtectedListeners | Where-Object { $null -ne $_ })') -and
+    $controllerText.Contains('$milestones = @(')
+)
+Add-ZeroCardinalityBooleanCase 'controller_all_nullable_collections_explicitly_normalized' $true $controllerNormalizationGreen
+$controllerIdentityGreen = (
+    $controllerText.Contains("`$authorizedProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-002'") -and
+    $controllerText.Contains("`$authorizationId = 'PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_PROBE_CONTROLLER_ZERO_CARDINALITY_TOOLING_REPAIR_AND_NEW_PROBE_AUTHORIZATION'")
+)
+Add-ZeroCardinalityBooleanCase 'controller_uses_new_authorization_and_probe_identity' $true $controllerIdentityGreen
+$controllerTokens = $null
+$controllerParseErrors = $null
+$null = [Management.Automation.Language.Parser]::ParseFile($controllerPath,[ref]$controllerTokens,[ref]$controllerParseErrors)
+Add-ZeroCardinalityBooleanCase 'controller_powershell_parse_green' $true (@($controllerParseErrors).Count -eq 0)
+
 $passCount = @($cases | Where-Object { [bool]$_.pass }).Count
 $v2Cases=@($cases|Where-Object{[string]$_.family-ceq'endpoint_ownership_v2'})
 $v2PassCount=@($v2Cases|Where-Object{[bool]$_.pass}).Count
+$zeroCardinalityCases=@($cases|Where-Object{[string]$_.family-ceq'zero_cardinality'})
+$zeroCardinalityPassCount=@($zeroCardinalityCases|Where-Object{[bool]$_.pass}).Count
 $result = [ordered]@{
     schema='SpaceSyndicateStartupBoundarySelfTestV2'
-    status=if($passCount -eq $cases.Count -and $cases.Count -ge 40 -and $v2PassCount -eq $v2Cases.Count){'PASS'}else{'FAIL'}
+    status=if($passCount -eq $cases.Count -and $cases.Count -ge 60 -and $v2PassCount -eq $v2Cases.Count -and $zeroCardinalityPassCount -eq $zeroCardinalityCases.Count){'PASS'}else{'FAIL'}
     case_count=$cases.Count
     pass_count=$passCount
     endpoint_ownership_contract_version=2
     endpoint_ownership_v2_case_count=$v2Cases.Count
     endpoint_ownership_v2_pass_count=$v2PassCount
     endpoint_ownership_v2_false_green_count=@($v2Cases|Where-Object{-not[bool]$_.expected_green-and[bool]$_.actual_green}).Count
+    zero_cardinality_case_count=$zeroCardinalityCases.Count
+    zero_cardinality_pass_count=$zeroCardinalityPassCount
+    zero_cardinality_false_green_count=@($zeroCardinalityCases|Where-Object{-not[bool]$_.expected_green-and[bool]$_.actual_green}).Count
+    powershell_parse_error_count=@($controllerParseErrors).Count
     startup_failure_stage_false_report_count=0
     startup_stall_false_green_count=0
     formal_mcp_count=0
