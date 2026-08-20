@@ -166,15 +166,140 @@ function ConvertFrom-StateRpcResponse {
     return $text | ConvertFrom-Json -Depth 100
 }
 
+function Get-StatePropertyDescriptor {
+    param([AllowNull()][object]$InputObject, [Parameter(Mandatory = $true)][string]$Name)
+    if ($null -eq $InputObject) {
+        return [pscustomobject]@{ exists=$false; value=$null }
+    }
+    $property = $InputObject.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return [pscustomobject]@{ exists=$false; value=$null }
+    }
+    return [pscustomobject]@{ exists=$true; value=$property.Value }
+}
+
+function Assert-StateRpcToolResponse {
+    param(
+        [AllowNull()][object]$Json,
+        [Parameter(Mandatory = $true)][string]$ToolName
+    )
+    if ($null -eq $Json) { throw "MCP tool $ToolName returned an empty JSON-RPC envelope." }
+    $errorProperty = Get-StatePropertyDescriptor -InputObject $Json -Name 'error'
+    if ([bool]$errorProperty.exists -and $null -ne $errorProperty.value) {
+        throw "MCP tool $ToolName returned a JSON-RPC error."
+    }
+    $resultProperty = Get-StatePropertyDescriptor -InputObject $Json -Name 'result'
+    if (-not [bool]$resultProperty.exists -or $null -eq $resultProperty.value) {
+        throw "MCP tool $ToolName omitted its JSON-RPC result."
+    }
+    $isErrorProperty = Get-StatePropertyDescriptor -InputObject $resultProperty.value -Name 'isError'
+    if ([bool]$isErrorProperty.exists -and [bool]$isErrorProperty.value) {
+        throw "MCP tool $ToolName returned an MCP error result."
+    }
+    return $resultProperty.value
+}
+
 function Get-StateRpcResult {
     param([Parameter(Mandatory = $true)][object]$Json)
-    if ($null -eq $Json.result -or $null -eq $Json.result.structuredContent) {
+    $toolResult = Assert-StateRpcToolResponse -Json $Json -ToolName 'get_runtime_events'
+    $structuredContentProperty = Get-StatePropertyDescriptor -InputObject $toolResult -Name 'structuredContent'
+    if (-not [bool]$structuredContentProperty.exists -or $null -eq $structuredContentProperty.value) {
         throw 'MCP response omitted structuredContent.'
     }
-    if ($null -eq $Json.result.structuredContent.result) {
+    $resultProperty = Get-StatePropertyDescriptor -InputObject $structuredContentProperty.value -Name 'result'
+    if (-not [bool]$resultProperty.exists -or $null -eq $resultProperty.value) {
         throw 'MCP response omitted structuredContent.result.'
     }
-    return $Json.result.structuredContent.result
+    return $resultProperty.value
+}
+
+function Get-StateDescendantDepthV1 {
+    param([int]$Pid, [int]$AncestorPid, [hashtable]$IdentityByPid)
+    $currentPid = $Pid
+    $visited = [Collections.Generic.HashSet[int]]::new()
+    $depth = 0
+    while ($currentPid -gt 0 -and $visited.Add($currentPid)) {
+        if ($currentPid -eq $AncestorPid) { return $depth }
+        $key = $currentPid.ToString([Globalization.CultureInfo]::InvariantCulture)
+        if (-not $IdentityByPid.ContainsKey($key)) { return -1 }
+        $currentPid = [int]$IdentityByPid[$key].parent_pid
+        $depth += 1
+    }
+    return -1
+}
+
+function New-StateGodotCleanupPlanV1 {
+    param(
+        [Parameter(Mandatory = $true)][object[]]$IdentityRows,
+        [int]$ControlPid,
+        [int]$EndpointOwnerPid,
+        [Parameter(Mandatory = $true)][string]$ExpectedConsolePath,
+        [Parameter(Mandatory = $true)][string]$ExpectedGuiPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedRoot,
+        [Parameter(Mandatory = $true)][string]$ControlCreationUtc,
+        [Parameter(Mandatory = $true)][string]$EndpointOwnerCreationFiletimeUtc,
+        [int]$EndpointOwnerSessionId,
+        [Parameter(Mandatory = $true)][string]$EndpointOwnerUserSid
+    )
+    $allIdentities = @($IdentityRows | Where-Object { $null -ne $_ -and [bool]$_.exists -and [bool]$_.identity_read_green })
+    $taskIdentities = @($allIdentities | Where-Object {
+        [string]$_.executable_path -iin @($ExpectedConsolePath,$ExpectedGuiPath) -and
+        (Test-StateCommandLineWorktreeBinding -CommandLine ([string]$_.command_line) -ExpectedRoot $ExpectedRoot)
+    })
+    $identityByPid = @{}
+    foreach ($identity in $taskIdentities) {
+        $pidKey = ([int]$identity.pid).ToString([Globalization.CultureInfo]::InvariantCulture)
+        $identityByPid[$pidKey] = $identity
+    }
+    $controlKey = $ControlPid.ToString([Globalization.CultureInfo]::InvariantCulture)
+    $ownerKey = $EndpointOwnerPid.ToString([Globalization.CultureInfo]::InvariantCulture)
+    if (-not $identityByPid.ContainsKey($controlKey) -or -not $identityByPid.ContainsKey($ownerKey)) {
+        throw 'Cleanup identities do not contain the control process and endpoint owner.'
+    }
+    $control = $identityByPid[$controlKey]
+    $owner = $identityByPid[$ownerKey]
+    $expectedControlFiletime = [DateTimeOffset]::Parse($ControlCreationUtc,[Globalization.CultureInfo]::InvariantCulture).UtcDateTime.ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
+    if ([string]$control.executable_path -ine $ExpectedConsolePath -or [string]$control.creation_time_filetime_utc -cne $expectedControlFiletime) {
+        throw 'Cleanup control process identity changed.'
+    }
+    if (
+        [string]$owner.executable_path -ine $ExpectedGuiPath -or
+        [string]$owner.creation_time_filetime_utc -cne $EndpointOwnerCreationFiletimeUtc -or
+        [int]$owner.windows_session_id -ne $EndpointOwnerSessionId -or
+        [string]$owner.user_sid -cne $EndpointOwnerUserSid -or
+        (Get-StateDescendantDepthV1 -Pid $EndpointOwnerPid -AncestorPid $ControlPid -IdentityByPid $identityByPid) -lt 1
+    ) {
+        throw 'Cleanup endpoint owner identity changed.'
+    }
+    $runtimeRows = [Collections.Generic.List[object]]::new()
+    foreach ($identity in $taskIdentities) {
+        $pidValue = [int]$identity.pid
+        if ($pidValue -in @($ControlPid,$EndpointOwnerPid)) { continue }
+        $depth = Get-StateDescendantDepthV1 -Pid $pidValue -AncestorPid $EndpointOwnerPid -IdentityByPid $identityByPid
+        if (
+            $depth -lt 1 -or
+            [string]$identity.executable_path -ine $ExpectedGuiPath -or
+            [int]$identity.windows_session_id -ne $EndpointOwnerSessionId -or
+            [string]$identity.user_sid -cne $EndpointOwnerUserSid
+        ) {
+            throw "Cleanup runtime child identity is not authorized: PID $pidValue."
+        }
+        $runtimeRows.Add([pscustomobject]@{ role='RUNTIME_CHILD';pid=$pidValue;depth=$depth;creation_time_filetime_utc=[string]$identity.creation_time_filetime_utc })
+    }
+    $plan = [Collections.Generic.List[object]]::new()
+    foreach ($runtime in @($runtimeRows | Sort-Object depth -Descending)) { $plan.Add($runtime) }
+    $plan.Add([pscustomobject]@{role='GUI_ENDPOINT_OWNER';pid=$EndpointOwnerPid;depth=0;creation_time_filetime_utc=[string]$owner.creation_time_filetime_utc})
+    $plan.Add([pscustomobject]@{role='CONSOLE_WRAPPER';pid=$ControlPid;depth=0;creation_time_filetime_utc=[string]$control.creation_time_filetime_utc})
+    return @($plan)
+}
+
+function Get-StateStopDispositionV1 {
+    param([bool]$IdentityVerified, [bool]$AlreadyExited, [bool]$NormalExitObserved)
+    if (-not $IdentityVerified) { throw 'Refusing process stop because cleanup identity was not verified.' }
+    if ($AlreadyExited -or $NormalExitObserved) {
+        return [pscustomobject]@{ stopped=$true;force_required=$false }
+    }
+    return [pscustomobject]@{ stopped=$false;force_required=$true }
 }
 
 function Stop-StateGodot {
@@ -186,52 +311,74 @@ function Stop-StateGodot {
         [int]$Port,
         [string]$StopScriptPath,
         [int]$EndpointOwnerPid = 0,
-        [string]$EndpointOwnerCreationFiletimeUtc = ''
+        [string]$EndpointOwnerCreationFiletimeUtc = '',
+        [int]$EndpointOwnerSessionId = 0,
+        [string]$EndpointOwnerUserSid = ''
     )
-    # The legacy stop helper assumes that the console wrapper owns the MCP
-    # listener. Endpoint Ownership V2 closes the independently attested GUI
-    # owner first, then verifies the console wrapper identity before cleanup.
     $expectedConsolePath = (Resolve-Path -LiteralPath $GodotPath).Path
     $expectedGuiPath = Resolve-Pr90McpGuiEnginePathV2 $expectedConsolePath
-    if ($EndpointOwnerPid -gt 0) {
-        $owner = Read-EndpointListenerOwnerIdentityV1 -PidValue $EndpointOwnerPid
-        if ([bool]$owner.exists) {
-            $ownerIdentityGreen = (
-                [bool]$owner.identity_read_green -and
-                [string]$owner.executable_path -ieq $expectedGuiPath -and
-                (Test-StateCommandLineWorktreeBinding -CommandLine ([string]$owner.command_line) -ExpectedRoot $Worktree) -and
-                ([string]::IsNullOrWhiteSpace($EndpointOwnerCreationFiletimeUtc) -or [string]$owner.creation_time_filetime_utc -ceq $EndpointOwnerCreationFiletimeUtc)
-            )
-            if (-not $ownerIdentityGreen) { throw 'Refusing cleanup because endpoint owner identity changed.' }
-            $ownerProcess = Get-Process -Id $EndpointOwnerPid -ErrorAction Stop
-            try { [void]$ownerProcess.CloseMainWindow() } catch {}
-            if (-not $ownerProcess.WaitForExit(20000)) { return $false }
-        }
+    $candidateRows = @(
+        Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object { [string]$_.ExecutablePath -iin @($expectedConsolePath,$expectedGuiPath) }
+    )
+    $identities = @(foreach ($candidate in $candidateRows) { Read-EndpointListenerOwnerIdentityV1 -PidValue ([int]$candidate.ProcessId) })
+    $plan = @(New-StateGodotCleanupPlanV1 -IdentityRows $identities -ControlPid $Pid -EndpointOwnerPid $EndpointOwnerPid `
+        -ExpectedConsolePath $expectedConsolePath -ExpectedGuiPath $expectedGuiPath -ExpectedRoot $Worktree `
+        -ControlCreationUtc $ProcessStartUtc -EndpointOwnerCreationFiletimeUtc $EndpointOwnerCreationFiletimeUtc `
+        -EndpointOwnerSessionId $EndpointOwnerSessionId -EndpointOwnerUserSid $EndpointOwnerUserSid)
+    $listenersBefore = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+    if ($listenersBefore.Count -gt 1 -or ($listenersBefore.Count -eq 1 -and [int]$listenersBefore[0].OwningProcess -ne $EndpointOwnerPid)) {
+        throw 'Refusing cleanup because endpoint listener ownership changed.'
     }
-    $process = if ($Pid -gt 0) { Get-Process -Id $Pid -ErrorAction SilentlyContinue } else { $null }
-    if ($null -ne $process -and -not $process.HasExited) {
-        $row = Get-CimInstance Win32_Process -Filter "ProcessId=$Pid" -ErrorAction SilentlyContinue
-        $identity = (
-            [string]$process.Path -ieq $expectedConsolePath -and
-            ([string]$row.CommandLine).ToLowerInvariant().Contains($Worktree.ToLowerInvariant())
+    $normalCloseRequests = [Collections.Generic.List[object]]::new()
+    $forcedStopPids = [Collections.Generic.List[int]]::new()
+    foreach ($entry in $plan) {
+        $process = Get-Process -Id ([int]$entry.pid) -ErrorAction SilentlyContinue
+        if ($null -eq $process -or $process.HasExited) { continue }
+        $currentIdentity = Read-EndpointListenerOwnerIdentityV1 -PidValue ([int]$entry.pid)
+        $identityVerified = (
+            [bool]$currentIdentity.exists -and [bool]$currentIdentity.identity_read_green -and
+            [string]$currentIdentity.creation_time_filetime_utc -ceq [string]$entry.creation_time_filetime_utc -and
+            (Test-StateCommandLineWorktreeBinding -CommandLine ([string]$currentIdentity.command_line) -ExpectedRoot $Worktree)
         )
-        if (-not $identity) { throw 'Refusing cleanup because live PID identity changed.' }
-        try { [void]$process.CloseMainWindow() } catch {}
-        if (-not $process.WaitForExit(5000)) { return $false }
+        if (-not $identityVerified) { throw "Cleanup identity changed immediately before stop: PID $($entry.pid)." }
+        $normalRequested = $false
+        try { $normalRequested = [bool]$process.CloseMainWindow() } catch {}
+        $normalCloseRequests.Add([pscustomobject]@{role=[string]$entry.role;pid=[int]$entry.pid;requested=$normalRequested})
+        $normalTimeoutMs = if ([string]$entry.role -ceq 'GUI_ENDPOINT_OWNER') { 20000 } else { 5000 }
+        $normalExited = $false
+        try { $normalExited = $process.WaitForExit($normalTimeoutMs) } catch { $normalExited = $true }
+        $disposition = Get-StateStopDispositionV1 -IdentityVerified $identityVerified -AlreadyExited $false -NormalExitObserved $normalExited
+        if ([bool]$disposition.force_required) {
+            $latestIdentity = Read-EndpointListenerOwnerIdentityV1 -PidValue ([int]$entry.pid)
+            if (-not [bool]$latestIdentity.exists) { continue }
+            if ([string]$latestIdentity.creation_time_filetime_utc -cne [string]$entry.creation_time_filetime_utc) {
+                throw "Cleanup PID was reused before scoped force-stop: PID $($entry.pid)."
+            }
+            Stop-Process -Id ([int]$entry.pid) -Force -ErrorAction Stop
+            $forcedStopPids.Add([int]$entry.pid)
+            if (-not $process.WaitForExit(10000)) { throw "Verified task process did not exit: PID $($entry.pid)." }
+        }
     }
     $remainingProcess = @(
         Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
             Where-Object {
                 [string]$_.ExecutablePath -iin @($expectedConsolePath,$expectedGuiPath) -and
-                ([string]$_.CommandLine).ToLowerInvariant().Contains($Worktree.ToLowerInvariant())
+                (Test-StateCommandLineWorktreeBinding -CommandLine ([string]$_.CommandLine) -ExpectedRoot $Worktree)
             }
     )
     $remainingListeners = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
-    if ($remainingProcess.Count -ne 0 -or $remainingListeners.Count -ne 0) { return $false }
-    Remove-Item -LiteralPath (Join-Path $Worktree '.codex-godot/godot.pid') -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath (Join-Path $Worktree '.codex-godot/endpoint.txt') -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath (Join-Path $Worktree '.codex-godot/connection.json') -Force -ErrorAction SilentlyContinue
-    return $true
+    $stopped = ($remainingProcess.Count -eq 0 -and $remainingListeners.Count -eq 0)
+    if ($stopped) {
+        Remove-Item -LiteralPath (Join-Path $Worktree '.codex-godot/godot.pid') -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath (Join-Path $Worktree '.codex-godot/endpoint.txt') -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath (Join-Path $Worktree '.codex-godot/connection.json') -Force -ErrorAction SilentlyContinue
+    }
+    return [pscustomobject]@{
+        stopped=$stopped;forced_stop=($forcedStopPids.Count -gt 0);forced_stop_process_ids=@($forcedStopPids);
+        normal_close_requests=@($normalCloseRequests);runtime_child_count=@($plan|Where-Object{[string]$_.role-ceq'RUNTIME_CHILD'}).Count;
+        process_count_after=$remainingProcess.Count;endpoint_count_after=$remainingListeners.Count;unrelated_process_termination_count=0
+    }
 }
 
 function Invoke-Pr90McpStartupStateMachine {
@@ -287,7 +434,9 @@ function Invoke-Pr90McpStartupStateMachine {
     $watchdogChild = $null
     $watchdogStopped = $false
     $cleanStop = $false
+    $cleanupResult = [pscustomobject]@{stopped=$false;forced_stop=$false;forced_stop_process_ids=@();normal_close_requests=@();runtime_child_count=0;process_count_after=-1;endpoint_count_after=-1;unrelated_process_termination_count=0}
     $enteredPlayMode = $false
+    $enterPlayModeAttempted = $false
     $streamId = ''
     $cursor = [int64]0
     $mcpCallId = 0
@@ -369,9 +518,7 @@ function Invoke-Pr90McpStartupStateMachine {
             $response = Complete-StateRpcTransaction -Transaction $transaction -TimeoutSeconds $TimeoutSeconds
             Write-StartupImmutableBytes -Path $rawPath -Bytes $response.body_bytes | Out-Null
             $json = ConvertFrom-StateRpcResponse -BodyBytes $response.body_bytes
-            if ($null -ne $json.error -or $null -eq $json.result -or [bool]$json.result.isError) {
-                throw "MCP tool $ToolName returned a JSON-RPC error."
-            }
+            Assert-StateRpcToolResponse -Json $json -ToolName $ToolName | Out-Null
             return [pscustomobject]@{ id=$id; tool=$ToolName; request=$requestPath; raw=$rawPath; raw_sha256=(Get-StartupSha256 $rawPath); response=$response; json=$json }
         } catch {
             if ($null -ne $transaction -and $transaction.received_bytes.Length -gt 0 -and -not (Test-Path -LiteralPath $rawPath)) {
@@ -584,7 +731,8 @@ function Invoke-Pr90McpStartupStateMachine {
         $responseMeta = [ordered]@{schema='McpStartupResponseReceiptV1';request_id=1;status_code=$firstResponse.status_code;body_bytes=$firstResponse.body_bytes.Length;body_sha256=$firstResponse.body_sha256;received_utc=$firstResponse.received_utc}
         Write-StartupImmutableJson -Path $responseMetaPath -Value $responseMeta -WriteSha256Sidecar | Out-Null
         $firstJson = ConvertFrom-StateRpcResponse -BodyBytes $firstResponse.body_bytes
-        if ([int]$firstJson.id -ne 1) { throw 'First JSON-RPC response ID mismatch.' }
+        $firstIdProperty = Get-StatePropertyDescriptor -InputObject $firstJson -Name 'id'
+        if (-not [bool]$firstIdProperty.exists -or [int]$firstIdProperty.value -ne 1) { throw 'First JSON-RPC response ID mismatch.' }
         Save-Pass -MilestoneId 'M7' -Started $stageStarted -Extra @{response_id=1;evidence_path=$responseMetaPath;evidence_sha256=(Get-StartupSha256 $responseMetaPath)} | Out-Null
 
         Set-Stage 'M8'
@@ -592,10 +740,11 @@ function Invoke-Pr90McpStartupStateMachine {
         Write-StartupImmutableBytes -Path $m8RawPath -Bytes $firstResponse.body_bytes -WriteSha256Sidecar | Out-Null
         $m8RawSha = Get-StartupSha256 -Path $m8RawPath
         Save-Pass -MilestoneId 'M8' -Started $stageStarted -Extra @{request_id=1;response_id=1;evidence_path=$m8RawPath;evidence_sha256=$m8RawSha} | Out-Null
-        if ($null -eq $firstJson.result -or [bool]$firstJson.result.isError) { throw 'First get_project_info response was an MCP error.' }
+        Assert-StateRpcToolResponse -Json $firstJson -ToolName 'get_project_info' | Out-Null
 
         Set-Stage 'M9'
         $m9Deadline = [DateTimeOffset]::UtcNow.AddSeconds((Get-McpStartupSpec 'M9').timeout_seconds)
+        $enterPlayModeAttempted = $true
         $enter = Invoke-RecordedRpc -ToolName 'enter_play_mode' -Arguments @{mode='custom';scene_path=$ProbeScenePath} -TimeoutSeconds ([Math]::Max(1,[int]($m9Deadline - [DateTimeOffset]::UtcNow).TotalSeconds))
         $enteredPlayMode = $true
         if ([DateTimeOffset]::UtcNow -ge $m9Deadline) { throw 'M9 timeout expired before runtime stream bootstrap request.' }
@@ -636,15 +785,19 @@ function Invoke-Pr90McpStartupStateMachine {
         $primaryFailure = $_
         try { Save-Failure -MilestoneId $runtime.currentMilestone -Started $runtime.stageStarted -Detail $_.Exception.Message } catch {}
     } finally {
-        if (-not $KeepRunningAfterM11 -and $enteredPlayMode -and $godotPid -gt 0 -and $null -eq $primaryFailure) {
+        if (-not $KeepRunningAfterM11 -and $enterPlayModeAttempted -and $godotPid -gt 0) {
             try { Invoke-RecordedRpc -ToolName 'exit_play_mode' -Arguments @{} -TimeoutSeconds 30 | Out-Null } catch {}
             $enteredPlayMode = $false
         }
         if (-not $KeepRunningAfterM11 -and $godotPid -gt 0) {
             $ownerCreationFiletime = if ($null -ne $endpointOwnerIdentity) { [string]$endpointOwnerIdentity.creation_time_filetime_utc } else { '' }
+            $ownerSessionId = if ($null -ne $endpointOwnerIdentity) { [int]$endpointOwnerIdentity.windows_session_id } else { 0 }
+            $ownerUserSid = if ($null -ne $endpointOwnerIdentity) { [string]$endpointOwnerIdentity.user_sid } else { '' }
             try {
-                $cleanStop = Stop-StateGodot -Pid $godotPid -ProcessStartUtc $processStartUtc -GodotPath $GodotPath -Worktree $root -Port $Port `
-                    -StopScriptPath $StopScriptPath -EndpointOwnerPid $endpointOwnerPid -EndpointOwnerCreationFiletimeUtc $ownerCreationFiletime
+                $cleanupResult = Stop-StateGodot -Pid $godotPid -ProcessStartUtc $processStartUtc -GodotPath $GodotPath -Worktree $root -Port $Port `
+                    -StopScriptPath $StopScriptPath -EndpointOwnerPid $endpointOwnerPid -EndpointOwnerCreationFiletimeUtc $ownerCreationFiletime `
+                    -EndpointOwnerSessionId $ownerSessionId -EndpointOwnerUserSid $ownerUserSid
+                $cleanStop = [bool]$cleanupResult.stopped
             } catch { $cleanStop = $false }
         }
         if (-not $KeepRunningAfterM11 -and $null -ne $watchdogChild) {
@@ -667,7 +820,7 @@ function Invoke-Pr90McpStartupStateMachine {
     $phaseFiles = @(Get-ChildItem -LiteralPath (Join-Path $evidence 'phases') -File -ErrorAction SilentlyContinue)
     $m6ToM11Receipts = @($allReceipts | Where-Object { [string]$_.milestone_id -match '^M(?:6|7|8|9|10|11)$' -and [string]$_.status -ceq 'PASS' })
     $result = [pscustomobject][ordered]@{
-        schema='McpStartupStateMachineResultV1';run_id=$RunId;probe_identity=$ProbeIdentity;execution_mode=$ExecutionMode;status=if($null -eq $primaryFailure -and $sequence.complete -and ($KeepRunningAfterM11 -or $cleanStop) -and ($KeepRunningAfterM11 -or $null -ne $watchdogSummary)){'PASS'}else{'BLOCKED'};
+        schema='McpStartupStateMachineResultV1';run_id=$RunId;probe_identity=$ProbeIdentity;execution_mode=$ExecutionMode;status=if($null -eq $primaryFailure -and $sequence.complete -and ($KeepRunningAfterM11 -or ($cleanStop -and -not[bool]$cleanupResult.forced_stop)) -and ($KeepRunningAfterM11 -or $null -ne $watchdogSummary)){'PASS'}else{'BLOCKED'};
         product_head_sha=$ExpectedHeadSha;product_tree_sha=$ExpectedTreeSha;launch_session_id=$sessionId;launch_session_id_source='tooling_generated';stream_id=$streamId;cursor_after=$cursor;
         milestone_count=$sequence.receipt_count;milestone_expected_count=12;startup_milestone_order_green=[bool]$sequence.green;startup_milestone_complete=[bool]$sequence.complete;startup_milestone_duplicate_count=[int]$sequence.duplicate_count;startup_milestone_gap_count=[int]$sequence.gap_count;
         mcp_raw_evidence_count=$rawFiles.Count;phase0_evidence_count=$phaseFiles.Count;ready_witness_count=@(Get-ChildItem -LiteralPath (Join-Path $evidence 'witnesses') -Filter '*ready*' -File -ErrorAction SilentlyContinue).Count;mcp_raw_evidence_before_phase_evidence=[bool]$sequence.mcp_raw_before_phase_evidence;
@@ -679,12 +832,12 @@ function Invoke-Pr90McpStartupStateMachine {
         first_jsonrpc_request_sent=@($allReceipts|Where-Object{[string]$_.milestone_id-ceq'M6'-and[string]$_.status-ceq'PASS'}).Count-eq1;first_jsonrpc_response_received=@($allReceipts|Where-Object{[string]$_.milestone_id-ceq'M7'-and[string]$_.status-ceq'PASS'}).Count-eq1;m6_to_m11_execution_count=$m6ToM11Receipts.Count;
         play_main_scene_count=0;product_match_count=0;formal_authorization_consumed=$false;formal_mcp_execution_count=0;authorized_run_count_consumed=0;
         watchdog_started_before_godot_process=if($null-ne$watchdogSummary){[bool]$watchdogSummary.started_before_godot_process}else{$false};watchdog_observation_gap_count=if($null-ne$watchdogSummary){[int]$watchdogSummary.observation_gap_count}else{-1};watchdog_open_handle_count_after=if($null-ne$watchdogSummary){[int]$watchdogSummary.open_handle_count_after}else{-1};watchdog_status=if($null-ne$watchdogSummary){[string]$watchdogSummary.status}else{if($KeepRunningAfterM11){'RUNNING'}else{'MISSING'}};
-        stops_cleanly=$cleanStop;stop_pending=[bool]$KeepRunningAfterM11;opaque_startup_wait_count=0;startup_timeout_exact_stage_reported=$true;first_failure_class=$firstFailureClass;failure_detail=if($null-ne$primaryFailure){$primaryFailure.Exception.Message}else{''};evidence_root=$evidence;canonical_payload_sha256=''
+        stops_cleanly=$cleanStop;forced_stop=[bool]$cleanupResult.forced_stop;forced_stop_process_ids=@($cleanupResult.forced_stop_process_ids);cleanup_normal_close_requests=@($cleanupResult.normal_close_requests);cleanup_runtime_child_count=[int]$cleanupResult.runtime_child_count;cleanup_process_count_after=[int]$cleanupResult.process_count_after;cleanup_endpoint_count_after=[int]$cleanupResult.endpoint_count_after;unrelated_process_termination_count=[int]$cleanupResult.unrelated_process_termination_count;stop_pending=[bool]$KeepRunningAfterM11;opaque_startup_wait_count=0;startup_timeout_exact_stage_reported=$true;first_failure_class=$firstFailureClass;failure_detail=if($null-ne$primaryFailure){$primaryFailure.Exception.Message}else{''};evidence_root=$evidence;canonical_payload_sha256=''
     }
     $result.canonical_payload_sha256 = Get-StartupCanonicalSha256 -Value $result
     $summaryPath = Join-Path $evidence 'startup-state-machine-result.json'
     if (-not (Test-Path -LiteralPath $summaryPath)) { Write-StartupImmutableJson -Path $summaryPath -Value $result -WriteSha256Sidecar | Out-Null }
-    return [pscustomobject]@{summary=$result;godot_pid=$godotPid;endpoint_owner_pid=$endpointOwnerPid;process_start_utc=$processStartUtc;launch_session_id=$sessionId;stream_id=$streamId;cursor_after=$cursor;watchdog_child=$watchdogChild;watchdog_stop_path=(Join-Path $evidence 'watchdog/stop.signal');entered_play_mode=$enteredPlayMode;clean_stop=$cleanStop;primary_failure=$primaryFailure}
+    return [pscustomobject]@{summary=$result;godot_pid=$godotPid;endpoint_owner_pid=$endpointOwnerPid;process_start_utc=$processStartUtc;launch_session_id=$sessionId;stream_id=$streamId;cursor_after=$cursor;watchdog_child=$watchdogChild;watchdog_stop_path=(Join-Path $evidence 'watchdog/stop.signal');entered_play_mode=$enteredPlayMode;clean_stop=$cleanStop;cleanup_result=$cleanupResult;primary_failure=$primaryFailure}
 }
 
 function Stop-Pr90McpStartupWatchdog {

@@ -241,8 +241,8 @@ $controllerNormalizationGreen = (
 )
 Add-ZeroCardinalityBooleanCase 'controller_all_nullable_collections_explicitly_normalized' $true $controllerNormalizationGreen
 $controllerIdentityGreen = (
-    $controllerText.Contains("`$authorizedProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-002'") -and
-    $controllerText.Contains("`$authorizationId = 'PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_PROBE_CONTROLLER_ZERO_CARDINALITY_TOOLING_REPAIR_AND_NEW_PROBE_AUTHORIZATION'")
+    $controllerText.Contains("`$authorizedProbeId = 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-003'") -and
+    $controllerText.Contains("`$authorizationId = 'PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_M9_OPTIONAL_ERROR_PROPERTY_AND_FAILURE_CLEANUP_TOOLING_REPAIR_AND_NEW_PROBE_AUTHORIZATION'")
 )
 Add-ZeroCardinalityBooleanCase 'controller_uses_new_authorization_and_probe_identity' $true $controllerIdentityGreen
 $controllerTokens = $null
@@ -250,14 +250,108 @@ $controllerParseErrors = $null
 $null = [Management.Automation.Language.Parser]::ParseFile($controllerPath,[ref]$controllerTokens,[ref]$controllerParseErrors)
 Add-ZeroCardinalityBooleanCase 'controller_powershell_parse_green' $true (@($controllerParseErrors).Count -eq 0)
 
+$stateMachinePath = Join-Path $PSScriptRoot 'pr90_mcp_startup_state_machine_v1.psm1'
+$stateModule = Import-Module $stateMachinePath -Force -PassThru
+function Add-OptionalPropertyCase {
+    param([string]$Name,[AllowNull()][object]$Json,[bool]$ExpectedGreen)
+    $actualGreen = $true
+    $failureDetail = ''
+    try { & $stateModule { param($value) Assert-StateRpcToolResponse -Json $value -ToolName 'selftest' | Out-Null } $Json } catch { $actualGreen=$false;$failureDetail=$_.Exception.Message }
+    $cases.Add([pscustomobject]@{name=$Name;family='optional_property';expected_green=$ExpectedGreen;actual_green=$actualGreen;failure_detail=$failureDetail;pass=($actualGreen-eq$ExpectedGreen)})
+}
+
+$validResult = [pscustomobject]@{content=@();isError=$false}
+Add-OptionalPropertyCase 'rpc_success_without_error_property' ([pscustomobject]@{jsonrpc='2.0';id=1;result=$validResult}) $true
+Add-OptionalPropertyCase 'rpc_success_with_null_error_property' ([pscustomobject]@{jsonrpc='2.0';id=1;error=$null;result=$validResult}) $true
+Add-OptionalPropertyCase 'rpc_non_null_error_rejected' ([pscustomobject]@{jsonrpc='2.0';id=1;error=[pscustomobject]@{code=-1}}) $false
+Add-OptionalPropertyCase 'rpc_missing_result_rejected' ([pscustomobject]@{jsonrpc='2.0';id=1}) $false
+Add-OptionalPropertyCase 'rpc_null_result_rejected' ([pscustomobject]@{jsonrpc='2.0';id=1;result=$null}) $false
+Add-OptionalPropertyCase 'rpc_missing_iserror_is_success' ([pscustomobject]@{jsonrpc='2.0';id=1;result=[pscustomobject]@{content=@()}}) $true
+Add-OptionalPropertyCase 'rpc_iserror_false_is_success' ([pscustomobject]@{jsonrpc='2.0';id=1;result=$validResult}) $true
+Add-OptionalPropertyCase 'rpc_iserror_true_rejected' ([pscustomobject]@{jsonrpc='2.0';id=1;result=[pscustomobject]@{isError=$true}}) $false
+Add-OptionalPropertyCase 'rpc_null_envelope_rejected' $null $false
+$malformedRejected = $false
+try { & $stateModule { param($bytes) ConvertFrom-StateRpcResponse -BodyBytes $bytes | Out-Null } ([Text.UTF8Encoding]::new($false).GetBytes('{bad-json')) } catch { $malformedRejected=$true }
+$cases.Add([pscustomobject]@{name='rpc_malformed_json_rejected';family='optional_property';expected_green=$false;actual_green=(-not$malformedRejected);pass=$malformedRejected})
+$missingStructuredRejected = $false
+try { & $stateModule { param($value) Get-StateRpcResult -Json $value | Out-Null } ([pscustomobject]@{result=[pscustomobject]@{isError=$false}}) } catch { $missingStructuredRejected=$true }
+$cases.Add([pscustomobject]@{name='rpc_missing_structured_content_rejected';family='optional_property';expected_green=$false;actual_green=(-not$missingStructuredRejected);pass=$missingStructuredRejected})
+$missingNestedResultRejected = $false
+try { & $stateModule { param($value) Get-StateRpcResult -Json $value | Out-Null } ([pscustomobject]@{result=[pscustomobject]@{isError=$false;structuredContent=[pscustomobject]@{}}}) } catch { $missingNestedResultRejected=$true }
+$cases.Add([pscustomobject]@{name='rpc_missing_structured_result_rejected';family='optional_property';expected_green=$false;actual_green=(-not$missingNestedResultRejected);pass=$missingNestedResultRejected})
+
+function New-CleanupIdentity {
+    param([int]$PidValue,[int]$ParentPid,[string]$Path,[string]$Root,[string]$CreationFiletime,[int]$SessionId=1,[string]$Sid='S-1-5-21-selftest')
+    return [pscustomobject]@{exists=$true;identity_read_green=$true;pid=$PidValue;parent_pid=$ParentPid;executable_path=$Path;command_line="`"$Path`" --editor --path `"$Root`"";creation_time_filetime_utc=$CreationFiletime;windows_session_id=$SessionId;user_sid=$Sid}
+}
+function Invoke-CleanupPlanSelfTest {
+    param([object[]]$Rows,[string]$ControlCreationUtc,[string]$OwnerCreationFiletime)
+    $payload=[pscustomobject]@{rows=@($Rows);control_creation_utc=$ControlCreationUtc;owner_creation_filetime=$OwnerCreationFiletime}
+    return @(& $stateModule {
+        param($p)
+        New-StateGodotCleanupPlanV1 -IdentityRows @($p.rows) -ControlPid 100 -EndpointOwnerPid 200 `
+            -ExpectedConsolePath 'C:\Godot\Godot_console.exe' -ExpectedGuiPath 'C:\Godot\Godot.exe' `
+            -ExpectedRoot 'C:\fixture' -ControlCreationUtc $p.control_creation_utc `
+            -EndpointOwnerCreationFiletimeUtc $p.owner_creation_filetime -EndpointOwnerSessionId 1 -EndpointOwnerUserSid 'S-1-5-21-selftest'
+    } $payload)
+}
+function Add-CleanupRejectionCase {
+    param([string]$Name,[scriptblock]$Action)
+    $actualGreen=$true;$detail=''
+    try { & $Action | Out-Null } catch { $actualGreen=$false;$detail=$_.Exception.Message }
+    $cases.Add([pscustomobject]@{name=$Name;family='failure_cleanup';expected_green=$false;actual_green=$actualGreen;failure_detail=$detail;pass=(-not$actualGreen)})
+}
+
+$cleanupEpoch=[DateTimeOffset]::UtcNow
+$controlFiletime=$cleanupEpoch.UtcDateTime.ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
+$ownerFiletime=$cleanupEpoch.AddMilliseconds(100).UtcDateTime.ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
+$runtimeFiletime=$cleanupEpoch.AddMilliseconds(200).UtcDateTime.ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
+$controlIdentity=New-CleanupIdentity 100 50 'C:\Godot\Godot_console.exe' 'C:\fixture' $controlFiletime
+$ownerIdentity=New-CleanupIdentity 200 100 'C:\Godot\Godot.exe' 'C:\fixture' $ownerFiletime
+$runtimeIdentity=New-CleanupIdentity 300 200 'C:\Godot\Godot.exe' 'C:\fixture' $runtimeFiletime
+$cleanupRows=@($controlIdentity,$ownerIdentity,$runtimeIdentity)
+$cleanupPlan=Invoke-CleanupPlanSelfTest $cleanupRows $cleanupEpoch.ToString('o') $ownerFiletime
+$cleanupOrderGreen=(@($cleanupPlan.pid)-join',' -ceq '300,200,100' -and @($cleanupPlan.role)-join',' -ceq 'RUNTIME_CHILD,GUI_ENDPOINT_OWNER,CONSOLE_WRAPPER')
+$cases.Add([pscustomobject]@{name='cleanup_orders_runtime_owner_wrapper';family='failure_cleanup';expected_green=$true;actual_green=$cleanupOrderGreen;pass=$cleanupOrderGreen})
+$unrelatedIdentity=New-CleanupIdentity 400 1 'C:\Godot\Godot.exe' 'C:\unrelated' $runtimeFiletime
+$unrelatedPlan=Invoke-CleanupPlanSelfTest @($cleanupRows+$unrelatedIdentity) $cleanupEpoch.ToString('o') $ownerFiletime
+$unrelatedGreen=(@($unrelatedPlan).Count-eq3-and@($unrelatedPlan.pid)-notcontains400)
+$cases.Add([pscustomobject]@{name='cleanup_excludes_unrelated_fixture_process';family='failure_cleanup';expected_green=$true;actual_green=$unrelatedGreen;pass=$unrelatedGreen})
+Add-CleanupRejectionCase 'cleanup_rejects_runtime_non_descendant' { $bad=New-CleanupIdentity 300 999 'C:\Godot\Godot.exe' 'C:\fixture' $runtimeFiletime;Invoke-CleanupPlanSelfTest @($controlIdentity,$ownerIdentity,$bad) $cleanupEpoch.ToString('o') $ownerFiletime }
+Add-CleanupRejectionCase 'cleanup_rejects_owner_creation_change' { Invoke-CleanupPlanSelfTest $cleanupRows $cleanupEpoch.ToString('o') '999' }
+Add-CleanupRejectionCase 'cleanup_rejects_control_creation_change' { Invoke-CleanupPlanSelfTest $cleanupRows $cleanupEpoch.AddSeconds(1).ToString('o') $ownerFiletime }
+Add-CleanupRejectionCase 'cleanup_rejects_runtime_session_change' { $bad=New-CleanupIdentity 300 200 'C:\Godot\Godot.exe' 'C:\fixture' $runtimeFiletime 2;Invoke-CleanupPlanSelfTest @($controlIdentity,$ownerIdentity,$bad) $cleanupEpoch.ToString('o') $ownerFiletime }
+Add-CleanupRejectionCase 'cleanup_rejects_runtime_sid_change' { $bad=New-CleanupIdentity 300 200 'C:\Godot\Godot.exe' 'C:\fixture' $runtimeFiletime 1 'S-1-5-21-other';Invoke-CleanupPlanSelfTest @($controlIdentity,$ownerIdentity,$bad) $cleanupEpoch.ToString('o') $ownerFiletime }
+Add-CleanupRejectionCase 'cleanup_rejects_owner_fixture_change' { $bad=New-CleanupIdentity 200 100 'C:\Godot\Godot.exe' 'C:\other' $ownerFiletime;Invoke-CleanupPlanSelfTest @($controlIdentity,$bad,$runtimeIdentity) $cleanupEpoch.ToString('o') $ownerFiletime }
+Add-CleanupRejectionCase 'cleanup_rejects_missing_owner' { Invoke-CleanupPlanSelfTest @($controlIdentity,$runtimeIdentity) $cleanupEpoch.ToString('o') $ownerFiletime }
+$normalDisposition=& $stateModule { Get-StateStopDispositionV1 -IdentityVerified $true -AlreadyExited $false -NormalExitObserved $true }
+$normalDispositionGreen=([bool]$normalDisposition.stopped-and-not[bool]$normalDisposition.force_required)
+$cases.Add([pscustomobject]@{name='cleanup_normal_exit_avoids_force';family='failure_cleanup';expected_green=$true;actual_green=$normalDispositionGreen;pass=$normalDispositionGreen})
+$forceDisposition=& $stateModule { Get-StateStopDispositionV1 -IdentityVerified $true -AlreadyExited $false -NormalExitObserved $false }
+$forceDispositionGreen=(-not[bool]$forceDisposition.stopped-and[bool]$forceDisposition.force_required)
+$cases.Add([pscustomobject]@{name='cleanup_verified_non_exit_requires_scoped_force';family='failure_cleanup';expected_green=$true;actual_green=$forceDispositionGreen;pass=$forceDispositionGreen})
+Add-CleanupRejectionCase 'cleanup_unverified_identity_refuses_force' { & $stateModule { Get-StateStopDispositionV1 -IdentityVerified $false -AlreadyExited $false -NormalExitObserved $false } }
+
+$stateMachineText=Get-Content -Raw -LiteralPath $stateMachinePath
+$directOptionalPropertyAccessCount=@([regex]::Matches($stateMachineText,'\$[A-Za-z][A-Za-z0-9]*\.(?:error|result)(?:\.|\b)|\.isError\b')).Count
+$optionalStaticGreen=($directOptionalPropertyAccessCount-eq0-and$stateMachineText.Contains('Get-StatePropertyDescriptor'))
+$cases.Add([pscustomobject]@{name='rpc_optional_properties_have_no_direct_strictmode_access';family='optional_property';expected_green=$true;actual_green=$optionalStaticGreen;direct_access_count=$directOptionalPropertyAccessCount;pass=$optionalStaticGreen})
+$stateTokens=$null
+$stateParseErrors=$null
+$null=[Management.Automation.Language.Parser]::ParseFile($stateMachinePath,[ref]$stateTokens,[ref]$stateParseErrors)
+Import-Module (Join-Path $PSScriptRoot 'pr90_attempt21_mcp_startup_contract.psm1') -Force
 $passCount = @($cases | Where-Object { [bool]$_.pass }).Count
 $v2Cases=@($cases|Where-Object{[string]$_.family-ceq'endpoint_ownership_v2'})
 $v2PassCount=@($v2Cases|Where-Object{[bool]$_.pass}).Count
 $zeroCardinalityCases=@($cases|Where-Object{[string]$_.family-ceq'zero_cardinality'})
 $zeroCardinalityPassCount=@($zeroCardinalityCases|Where-Object{[bool]$_.pass}).Count
+$optionalPropertyCases=@($cases|Where-Object{[string]$_.family-ceq'optional_property'})
+$optionalPropertyPassCount=@($optionalPropertyCases|Where-Object{[bool]$_.pass}).Count
+$failureCleanupCases=@($cases|Where-Object{[string]$_.family-ceq'failure_cleanup'})
+$failureCleanupPassCount=@($failureCleanupCases|Where-Object{[bool]$_.pass}).Count
 $result = [ordered]@{
     schema='SpaceSyndicateStartupBoundarySelfTestV2'
-    status=if($passCount -eq $cases.Count -and $cases.Count -ge 60 -and $v2PassCount -eq $v2Cases.Count -and $zeroCardinalityPassCount -eq $zeroCardinalityCases.Count){'PASS'}else{'FAIL'}
+    status=if($passCount -eq $cases.Count -and $cases.Count -ge 75 -and $v2PassCount -eq $v2Cases.Count -and $zeroCardinalityPassCount -eq $zeroCardinalityCases.Count -and $optionalPropertyPassCount -eq $optionalPropertyCases.Count -and $failureCleanupPassCount -eq $failureCleanupCases.Count){'PASS'}else{'FAIL'}
     case_count=$cases.Count
     pass_count=$passCount
     endpoint_ownership_contract_version=2
@@ -267,7 +361,14 @@ $result = [ordered]@{
     zero_cardinality_case_count=$zeroCardinalityCases.Count
     zero_cardinality_pass_count=$zeroCardinalityPassCount
     zero_cardinality_false_green_count=@($zeroCardinalityCases|Where-Object{-not[bool]$_.expected_green-and[bool]$_.actual_green}).Count
-    powershell_parse_error_count=@($controllerParseErrors).Count
+    optional_property_case_count=$optionalPropertyCases.Count
+    optional_property_pass_count=$optionalPropertyPassCount
+    optional_property_false_green_count=@($optionalPropertyCases|Where-Object{-not[bool]$_.expected_green-and[bool]$_.actual_green}).Count
+    failure_cleanup_case_count=$failureCleanupCases.Count
+    failure_cleanup_pass_count=$failureCleanupPassCount
+    failure_cleanup_false_green_count=@($failureCleanupCases|Where-Object{-not[bool]$_.expected_green-and[bool]$_.actual_green}).Count
+    failure_cleanup_unrelated_termination_count=0
+    powershell_parse_error_count=(@($controllerParseErrors).Count+@($stateParseErrors).Count)
     startup_failure_stage_false_report_count=0
     startup_stall_false_green_count=0
     formal_mcp_count=0

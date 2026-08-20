@@ -21,8 +21,8 @@ if (@(& git -C $root status --porcelain=v1 --untracked-files=all).Count -ne 0) {
 $toolingHead = (& git -C $root rev-parse HEAD).Trim()
 $toolingTree = (& git -C $root rev-parse 'HEAD^{tree}').Trim()
 if ($toolingHead -notmatch '^[0-9a-f]{40}$' -or $toolingTree -notmatch '^[0-9a-f]{40}$') { throw 'Tooling git identity is invalid.' }
-$baseToolingHead = '073b3c3d92de7d17086cc4d40c06f1ef8d13b811'
-$baseToolingTree = 'cecabaadf5bdb4b79234bd1b31586a89742ddb54'
+$baseToolingHead = '06cb058c7c4b5d6c2b71df09790a8874cb093364'
+$baseToolingTree = '90dde536e9805fff59ed2f3061ca5a1a402a4089'
 $toolingParent = (& git -C $root rev-parse 'HEAD^').Trim()
 $newToolingCommitCount = [int](& git -C $root rev-list --count "$baseToolingHead..HEAD")
 if ($toolingParent -cne $baseToolingHead -or $newToolingCommitCount -ne 1 -or (& git -C $root rev-parse "$baseToolingHead^{tree}").Trim() -cne $baseToolingTree) { throw 'Tooling is not the single authorized child of the frozen base identity.' }
@@ -74,11 +74,11 @@ $files = @(
     }
 )
 $specs = @(Get-McpStartupMilestoneSpecs)
-$newProbeEvidence = ([string]$probe.probe_id -ceq 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-002')
+$newProbeEvidence = ([string]$probe.probe_id -ceq 'pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-003')
 $newProbeExecutionCount = if ($newProbeEvidence) { [int]$probe.post_repair_probe_execution_count } else { 0 }
 $probePass = (
     [string]$probe.status -ceq 'PASS' -and $newProbeEvidence -and [int]$probe.post_repair_probe_execution_count -eq 1 -and
-    [int]$probe.new_probe_execution_count -eq 1 -and -not [bool]$probe.automatic_retry_allowed -and -not [bool]$probe.second_new_probe_created -and
+    [int]$probe.new_probe_execution_count -eq 1 -and [int]$probe.cumulative_post_repair_probe_execution_count -eq 3 -and -not [bool]$probe.automatic_retry_allowed -and -not [bool]$probe.second_new_probe_created -and
     [int]$probe.milestone_count -eq 12 -and [bool]$probe.startup_milestone_complete -and [bool]$probe.startup_milestone_order_green -and [bool]$probe.stops_cleanly -and
     [bool]$probe.endpoint_ownership_contract_v2_implemented -and [int]$probe.endpoint_ownership_contract_version -eq 2 -and
     [int]$probe.total_listener_sample_count -ge 5 -and [int]$probe.consecutive_parity_sample_count -ge 3 -and [double]$probe.endpoint_owner_stable_window_ms -ge 1000 -and
@@ -93,11 +93,14 @@ $probePass = (
     -not [bool]$probe.forced_stop -and [int]$probe.godot_process_count_after -eq 0 -and [int]$probe.port_7576_count_after -eq 0 -and [int]$probe.port_7586_count_after -eq 0 -and [int]$probe.unrelated_process_termination_count -eq 0
 )
 $selftestPass = (
-    [string]$selftest.status -ceq 'PASS' -and [int]$selftest.case_count -ge 60 -and [int]$selftest.pass_count -eq [int]$selftest.case_count -and
+    [string]$selftest.status -ceq 'PASS' -and [int]$selftest.case_count -ge 75 -and [int]$selftest.pass_count -eq [int]$selftest.case_count -and
     [int]$selftest.endpoint_ownership_contract_version -eq 2 -and [int]$selftest.endpoint_ownership_v2_case_count -ge 15 -and
     [int]$selftest.endpoint_ownership_v2_pass_count -eq [int]$selftest.endpoint_ownership_v2_case_count -and [int]$selftest.endpoint_ownership_v2_false_green_count -eq 0 -and
     [int]$selftest.zero_cardinality_case_count -ge 13 -and [int]$selftest.zero_cardinality_pass_count -eq [int]$selftest.zero_cardinality_case_count -and
-    [int]$selftest.zero_cardinality_false_green_count -eq 0 -and [int]$selftest.powershell_parse_error_count -eq 0 -and
+    [int]$selftest.zero_cardinality_false_green_count -eq 0 -and
+    [int]$selftest.optional_property_case_count -ge 12 -and [int]$selftest.optional_property_pass_count -eq [int]$selftest.optional_property_case_count -and [int]$selftest.optional_property_false_green_count -eq 0 -and
+    [int]$selftest.failure_cleanup_case_count -ge 12 -and [int]$selftest.failure_cleanup_pass_count -eq [int]$selftest.failure_cleanup_case_count -and [int]$selftest.failure_cleanup_false_green_count -eq 0 -and [int]$selftest.failure_cleanup_unrelated_termination_count -eq 0 -and
+    [int]$selftest.powershell_parse_error_count -eq 0 -and
     [int]$selftest.startup_failure_stage_false_report_count -eq 0 -and [int]$selftest.startup_stall_false_green_count -eq 0
 )
 $probeBReady = ($probePass -and $selftestPass)
@@ -107,8 +110,8 @@ $manifest = [ordered]@{
     authorization_eligible=$false
     startup_probe_b_authorization_eligible=$probeBReady
     ready_for_new_exact_sha_mcp_authorization=$false
-    authorization_id='PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_PROBE_CONTROLLER_ZERO_CARDINALITY_TOOLING_REPAIR_AND_NEW_PROBE_AUTHORIZATION'
-    authorized_post_repair_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-002'
+    authorization_id='PR90_MCP_ENDPOINT_OWNERSHIP_V2_POST_REPAIR_M9_OPTIONAL_ERROR_PROPERTY_AND_FAILURE_CLEANUP_TOOLING_REPAIR_AND_NEW_PROBE_AUTHORIZATION'
+    authorized_post_repair_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-003'
     authorized_post_repair_probe_count=1
     authorized_new_probe_count=1
     new_probe_execution_count=$newProbeExecutionCount
@@ -121,12 +124,14 @@ $manifest = [ordered]@{
     base_tooling_head_sha=$baseToolingHead
     base_tooling_tree_sha=$baseToolingTree
     new_tooling_commit_count=$newToolingCommitCount
-    frozen_failed_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-001'
+    frozen_failed_probe_id='pr90-mcp-endpoint-ownership-v2-post-repair-m0-m11-002'
     frozen_failed_probe_execution_count=1
-    frozen_failed_probe_failure_evidence_sha256='428d2bb920d03f028fe1b87f2d8d3dda3ff515e842ee98a03019a0a943827d47'
-    frozen_failed_probe_terminal_manifest_sha256='d576d29aeedf4752c30cb1b4e6b3a2e615f00e16eb6dc54de18eb30a2563c64c'
-    frozen_failed_probe_result_sha256='3e8966fe1f37f505850b5017806861dd979dff4c65f5e8c9a28ade63df109e6c'
-    frozen_failed_probe_attestation_sha256='8847a47a7ef1d342705c06eaaee58b8a8ff982dc044a68d4daaa5c1cb9a1dd13'
+    frozen_failed_probe_failure_evidence_sha256='0603603b7266dd6c3eaefad2cd1b44d3433feb59d31262f540ad4b4de6159e82'
+    frozen_failed_probe_terminal_manifest_sha256='a06d126cbe8d332a504345f56da8499b61bb1a4cf20bb6593d09802b27769e07'
+    frozen_failed_probe_result_sha256='fb16f15aee696abaff486c7af1111c2220d1fa35c718cf77ea3b3d3cfc5778b2'
+    frozen_failed_probe_attestation_sha256='cffae8eafc2f2100c96e48dce6780f11a6bdca17e399ea2ad1f311d506708a96'
+    frozen_failed_probe_cleanup_sha256='54369ba69f7f551a701df5a549c45d1c5815ee0cb0f0e5ef7e1750c997da0f06'
+    frozen_failed_probe_enter_play_mode_raw_sha256='85b67a9d08541358c69f4874835acd69a39aa974db53cb5444d6ad120a7141fd'
     frozen_attempt_id='PR90_ATTEMPT20_EXACT_SHA_MCP'
     frozen_tooling_head_sha='657febd3a044b9040f629a98a1b9069d05a35d6a'
     frozen_tooling_tree_sha='da1fd8dfc750b5915ce67e3c7342ff2f014cb08b'
@@ -158,6 +163,13 @@ $manifest = [ordered]@{
     zero_cardinality_selftest_case_count=[int]$selftest.zero_cardinality_case_count
     zero_cardinality_selftest_pass_count=[int]$selftest.zero_cardinality_pass_count
     zero_cardinality_false_green_count=[int]$selftest.zero_cardinality_false_green_count
+    optional_property_selftest_case_count=[int]$selftest.optional_property_case_count
+    optional_property_selftest_pass_count=[int]$selftest.optional_property_pass_count
+    optional_property_false_green_count=[int]$selftest.optional_property_false_green_count
+    failure_cleanup_selftest_case_count=[int]$selftest.failure_cleanup_case_count
+    failure_cleanup_selftest_pass_count=[int]$selftest.failure_cleanup_pass_count
+    failure_cleanup_false_green_count=[int]$selftest.failure_cleanup_false_green_count
+    failure_cleanup_unrelated_termination_count=[int]$selftest.failure_cleanup_unrelated_termination_count
     powershell_parse_error_count=[int]$selftest.powershell_parse_error_count
     startup_failure_stage_false_report_count=[int]$selftest.startup_failure_stage_false_report_count
     startup_stall_false_green_count=[int]$selftest.startup_stall_false_green_count
