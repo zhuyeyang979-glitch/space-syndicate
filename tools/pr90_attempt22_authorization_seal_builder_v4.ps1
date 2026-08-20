@@ -1,0 +1,26 @@
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true)][string]$ManifestPath,
+    [Parameter(Mandatory = $true)][string]$ValidationReceiptPath,
+    [Parameter(Mandatory = $true)][string]$OutputPath,
+    [Parameter(Mandatory = $true)][string]$OutputMarkdownPath,
+    [Parameter(Mandatory = $true)][string]$AuthorizationRequestPath,
+    [Parameter(Mandatory = $true)][string]$FastReleasePromptPath
+)
+$ErrorActionPreference='Stop'
+Set-StrictMode -Version Latest
+Import-Module (Join-Path $PSScriptRoot 'pr90_probe_b_attempt22_contract_v1.psm1') -Force
+if(-not(Test-Pr90ProbeBShaSidecar $ManifestPath "$ManifestPath.sha256")-or-not(Test-Pr90ProbeBShaSidecar $ValidationReceiptPath "$ValidationReceiptPath.sha256")){throw 'Attempt 22 manifest or validation sidecar mismatch.'}
+$manifest=Get-Content -Raw -LiteralPath $ManifestPath|ConvertFrom-Json -Depth 100
+$validation=Get-Content -Raw -LiteralPath $ValidationReceiptPath|ConvertFrom-Json -Depth 100
+if([string]$validation.status-cne'PASS'-or[string]$validation.manifest_sha256-cne(Get-Pr90ProbeBSha256 $ManifestPath)-or[int]$validation.field_mismatch_count-ne0-or[int]$validation.missing_field_count-ne0-or[int]$validation.unexpected_field_count-ne0-or[int]$validation.declared_field_count-ne[int]$validation.validated_field_count){throw 'Attempt 22 validation is not an exact PASS.'}
+$seal=[pscustomobject][ordered]@{schema='Pr90Attempt22AuthorizationSealV4';status='SEALED';created_at_utc=[DateTimeOffset]::UtcNow.ToString('o');authorization_id=[string]$manifest.authorization_id;authorized_run_id=[string]$manifest.authorized_run_id;product_head_sha=[string]$manifest.product_head_sha;product_tree_sha=[string]$manifest.product_tree_sha;tooling_head_sha=[string]$manifest.tooling_head_sha;tooling_tree_sha=[string]$manifest.tooling_tree_sha;import_runner_sha256=[string]$manifest.import_runner_sha256;manifest_path=[IO.Path]::GetFullPath($ManifestPath);manifest_sha256=Get-Pr90ProbeBSha256 $ManifestPath;validation_receipt_path=[IO.Path]::GetFullPath($ValidationReceiptPath);validation_receipt_sha256=Get-Pr90ProbeBSha256 $ValidationReceiptPath;authorized_run_count=1;automatic_retry_allowed=$false;formal_mcp_execution_count=0;authorized_run_count_consumed=0;canonical_payload_sha256=''}
+$seal.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $seal
+Write-Pr90ProbeBImmutableJson -Path $OutputPath -Value $seal -WriteSha256Sidecar|Out-Null
+$md="# PR #90 Attempt 22 Authorization Seal`n`n- Status: SEALED`n- Authorization: $($seal.authorization_id)`n- Run: $($seal.authorized_run_id)`n- Product: $($seal.product_head_sha) / $($seal.product_tree_sha)`n- Tooling: $($seal.tooling_head_sha) / $($seal.tooling_tree_sha)`n- Automatic retry: false`n- Formal MCP executed: 0"
+Write-Pr90ProbeBImmutableText -Path $OutputMarkdownPath -Text $md|Out-Null
+$request="# PR #90 Attempt 22 Exact-SHA MCP Authorization Request`n`nAUTHORIZED_RUN_ID=$($manifest.authorized_run_id)`nPRODUCT_HEAD_SHA=$($manifest.product_head_sha)`nPRODUCT_TREE_SHA=$($manifest.product_tree_sha)`nTOOLING_HEAD_SHA=$($manifest.tooling_head_sha)`nTOOLING_TREE_SHA=$($manifest.tooling_tree_sha)`nTOOLING_MANIFEST_SHA256=$($manifest.tooling_manifest_sha256)`nTOOLING_SEAL_SHA256=$($manifest.tooling_seal_sha256)`nNEW_TOOLING_HEAD_SHA=$($manifest.tooling_head_sha)`nNEW_TOOLING_TREE_SHA=$($manifest.tooling_tree_sha)`nNEW_TOOLING_MANIFEST_SHA256=$($manifest.tooling_manifest_sha256)`nNEW_TOOLING_SEAL_SHA256=$($manifest.tooling_seal_sha256)`nPROBE004_RESULT_SHA256=$($manifest.probe004_result_sha256)`nPROBE004_ATTESTATION_SHA256=$($manifest.probe004_attestation_sha256)`nPROBE_B_RESULT_SHA256=$($manifest.probe_b_result_sha256)`nPROBE_B_ATTESTATION_SHA256=$($manifest.probe_b_attestation_sha256)`nPREFORMAL_DRY_RUN_SHA256=$($manifest.preformal_dry_run_sha256)`nFORMAL_GATE_1_79_RECEIPT_SHA256=$($manifest.formal_gate_1_79_receipt_sha256)`nSEALED_BASELINE_SHA256=$($manifest.sealed_baseline_sha256)`nCLASS_CACHE_SHA256=$($manifest.class_cache_sha256)`nIMPORT_PASS1_MANIFEST_SHA256=$($manifest.import_pass1_manifest_sha256)`nIMPORT_PASS2_MANIFEST_SHA256=$($manifest.import_pass2_manifest_sha256)`nIMPORT_FINALIZER_DRY_RUN_SHA256=$($manifest.import_finalizer_dry_run_evidence_sha256)`nGODOT_EXECUTABLE_SHA256=$($manifest.godot_executable_sha256)`nATTEMPT22_AUTHORIZATION_MANIFEST_SHA256=$(Get-Pr90ProbeBSha256 $ManifestPath)`nATTEMPT22_AUTHORIZATION_SEAL_SHA256=$(Get-Pr90ProbeBSha256 $OutputPath)`n`nAUTHORIZED_NEW_EXACT_SHA_MCP_RUN_COUNT=1`nAUTHORIZED_EXACT_SHA_MCP_COUNT=1`nAUTOMATIC_RETRY_ALLOWED=false`nFORMAL_MCP_EXECUTION_COUNT=0`nAUTHORIZED_RUN_COUNT_CONSUMED=0"
+Write-Pr90ProbeBImmutableText -Path $AuthorizationRequestPath -Text $request|Out-Null
+$fast="# Post-Attempt22 Fast Release Chain (Not Authorized Here)`n`nAfter an explicitly authorized Exact-SHA MCP PASS, request separate authority for: Viewport; 64 Seed Presentation Parity; Headless Matrix; Product 2,000; PR #90 merge; V0.7.6 Detached POC A.`n`nCURRENT_TASK_EXECUTION_COUNT_FOR_ALL_LISTED_STAGES=0"
+Write-Pr90ProbeBImmutableText -Path $FastReleasePromptPath -Text $fast|Out-Null
+$seal|ConvertTo-Json -Depth 100 -Compress
