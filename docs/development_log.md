@@ -9267,3 +9267,62 @@ deleted. Evidence and the remaining action inventory are recorded in
   exact-SHA MCP, three desktop-size captures, and the Ready transition remain
   external post-freeze gates and are intentionally not claimed by this tracked
   log entry.
+
+## V0.7.6 Stage 2 shared half-edge spherical partition
+
+- Added an isolated pure-integer level-2 icosahedron topology with explicit
+  directed `next`/`previous`/`twin` half-edges, a canonical topology seal,
+  reciprocal face-cycle and endpoint-continuity checks, and closed-sphere Euler
+  validation. Float/Vector geometry remains outside gameplay authority.
+- Added deterministic integer graph-distance seed placement and multi-source
+  partitioning with independent `SIMPLE`/`STANDARD`/`COMPLEX` positive integer
+  edge-cost profiles. Positive region counts are accepted through the natural
+  320-face capacity; 6/8/12/16/20/24/30 remains the release acceptance matrix,
+  while focused gates also prove 31/32 acceptance and 321 rejection. The
+  projection binds topology identity, shape complexity, exact ownership,
+  connected membership, symmetric adjacency, canonical directed boundary
+  cycles, shared twin pairs, and the independent `map.partition` Domain RNG
+  cursor.
+- Added deterministic Land/Ocean authority for every region and all 320 faces,
+  plus replay-safe continent, bay, peninsula, strait, and archipelago facts.
+  The validator independently regenerates terrain and the complete canonical
+  partition; re-signed terrain, complexity, RNG, or synchronized derived-data
+  mutation fails closed.
+- Integrated the map domain through the V0.7.6 Stage 1 Script-only fresh reducer
+  contract with atomic command execution, closed authority state, snapshot,
+  and semantic replay support.
+- Added focused tests, a true 2,000-distinct-seed gate with fresh same-seed
+  parity, and an editable Godot MCP Bench scene. Stage 2 does not modify or cut
+  over `project.godot`, `main.tscn`, V0.7.5 composition, V0.7.4 runtime/map
+  ownership, or presentation.
+- Godot 4.7 verification passes the focused gate across the full 21-case
+  count/complexity matrix and the Stage 2 gate with 2,000 distinct seeds plus
+  2,000 fresh same-seed regenerations. Generation, validation, partition replay,
+  terrain replay, and float-authority counts are all zero. Complexity
+  distribution is `667/667/666`; aggregate terrain evidence contains 1,986
+  continents, 8,585 bays, 7,364 peninsulas, 9,096 straits, and 574
+  archipelagos. The final focused gate passes `90/90`; Stage 1 remains `57/57`
+  with `2000/0` replay parity.
+- The Debug Sphere binds topology SHA
+  `5cbd98e4027bc2cfd058c857e1a24a5f7c8c61291f1cb7ae7336bcf6851f6452`
+  and presentation mapping SHA
+  `01bdd9e9a5cbda0fd036c649b223ef8fa5bcdfd5c9dc51bad83b91199ef14959`.
+  Exact presentation vertex/face identity and order are required before V0.7.6
+  IDs index V0.7.4 float arrays. The legacy full smoke remains disclosed at its
+  pre-existing QA-save isolation oracle; no retired production compatibility
+  path was restored for this isolated stage.
+- Hardened validator identity beyond shape/topology checks. It now replays the
+  exact Domain RNG root/domain/draw cursor and state, then rebuilds the complete
+  canonical partition. Re-signed RNG-state mutation and synchronized
+  seed/owner/membership/adjacency/boundary mutation both fail closed.
+- Expanded the Bench into a real isolated Debug Sphere with three
+  `MeshInstance3D` nodes and one `Camera3D`. Godot input drives drag rotation,
+  wheel zoom, camera-ray spherical-triangle hit-testing with smallest-face-ID
+  edge ties, selected-region face highlighting, and authority-derived shared
+  boundary lines. Land and Ocean use distinct palettes; HUD and receipts expose
+  complexity, terrain coverage, five feature counts, mapping parity, and
+  interaction evidence. The final Godot MCP run records real rotation, zoom,
+  spherical hit selection and 20-face highlight; it captures a 1600x960 PNG,
+  completes the full 2,000-seed gate, and cleanly stops with empty runtime and
+  final error arrays. Presentation float geometry remains excluded from
+  authority and production composition remains untouched.
