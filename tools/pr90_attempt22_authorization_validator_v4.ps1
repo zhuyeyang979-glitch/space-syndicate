@@ -47,20 +47,31 @@ $pairs=@(
     @('tooling_manifest_path','tooling_manifest_sha256'),@('tooling_seal_path','tooling_seal_sha256'),@('probe004_result_path','probe004_result_sha256'),@('probe004_attestation_path','probe004_attestation_sha256'),
     @('probe_b_result_path','probe_b_result_sha256'),@('probe_b_attestation_path','probe_b_attestation_sha256'),@('probe_b_recovery_receipt_path','probe_b_recovery_receipt_sha256'),@('probe_b_frozen_input_inventory_path','probe_b_frozen_input_inventory_sha256'),@('probe_b_execution_start_path','probe_b_execution_start_sha256'),@('probe_b_execution_config_path','probe_b_execution_config_sha256'),@('probe_b_finalizer_result_path','probe_b_finalizer_result_sha256'),@('preformal_dry_run_path','preformal_dry_run_sha256'),@('listener_forensics_path','listener_forensics_sha256'),
     @('sealed_baseline_path','sealed_baseline_sha256'),@('class_cache_path','class_cache_sha256'),@('import_pass1_manifest_path','import_pass1_manifest_sha256'),
-    @('import_pass2_manifest_path','import_pass2_manifest_sha256'),@('import_finalizer_dry_run_path','import_finalizer_dry_run_evidence_sha256'),@('formal_gate_1_79_receipt_path','formal_gate_1_79_receipt_sha256'),@('godot_path','godot_executable_sha256'),@('godot_console_path','godot_console_sha256')
+    @('import_pass2_manifest_path','import_pass2_manifest_sha256'),@('import_finalizer_dry_run_path','import_finalizer_dry_run_evidence_sha256'),@('formal_gate_1_79_receipt_path','formal_gate_1_79_receipt_sha256'),@('godot_path','godot_executable_sha256'),@('godot_console_path','godot_console_sha256'),@('authorization_config_path','authorization_config_sha256')
 )
 foreach($pair in $pairs){if(-not(Test-Path -LiteralPath ([string]$manifest.($pair[0])) -PathType Leaf)-or(Get-Pr90ProbeBSha256 ([string]$manifest.($pair[0])))-cne[string]$manifest.($pair[1])){$errors.Add("EVIDENCE_HASH_MISMATCH:$($pair[1])")}}
-$probeB=$null;$probeBA=$null;$probeBR=$null;$preformal=$null
+$probeB=$null;$probeBA=$null;$probeBR=$null;$preformal=$null;$planConfig=$null
+$probe004=$null;$probe004A=$null
+try{$probe004=Get-Content -Raw -LiteralPath $manifest.probe004_result_path|ConvertFrom-Json -Depth 100}catch{}
+try{$probe004A=Get-Content -Raw -LiteralPath $manifest.probe004_attestation_path|ConvertFrom-Json -Depth 100}catch{}
+$probe004ContractGreen=Test-Pr90Probe004EvidenceContractsV1 -Result $probe004 -Attestation $probe004A -ExpectedResultSha256 ([string]$manifest.probe004_result_sha256) -ExpectedProductHeadSha ([string]$manifest.product_head_sha) -ExpectedProductTreeSha ([string]$manifest.product_tree_sha)
+if(-not$probe004ContractGreen){$errors.Add('PROBE004_EVIDENCE_CONTRACT_MISMATCH')}
 try{$probeB=Get-Content -Raw -LiteralPath $manifest.probe_b_result_path|ConvertFrom-Json -Depth 100}catch{}
 try{$probeBA=Get-Content -Raw -LiteralPath $manifest.probe_b_attestation_path|ConvertFrom-Json -Depth 100}catch{}
 try{$probeBR=Get-Content -Raw -LiteralPath $manifest.probe_b_recovery_receipt_path|ConvertFrom-Json -Depth 100}catch{}
 try{$preformal=Get-Content -Raw -LiteralPath $manifest.preformal_dry_run_path|ConvertFrom-Json -Depth 100}catch{}
-$evidenceContracts=Test-Pr90Attempt22EvidenceContractsV1 -ProbeB $probeB -ProbeBAttestation $probeBA -ProbeBRecoveryReceipt $probeBR -Preformal $preformal -ExpectedProbeBResultSha256 ([string]$manifest.probe_b_result_sha256) `
+try{$planConfig=Get-Content -Raw -LiteralPath $manifest.authorization_config_path|ConvertFrom-Json -Depth 100}catch{}
+if($null-eq$planConfig){$errors.Add('AUTHORIZATION_CONFIG_MISSING_OR_UNREADABLE')}
+$evidenceContracts=Test-Pr90Attempt22EvidenceContractsV1 -ProbeB $probeB -ProbeBAttestation $probeBA -ProbeBRecoveryReceipt $probeBR -Preformal $preformal -ExpectedProbeBResultSha256 ([string]$manifest.probe_b_result_sha256) -ExpectedProbeBAttestationSha256 ([string]$manifest.probe_b_attestation_sha256) -ExpectedProbe004ResultSha256 ([string]$manifest.probe004_result_sha256) -ExpectedProbe004AttestationSha256 ([string]$manifest.probe004_attestation_sha256) `
+    -ExpectedPreformalPlanConfig $planConfig `
+    -ExpectedProbeBExecutionStartSha256 ([string]$manifest.probe_b_execution_start_sha256) -ExpectedProbeBExecutionConfigSha256 ([string]$manifest.probe_b_execution_config_sha256) -ExpectedProbeBFinalizerResultSha256 ([string]$manifest.probe_b_finalizer_result_sha256) -ExpectedListenerForensicsSha256 ([string]$manifest.listener_forensics_sha256) `
     -ExpectedProductHeadSha ([string]$manifest.product_head_sha) -ExpectedProductTreeSha ([string]$manifest.product_tree_sha) -ExpectedToolingHeadSha ([string]$manifest.tooling_head_sha) -ExpectedToolingTreeSha ([string]$manifest.tooling_tree_sha) `
-    -ExpectedToolingManifestSha256 ([string]$manifest.tooling_manifest_sha256) -ExpectedToolingSealSha256 ([string]$manifest.tooling_seal_sha256) `
+    -ExpectedToolingManifestSha256 ([string]$manifest.tooling_manifest_sha256) -ExpectedToolingSealSha256 ([string]$manifest.tooling_seal_sha256) -ExpectedFormalEvidenceRoot ([string]$manifest.formal_evidence_root) `
     -ExpectedProbeRecoveryToolingHeadSha ([string]$manifest.probe_b_recovery_tooling_head_sha) -ExpectedProbeRecoveryToolingTreeSha ([string]$manifest.probe_b_recovery_tooling_tree_sha) -ExpectedProbeRecoveryToolingManifestSha256 ([string]$manifest.probe_b_recovery_tooling_manifest_sha256) -ExpectedProbeRecoveryToolingSealSha256 ([string]$manifest.probe_b_recovery_tooling_seal_sha256) `
     -ExpectedProbeExecutionToolingHeadSha ([string]$manifest.probe_b_execution_tooling_head_sha) -ExpectedProbeExecutionToolingTreeSha ([string]$manifest.probe_b_execution_tooling_tree_sha) -ExpectedProbeExecutionToolingSealSha256 ([string]$manifest.probe_b_execution_tooling_seal_sha256) -ExpectedRecoveryControllerSha256 ([string]$manifest.probe_b_recovery_controller_sha256) -ExpectedRecoveryContractModuleSha256 ([string]$manifest.probe_b_recovery_contract_module_sha256) -ExpectedFrozenInputInventorySha256 ([string]$manifest.probe_b_frozen_input_inventory_sha256) `
-    -ExpectedGodotGuiSha256 ([string]$manifest.godot_executable_sha256) -ExpectedGodotConsoleSha256 ([string]$manifest.godot_console_sha256) -ExpectedBaselineSha256 ([string]$manifest.sealed_baseline_sha256) -ExpectedClassCacheSha256 ([string]$manifest.class_cache_sha256)
+    -ExpectedGodotGuiSha256 ([string]$manifest.godot_executable_sha256) -ExpectedGodotConsoleSha256 ([string]$manifest.godot_console_sha256) `
+    -ExpectedBaselineSha256 ([string]$manifest.sealed_baseline_sha256) -ExpectedClassCacheSha256 ([string]$manifest.class_cache_sha256) `
+    -ExpectedProbeBBaselineSha256 ([string]$manifest.probe_b_post_import_baseline_sha256) -ExpectedProbeBClassCacheSha256 ([string]$manifest.probe_b_class_cache_sha256)
 foreach($e in @($evidenceContracts.errors)){$errors.Add([string]$e)}
 Import-Module (Join-Path $PSScriptRoot 'pr90_attempt19_authority_contract.psm1') -Force
 $compatibility=Get-AuthorizationValidation -ManifestPath $CompatibilityProjectionPath -ManifestShaPath "$CompatibilityProjectionPath.sha256" -ExpectedProductHead $ExpectedProductHead -ExpectedProductTree $ExpectedProductTree -ExpectedToolingHead $ExpectedToolingHead -ExpectedToolingTree $ExpectedToolingTree

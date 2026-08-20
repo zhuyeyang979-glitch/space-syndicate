@@ -30,6 +30,7 @@ $additions=[ordered]@{
     probe004_attestation_path=[IO.Path]::GetFullPath([string]$config.probe004_attestation_path);probe004_attestation_sha256=Get-Pr90ProbeBSha256 $config.probe004_attestation_path
     probe_b_result_path=[IO.Path]::GetFullPath([string]$config.probe_b_result_path);probe_b_result_sha256=Get-Pr90ProbeBSha256 $config.probe_b_result_path
     probe_b_attestation_path=[IO.Path]::GetFullPath([string]$config.probe_b_attestation_path);probe_b_attestation_sha256=Get-Pr90ProbeBSha256 $config.probe_b_attestation_path
+    probe_b_post_import_baseline_sha256=[string]$config.probe_b_post_import_baseline_sha256;probe_b_class_cache_sha256=[string]$config.probe_b_class_cache_sha256
     probe_b_recovery_receipt_path=[IO.Path]::GetFullPath([string]$config.probe_b_recovery_receipt_path);probe_b_recovery_receipt_sha256=Get-Pr90ProbeBSha256 $config.probe_b_recovery_receipt_path
     probe_b_frozen_input_inventory_path=[IO.Path]::GetFullPath([string]$config.probe_b_frozen_input_inventory_path);probe_b_frozen_input_inventory_sha256=Get-Pr90ProbeBSha256 $config.probe_b_frozen_input_inventory_path
     probe_b_execution_start_path=[IO.Path]::GetFullPath([string]$config.probe_b_execution_start_path);probe_b_execution_start_sha256=Get-Pr90ProbeBSha256 $config.probe_b_execution_start_path
@@ -45,6 +46,7 @@ $additions=[ordered]@{
     authorization_negative_test_count=[int]$config.authorization_negative_test_count;authorization_negative_test_pass_count=[int]$config.authorization_negative_test_pass_count;authorization_negative_test_fail_count=[int]$config.authorization_negative_test_fail_count
     attempt22_authorization_missing_contract_count=0;godot_console_path=[IO.Path]::GetFullPath([string]$config.godot_console_path);godot_console_sha256=Get-Pr90ProbeBSha256 $config.godot_console_path
     sealed_post_import_baseline_sha256=[string]$manifest.sealed_baseline_sha256;import_finalizer_dry_run_sha256=[string]$manifest.import_finalizer_dry_run_evidence_sha256
+    authorization_config_path=[IO.Path]::GetFullPath($ConfigPath);authorization_config_sha256=$ExpectedConfigSha256.ToLowerInvariant()
     formal_authorization_validation_receipt_path=[IO.Path]::GetFullPath([string]$config.future_authorization_validation_receipt_path);formal_authorization_seal_path=[IO.Path]::GetFullPath([string]$config.future_authorization_seal_path)
     formal_authorization_consumption_receipt_path=[IO.Path]::GetFullPath([string]$config.formal_authorization_consumption_receipt_path);formal_prelaunch_ignored_inventory_path=[IO.Path]::GetFullPath([string]$config.formal_prelaunch_ignored_inventory_path)
     formal_terminal_manifest_path=[IO.Path]::GetFullPath([string]$config.formal_terminal_manifest_path);formal_finalizer_result_path=[IO.Path]::GetFullPath([string]$config.formal_finalizer_result_path)

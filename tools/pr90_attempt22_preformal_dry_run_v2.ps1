@@ -30,9 +30,11 @@ function Test-PowerShellLoad {
 
 $requiredFields = @(Get-Pr90Attempt22RequiredFieldsV4)
 Add-PreformalCheck 1 'AUTHORIZATION_SCHEMA_LOADABLE' ($requiredFields.Count -gt @(Get-Pr90Attempt19RequiredFieldsV3).Count) "required_fields=$($requiredFields.Count)"
-$productHead = (& git -C ([string]$config.product_worktree) rev-parse HEAD).Trim()
-$productTree = (& git -C ([string]$config.product_worktree) rev-parse 'HEAD^{tree}').Trim()
-Add-PreformalCheck 2 'PRODUCT_HEAD_BOUND' ($productHead -ceq [string]$config.product_head_sha) $productHead
+$formalWorktreeFull=[IO.Path]::GetFullPath([string]$config.formal_product_worktree).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+$configuredProductWorktreeFull=[IO.Path]::GetFullPath([string]$config.product_worktree).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+$productHead = (& git -C $formalWorktreeFull rev-parse HEAD).Trim()
+$productTree = (& git -C $formalWorktreeFull rev-parse 'HEAD^{tree}').Trim()
+Add-PreformalCheck 2 'PRODUCT_HEAD_BOUND' ($formalWorktreeFull-ceq$configuredProductWorktreeFull-and$productHead -ceq [string]$config.product_head_sha) $productHead
 Add-PreformalCheck 3 'PRODUCT_TREE_BOUND' ($productTree -ceq [string]$config.product_tree_sha) $productTree
 $toolingHead = (& git -C ([string]$config.tooling_worktree) rev-parse HEAD).Trim()
 $toolingTree = (& git -C ([string]$config.tooling_worktree) rev-parse 'HEAD^{tree}').Trim()
@@ -50,23 +52,43 @@ Add-PreformalCheck 8 'REMOTE_TOOLING_BRANCH_BOUND' $remoteGreen ([string]$config
 $gateGreen=Test-HashBinding $config.formal_gate_1_79_receipt_path $config.formal_gate_1_79_receipt_sha256
 if($gateGreen){$g=Get-Content -Raw -LiteralPath $config.formal_gate_1_79_receipt_path|ConvertFrom-Json -Depth 100;$gateGreen=[string]$g.status-ceq'PASS'-and[int]$g.pass_count-eq79-and[int]$g.fail_count-eq0}
 Add-PreformalCheck 9 'FORMAL_GATE_1_79_RECEIPT_BOUND' $gateGreen ([string]$config.formal_gate_1_79_receipt_sha256)
-$baselineGreen=Test-HashBinding $config.sealed_baseline_path $config.sealed_baseline_sha256
+$formalClassCacheFull=[IO.Path]::GetFullPath((Join-Path $formalWorktreeFull '.godot\global_script_class_cache.cfg'))
+$importControllerReceiptGreen=Test-HashBinding $config.import_controller_receipt_path $config.import_controller_receipt_sha256
+if($importControllerReceiptGreen){
+    try{
+        $importControllerReceipt=Get-Content -Raw -LiteralPath $config.import_controller_receipt_path|ConvertFrom-Json -Depth 100
+        $importControllerReceiptGreen=[string]$importControllerReceipt.schema-ceq'SpaceSyndicatePr90Attempt19ImportControllerReceiptV3'-and[string]$importControllerReceipt.status-ceq'PASS'-and
+            [string]$importControllerReceipt.product_head_sha-ceq$productHead-and[string]$importControllerReceipt.product_tree_sha-ceq$productTree-and
+            [IO.Path]::GetFullPath([string]$importControllerReceipt.worktree_path).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)-ceq$formalWorktreeFull-and
+            [IO.Path]::GetFullPath([string]$importControllerReceipt.sealed_baseline_path)-ceq[IO.Path]::GetFullPath([string]$config.sealed_baseline_path)-and[string]$importControllerReceipt.sealed_baseline_sha256-ceq[string]$config.sealed_baseline_sha256-and
+            [IO.Path]::GetFullPath([string]$importControllerReceipt.class_cache_path)-ceq$formalClassCacheFull-and[string]$importControllerReceipt.class_cache_sha256-ceq[string]$config.class_cache_sha256-and
+            [IO.Path]::GetFullPath([string]$importControllerReceipt.import_pass1_manifest_path)-ceq[IO.Path]::GetFullPath([string]$config.import_pass1_manifest_path)-and[string]$importControllerReceipt.import_pass1_manifest_sha256-ceq[string]$config.import_pass1_manifest_sha256-and
+            [IO.Path]::GetFullPath([string]$importControllerReceipt.import_pass2_manifest_path)-ceq[IO.Path]::GetFullPath([string]$config.import_pass2_manifest_path)-and[string]$importControllerReceipt.import_pass2_manifest_sha256-ceq[string]$config.import_pass2_manifest_sha256-and
+            [string]$importControllerReceipt.import_controller_sha256-ceq[string]$config.import_controller_sha256-and[bool]$importControllerReceipt.post_import_baseline_sealed-and
+            [bool]$importControllerReceipt.class_cache_byte_identical_to_attempt18-and[string]$importControllerReceipt.canonical_payload_sha256-ceq(Get-Pr90ProbeBCanonicalSha256 $importControllerReceipt)-and
+            [int]$importControllerReceipt.import_pass1_exit_code-eq0-and[int]$importControllerReceipt.import_pass2_exit_code-eq0-and[bool]$importControllerReceipt.import_pass1_2_path_set_parity-and
+            [bool]$importControllerReceipt.import_pass1_2_byte_parity-and[int]$importControllerReceipt.import_pass2_new_mutation_count-eq0-and[int]$importControllerReceipt.tracked_import_metadata_unknown_count-eq0
+    }catch{$importControllerReceiptGreen=$false}
+}
+$baselineGreen=(Test-HashBinding $config.sealed_baseline_path $config.sealed_baseline_sha256)-and[string]$config.sealed_baseline_sha256-cne[string]$config.probe_b_post_import_baseline_sha256-and$importControllerReceiptGreen
 if($baselineGreen){$b=Get-Content -Raw -LiteralPath $config.sealed_baseline_path|ConvertFrom-Json -Depth 100;$baselineGreen=[bool]$b.post_import_baseline_sealed-and[string]$b.head_sha-ceq$productHead-and[string]$b.tree_sha-ceq$productTree}
 Add-PreformalCheck 10 'SEALED_POST_IMPORT_BASELINE_BOUND' $baselineGreen ([string]$config.sealed_baseline_sha256)
-Add-PreformalCheck 11 'CLASS_CACHE_BOUND' (Test-HashBinding $config.class_cache_path $config.class_cache_sha256) ([string]$config.class_cache_sha256)
+Add-PreformalCheck 11 'CLASS_CACHE_BOUND' ((Test-HashBinding $config.class_cache_path $config.class_cache_sha256)-and[IO.Path]::GetFullPath([string]$config.class_cache_path)-ceq$formalClassCacheFull-and[string]$config.class_cache_sha256-ceq[string]$config.probe_b_class_cache_sha256-and$importControllerReceiptGreen) ([string]$config.class_cache_sha256)
 Add-PreformalCheck 12 'IMPORT_PASS1_MANIFEST_BOUND' (Test-HashBinding $config.import_pass1_manifest_path $config.import_pass1_manifest_sha256) ([string]$config.import_pass1_manifest_sha256)
 Add-PreformalCheck 13 'IMPORT_PASS2_MANIFEST_BOUND' (Test-HashBinding $config.import_pass2_manifest_path $config.import_pass2_manifest_sha256) ([string]$config.import_pass2_manifest_sha256)
-$p004=Test-HashBinding $config.probe004_result_path $config.probe004_result_sha256
-if($p004){$v=Get-Content -Raw -LiteralPath $config.probe004_result_path|ConvertFrom-Json -Depth 100;$p004=[string]$v.status-ceq'PASS'}
+$p004=Test-HashBinding $config.probe004_result_path $config.probe004_result_sha256;$p004a=Test-HashBinding $config.probe004_attestation_path $config.probe004_attestation_sha256
+$p004Result=$null;$p004Attestation=$null
+try{if($p004){$p004Result=Get-Content -Raw -LiteralPath $config.probe004_result_path|ConvertFrom-Json -Depth 100};if($p004a){$p004Attestation=Get-Content -Raw -LiteralPath $config.probe004_attestation_path|ConvertFrom-Json -Depth 100}}catch{$p004=$false;$p004a=$false}
+$p004ContractGreen=Test-Pr90Probe004EvidenceContractsV1 -Result $p004Result -Attestation $p004Attestation -ExpectedResultSha256 ([string]$config.probe004_result_sha256) -ExpectedProductHeadSha ([string]$config.product_head_sha) -ExpectedProductTreeSha ([string]$config.product_tree_sha)
+$p004=$p004-and$p004ContractGreen
 Add-PreformalCheck 14 'PROBE004_RESULT_BOUND' $p004 ([string]$config.probe004_result_sha256)
-$p004a=Test-HashBinding $config.probe004_attestation_path $config.probe004_attestation_sha256
-if($p004a){$v=Get-Content -Raw -LiteralPath $config.probe004_attestation_path|ConvertFrom-Json -Depth 100;$p004a=[string]$v.status-ceq'SEALED'}
+$p004a=$p004a-and$p004ContractGreen
 Add-PreformalCheck 15 'PROBE004_ATTESTATION_BOUND' $p004a ([string]$config.probe004_attestation_sha256)
 $pb=Test-HashBinding $config.probe_b_result_path $config.probe_b_result_sha256
 if($pb){$v=Get-Content -Raw -LiteralPath $config.probe_b_result_path|ConvertFrom-Json -Depth 100;$pb=[string]$v.schema-ceq'Pr90ExactCloneProbeBV2ResultV1'-and[string]$v.probe_id-ceq'pr90-exact-clone-startup-probe-b-v2-001'-and[string]$v.status-ceq'PASS'-and[int]$v.milestone_pass_count-eq12-and[string]$v.import_finalizer_status-ceq'PASS'-and
     [string]$v.product_head_sha-ceq[string]$config.product_head_sha-and[string]$v.product_tree_sha-ceq[string]$config.product_tree_sha-and[string]$v.tooling_head_sha-ceq[string]$config.probe_b_execution_tooling_head_sha-and[string]$v.tooling_tree_sha-ceq[string]$config.probe_b_execution_tooling_tree_sha-and
     [string]$v.tooling_seal_sha256-ceq[string]$config.probe_b_execution_tooling_seal_sha256-and[string]$v.result_recovery_tooling_head_sha-ceq[string]$config.probe_b_recovery_tooling_head_sha-and[string]$v.result_recovery_tooling_tree_sha-ceq[string]$config.probe_b_recovery_tooling_tree_sha-and[string]$v.result_recovery_tooling_manifest_sha256-ceq[string]$config.probe_b_recovery_tooling_manifest_sha256-and[string]$v.result_recovery_tooling_seal_sha256-ceq[string]$config.probe_b_recovery_tooling_seal_sha256-and[int]$v.runtime_reachable_tooling_hash_mismatch_count-eq0-and
-    [string]$v.post_import_baseline_sha256-ceq[string]$config.sealed_baseline_sha256-and[string]$v.class_cache_sha256-ceq[string]$config.class_cache_sha256-and
+    [string]$v.post_import_baseline_sha256-ceq[string]$config.probe_b_post_import_baseline_sha256-and[string]$v.class_cache_sha256-ceq[string]$config.probe_b_class_cache_sha256-and
     [string]$v.godot_gui_sha256-ceq[string]$config.godot_gui_sha256-and[string]$v.godot_console_sha256-ceq[string]$config.godot_console_sha256-and
     [bool]$v.bracketed_sample_model-and[int]$v.total_listener_cohort_attempt_count-ge5-and[int]$v.consecutive_stable_parity_cohort_count-ge5-and[double]$v.stable_parity_window_ms-ge1000-and[bool]$v.endpoint_listener_core_parity-and[int]$v.matched_listener_process_enrichment_count-eq1-and[int]$v.duplicate_source_process_enrichment_count-eq0-and
     (Test-HashBinding $config.godot_gui_path $config.godot_gui_sha256)-and(Test-HashBinding $config.godot_console_path $config.godot_console_sha256)}
@@ -81,7 +103,7 @@ if($recoveryReceiptGreen){$recoveryReceipt=Get-Content -Raw -LiteralPath $config
     [int]$recoveryReceipt.startup_probe_invocation_count-eq0-and[int]$recoveryReceipt.import_invocation_count-eq0-and[int]$recoveryReceipt.finalizer_invocation_count-eq0-and[int]$recoveryReceipt.formal_mcp_execution_count-eq0-and[int]$recoveryReceipt.authorized_run_count_consumed-eq0}
 if($pba){$v=Get-Content -Raw -LiteralPath $config.probe_b_attestation_path|ConvertFrom-Json -Depth 100;$pba=[string]$v.schema-ceq'Pr90ExactCloneProbeBV2AttestationV1'-and[string]$v.status-ceq'SEALED'-and[int]$v.unbound_evidence_count-eq0-and[bool]$v.bracketed_sample_model-and[int]$v.matched_listener_process_enrichment_count-eq1-and
     [string]$v.probe_execution_tooling_head_sha-ceq[string]$config.probe_b_execution_tooling_head_sha-and[string]$v.probe_execution_tooling_tree_sha-ceq[string]$config.probe_b_execution_tooling_tree_sha-and[string]$v.probe_execution_tooling_seal_sha256-ceq[string]$config.probe_b_execution_tooling_seal_sha256-and
-    [string]$v.result_recovery_tooling_head_sha-ceq[string]$config.probe_b_recovery_tooling_head_sha-and[string]$v.result_recovery_tooling_tree_sha-ceq[string]$config.probe_b_recovery_tooling_tree_sha-and[string]$v.result_recovery_tooling_manifest_sha256-ceq[string]$config.probe_b_recovery_tooling_manifest_sha256-and[string]$v.result_recovery_tooling_seal_sha256-ceq[string]$config.probe_b_recovery_tooling_seal_sha256-and[string]$v.post_import_baseline_sha256-ceq[string]$config.sealed_baseline_sha256-and[string]$v.class_cache_sha256-ceq[string]$config.class_cache_sha256-and[int]$v.runtime_reachable_tooling_hash_mismatch_count-eq0}
+    [string]$v.result_recovery_tooling_head_sha-ceq[string]$config.probe_b_recovery_tooling_head_sha-and[string]$v.result_recovery_tooling_tree_sha-ceq[string]$config.probe_b_recovery_tooling_tree_sha-and[string]$v.result_recovery_tooling_manifest_sha256-ceq[string]$config.probe_b_recovery_tooling_manifest_sha256-and[string]$v.result_recovery_tooling_seal_sha256-ceq[string]$config.probe_b_recovery_tooling_seal_sha256-and[string]$v.post_import_baseline_sha256-ceq[string]$config.probe_b_post_import_baseline_sha256-and[string]$v.class_cache_sha256-ceq[string]$config.probe_b_class_cache_sha256-and[int]$v.runtime_reachable_tooling_hash_mismatch_count-eq0}
 $pba=$pba-and$recoveryReceiptGreen
 Add-PreformalCheck 17 'PROBE_B_ATTESTATION_BOUND' $pba ([string]$config.probe_b_attestation_sha256)
 $endpointGreen=([int]$config.endpoint_ownership_contract_version-eq2)-and([int]$config.listener_parity_contract_version-eq2)-and(Test-HashBinding $config.endpoint_ownership_validator_path $config.endpoint_ownership_validator_sha256)-and(Test-HashBinding $config.listener_core_normalizer_path $config.listener_core_normalizer_sha256)-and(Test-HashBinding $config.bracketed_cohort_controller_path $config.bracketed_cohort_controller_sha256)-and(Test-HashBinding $config.listener_forensics_path $config.listener_forensics_sha256)
@@ -94,52 +116,7 @@ Add-PreformalCheck 20 'IMPORT_CONTROLLER_FINALIZER_LOADABLE_AND_BOUND' $importGr
 $runbookText=[IO.File]::ReadAllText([IO.Path]::GetFullPath([string]$config.cursor_runbook_path))
 $requiredRunbookTokens=@('Invoke-Pr90McpStartupStateMachine','KeepRunningAfterM11','exit_play_mode','play_main_scene','phase-1-main-scene','phase-2-new-game','phase-3-early-match','phase-4-mid-match','phase-5-combat-facility','phase-6-victory','phase-7-settlement','phase-7-final-settlement','natural UI match did not settle','Stop-Pr90McpStartupWatchdog','Pr90Attempt22AuthorizationConsumptionV1','Write-Pr90ProbeBImmutableJson','ImportFinalizerBindingPath','terminal-process-port-manifest.json','formal-import-finalizer-result.json','formalPayload')
 $missingRunbookTokens=@($requiredRunbookTokens|Where-Object{-not$runbookText.Contains($_,[StringComparison]::Ordinal)})
-$commandParameters=@(
-    [pscustomobject]@{name='ExecutionMode';value='FORMAL_EXACT_SHA_MCP';binding_source='sealed_plan'},
-    [pscustomobject]@{name='RunId';value=[string]$config.authorized_run_id;binding_source='attempt22_authorization'},
-    [pscustomobject]@{name='Worktree';value=[IO.Path]::GetFullPath([string]$config.formal_product_worktree);binding_source='future_exact_clone'},
-    [pscustomobject]@{name='EvidenceRoot';value=[IO.Path]::GetFullPath([string]$config.formal_evidence_root);binding_source='authorized_run_id'},
-    [pscustomobject]@{name='GodotPath';value=[IO.Path]::GetFullPath([string]$config.godot_console_path);sha256=[string]$config.godot_console_sha256;binding_source='probe_b_attestation'},
-    [pscustomobject]@{name='ExpectedHeadSha';value=[string]$config.product_head_sha;binding_source='pr90_exact_head'},
-    [pscustomobject]@{name='ExpectedTreeSha';value=[string]$config.product_tree_sha;binding_source='pr90_exact_tree'},
-    [pscustomobject]@{name='LaunchScriptPath';value=[IO.Path]::GetFullPath([string]$config.launch_script_path);sha256=[string]$config.launch_script_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ExpectedLaunchScriptSha256';value=[string]$config.launch_script_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='StopScriptPath';value=[IO.Path]::GetFullPath([string]$config.stop_script_path);sha256=[string]$config.stop_script_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ExpectedStopScriptSha256';value=[string]$config.stop_script_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='WatchdogScriptPath';value=[IO.Path]::GetFullPath([string]$config.startup_watchdog_path);sha256=[string]$config.startup_watchdog_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ExpectedWatchdogScriptSha256';value=[string]$config.startup_watchdog_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='StateMachineScriptPath';value=[IO.Path]::GetFullPath([string]$config.startup_state_machine_path);sha256=[string]$config.startup_state_machine_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ExpectedStateMachineSha256';value=[string]$config.startup_state_machine_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ContractScriptPath';value=[IO.Path]::GetFullPath([string]$config.startup_contract_path);sha256=[string]$config.startup_contract_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ExpectedContractSha256';value=[string]$config.startup_contract_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='SealedBaselinePath';value=[IO.Path]::GetFullPath([string]$config.sealed_baseline_path);sha256=[string]$config.sealed_baseline_sha256;binding_source='probe_b_attestation'},
-    [pscustomobject]@{name='ExpectedSealedBaselineSha256';value=[string]$config.sealed_baseline_sha256;binding_source='probe_b_attestation'},
-    [pscustomobject]@{name='StartupToolingManifestPath';value=[IO.Path]::GetFullPath([string]$config.tooling_manifest_path);sha256=[string]$config.tooling_manifest_sha256;binding_source='tooling_seal'},
-    [pscustomobject]@{name='ExpectedStartupToolingManifestSha256';value=[string]$config.tooling_manifest_sha256;binding_source='tooling_seal'},
-    [pscustomobject]@{name='StartupToolingSealPath';value=[IO.Path]::GetFullPath([string]$config.tooling_seal_path);sha256=[string]$config.tooling_seal_sha256;binding_source='tooling_seal'},
-    [pscustomobject]@{name='ExpectedStartupToolingSealSha256';value=[string]$config.tooling_seal_sha256;binding_source='tooling_seal'},
-    [pscustomobject]@{name='FormalAuthorizationValidationReceiptPath';value=[IO.Path]::GetFullPath([string]$config.future_authorization_validation_receipt_path);binding_source='attempt22_seal_after_preformal'},
-    [pscustomobject]@{name='ExpectedFormalAuthorizationValidationReceiptSha256';value_source='attempt22_seal.validation_receipt_sha256';binding_source='deferred_after_preformal'},
-    [pscustomobject]@{name='FormalAuthorizationSealPath';value=[IO.Path]::GetFullPath([string]$config.future_authorization_seal_path);binding_source='attempt22_seal_after_preformal'},
-    [pscustomobject]@{name='ExpectedFormalAuthorizationSealSha256';value_source='attempt22_seal.sha256';binding_source='deferred_after_preformal'},
-    [pscustomobject]@{name='FormalAuthorizationConsumptionReceiptPath';value=[IO.Path]::GetFullPath([string]$config.formal_authorization_consumption_receipt_path);binding_source='atomic_single_consume'},
-    [pscustomobject]@{name='Attempt22ContractScriptPath';value=[IO.Path]::GetFullPath($attempt22ContractPath);sha256=[string]$config.attempt22_contract_module_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ExpectedAttempt22ContractSha256';value=[string]$config.attempt22_contract_module_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ExpectedRunbookSha256';value=[string]$config.cursor_runbook_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ImportFinalizerBindingPath';value=[IO.Path]::GetFullPath([string]$config.import_finalizer_path);sha256=[string]$config.import_finalizer_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ExpectedImportFinalizerBindingSha256';value=[string]$config.import_finalizer_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ImportRunnerPath';value=[IO.Path]::GetFullPath([string]$config.import_runner_path);sha256=[string]$config.import_runner_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ExpectedImportRunnerSha256';value=[string]$config.import_runner_sha256;binding_source='tooling_manifest'},
-    [pscustomobject]@{name='ClassCachePath';value=[IO.Path]::GetFullPath([string]$config.class_cache_path);sha256=[string]$config.class_cache_sha256;binding_source='sealed_baseline'},
-    [pscustomobject]@{name='ExpectedClassCacheSha256';value=[string]$config.class_cache_sha256;binding_source='sealed_baseline'},
-    [pscustomobject]@{name='GodotGuiPath';value=[IO.Path]::GetFullPath([string]$config.godot_gui_path);sha256=[string]$config.godot_gui_sha256;binding_source='probe_b_attestation'},
-    [pscustomobject]@{name='ExpectedGodotGuiSha256';value=[string]$config.godot_gui_sha256;binding_source='probe_b_attestation'},
-    [pscustomobject]@{name='FormalPrelaunchIgnoredInventoryPath';value=[IO.Path]::GetFullPath([string]$config.formal_prelaunch_ignored_inventory_path);binding_source='attempt22_authorization'},
-    [pscustomobject]@{name='FormalTerminalManifestPath';value=[IO.Path]::GetFullPath([string]$config.formal_terminal_manifest_path);binding_source='attempt22_authorization'},
-    [pscustomobject]@{name='FormalFinalizerResultPath';value=[IO.Path]::GetFullPath([string]$config.formal_finalizer_result_path);binding_source='attempt22_authorization'},
-    [pscustomobject]@{name='AllowFormalContinuation';value=$true;binding_source='future_user_authorization'},
-    [pscustomobject]@{name='Port';value=7576;binding_source='endpoint_contract_v2'}
-)
+$commandParameters=@(Get-Pr90Attempt22FormalCommandParametersV2 -Config $config)
 $phasePlan=@('M0-M11 startup and phase-0-ready','exit custom probe play mode','play_main_scene exact res://scenes/main.tscn','phase-1-main-scene cursor witness','phase-2-new-game cursor witness','phase-3-early-match cursor witness','phase-4-mid-match cursor witness','phase-5-combat-facility cursor witness','phase-6-victory cursor witness','phase-7-settlement cursor witness','phase-7-final-settlement and exact result')
 $evidencePlan=@('authorization-validation','12 milestone receipts and sidecars','endpoint ownership V2 samples and attestation','raw JSON-RPC inventory','runtime bridge heartbeat/bootstrap','ready witness','phase-0 through phase-7 cursor witnesses','exact-sha-mcp result or failure','terminal process and port manifest','formal import finalizer result')
 $accountingPlan=@('authorized_run_count=1','automatic_retry_allowed=false','formal_mcp_execution_count=0 before authorized boundary','authorized_run_count_consumed=0 before authorized boundary','same run id evidence root must not exist','no automatic retry after any failure')
@@ -176,7 +153,7 @@ $passCount=@($checks|Where-Object{$_.pass}).Count
 $result=[pscustomobject][ordered]@{
     schema='Pr90Attempt22PreformalDryRunV2';run_id='pr90-attempt22-preformal-dry-run-v2-002';status=if($passCount-eq22-and$processesAfter.Count-eq0-and$mcpProcessesAfter.Count-eq0-and$listenersAfter.Count-eq0){'PASS'}else{'BLOCKED'};created_at_utc=[DateTimeOffset]::UtcNow.ToString('o')
     product_head_sha=[string]$config.product_head_sha;product_tree_sha=[string]$config.product_tree_sha;tooling_head_sha=[string]$config.tooling_head_sha;tooling_tree_sha=[string]$config.tooling_tree_sha;tooling_seal_sha256=[string]$config.tooling_seal_sha256
-    probe_b_execution_tooling_head_sha=[string]$config.probe_b_execution_tooling_head_sha;probe_b_execution_tooling_tree_sha=[string]$config.probe_b_execution_tooling_tree_sha;probe_b_execution_tooling_seal_sha256=[string]$config.probe_b_execution_tooling_seal_sha256;probe_b_recovery_tooling_head_sha=[string]$config.probe_b_recovery_tooling_head_sha;probe_b_recovery_tooling_tree_sha=[string]$config.probe_b_recovery_tooling_tree_sha;probe_b_recovery_receipt_sha256=[string]$config.probe_b_recovery_receipt_sha256;sealed_baseline_sha256=[string]$config.sealed_baseline_sha256;class_cache_sha256=[string]$config.class_cache_sha256
+    probe_b_execution_tooling_head_sha=[string]$config.probe_b_execution_tooling_head_sha;probe_b_execution_tooling_tree_sha=[string]$config.probe_b_execution_tooling_tree_sha;probe_b_execution_tooling_seal_sha256=[string]$config.probe_b_execution_tooling_seal_sha256;probe_b_recovery_tooling_head_sha=[string]$config.probe_b_recovery_tooling_head_sha;probe_b_recovery_tooling_tree_sha=[string]$config.probe_b_recovery_tooling_tree_sha;probe_b_recovery_receipt_sha256=[string]$config.probe_b_recovery_receipt_sha256;probe_b_post_import_baseline_sha256=[string]$config.probe_b_post_import_baseline_sha256;probe_b_class_cache_sha256=[string]$config.probe_b_class_cache_sha256;sealed_baseline_sha256=[string]$config.sealed_baseline_sha256;class_cache_sha256=[string]$config.class_cache_sha256
     check_count=22;pass_count=$passCount;fail_count=22-$passCount;checks=@($checks);formal_plan=$plan;product_process_count_before=$processesBefore.Count;product_process_count_after=$processesAfter.Count;mcp_product_process_count_before=$mcpProcessesBefore.Count;mcp_product_process_count=$mcpProcessesAfter.Count
     protected_listener_count_before=$listenersBefore.Count;protected_listener_count_after=$listenersAfter.Count;play_main_scene_count=0;product_match_count=0;formal_authorization_consumed=$false;reaches_formal_start_boundary=[bool]$boundaryGreen;formal_mcp_execution_count=0;canonical_payload_sha256=''
 }
