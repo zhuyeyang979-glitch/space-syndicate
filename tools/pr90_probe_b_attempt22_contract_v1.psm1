@@ -101,9 +101,13 @@ function Get-Pr90Attempt22RequiredFieldsV4 {
         'listener_forensics_path','listener_forensics_sha256','probe_b_v2_id',
         'probe004_result_path','probe004_result_sha256','probe004_attestation_path','probe004_attestation_sha256',
         'probe_b_result_path','probe_b_result_sha256','probe_b_attestation_path','probe_b_attestation_sha256',
+        'probe_b_recovery_receipt_path','probe_b_recovery_receipt_sha256','probe_b_frozen_input_inventory_path','probe_b_frozen_input_inventory_sha256',
+        'probe_b_execution_start_path','probe_b_execution_start_sha256','probe_b_execution_config_path','probe_b_execution_config_sha256',
+        'probe_b_execution_tooling_head_sha','probe_b_execution_tooling_tree_sha','probe_b_execution_tooling_seal_sha256',
+        'probe_b_recovery_tooling_head_sha','probe_b_recovery_tooling_tree_sha','probe_b_recovery_tooling_manifest_sha256','probe_b_recovery_tooling_seal_sha256','runtime_reachable_tooling_hash_mismatch_count',
         'probe_b_finalizer_result_path','probe_b_finalizer_result_sha256','probe_b_import_finalizer_status','preformal_dry_run_path','preformal_dry_run_sha256','preformal_v2_check_count',
         'preformal_v2_pass_count','preformal_v2_fail_count','authorization_seal_builder_path','authorization_seal_builder_sha256',
-        'probe_b_controller_sha256','probe_b_result_builder_sha256','probe_b_attestation_builder_sha256',
+        'probe_b_controller_sha256','probe_b_result_builder_sha256','probe_b_attestation_builder_sha256','probe_b_recovery_controller_sha256','probe_b_recovery_contract_module_sha256','probe_b_frozen_input_inventory_builder_sha256',
         'probe_b_finalizer_binding_sha256','preformal_v2_controller_sha256','authorization_negative_test_count',
         'authorization_negative_test_pass_count','authorization_negative_test_fail_count','attempt22_authorization_missing_contract_count','godot_console_path','godot_console_sha256',
         'sealed_post_import_baseline_sha256','import_finalizer_dry_run_sha256'
@@ -147,6 +151,50 @@ function Get-Pr90ProbeBStringSetSha256 {
     return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
 }
 
+function Get-Pr90ProbeBOptionalPropertyValueV1 {
+    param(
+        [AllowNull()][object]$InputObject,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+    if ($null -eq $InputObject) { return $null }
+    $property = $InputObject.PSObject.Properties[$Name]
+    if ($null -eq $property) { return $null }
+    if ($property.Value -is [array]) {
+        Write-Output -NoEnumerate $property.Value
+        return
+    }
+    return $property.Value
+}
+
+function ConvertTo-Pr90ProbeBRequestFactV1 {
+    param([AllowNull()][object]$Request)
+    $malformed = $false
+    $parameters = Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Request -Name 'params'
+    if ($null -eq $parameters -or $parameters -is [array]) { $malformed = $true }
+    $nameValue = Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $parameters -Name 'name'
+    $name = if ($null -eq $nameValue) { '' } else { [string]$nameValue }
+    if ([string]::IsNullOrWhiteSpace($name)) { $malformed = $true }
+    $arguments = Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $parameters -Name 'arguments'
+    if ($arguments -is [array]) { $malformed = $true; $arguments = $null }
+    $modeValue = Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $arguments -Name 'mode'
+    $scenePathValue = Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $arguments -Name 'scene_path'
+    $mode = if ($null -eq $modeValue) { '' } else { [string]$modeValue }
+    $scenePath = if ($null -eq $scenePathValue) { '' } else { [string]$scenePathValue }
+    return [pscustomobject][ordered]@{
+        name = $name
+        mode = $mode
+        scene_path = $scenePath
+        malformed = $malformed
+        requests_main_scene = ($name -ceq 'play_main_scene' -or $scenePath -in @('res://scenes/main.tscn','res://main.tscn'))
+    }
+}
+
+function Get-Pr90ProbeBPathFingerprintV1 {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $full = [IO.Path]::GetFullPath($Path).ToLowerInvariant()
+    return Get-Pr90ProbeBCanonicalSha256 ([pscustomobject][ordered]@{path=$full;canonical_payload_sha256=''})
+}
+
 function Test-Pr90ProbeBListenerSampleContractV1 {
     param([int]$TotalSampleCount,[int]$ConsecutiveParitySampleCount,[double]$StableWindowMs,[int]$ObserverSourceCount,[bool]$Parity)
     return ($TotalSampleCount-ge5-and$ConsecutiveParitySampleCount-ge5-and$StableWindowMs-ge1000-and$ObserverSourceCount-eq2-and$Parity)
@@ -163,27 +211,46 @@ function Test-Pr90Attempt22EvidenceContractsV1 {
     param(
         [AllowNull()][object]$ProbeB,
         [AllowNull()][object]$ProbeBAttestation,
+        [AllowNull()][object]$ProbeBRecoveryReceipt,
         [AllowNull()][object]$Preformal,
         [Parameter(Mandatory = $true)][string]$ExpectedProbeBResultSha256,
         [Parameter(Mandatory = $true)][string]$ExpectedProductHeadSha,
         [Parameter(Mandatory = $true)][string]$ExpectedProductTreeSha,
         [Parameter(Mandatory = $true)][string]$ExpectedToolingHeadSha,
         [Parameter(Mandatory = $true)][string]$ExpectedToolingTreeSha,
+        [Parameter(Mandatory = $true)][string]$ExpectedToolingManifestSha256,
         [Parameter(Mandatory = $true)][string]$ExpectedToolingSealSha256,
+        [Parameter(Mandatory = $true)][string]$ExpectedProbeExecutionToolingHeadSha,
+        [Parameter(Mandatory = $true)][string]$ExpectedProbeExecutionToolingTreeSha,
+        [Parameter(Mandatory = $true)][string]$ExpectedProbeExecutionToolingSealSha256,
+        [Parameter(Mandatory = $true)][string]$ExpectedRecoveryControllerSha256,
+        [Parameter(Mandatory = $true)][string]$ExpectedRecoveryContractModuleSha256,
         [Parameter(Mandatory = $true)][string]$ExpectedGodotGuiSha256,
         [Parameter(Mandatory = $true)][string]$ExpectedGodotConsoleSha256
     )
     $errors=[Collections.Generic.List[string]]::new()
     if($null-eq$ProbeB-or[string]$ProbeB.schema-cne'Pr90ExactCloneProbeBV2ResultV1'-or[string]$ProbeB.probe_id-cne'pr90-exact-clone-startup-probe-b-v2-001'-or[string]$ProbeB.status-cne'PASS'-or[string]$ProbeB.import_finalizer_status-cne'PASS'-or
        [string]$ProbeB.product_head_sha-cne$ExpectedProductHeadSha-or[string]$ProbeB.product_tree_sha-cne$ExpectedProductTreeSha-or
-       [string]$ProbeB.tooling_head_sha-cne$ExpectedToolingHeadSha-or[string]$ProbeB.tooling_tree_sha-cne$ExpectedToolingTreeSha-or
-       [string]$ProbeB.tooling_seal_sha256-cne$ExpectedToolingSealSha256-or[string]$ProbeB.godot_gui_sha256-cne$ExpectedGodotGuiSha256-or[string]$ProbeB.godot_console_sha256-cne$ExpectedGodotConsoleSha256-or
+       [string]$ProbeB.tooling_head_sha-cne$ExpectedProbeExecutionToolingHeadSha-or[string]$ProbeB.tooling_tree_sha-cne$ExpectedProbeExecutionToolingTreeSha-or[string]$ProbeB.tooling_seal_sha256-cne$ExpectedProbeExecutionToolingSealSha256-or
+       [string]$ProbeB.result_recovery_tooling_head_sha-cne$ExpectedToolingHeadSha-or[string]$ProbeB.result_recovery_tooling_tree_sha-cne$ExpectedToolingTreeSha-or[string]$ProbeB.result_recovery_tooling_manifest_sha256-cne$ExpectedToolingManifestSha256-or[string]$ProbeB.result_recovery_tooling_seal_sha256-cne$ExpectedToolingSealSha256-or[int]$ProbeB.runtime_reachable_tooling_hash_mismatch_count-ne0-or
+       [string]$ProbeB.godot_gui_sha256-cne$ExpectedGodotGuiSha256-or[string]$ProbeB.godot_console_sha256-cne$ExpectedGodotConsoleSha256-or
        -not[bool]$ProbeB.bracketed_sample_model-or[int]$ProbeB.total_listener_cohort_attempt_count-lt5-or[int]$ProbeB.consecutive_stable_parity_cohort_count-lt5-or[double]$ProbeB.stable_parity_window_ms-lt1000-or
        -not[bool]$ProbeB.endpoint_listener_core_parity-or[int]$ProbeB.listener_core_parity_key_field_count-ne5-or[int]$ProbeB.matched_listener_process_enrichment_count-ne1-or[int]$ProbeB.duplicate_source_process_enrichment_count-ne0-or
        -not[bool]$ProbeB.endpoint_owner_project_match-or-not[bool]$ProbeB.endpoint_owner_mcp_session_match-or[int]$ProbeB.protected_port_multiple_owner_count-ne0-or[int]$ProbeB.foreign_listener_count-ne0){$errors.Add('PROBE_B_RESULT_CONTRACT_MISMATCH')}
     if($null-eq$ProbeBAttestation-or[string]$ProbeBAttestation.schema-cne'Pr90ExactCloneProbeBV2AttestationV1'-or[string]$ProbeBAttestation.status-cne'SEALED'-or[int]$ProbeBAttestation.unbound_evidence_count-ne0-or[string]$ProbeBAttestation.result_sha256-cne$ExpectedProbeBResultSha256-or
+       [string]$ProbeBAttestation.probe_execution_tooling_head_sha-cne$ExpectedProbeExecutionToolingHeadSha-or[string]$ProbeBAttestation.probe_execution_tooling_tree_sha-cne$ExpectedProbeExecutionToolingTreeSha-or[string]$ProbeBAttestation.probe_execution_tooling_seal_sha256-cne$ExpectedProbeExecutionToolingSealSha256-or
+       [string]$ProbeBAttestation.result_recovery_tooling_head_sha-cne$ExpectedToolingHeadSha-or[string]$ProbeBAttestation.result_recovery_tooling_tree_sha-cne$ExpectedToolingTreeSha-or[string]$ProbeBAttestation.result_recovery_tooling_manifest_sha256-cne$ExpectedToolingManifestSha256-or[string]$ProbeBAttestation.result_recovery_tooling_seal_sha256-cne$ExpectedToolingSealSha256-or
        -not[bool]$ProbeBAttestation.bracketed_sample_model-or[int]$ProbeBAttestation.listener_core_parity_key_field_count-ne5-or[int]$ProbeBAttestation.matched_listener_process_enrichment_count-ne1-or[string]$ProbeBAttestation.raw_listener_evidence_preservation-cne'100_PERCENT'){$errors.Add('PROBE_B_ATTESTATION_CONTRACT_MISMATCH')}
+    if($null-eq$ProbeBRecoveryReceipt-or[string]$ProbeBRecoveryReceipt.schema-cne'Pr90ProbeBV2ResultRecoveryReceiptV1'-or[string]$ProbeBRecoveryReceipt.status-cne'PASS'-or
+       [string]$ProbeBRecoveryReceipt.result_sha256-cne$ExpectedProbeBResultSha256-or[string]$ProbeBRecoveryReceipt.probe_execution_tooling_head_sha-cne$ExpectedProbeExecutionToolingHeadSha-or[string]$ProbeBRecoveryReceipt.probe_execution_tooling_tree_sha-cne$ExpectedProbeExecutionToolingTreeSha-or[string]$ProbeBRecoveryReceipt.probe_execution_tooling_seal_sha256-cne$ExpectedProbeExecutionToolingSealSha256-or
+       [string]$ProbeBRecoveryReceipt.result_recovery_tooling_head_sha-cne$ExpectedToolingHeadSha-or[string]$ProbeBRecoveryReceipt.result_recovery_tooling_tree_sha-cne$ExpectedToolingTreeSha-or[string]$ProbeBRecoveryReceipt.result_recovery_tooling_manifest_sha256-cne$ExpectedToolingManifestSha256-or[string]$ProbeBRecoveryReceipt.result_recovery_tooling_seal_sha256-cne$ExpectedToolingSealSha256-or
+       [string]$ProbeBRecoveryReceipt.recovery_controller_sha256-cne$ExpectedRecoveryControllerSha256-or[string]$ProbeBRecoveryReceipt.recovery_contract_module_sha256-cne$ExpectedRecoveryContractModuleSha256-or
+       [int]$ProbeBRecoveryReceipt.runtime_reachable_tooling_hash_mismatch_count-ne0-or[int]$ProbeBRecoveryReceipt.frozen_probe_modification_count-ne0-or[int]$ProbeBRecoveryReceipt.probe_execution_count_delta-ne0-or
+       [int]$ProbeBRecoveryReceipt.godot_process_start_count-ne0-or[int]$ProbeBRecoveryReceipt.mcp_process_start_count-ne0-or[int]$ProbeBRecoveryReceipt.startup_probe_invocation_count-ne0-or
+       [int]$ProbeBRecoveryReceipt.import_invocation_count-ne0-or[int]$ProbeBRecoveryReceipt.finalizer_invocation_count-ne0-or[int]$ProbeBRecoveryReceipt.formal_mcp_execution_count-ne0-or[int]$ProbeBRecoveryReceipt.authorized_run_count_consumed-ne0){$errors.Add('PROBE_B_RECOVERY_RECEIPT_CONTRACT_MISMATCH')}
     if($null-eq$Preformal-or[string]$Preformal.run_id-cne'pr90-attempt22-preformal-dry-run-v2-002'-or[string]$Preformal.status-cne'PASS'-or[int]$Preformal.check_count-ne22-or[int]$Preformal.pass_count-ne22-or[int]$Preformal.fail_count-ne0-or
+       [string]$Preformal.tooling_head_sha-cne$ExpectedToolingHeadSha-or[string]$Preformal.tooling_tree_sha-cne$ExpectedToolingTreeSha-or[string]$Preformal.tooling_seal_sha256-cne$ExpectedToolingSealSha256-or
+       [string]$Preformal.probe_b_execution_tooling_head_sha-cne$ExpectedProbeExecutionToolingHeadSha-or[string]$Preformal.probe_b_execution_tooling_tree_sha-cne$ExpectedProbeExecutionToolingTreeSha-or
        [int]$Preformal.product_process_count_after-ne0-or[int]$Preformal.mcp_product_process_count-ne0-or[int]$Preformal.protected_listener_count_after-ne0-or
        [bool]$Preformal.formal_authorization_consumed-or-not[bool]$Preformal.reaches_formal_start_boundary){$errors.Add('PREFORMAL_CONTRACT_MISMATCH')}
     return [pscustomobject][ordered]@{status=if($errors.Count-eq0){'PASS'}else{'BLOCKED'};error_count=$errors.Count;errors=@($errors)}
@@ -246,6 +313,14 @@ function Test-Pr90Attempt22ManifestObjectV4 {
     if ([string]::IsNullOrWhiteSpace([string]$Manifest.probe004_attestation_sha256)) { $errors.Add('PROBE004_ATTESTATION_MISSING') }
     if ([string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_result_sha256)) { $errors.Add('PROBE_B_RESULT_MISSING') }
     if ([string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_attestation_sha256)) { $errors.Add('PROBE_B_ATTESTATION_MISSING') }
+    if ([string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_recovery_receipt_sha256)) { $errors.Add('PROBE_B_RECOVERY_RECEIPT_MISSING') }
+    if ([string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_recovery_controller_sha256) -or [string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_recovery_contract_module_sha256)) { $errors.Add('PROBE_B_RECOVERY_EXECUTOR_IDENTITY_MISSING') }
+    if ([string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_frozen_input_inventory_sha256)) { $errors.Add('PROBE_B_FROZEN_INPUT_INVENTORY_MISSING') }
+    if ([string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_execution_start_sha256) -or [string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_execution_config_sha256)) { $errors.Add('PROBE_B_EXECUTION_IDENTITY_EVIDENCE_MISSING') }
+    if ([string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_execution_tooling_head_sha) -or [string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_execution_tooling_tree_sha) -or [string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_execution_tooling_seal_sha256)) { $errors.Add('PROBE_B_EXECUTION_TOOLING_IDENTITY_MISSING') }
+    if ([string]$Manifest.probe_b_recovery_tooling_head_sha -cne $ExpectedToolingHead -or [string]$Manifest.probe_b_recovery_tooling_tree_sha -cne $ExpectedToolingTree -or
+        [string]$Manifest.probe_b_recovery_tooling_manifest_sha256 -cne [string]$Manifest.tooling_manifest_sha256 -or [string]$Manifest.probe_b_recovery_tooling_seal_sha256 -cne $ExpectedToolingSealSha256) { $errors.Add('PROBE_B_RECOVERY_TOOLING_IDENTITY_MISMATCH') }
+    if ([int]$Manifest.runtime_reachable_tooling_hash_mismatch_count -ne 0) { $errors.Add('RUNTIME_REACHABLE_TOOLING_HASH_MISMATCH') }
     if ([string]::IsNullOrWhiteSpace([string]$Manifest.probe_b_finalizer_result_sha256)) { $errors.Add('PROBE_B_FINALIZER_RESULT_MISSING') }
     if ([string]$Manifest.probe_b_import_finalizer_status -cne 'PASS') { $errors.Add('PROBE_B_FINALIZER_NOT_PASS') }
     if ([int]$Manifest.endpoint_ownership_contract_version -ne 2) { $errors.Add('ENDPOINT_OWNERSHIP_VERSION_MISMATCH') }
