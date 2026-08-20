@@ -378,6 +378,10 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
         'CANONICAL_IMPORT_HARNESS_REUSES_SEALED_LAUNCH_AND_SCOPED_STOP',
         'CANONICAL_IMPORT_HARNESS_FAILURE_PATH_SCOPED_CLEANUP',
         'CANONICAL_IMPORT_V2_CONNECTION_REQUIRED_FIELDS_PRESENT',
+        'CANONICAL_IMPORT_RUNTIME_MODULE_IMPORT_ORDER_REACHABLE',
+        'NEGATIVE_CANONICAL_IMPORT_OLD_MODULE_ORDER_REJECTED',
+        'CANONICAL_IMPORT_CONSOLE_TO_GUI_MAPPING_ACCEPTED',
+        'NEGATIVE_CANONICAL_IMPORT_MISSING_GUI_SIBLING_PRECREATE_REJECTED',
         'STALE_326_SELFTEST_REJECTED',
         'STALE_V1_SELFTEST_REJECTED'
     )
@@ -386,7 +390,7 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
     if(@(Compare-Object -ReferenceObject $requiredFields -DifferenceObject @($Receipt.PSObject.Properties.Name)).Count-ne0){return $false}
     $revision=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Receipt -Name 'selftest_revision'
     if([string]$Receipt.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSelfTestV1'-or[string]$Receipt.status-cne'PASS'-or
-       [string]$revision-cne'PR90_ATTEMPT22_CANONICAL_IMPORT_V2_OWNER_REPAIR_V6'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
+       [string]$revision-cne'PR90_ATTEMPT22_CANONICAL_IMPORT_MODULE_BINDING_REPAIR_V7'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
        [int]$Receipt.new_selftest_case_count-ne@($Receipt.cases).Count-or[int]$Receipt.new_selftest_pass_count-ne[int]$Receipt.new_selftest_case_count-or
        [int]$Receipt.new_selftest_failure_count-ne0-or[int]$Receipt.total_tooling_selftest_pass_count-ne(326+[int]$Receipt.new_selftest_case_count)-or[int]$Receipt.total_tooling_selftest_failure_count-ne0-or
        [int]$Receipt.authorization_negative_test_fail_count-ne0-or[int]$Receipt.false_green_count-ne0-or[int]$Receipt.missing_prerequisite_false_accept_count-ne0-or
@@ -421,7 +425,7 @@ function Test-Pr90Attempt22ToolingManifestStructureV2 {
            [string]$Manifest.tooling_head_sha-cne$ExpectedHead-or[string]$Manifest.tooling_tree_sha-cne$ExpectedTree-or[string]$Manifest.tooling_parent_sha-cne$ExpectedParent-or
            [string]$Manifest.base_tooling_head_sha-cne$ExpectedParent-or[string]$Manifest.base_tooling_manifest_sha256-cne$ExpectedBaseManifestSha256-or[string]$Manifest.base_tooling_seal_sha256-cne$ExpectedBaseSealSha256-or
            [string]$Manifest.new_selftest_sha256-cne$ExpectedNewSelfTestSha256-or[string]$Manifest.frozen_input_inventory_sha256-cne$ExpectedFrozenInputSha256-or
-            [int]$Manifest.new_tooling_commit_count-ne1-or[int]$Manifest.new_tooling_diff_count-ne5-or[int]$Manifest.new_tooling_modified_count-ne4-or[int]$Manifest.new_tooling_added_count-ne1-or
+            [int]$Manifest.new_tooling_commit_count-ne1-or[int]$Manifest.new_tooling_diff_count-ne5-or[int]$Manifest.new_tooling_modified_count-ne5-or[int]$Manifest.new_tooling_added_count-ne0-or
            [int]$Manifest.tooling_scope_violation_count-ne0-or[int]$Manifest.product_code_change_count-ne0-or[int]$Manifest.product_test_change_count-ne0-or[int]$Manifest.tooling_file_hash_mismatch_count-ne0-or
             [int]$Manifest.authorized_runtime_reachable_change_count-ne2-or[int]$Manifest.runtime_reachable_tooling_hash_mismatch_count-ne0-or
            [string]$Manifest.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $Manifest)){return $false}
@@ -434,10 +438,10 @@ function Test-Pr90Attempt22ToolingManifestStructureV2 {
            [string]$Manifest.frozen_input_tooling_head_sha-cne[string]$FrozenInput.tooling_head_sha-or[string]$Manifest.frozen_input_tooling_tree_sha-cne[string]$FrozenInput.tooling_tree_sha-or
            [int]$Manifest.frozen_input_count-ne[int]$FrozenInput.input_count-or[string]$Manifest.frozen_input_hash_inventory_sha256-cne[string]$FrozenInput.input_inventory_sha256){return $false}
         $diffRows=@($Manifest.new_tooling_diff);$diffPaths=@($diffRows|ForEach-Object{[string]$_.relative_path}|Sort-Object)
-        if($diffRows.Count-ne5-or@($diffRows|Where-Object{[string]$_.status-ceq'M'}).Count-ne4-or@($diffRows|Where-Object{[string]$_.status-ceq'A'}).Count-ne1-or
+        if($diffRows.Count-ne5-or@($diffRows|Where-Object{[string]$_.status-ceq'M'}).Count-ne5-or@($diffRows|Where-Object{[string]$_.status-ceq'A'}).Count-ne0-or
            @($diffRows|Where-Object{[string]$_.status-notin@('M','A')}).Count-ne0-or@($diffPaths|Select-Object -Unique).Count-ne5-or@(Compare-Object $expectedDiff $diffPaths).Count-ne0){return $false}
         $rows=@($Manifest.tooling_files);$paths=@($rows|ForEach-Object{([string]$_.relative_path).Replace('\','/')}|Sort-Object);$basePaths=@($BaseManifest.tooling_files|ForEach-Object{([string]$_.relative_path).Replace('\','/')}|Sort-Object)
-        $expectedToolingPaths=@($basePaths+'tools/release_harness/pr90_canonical_import_authority_v3.ps1'|Sort-Object -Unique)
+        $expectedToolingPaths=@($basePaths|Sort-Object -Unique)
         if([int]$Manifest.tooling_file_count-ne$rows.Count-or$rows.Count-ne@($paths|Select-Object -Unique).Count-or@(Compare-Object $expectedToolingPaths $paths).Count-ne0){return $false}
         return $true
     }catch{return $false}

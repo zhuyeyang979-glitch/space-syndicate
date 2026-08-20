@@ -13,9 +13,10 @@ Set-StrictMode -Version Latest
 
 $script:ToolingRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $script:HarnessPath = [IO.Path]::GetFullPath($PSCommandPath)
+Import-Module (Join-Path $script:ToolingRoot 'tools/pr90_mcp_startup_state_machine_v1.psm1') -Force
 Import-Module (Join-Path $script:ToolingRoot 'tools/pr90_mcp_endpoint_ownership_v2.psm1') -Force
 Import-Module (Join-Path $script:ToolingRoot 'tools/pr90_listener_process_identity_reader_v1.psm1') -Force
-Import-Module (Join-Path $script:ToolingRoot 'tools/pr90_mcp_startup_state_machine_v1.psm1') -Force
+Import-Module (Join-Path $script:ToolingRoot 'tools/pr90_endpoint_listener_record_v1.psm1') -Force
 Import-Module (Join-Path $script:ToolingRoot 'tools/pr90_probe_b_attempt22_contract_v1.psm1') -Force
 
 
@@ -203,11 +204,10 @@ function Wait-ImportStable {
 }
 
 function Get-TaskGodotProcessRows {
-    $expectedGui = Resolve-Pr90McpGuiEnginePathV2 -GodotConsolePath $script:Godot
     return @(
         Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
             Where-Object {
-                [string]$_.ExecutablePath -iin @($script:Godot, $expectedGui) -and
+                [string]$_.ExecutablePath -iin @($script:Godot, $script:GodotGui) -and
                 (Test-Pr90McpCommandLinePathBindingV2 -CommandLine ([string]$_.CommandLine) -ExpectedRoot $script:Root)
             }
     )
@@ -225,7 +225,7 @@ function Wait-CanonicalEndpointOwnerV2 {
         [string]$LaunchReceipt.process_start_time_utc,
         [Globalization.CultureInfo]::InvariantCulture
     ).UtcDateTime.ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
-    $expectedGuiPath = Resolve-Pr90McpGuiEnginePathV2 -GodotConsolePath $script:Godot
+    $expectedGuiPath = $script:GodotGui
     $controlGreen = (
         [bool]$control.exists -and [bool]$control.identity_read_green -and
         [int]$control.pid -eq $controlPid -and
@@ -600,6 +600,11 @@ $script:Root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd('\')
 $script:Evidence = [IO.Path]::GetFullPath($EvidenceRoot)
 $script:Profile = [IO.Path]::GetFullPath($ProfileRoot)
 $script:Godot = (Resolve-Path -LiteralPath $GodotPath).Path
+$script:GodotGui = Resolve-Pr90McpGuiEnginePathV2 -GodotConsolePath $script:Godot
+if (-not (Test-Path -LiteralPath $script:GodotGui -PathType Leaf) -or
+    $script:GodotGui.Equals($script:Godot, [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'Canonical import requires a console engine with a distinct existing GUI sibling.'
+}
 [IO.Directory]::CreateDirectory($script:Evidence) | Out-Null
 [IO.Directory]::CreateDirectory($script:Profile) | Out-Null
 
