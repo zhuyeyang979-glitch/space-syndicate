@@ -1,7 +1,46 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-23。
+> 最新记录日期：2026-08-21。
+
+## 2026-08-21 — V0.7.6 deterministic simulation kernel candidate
+
+- Added an isolated, test-only V0.7.6 authority kernel with an exact integer
+  20Hz clock (`50000us` per tick); it owns no engine-frame callback and reads no
+  wall, OS, camera, animation, or presentation state.
+- Added stable same-tick command closure followed by a single monotonic
+  Authority Sequence. Exact duplicate commands are idempotent, while a
+  same-ID/different-payload collision fails closed.
+- Added a strict authoritative state codec: only null, bool, int, String,
+  Array, and String-keyed Dictionary values enter snapshots or hashes. Float,
+  Vector, Object, Callable, StringName, and presentation fields are rejected.
+- Added independent integer-only RNG streams per gameplay domain, tick-boundary
+  snapshots, pending-queue continuation, ordered per-command before/after state
+  hashes, and an independent replay runner.
+- Added a production-wiring Bench scene and focused acceptance test, including
+  a 2,000-replay parity gate. This stage does not touch the V0.7.5 production
+  composition; production activation remains an atomic Stage 7 task.
+- Focused runner evidence `20260820-154737-214-v076_deterministic_kernel_test-4f375bc0`
+  passes the final strengthened 57/57 gate with 2,000 replays, zero state-hash
+  mismatches, zero diagnostics, exact completion marker, and no remaining
+  process. UI text,
+  visual contract, and smoke `--check-only` runners also passed with zero
+  diagnostics; existing determinism foundation (30/30), consumption (33/33),
+  and Run RNG (21/21) gates stayed green.
+- Godot MCP ran `res://scenes/tools/v076/V076DeterministicKernelBench.tscn`
+  against Godot 4.7 and recorded PASS, 2,000 replays, zero mismatches, zero
+  float authority fields, zero debug errors, and a clean explicit stop. The
+  sealed terminal authority hash is
+  `eb4061fa0d4536d029daaeb8b3cb156d46c2120f95d3ad3a46fd165522986708`.
+- The full legacy `smoke_test.gd` remains red on the unchanged PR #90 candidate
+  and this Stage 1 tree with the identical first failure and stderr SHA256
+  `0e6f9d9278eaf869e68e6d8f036b591afdd00d2ae31155d67e4759bb78031082`:
+  it still expects a QA save path before the retired `Main` enters the tree.
+  The isolated 770d baseline receipt is
+  `20260820-152718-599-smoke_test-efba8fbc`; Stage 1 receipt is
+  `20260820-152648-233-smoke_test-e5f35b96`. This is unchanged legacy-oracle
+  debt, not a deterministic-kernel regression, and no retired Main fallback was
+  restored.
 
 ## 2026-07-23 — CommodityFlow post-commit exact-once cutover
 
