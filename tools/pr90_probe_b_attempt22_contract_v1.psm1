@@ -143,6 +143,16 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
         'FORMAL_AUTHORIZATION_SEAL_AND_ATOMIC_CONSUMPTION_BOUND',
         'FORMAL_STATE_MACHINE_ACCOUNTING_CONSUMED',
         'FORMAL_RESULT_AFTER_CLEANUP_AND_FINALIZER_ONLY',
+        'FORMAL_MCP_SUPPORT_CLASSIFIER_EXCLUDES_CURRENT_PROCESS',
+        'FORMAL_MCP_SUPPORT_CLASSIFIER_REQUIRES_FILE_TARGET',
+        'FORMAL_MCP_SUPPORT_CLASSIFIER_ACCEPTS_REAL_WATCHDOG',
+        'FORMAL_MCP_SUPPORT_CLASSIFIER_REJECTS_EMBEDDED_FILE_TOKEN',
+        'FORMAL_MCP_SUPPORT_CLASSIFIER_REJECTS_COMMAND_WITH_ARGS_PAYLOAD',
+        'FORMAL_MCP_SUPPORT_CLASSIFIER_REJECTS_CWA_PAYLOAD',
+        'FORMAL_MCP_SUPPORT_CLASSIFIER_REJECTS_ALL_COMMAND_MODE_PREFIX_PAYLOADS',
+        'FORMAL_MCP_SUPPORT_CLASSIFIER_ACCEPTS_ALL_FILE_MODE_PREFIXES',
+        'FORMAL_MCP_SUPPORT_CLASSIFIER_REJECTS_WRONG_ROOT_WATCHDOG',
+        'FORMAL_PRESTART_BLOCKER_EMITS_PROCESS_ROWS',
         'STALE_326_SELFTEST_REJECTED',
         'STALE_V1_SELFTEST_REJECTED'
     )
@@ -151,7 +161,7 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
     if(@(Compare-Object -ReferenceObject $requiredFields -DifferenceObject @($Receipt.PSObject.Properties.Name)).Count-ne0){return $false}
     $revision=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Receipt -Name 'selftest_revision'
     if([string]$Receipt.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSelfTestV1'-or[string]$Receipt.status-cne'PASS'-or
-       [string]$revision-cne'PR90_ATTEMPT22_FORMAL_BASELINE_IDENTITY_SPLIT_V2'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
+       [string]$revision-cne'PR90_ATTEMPT22_WATCHDOG_CLASSIFIER_REPAIR_V3'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
        [int]$Receipt.new_selftest_case_count-ne@($Receipt.cases).Count-or[int]$Receipt.new_selftest_pass_count-ne[int]$Receipt.new_selftest_case_count-or
        [int]$Receipt.new_selftest_failure_count-ne0-or[int]$Receipt.total_tooling_selftest_pass_count-ne(326+[int]$Receipt.new_selftest_case_count)-or[int]$Receipt.total_tooling_selftest_failure_count-ne0-or
        [int]$Receipt.authorization_negative_test_fail_count-ne0-or[int]$Receipt.false_green_count-ne0-or[int]$Receipt.missing_prerequisite_false_accept_count-ne0-or
@@ -551,13 +561,36 @@ function Get-Pr90ProductProcessRowsV1 {
     return @($rows)
 }
 
+function Test-Pr90McpSupportProcessCommandLineV2 {
+    param(
+        [Parameter(Mandatory = $true)][int]$ProcessId,
+        [AllowEmptyString()][string]$CommandLine = '',
+        [AllowEmptyString()][string]$IdentityText = '',
+        [Parameter(Mandatory = $true)][string]$ExpectedWatchdogScriptPath,
+        [int]$CurrentProcessId = $PID
+    )
+    if ($ProcessId -eq $CurrentProcessId -or [string]::IsNullOrWhiteSpace($CommandLine)) { return $false }
+    $modeMatch = [regex]::Match($CommandLine, '(?i)(?:^|\s)-(?<mode>CommandWithArgs|CommandWithArg|CommandWithAr|CommandWithA|CommandWith|CommandWit|CommandWi|CommandW|Command|Comman|Comma|Comm|Com|Co|Cwa|C|EncodedCommand|EncodedComman|EncodedComma|EncodedComm|EncodedCom|EncodedCo|EncodedC|Encoded|Encode|Encod|Enco|Enc|En|Ec|E|File|Fil|Fi|F)(?=$|\s|:)')
+    if (-not $modeMatch.Success -or [string]$modeMatch.Groups['mode'].Value -notmatch '^(?i:File|Fil|Fi|F)$') { return $false }
+    $modeTail = $CommandLine.Substring($modeMatch.Index).TrimStart()
+    $fileMatch = [regex]::Match($modeTail, '(?i)^-(?:File|Fil|Fi|F)(?:\s+|:)(?:"(?<path>[^"]+)"|''(?<path>[^'']+)''|(?<path>\S+))')
+    if (-not $fileMatch.Success) { return $false }
+    $scriptPath = [string]$fileMatch.Groups['path'].Value
+    try {
+        $scriptFull = [IO.Path]::GetFullPath($scriptPath)
+        $expectedWatchdogFull = [IO.Path]::GetFullPath($ExpectedWatchdogScriptPath)
+    } catch { return $false }
+    $isWatchdog = $scriptFull.Equals($expectedWatchdogFull, [StringComparison]::OrdinalIgnoreCase)
+    $isScopedIdentity = -not [string]::IsNullOrWhiteSpace($IdentityText) -and $CommandLine.Contains($IdentityText, [StringComparison]::OrdinalIgnoreCase)
+    return ($isWatchdog -or $isScopedIdentity)
+}
+
 function Get-Pr90McpSupportProcessRowsV1 {
     param([string]$IdentityText = '')
     $rows = [Collections.Generic.List[object]]::new()
     foreach ($process in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
         [string]$_.Name -match '^(?:pwsh|powershell)\.exe$' -and
-        (([string]$_.CommandLine).Contains('pr90_attempt21_mcp_startup_watchdog.ps1',[StringComparison]::OrdinalIgnoreCase) -or
-         ($IdentityText -and ([string]$_.CommandLine).Contains($IdentityText,[StringComparison]::OrdinalIgnoreCase)))
+        (Test-Pr90McpSupportProcessCommandLineV2 -ProcessId ([int]$_.ProcessId) -CommandLine ([string]$_.CommandLine) -IdentityText $IdentityText -ExpectedWatchdogScriptPath (Join-Path $PSScriptRoot 'pr90_attempt21_mcp_startup_watchdog.ps1') -CurrentProcessId $PID)
     })) { $rows.Add([pscustomobject][ordered]@{pid=[int]$process.ProcessId;name=[string]$process.Name;command_line=[string]$process.CommandLine}) }
     return @($rows)
 }

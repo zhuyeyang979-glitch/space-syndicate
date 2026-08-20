@@ -139,7 +139,10 @@ $authorityGreen=([string]$validation.schema-ceq'Pr90Attempt22AuthorizationValida
 if(-not$authorityGreen){throw 'Formal v5 authorization, Tooling, or planned cleanup identity mismatch.'}
 
 $prestartProductProcesses=@(Get-Pr90ProductProcessRowsV1);$prestartMcpProcesses=@(Get-Pr90McpSupportProcessRowsV1);$prestartListeners=@(Get-Pr90ProtectedListenerRowsV1)
-if($prestartProductProcesses.Count-ne0-or$prestartMcpProcesses.Count-ne0-or$prestartListeners.Count-ne0){throw 'Formal prestart process/port boundary is not empty; authorization remains unconsumed.'}
+if($prestartProductProcesses.Count-ne0-or$prestartMcpProcesses.Count-ne0-or$prestartListeners.Count-ne0){
+    $prestartBoundary=[pscustomobject][ordered]@{product_processes=@($prestartProductProcesses);mcp_support_processes=@($prestartMcpProcesses);protected_listeners=@($prestartListeners)}
+    throw "Formal prestart process/port boundary is not empty; authorization remains unconsumed. boundary=$($prestartBoundary|ConvertTo-Json -Depth 20 -Compress)"
+}
 $baseline=Get-Content -Raw -LiteralPath $SealedBaselinePath|ConvertFrom-Json -Depth 100
 $baselineState=New-FinalizerStateFromBaseline $baseline
 $prelaunchState=Get-CurrentFinalizerState -Worktree $root
