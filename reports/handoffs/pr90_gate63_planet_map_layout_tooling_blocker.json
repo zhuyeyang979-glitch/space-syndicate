@@ -1,0 +1,92 @@
+{
+  "schema_version": "PR90Gate63LayoutToolingBlockerHandoffV1",
+  "observed_utc": "2026-08-16T21:31:01.6841110Z",
+  "status": "BLOCKED_BEFORE_REPAIR",
+  "product": {
+    "pr_number": 90,
+    "head_sha": "1e948a15e17faffe648722fd596fac01a4525426",
+    "tree_sha": "8508df4e900a73c058566f00fc556ec1d11e08ca",
+    "ci_run_id": 31956611702,
+    "ci_status": "SUCCESS",
+    "pr_state": "OPEN_DRAFT",
+    "pr_mergeable": true
+  },
+  "frozen_formal_attempt_002": {
+    "run_id": "pr90-repaired-head-release-full-002",
+    "attempt_id": "formal-attempt-002",
+    "execution_count": 1,
+    "authorized_count_consumed": 1,
+    "execution_start_sha256": "fa7a040ede31658fd213426befae018b8fc090381671b3900a62e275f26c50e4",
+    "summary_sha256": "fe0a969a56d7a5030f037336b1a521adcc36c1b13dceef2d3d55ff845b915875",
+    "gate_1_to_62_pass_count": 62,
+    "gate_63_status": "PRODUCT_GATE_FAILURE",
+    "gate_63_raw_result_sha256": "240fda2cbb17db6d5903663412eb47a97a284e58270fd10db4b61eed9a1c41ff",
+    "gate_63_business_assertions": "18/18",
+    "gate_63_unclassified_error_count": 1,
+    "gate_64_to_79_started_count": 0,
+    "modification_count": 0,
+    "rerun_count": 0,
+    "evidence_overwrite_count": 0
+  },
+  "gate_63": {
+    "test_path": "tests/v074_planet_map_view_test.gd",
+    "warning_source_line": 20,
+    "warning": "Nodes with non-equal opposite anchors will have their size overridden after _ready().",
+    "root_cause_class": "TEST_FIXTURE_LAYOUT_CONTRACT_DEFECT",
+    "production_layout_defect_attested": false,
+    "production_layout_contract": "PARENT_OR_CONTAINER_OWNS_SIZE_AND_PLANET_MAP_VIEW_FILLS_PARENT",
+    "required_repair": "FIXED_SIZE_TEST_HOST_CONTAINING_FULL_RECT_PLANET_MAP_VIEW",
+    "required_layouts": ["1000x650", "1366x768", "1600x960", "1920x1080"],
+    "same_pattern_related_fixture": "tests/v074_planet_shader_surface_test.gd:19",
+    "gate_64_to_79_same_pattern_count": 0
+  },
+  "tooling_blocker": {
+    "class": "CURRENT_MCP_SCRIPT_EDIT_CAPABILITY_MISSING",
+    "mcp_only_godot_code_edit": true,
+    "direct_filesystem_godot_code_edit_count": 0,
+    "available_mcp_capabilities": [
+      "project_info",
+      "run_stop_project",
+      "launch_editor",
+      "create_scene",
+      "add_node",
+      "save_scene"
+    ],
+    "missing_required_capability": "read_write_or_patch_gdscript",
+    "computer_use_editor_window_acquired": false,
+    "product_runtime_code_change_count": 0,
+    "test_fixture_change_count": 0,
+    "formal_execution_count": 0
+  },
+  "local_evidence": [
+    {
+      "path": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/reports/handoffs/gate63_planet_map_layout_root_cause.json",
+      "sha256": "6659be182e9bd0ef19f820a007b5fbe6b555b46b0bbd0041e50c9a71bc61e71b"
+    },
+    {
+      "path": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/reports/handoffs/gate63_planet_map_layout_root_cause.md",
+      "sha256": "c237fdc41fe7b554f6ceeaae21a43be5607a848143827eb02b3bc34b0dfe427d"
+    },
+    {
+      "path": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/reports/handoffs/ui_test_anchor_size_contract_matrix.json",
+      "sha256": "893be0f5be7a326296269a366d3d428dcd0ae9695712f95bfb86062bfd80828f"
+    },
+    {
+      "path": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/reports/handoffs/ui_test_anchor_size_contract_matrix.md",
+      "sha256": "d94caea51c294b06efe58b17fa265899cf32eff5e0fa79067f3143950a13e318"
+    },
+    {
+      "path": "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/reports/handoffs/pr90_gate63_layout_tooling_blocker_update.json",
+      "sha256": "55c61146cbdeabfc52c89cc82808361ed010abeff5c85d18bcb8fb41a94f3e0d"
+    }
+  ],
+  "machine_state": {
+    "godot_process_count": 0,
+    "release_worker_process_count": 0,
+    "protected_port_count": 0,
+    "pr90_merged": false,
+    "v076_branch_created": false,
+    "v076_poc_started": false
+  },
+  "next_task": "PR90_GATE63_PLANET_MAP_LAYOUT_CURRENT_MCP_SCRIPT_EDIT_CAPABILITY"
+}

@@ -1,0 +1,71 @@
+{
+  "schema": "SpaceSyndicatePr90Attempt20StartupStallPostmortemV1",
+  "status": "COMPLETE",
+  "product_head_sha": "770d741f05964facda4afcbddcdeb3e7f40571d5",
+  "product_tree_sha": "f5bb584ceea065b13c9b5621b1976af7907c62ad",
+  "attempt20_failure_witness_sha256": "2bd4270a3c0645451e143aa4e0bdfa2c3879a915e9f261fdab62bee8515c0324",
+  "attempt20_root_cause_class": "J",
+  "attempt20_endpoint_bound": "UNKNOWN",
+  "attempt20_endpoint_owner_match": "UNKNOWN",
+  "attempt20_first_jsonrpc_request_sent": "UNKNOWN",
+  "attempt20_first_jsonrpc_response_received": "UNKNOWN",
+  "attempt20_mcp_raw_evidence_count": 0,
+  "attempt20_phase_evidence_count": 0,
+  "new_tooling_head_sha": "3ce3f0fb9e63def5455f25481a11c28964e74821",
+  "new_tooling_tree_sha": "5591b46669f8f3cc223182283d3c48aaa984e8d8",
+  "new_import_runner_sha256": "acc4d08ef5d4fc40496c97a33c70364a3a06a0afd63b72ac943f615d384bd3c3",
+  "new_cursor_runbook_sha256": "3f6cf15435751999154ae35c7a241a6756c1846a6958119024f61ea1921c995b",
+  "new_startup_watchdog_sha256": "e7ae19424cb36814ef9da2bf819f11b26fbe4949d7de398bc1b85b8f7ca71a40",
+  "new_startup_state_machine_sha256": "a6090dab98b7158f789c6b196b9267770991c8811d3ca7ec4bce9ff27e8e1b9f",
+  "new_startup_contract_sha256": "719c4613a66a8b303fa718025064344932ebf11e666abaa224b1f429d7c79a56",
+  "startup_boundary_selftest_status": "PASS",
+  "startup_boundary_selftest_case_count": 35,
+  "startup_boundary_selftest_pass_count": 35,
+  "startup_boundary_selftest_sha256": "8a22ae27c3e56b7d6e8f772f7d619f2da43f063e5d1ef6054ff1a1323499f8af",
+  "probe_driver_invocation_count": 4,
+  "probe_product_process_created_count": 2,
+  "probe_a_runs": [
+    {
+      "run_id": "pr90-attempt21-probe-a-001",
+      "product_process_created": false,
+      "last_milestone": "NONE",
+      "failure": "EMPTY_LISTENER_STRICTMODE_IN_DIAGNOSTIC_SNAPSHOT"
+    },
+    {
+      "run_id": "pr90-attempt21-probe-a-002",
+      "product_process_created": false,
+      "last_milestone": "NONE",
+      "failure": "NESTED_FUNCTION_STATE_SCOPE_DEFECT"
+    },
+    {
+      "run_id": "pr90-attempt21-probe-a-003",
+      "product_process_created": true,
+      "last_successful_milestone": "M3",
+      "first_failed_milestone": "M4",
+      "failure": "FIXTURE_SETTINGS_PATH_WAS_PRODUCT_NAME_SPECIFIC",
+      "evidence_sha256": "9904f3c05cee0c3ef399c9f4445714ea152e70b02fec774d585ab2c223d11a7e"
+    },
+    {
+      "run_id": "pr90-attempt21-probe-a-004",
+      "product_process_created": true,
+      "last_successful_milestone": "M6",
+      "first_failed_milestone": "M7",
+      "endpoint_bound": true,
+      "endpoint_owner_match": true,
+      "first_jsonrpc_request_sent": true,
+      "first_jsonrpc_response_received": "UNKNOWN_DUE_TRANSACTION_OBJECT_OBSERVATION_DEFECT",
+      "first_mcp_raw_evidence_persisted": false,
+      "phase0_evidence_persisted": false,
+      "evidence_sha256": "b2977969d64dd15aa5fa6efa20797c33e8b36b1291aa6ddfdfc424155c428ceb",
+      "m6_receipt_sha256": "0e13f612abae1f88f3f3661e4f1c3fc802232f04f0bd095511631a6669f16572",
+      "m7_receipt_sha256": "bcb84a153e1d95a3a8c6979a03e7d1d425af4a40f78a1a83e4fa672bd3cc7366"
+    }
+  ],
+  "final_transaction_loopback_selftest": "PASS",
+  "final_transaction_bytes_reprobed_in_godot": false,
+  "probe_b_started": false,
+  "pre_formal_exact_mcp_dry_run": "NOT_STARTED",
+  "formal_mcp_execution_count": 0,
+  "authorized_run_count_consumed": 0,
+  "exact_sha_mcp_status": "NOT_STARTED"
+}

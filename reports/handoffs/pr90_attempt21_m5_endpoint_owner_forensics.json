@@ -1,0 +1,19 @@
+{
+  "schema": "SpaceSyndicatePr90Attempt21M5EndpointOwnerForensicsHandoffV1",
+  "status": "BLOCKED",
+  "frozen_probe_id": "pr90-attempt21-final-minimal-m0-m11-probe-001",
+  "forensics_path": "C:\\pr90-m5-endpoint-ownership-v2\\attempt21-endpoint-owner-forensics.json",
+  "forensics_sha256": "2d2560f7233a69df581f358d6b71a14e9010004e7e7ff0a50e1a763130628e55",
+  "forensics_markdown_path": "C:\\pr90-m5-endpoint-ownership-v2\\attempt21-endpoint-owner-forensics.md",
+  "forensics_markdown_sha256": "7247165c5c57ab25db35b8415f610d300392110d37d17d2aa023850bbf793a3c",
+  "frozen_result_sha256": "83cd3d53c9b38a93cfb56f033f89f8996197c26ca2ddf9eecfe7f79b776a3d55",
+  "frozen_attestation_sha256": "13ed042cf1739a04b6af899f5100decd63af5cfd7cc54cbc2f3b5f073d6c0d44",
+  "frozen_endpoint_owner_identity": "INSUFFICIENT_HISTORICAL_EVIDENCE",
+  "m5_root_cause_class": "G",
+  "first_owner_observed_utc": "2026-08-19T01:29:00.5758961Z",
+  "last_owner_observed_utc": "2026-08-19T01:29:11.2581846Z",
+  "formal_mcp_execution_count": 0,
+  "authorized_run_count_consumed": 0,
+  "exact_sha_mcp_status": "NOT_STARTED",
+  "next_task": "PR90_MCP_ENDPOINT_OWNER_CHARACTERIZATION_PROBE"
+}

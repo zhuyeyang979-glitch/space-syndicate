@@ -1,0 +1,18 @@
+{
+  "schema": "SpaceSyndicatePr90HandoffHashCorrectionV1",
+  "status": "CORRECTED_APPEND_ONLY",
+  "probe_id": "pr90-m5-endpoint-owner-characterization-v2-001",
+  "superseded_handoff_path": "reports/handoffs/pr90_listener_observer_formatter_repair.json",
+  "superseded_handoff_sha256": "cb25baac8b0b25dd29bbc0b74d1482434845dafe7f0d724f203a280a82b9635d",
+  "field_name": "characterization_result_sha256",
+  "incorrect_value_kind": "canonical_payload_sha256",
+  "incorrect_value": "8d1c3ef03c474b76fa45c649757b4ad4dee137e057dccfbfc509dffbf6b392ff",
+  "correct_value_kind": "file_sha256",
+  "correct_value": "b58a80636bb939bb793e57707040e39bd279759596d435f2cd7daa438ec7f216",
+  "result_path": "C:\\pr90-m5-endpoint-owner-characterization-v2-001\\pr90_m5_endpoint_owner_characterization_v2_result.json",
+  "result_canonical_payload_sha256": "8d1c3ef03c474b76fa45c649757b4ad4dee137e057dccfbfc509dffbf6b392ff",
+  "formal_mcp_execution_count": 0,
+  "authorized_run_count_consumed": 0,
+  "first_jsonrpc_request_sent": false,
+  "m6_to_m11_execution_count": 0
+}
