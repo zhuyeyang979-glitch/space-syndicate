@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$OutputRoot,
-    [ValidateSet('listener-observer-tooling-revision-001','listener-observer-tooling-revision-002','netstat-target-port-prefilter-revision-001','ancestor-chain-cardinality-revision-001','sealed-final')]
-    [string]$RevisionId = 'ancestor-chain-cardinality-revision-001'
+    [ValidateSet('listener-observer-tooling-revision-001','listener-observer-tooling-revision-002','netstat-target-port-prefilter-revision-001','ancestor-chain-cardinality-revision-001','passive-m5-sampling-revision-001','sealed-final')]
+    [string]$RevisionId = 'passive-m5-sampling-revision-001'
 )
 
 $ErrorActionPreference='Stop'
@@ -13,6 +13,7 @@ Import-Module (Join-Path $PSScriptRoot 'pr90_netstat_listener_adapter_v1.psm1') 
 Import-Module (Join-Path $PSScriptRoot 'pr90_listener_process_identity_reader_v1.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'pr90_endpoint_listener_key_formatter_v1.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'pr90_listener_parity_validator_v1.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'pr90_m5_passive_contract_v1.psm1') -Force
 
 $root=[IO.Path]::GetFullPath($OutputRoot)
 if(Test-Path -LiteralPath $root){throw "Self-test root must be new: $root"}
@@ -40,6 +41,9 @@ function New-TestRecord([string]$Address='127.0.0.1',[int]$Port=7576,[int]$PidVa
 }
 function New-Envelope([string]$Source,[object[]]$Records,[object[]]$Failures=@()) {
     return [pscustomobject][ordered]@{schema='EndpointListenerSourceObservationV1';observer_source=$Source;sample_id='fixture';observed_utc=[DateTimeOffset]::UtcNow.ToString('o');records=@($Records);parse_failures=@($Failures);parse_failure_count=@($Failures).Count}
+}
+function Invoke-M5ParameterBindingFixture([ValidateSet('PASS','FAIL')][string]$Status,[AllowEmptyString()][string]$FailureClass) {
+    return [pscustomobject][ordered]@{status=$Status;failure_class=$FailureClass}
 }
 
 $listener=$null
@@ -168,11 +172,46 @@ try {
     Add-Case 59 'live_ancestor_chain_first_row_is_requested_pid' ancestor_chain ($liveAncestorChain.Count-ge1-and[int]$liveAncestorChain[0].pid-eq$PID) "requested=$PID;actual=$($liveAncestorChain[0].pid)"
     Add-Case 60 'live_ancestor_chain_pid_projection_is_int_safe' ancestor_chain ($liveAncestorChain.Count-ge1-and$ancestorPidConversionFailures-eq0-and@($liveAncestorChain|ForEach-Object{[int]$_.pid}).Count-eq$liveAncestorChain.Count) "rows=$($liveAncestorChain.Count);conversion_failures=$ancestorPidConversionFailures"
 
+    $fourSamples=@();foreach($i in 0..3){$fourSamples+=[pscustomobject]@{observed_utc=$epoch.AddMilliseconds($i*500).ToString('o');qualified=$true;owner_instance_key='owner';lineage_fingerprint='lineage'}};$fourStable=Test-EndpointOwnerStableWindowV1 $fourSamples
+    Add-Case 61 'four_samples_remain_insufficient' sampling (-not$fourStable.green-and$fourStable.total_sample_count-eq4) "green=$($fourStable.green);total=$($fourStable.total_sample_count)"
+    Add-Case 62 'five_samples_satisfy_total_gate' sampling ($stable.green-and$stable.total_sample_count-eq5) "green=$($stable.green);total=$($stable.total_sample_count)"
+    $threeConsecutiveSamples=@();$qualification=@($false,$true,$true,$true,$false);foreach($i in 0..4){$threeConsecutiveSamples+=[pscustomobject]@{observed_utc=$epoch.AddMilliseconds($i*500).ToString('o');qualified=$qualification[$i];owner_instance_key='owner';lineage_fingerprint='lineage'}};$threeConsecutiveStable=Test-EndpointOwnerStableWindowV1 $threeConsecutiveSamples
+    Add-Case 63 'three_consecutive_parity_samples_succeed' sampling ($threeConsecutiveStable.green-and$threeConsecutiveStable.stable_sample_count-eq3-and$threeConsecutiveStable.stable_window_ms-ge1000) "count=$($threeConsecutiveStable.stable_sample_count);ms=$($threeConsecutiveStable.stable_window_ms)"
+    $shortSpanSamples=@();foreach($i in 0..4){$shortSpanSamples+=[pscustomobject]@{observed_utc=$epoch.AddMilliseconds($i*200).ToString('o');qualified=$true;owner_instance_key='owner';lineage_fingerprint='lineage'}};$shortSpanStable=Test-EndpointOwnerStableWindowV1 $shortSpanSamples
+    Add-Case 64 'stable_span_below_1000ms_fails' sampling (-not$shortSpanStable.green-and$shortSpanStable.stable_window_ms-lt1000) "green=$($shortSpanStable.green);ms=$($shortSpanStable.stable_window_ms)"
+    $samplingContract=Get-Pr90M5PassiveSamplingContractV1
+    $slowObserverContract=Get-Pr90M5PassiveSamplingContractV1 -ObserverExecutionMarginMs 17000 -ProcessIdentityMarginMs 7000
+    Add-Case 65 'slow_observer_budget_remains_sufficient_and_bounded' sampling ($slowObserverContract.sampling_budget_sufficient-and$slowObserverContract.sampling_budget_ms-eq26000-and$slowObserverContract.short_time_bounded) "budget=$($slowObserverContract.sampling_budget_ms);bounded=$($slowObserverContract.short_time_bounded)"
+    Add-Case 66 'dual_observer_disagreement_fails' sampling (-not$aOnly.parity-and$aOnly.a_only_count-eq1) "parity=$($aOnly.parity);a_only=$($aOnly.a_only_count)"
+    $pidChangeSamples=@();foreach($i in 0..4){$pidChangeSamples+=[pscustomobject]@{observed_utc=$epoch.AddMilliseconds($i*500).ToString('o');qualified=$true;owner_instance_key=('pid-'+($i%2));lineage_fingerprint='lineage'}};$pidChangeStable=Test-EndpointOwnerStableWindowV1 $pidChangeSamples
+    Add-Case 67 'pid_identity_change_fails_stability' sampling (-not$pidChangeStable.green-and$pidChangeStable.stable_sample_count-eq1) "green=$($pidChangeStable.green);stable=$($pidChangeStable.stable_sample_count)"
+    $creationChangeSamples=@();foreach($i in 0..4){$creationChangeSamples+=[pscustomobject]@{observed_utc=$epoch.AddMilliseconds($i*500).ToString('o');qualified=$true;owner_instance_key=('pid|creation-'+($i%2));lineage_fingerprint='lineage'}};$creationChangeStable=Test-EndpointOwnerStableWindowV1 $creationChangeSamples
+    Add-Case 68 'creation_identity_change_fails_stability' sampling (-not$creationChangeStable.green-and$creationChangeStable.stable_sample_count-eq1) "green=$($creationChangeStable.green);stable=$($creationChangeStable.stable_sample_count)"
+    Add-Case 69 'empty_listener_contract_remains_green' sampling ($empty.records.Count-eq0-and$empty.parse_failure_count-eq0) "records=$($empty.records.Count)"
+    Add-Case 70 'first_nonempty_listener_contract_remains_green' sampling $firstGreen $oldKey
+    $bindingExceptionCount=0
+    try{$trueParameters=Resolve-Pr90M5MilestoneParametersV1 -M5Green $true;$trueBinding=Invoke-M5ParameterBindingFixture -Status $trueParameters.status -FailureClass $trueParameters.failure_class}catch{$bindingExceptionCount+=1;$trueBinding=$null}
+    Add-Case 71 'm5_parameter_true_branch_binds' parameter_binding ($null-ne$trueBinding-and$trueBinding.status-ceq'PASS'-and[string]::IsNullOrEmpty($trueBinding.failure_class)) "status=$($trueBinding.status);failure=$($trueBinding.failure_class)"
+    try{$falseParameters=Resolve-Pr90M5MilestoneParametersV1 -M5Green $false;$falseBinding=Invoke-M5ParameterBindingFixture -Status $falseParameters.status -FailureClass $falseParameters.failure_class}catch{$bindingExceptionCount+=1;$falseBinding=$null}
+    Add-Case 72 'm5_parameter_false_branch_binds' parameter_binding ($null-ne$falseBinding-and$falseBinding.status-ceq'FAIL'-and$falseBinding.failure_class-ceq'M5_CHARACTERIZATION_GATES_NOT_MET') "status=$($falseBinding.status);failure=$($falseBinding.failure_class)"
+    Add-Case 73 'null_empty_and_single_element_inputs_are_covered' parameter_binding (@($cases|Where-Object{[int]$_.case_id-in@(11,47,48)-and[bool]$_.pass}).Count-eq3) 'cases=11,47,48'
+    $strictModeGreen=Test-Throws { & { Set-StrictMode -Version Latest; [void]$strictModeUndefinedFixture } }
+    Add-Case 74 'powershell_strict_mode_is_active' static $strictModeGreen 'undefined-variable-throws'
+    $controllerPath=Join-Path $PSScriptRoot 'pr90_listener_observer_characterization_controller_v2.ps1';$controllerSource=Get-Content -Raw -LiteralPath $controllerPath
+    $inlineIfParameterExpressionCount=[regex]::Matches($controllerSource,'(?m)(?<!\$)\(\s*if\s*\(').Count
+    Add-Case 75 'inline_if_parameter_expression_absent' static ($inlineIfParameterExpressionCount-eq0) "count=$inlineIfParameterExpressionCount"
+    $parseErrorCount=0;foreach($parsePath in @($controllerPath,(Join-Path $PSScriptRoot 'pr90_m5_passive_contract_v1.psm1'))){$tokens=$null;$parseErrors=$null;[void][Management.Automation.Language.Parser]::ParseFile($parsePath,[ref]$tokens,[ref]$parseErrors);$parseErrorCount+=@($parseErrors).Count}
+    Add-Case 76 'powershell_parser_accepts_v6_tooling' static ($parseErrorCount-eq0) "errors=$parseErrorCount"
+    Add-Case 77 'powershell_parameter_binding_exception_count_zero' parameter_binding ($bindingExceptionCount-eq0) "exceptions=$bindingExceptionCount"
+    $underSpecifiedContract=Get-Pr90M5PassiveSamplingContractV1 -RequiredTotalSampleCount 4;$sampleBudgetFalseGreenCount=if($underSpecifiedContract.sampling_budget_sufficient){1}else{0}
+    Add-Case 78 'sample_budget_has_no_four_sample_false_green' sampling ($sampleBudgetFalseGreenCount-eq0) "false_green=$sampleBudgetFalseGreenCount"
+    Add-Case 79 'sampling_contract_is_deterministic_sufficient_and_bounded' sampling ($samplingContract.required_total_sample_count-eq5-and$samplingContract.required_consecutive_parity_sample_count-eq3-and$samplingContract.required_stable_window_ms-eq1000-and$samplingContract.sample_interval_ms-eq500-and$samplingContract.observer_execution_margin_ms-eq15000-and$samplingContract.process_identity_margin_ms-eq5000-and$samplingContract.sampling_budget_ms-eq22000-and$samplingContract.sampling_budget_sufficient-and$samplingContract.short_time_bounded) "budget=$($samplingContract.sampling_budget_ms);required=$($samplingContract.required_total_sample_count)"
+
     if(-not$realParity.parity){$falseMismatchCount+=1}
     if($aOnly.parity-or$bOnly.parity-or$dup.parity-or$falseGreen.parity){$falseParityCount+=1}
     $passCount=@($cases|Where-Object pass).Count
     $result=[ordered]@{
-        schema='SpaceSyndicatePr90ListenerObserverSelfTestV4';status=if($passCount-eq$cases.Count-and$cases.Count-ge60){'PASS'}else{'FAIL'}
+        schema='SpaceSyndicatePr90ListenerObserverSelfTestV5';status=if($passCount-eq$cases.Count-and$cases.Count-ge79){'PASS'}else{'FAIL'}
         revision_id=$RevisionId;created_at_utc=[DateTimeOffset]::UtcNow.ToString('o');case_count=$cases.Count;pass_count=$passCount
         listener_formatter_exception_count=$formatterExceptionCount;first_nonempty_listener_fixture_green=$firstGreen
         cross_source_false_parity_count=$falseParityCount;cross_source_false_mismatch_count=$falseMismatchCount
@@ -198,10 +237,27 @@ try {
         ancestor_chain_live_sample_count=[int]$liveAncestorChain.Count
         ancestor_chain_nested_array_count=[int]$nestedAncestorRows.Count
         ancestor_chain_pid_conversion_failure_count=[int]$ancestorPidConversionFailures
+        passive_probe_required_sample_count=[int]$samplingContract.required_total_sample_count
+        passive_probe_required_consecutive_parity_sample_count=[int]$samplingContract.required_consecutive_parity_sample_count
+        passive_probe_required_stable_window_ms=[int]$samplingContract.required_stable_window_ms
+        passive_probe_sample_interval_ms=[int]$samplingContract.sample_interval_ms
+        passive_probe_observer_execution_margin_ms=[int]$samplingContract.observer_execution_margin_ms
+        passive_probe_process_identity_margin_ms=[int]$samplingContract.process_identity_margin_ms
+        passive_probe_sampling_budget_ms=[int]$samplingContract.sampling_budget_ms
+        passive_probe_sample_budget_sufficient=[bool]$samplingContract.sampling_budget_sufficient
+        passive_probe_sample_budget_false_green_count=[int]$sampleBudgetFalseGreenCount
+        inline_if_parameter_expression_count_after=[int]$inlineIfParameterExpressionCount
+        powershell_parse_error_count=[int]$parseErrorCount
+        powershell_parameter_binding_exception_count=[int]$bindingExceptionCount
+        m5_v6_tooling_selftest_status=if($passCount-eq$cases.Count-and$cases.Count-ge79){'PASS'}else{'FAIL'}
+        m5_v6_tooling_selftest_failure_count=[int]($cases.Count-$passCount)
+        m5_v6_tooling_static_review=if($inlineIfParameterExpressionCount-eq0-and$parseErrorCount-eq0-and$bindingExceptionCount-eq0){'GO'}else{'NO_GO'}
         frozen_characterization_v2_001_modification_count=0
         frozen_characterization_v2_001_rerun_count=0
         frozen_characterization_v4_001_modification_count=0
         frozen_characterization_v4_001_rerun_count=0
+        frozen_characterization_v5_001_modification_count=0
+        frozen_characterization_v5_001_rerun_count=0
         cases=@($cases);canonical_payload_sha256=''
     }
     $result.canonical_payload_sha256=Get-Pr90CanonicalSha256 $result
