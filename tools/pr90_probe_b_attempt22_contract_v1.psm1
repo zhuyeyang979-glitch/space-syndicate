@@ -180,15 +180,15 @@ function Test-Pr90Attempt22ToolingManifestStructureV2 {
         [Parameter(Mandatory = $true)][string]$ExpectedNewSelfTestSha256,[Parameter(Mandatory = $true)][string]$ExpectedFrozenInputSha256
     )
     if($null-eq$Manifest-or$null-eq$BaseManifest-or$null-eq$BaseSeal-or$null-eq$NewSelfTest-or$null-eq$FrozenInput){return $false}
-    $expectedDiff=@('tools/pr90_attempt22_authorization_manifest_builder_v4.ps1','tools/pr90_attempt22_authorization_seal_builder_v4.ps1','tools/pr90_attempt22_authorization_validator_v4.ps1','tools/pr90_attempt22_preformal_dry_run_v2.ps1','tools/pr90_probe_b_attempt22_contract_v1.psm1','tools/pr90_probe_b_attempt22_selftest_v1.ps1','tools/pr90_probe_b_attempt22_tooling_manifest_builder_v1.ps1','tools/pr90_probe_b_attempt22_tooling_seal_builder_v1.ps1')|Sort-Object
+    $expectedDiff=@('tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1','tools/pr90_probe_b_attempt22_contract_v1.psm1','tools/pr90_probe_b_attempt22_selftest_v1.ps1','tools/pr90_probe_b_attempt22_tooling_manifest_builder_v1.ps1','tools/pr90_probe_b_attempt22_tooling_seal_builder_v1.ps1')|Sort-Object
     try{
         if([string]$Manifest.schema-cne'Pr90ProbeBV2ResultRecoveryToolingManifestV1'-or[string]$Manifest.status-cne'READY'-or-not[bool]$Manifest.preformal_authorization_eligible-or[bool]$Manifest.startup_probe_b_authorization_eligible-or
            [string]$Manifest.tooling_head_sha-cne$ExpectedHead-or[string]$Manifest.tooling_tree_sha-cne$ExpectedTree-or[string]$Manifest.tooling_parent_sha-cne$ExpectedParent-or
            [string]$Manifest.base_tooling_head_sha-cne$ExpectedParent-or[string]$Manifest.base_tooling_manifest_sha256-cne$ExpectedBaseManifestSha256-or[string]$Manifest.base_tooling_seal_sha256-cne$ExpectedBaseSealSha256-or
            [string]$Manifest.new_selftest_sha256-cne$ExpectedNewSelfTestSha256-or[string]$Manifest.frozen_input_inventory_sha256-cne$ExpectedFrozenInputSha256-or
-           [int]$Manifest.new_tooling_commit_count-ne1-or[int]$Manifest.new_tooling_diff_count-ne8-or[int]$Manifest.new_tooling_modified_count-ne8-or[int]$Manifest.new_tooling_added_count-ne0-or
+           [int]$Manifest.new_tooling_commit_count-ne1-or[int]$Manifest.new_tooling_diff_count-ne5-or[int]$Manifest.new_tooling_modified_count-ne5-or[int]$Manifest.new_tooling_added_count-ne0-or
            [int]$Manifest.tooling_scope_violation_count-ne0-or[int]$Manifest.product_code_change_count-ne0-or[int]$Manifest.product_test_change_count-ne0-or[int]$Manifest.tooling_file_hash_mismatch_count-ne0-or
-           [int]$Manifest.authorized_runtime_reachable_change_count-ne1-or[int]$Manifest.runtime_reachable_tooling_hash_mismatch_count-ne0-or
+           [int]$Manifest.authorized_runtime_reachable_change_count-ne2-or[int]$Manifest.runtime_reachable_tooling_hash_mismatch_count-ne0-or
            [string]$Manifest.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $Manifest)){return $false}
         if([string]$BaseManifest.schema-cne'Pr90ProbeBV2ResultRecoveryToolingManifestV1'-or[string]$BaseManifest.status-cne'READY'-or[string]$BaseManifest.tooling_head_sha-cne$ExpectedParent-or
            [string]$BaseManifest.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $BaseManifest)-or[string]$BaseSeal.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSealV1'-or[string]$BaseSeal.status-cne'SEALED'-or
@@ -197,7 +197,7 @@ function Test-Pr90Attempt22ToolingManifestStructureV2 {
            [int]$Manifest.new_selftest_pass_count-ne[int]$NewSelfTest.new_selftest_pass_count-or[string]$Manifest.new_selftest_case_name_inventory_sha256-cne[string]$NewSelfTest.selftest_case_name_inventory_sha256){return $false}
         if([string]$FrozenInput.schema-cne'Pr90ProbeBV2FrozenInputInventoryV1'-or[string]$FrozenInput.status-cne'FROZEN'-or[int]$Manifest.frozen_input_count-ne[int]$FrozenInput.input_count-or[string]$Manifest.frozen_input_hash_inventory_sha256-cne[string]$FrozenInput.input_inventory_sha256){return $false}
         $diffRows=@($Manifest.new_tooling_diff);$diffPaths=@($diffRows|ForEach-Object{[string]$_.relative_path}|Sort-Object)
-        if($diffRows.Count-ne8-or@($diffRows|Where-Object{[string]$_.status-cne'M'}).Count-ne0-or@($diffPaths|Select-Object -Unique).Count-ne8-or@(Compare-Object $expectedDiff $diffPaths).Count-ne0){return $false}
+        if($diffRows.Count-ne5-or@($diffRows|Where-Object{[string]$_.status-cne'M'}).Count-ne0-or@($diffPaths|Select-Object -Unique).Count-ne5-or@(Compare-Object $expectedDiff $diffPaths).Count-ne0){return $false}
         $rows=@($Manifest.tooling_files);$paths=@($rows|ForEach-Object{([string]$_.relative_path).Replace('\','/')}|Sort-Object);$basePaths=@($BaseManifest.tooling_files|ForEach-Object{([string]$_.relative_path).Replace('\','/')}|Sort-Object)
         if([int]$Manifest.tooling_file_count-ne$rows.Count-or$rows.Count-ne@($paths|Select-Object -Unique).Count-or@(Compare-Object $basePaths $paths).Count-ne0){return $false}
         return $true
