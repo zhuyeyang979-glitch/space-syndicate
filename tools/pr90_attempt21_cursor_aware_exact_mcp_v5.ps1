@@ -393,9 +393,10 @@ function Find-FormalHandCard {
             $payload=$payloadResult.requested_properties._payload
             if($null-eq$payload){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the public military hand card did not expose its owner-private identity payload'}
             $instanceId=[string]$payload.instance_id
-            if([string]$payload.definition_id-cne$ExpectedDefinitionId-or[string]::IsNullOrWhiteSpace($instanceId)-or
+            if([string]$payload.definition_id-cne$ExpectedDefinitionId-or[string]$payload.card_definition_id-cne$ExpectedDefinitionId-or[string]::IsNullOrWhiteSpace($instanceId)-or[string]$payload.card_instance_id-cne$instanceId-or
                 (-not[string]::IsNullOrWhiteSpace($ExpectedSourceInstanceId)-and$instanceId-ceq$ExpectedSourceInstanceId)-or
-                [string]$payload.origin_class-cne'standard'-or[string]$payload.primary_color-cne'life'-or[int]$payload.primary_asset_cost-ne2){
+                [string]$payload.origin_class-cne'standard'-or[string]$payload.primary_color-cne'life'-or[int]$payload.primary_asset_cost-ne2-or
+                [string]$payload.asset_cost_profile-cne'v075_military_track_color_rank_1'-or[int]$payload.level-ne1-or$payload.starter_badge-isnot[bool]-or[bool]$payload.starter_badge){
                 throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the public military hand card is not the privately bound acquired submarine-fleet identity'
             }
             $candidate|Add-Member -NotePropertyName private_payload_query_call_index -NotePropertyValue $payloadQueryCallIndex
@@ -404,6 +405,9 @@ function Find-FormalHandCard {
             $candidate|Add-Member -NotePropertyName private_origin_class -NotePropertyValue ([string]$payload.origin_class)
             $candidate|Add-Member -NotePropertyName private_primary_color -NotePropertyValue ([string]$payload.primary_color)
             $candidate|Add-Member -NotePropertyName private_primary_asset_cost -NotePropertyValue ([int]$payload.primary_asset_cost)
+            $candidate|Add-Member -NotePropertyName private_asset_cost_profile -NotePropertyValue ([string]$payload.asset_cost_profile)
+            $candidate|Add-Member -NotePropertyName private_level -NotePropertyValue ([int]$payload.level)
+            $candidate|Add-Member -NotePropertyName private_starter_badge -NotePropertyValue ([bool]$payload.starter_badge)
         }
     }
     return $candidate
@@ -590,6 +594,9 @@ try {
     $settled=$false;$combatTrackAcquisition=$null;$combatScenarioWitness=$null;$combatScenarioWitnessPath='';$combatScenarioWitnessSha='';$facilityAdvanceActionCount=0;$facilityAdvanceSteps=[Collections.Generic.List[object]]::new();$facilityBatchTransitions=[Collections.Generic.List[object]]::new()
     for ($batch=0; $batch -lt 32; $batch += 1) {
         if($null-eq$combatTrackAcquisition){
+            $combatCardRegistryPath=Join-Path $Worktree 'scripts/v075/cards/v075_card_definition_registry.gd'
+            $combatCardRegistrySha256=Get-Pr90ProbeBSha256 $combatCardRegistryPath
+            if($combatCardRegistrySha256-cne'0a06f99a7ed010595865ed7d1c339fe15516586891e60c2c912729a745d92932'){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: sealed V075 combat card registry source identity mismatch'}
             $preAcquireHandQueryCallIndex=$script:callIndex+1
             $preAcquireHandTree=Get-FormalNodeTree -Path 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/HandScroll/HandRail' -MaxDepth 5 -MaxNodes 160
             if($null-ne(Get-Pr90FormalCardCandidateV1 -Tree $preAcquireHandTree -Surface hand -Domain military -TreeTruncated $false)){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the fixed-seed initial hand unexpectedly already contains a public military card'}
@@ -605,7 +612,8 @@ try {
             if($null-eq$trackPayload-or[string]$trackPayload.instance_id-cne'track.card.00000005'-or[string]$trackPayload.card_definition_id-cne'military.submarine_fleet.life.rank_1'-or
                 [string]$trackPayload.card_kind-cne'normal_card'-or[int]$trackPayload.level-ne1-or[string]$trackPayload.primary_color-cne'life'-or[int]$trackPayload.local_slot_index-ne5-or
                 $trackPayload.claimable-isnot[bool]-or-not[bool]$trackPayload.claimable-or[string]$trackPayload.claimability_state-cne'claimable'-or[string]$trackPayload.origin_class-cne'standard'-or
-                [string]$trackPayload.asset_cost_profile-cne'standard_rank_1'-or[int]$trackPayload.primary_asset_cost-ne2-or$trackPayload.starter_badge-isnot[bool]-or[bool]$trackPayload.starter_badge){
+                [string]$trackPayload.asset_cost_profile-cne'v075_military_track_color_rank_1'-or[int]$trackPayload.primary_asset_cost-ne2-or$trackPayload.starter_badge-isnot[bool]-or[bool]$trackPayload.starter_badge-or
+                [int]$trackPayload.track_revision-ne4-or[int]$trackPayload.claimable_from_scroll_sequence-ne0){
                 throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: deterministic TrackCard_05 private payload identity mismatch'
             }
             $trackBefore=[int]$acceptance.interaction_counts.track_acquired;$visibleBefore=[int]$acceptance.track_player_projection_visible_card_count;$realBefore=[int]$acceptance.track_current_real_card_count;$vacancyBefore=[int]$acceptance.track_vacancy_slot_count;$invalidBefore=[int]$acceptance.invalid_action_count
@@ -623,6 +631,10 @@ try {
             $trackPayloadEvidence=Get-FormalMcpEvidenceRecord -CallIndex $trackPayloadQueryCallIndex -ToolName query_runtime_node
             foreach($requiredPath in @($trackRequestPath,$trackRawPath,$trackPayloadEvidence.request_path,$trackPayloadEvidence.raw_path,$acquireRequestPath,$acquireRawPath,$acquireAcceptanceRequestPath,$acquireAcceptanceRawPath)){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal combat track acquisition evidence missing: $requiredPath"}}
             $combatTrackAcquisition=[pscustomobject][ordered]@{card_domain='military';card_node_path=[string]$trackMilitary.path;card_ui_text=[string]$trackMilitary.ui_text;private_definition_id=[string]$trackPayload.card_definition_id;private_instance_id=[string]$trackPayload.instance_id;private_origin_class=[string]$trackPayload.origin_class;private_primary_color=[string]$trackPayload.primary_color;private_primary_asset_cost=[int]$trackPayload.primary_asset_cost;initial_public_military_hand_candidate_count=0;pre_acquire_hand_request_path=[string]$preAcquireHandEvidence.request_path;pre_acquire_hand_request_sha256=[string]$preAcquireHandEvidence.request_sha256;pre_acquire_hand_raw_path=[string]$preAcquireHandEvidence.raw_path;pre_acquire_hand_raw_sha256=[string]$preAcquireHandEvidence.raw_sha256;track_request_path=[IO.Path]::GetFullPath($trackRequestPath);track_request_sha256=Get-Pr90ProbeBSha256 $trackRequestPath;track_raw_path=[IO.Path]::GetFullPath($trackRawPath);track_raw_sha256=Get-Pr90ProbeBSha256 $trackRawPath;track_payload_request_path=[string]$trackPayloadEvidence.request_path;track_payload_request_sha256=[string]$trackPayloadEvidence.request_sha256;track_payload_raw_path=[string]$trackPayloadEvidence.raw_path;track_payload_raw_sha256=[string]$trackPayloadEvidence.raw_sha256;track_acquired_before=$trackBefore;track_acquired_after=$trackAfter;track_acquired_delta=($trackAfter-$trackBefore);track_visible_card_delta=($visibleAfter-$visibleBefore);track_real_card_delta=($realAfter-$realBefore);track_vacancy_delta=($vacancyAfter-$vacancyBefore);request_path=[IO.Path]::GetFullPath($acquireRequestPath);request_sha256=Get-Pr90ProbeBSha256 $acquireRequestPath;raw_path=[IO.Path]::GetFullPath($acquireRawPath);raw_sha256=Get-Pr90ProbeBSha256 $acquireRawPath;acceptance_request_path=[IO.Path]::GetFullPath($acquireAcceptanceRequestPath);acceptance_request_sha256=Get-Pr90ProbeBSha256 $acquireAcceptanceRequestPath;acceptance_raw_path=[IO.Path]::GetFullPath($acquireAcceptanceRawPath);acceptance_raw_sha256=Get-Pr90ProbeBSha256 $acquireAcceptanceRawPath}
+            $combatTrackAcquisition|Add-Member -NotePropertyName private_asset_cost_profile -NotePropertyValue ([string]$trackPayload.asset_cost_profile)
+            $combatTrackAcquisition|Add-Member -NotePropertyName private_track_revision -NotePropertyValue ([int]$trackPayload.track_revision)
+            $combatTrackAcquisition|Add-Member -NotePropertyName private_claimable_from_scroll_sequence -NotePropertyValue ([int]$trackPayload.claimable_from_scroll_sequence)
+            $combatTrackAcquisition|Add-Member -NotePropertyName card_definition_registry_sha256 -NotePropertyValue $combatCardRegistrySha256
             $wheelRestorePayload=Get-FormalStructured (Invoke-FormalMcp -ToolName 'send_runtime_input' -Arguments @{events=$wheel;timeout_msec=60000} -TimeoutSeconds 60)
             if(-not[bool]$wheelRestorePayload.success){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the combat controls could not be restored to the viewport after Track acquisition'}
             $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
@@ -701,6 +713,13 @@ try {
                     $combatScenarioWitness|Add-Member -NotePropertyName surface_expand_raw_path -NotePropertyValue ([IO.Path]::GetFullPath($surfaceExpandRawPath))
                     $combatScenarioWitness|Add-Member -NotePropertyName surface_expand_raw_sha256 -NotePropertyValue (Get-Pr90ProbeBSha256 $surfaceExpandRawPath)
                 }
+                $combatScenarioWitness|Add-Member -NotePropertyName acquired_card_asset_cost_profile -NotePropertyValue ([string]$combatTrackAcquisition.private_asset_cost_profile)
+                $combatScenarioWitness|Add-Member -NotePropertyName acquired_card_track_revision -NotePropertyValue ([int]$combatTrackAcquisition.private_track_revision)
+                $combatScenarioWitness|Add-Member -NotePropertyName acquired_card_claimable_from_scroll_sequence -NotePropertyValue ([int]$combatTrackAcquisition.private_claimable_from_scroll_sequence)
+                $combatScenarioWitness|Add-Member -NotePropertyName staged_card_asset_cost_profile -NotePropertyValue ([string]$militaryCard.private_asset_cost_profile)
+                $combatScenarioWitness|Add-Member -NotePropertyName staged_card_level -NotePropertyValue ([int]$militaryCard.private_level)
+                $combatScenarioWitness|Add-Member -NotePropertyName staged_card_starter_badge -NotePropertyValue ([bool]$militaryCard.private_starter_badge)
+                $combatScenarioWitness|Add-Member -NotePropertyName card_definition_registry_sha256 -NotePropertyValue ([string]$combatTrackAcquisition.card_definition_registry_sha256)
                 $combatScenarioWitness.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $combatScenarioWitness
                 $combatScenarioWitnessPath=Join-Path $EvidenceRoot 'phases/004-formal-combat-scenario-witness.json';Write-StartupImmutableJson -Path $combatScenarioWitnessPath -Value $combatScenarioWitness -WriteSha256Sidecar|Out-Null
                 $combatScenarioWitnessSha=Get-Pr90ProbeBSha256 $combatScenarioWitnessPath;$acceptance=$missionAcceptance
