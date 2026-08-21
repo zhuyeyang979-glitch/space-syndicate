@@ -350,6 +350,125 @@ function Get-FormalNode {
     return $payload.result
 }
 
+function Get-FormalNodeTree {
+    param([string]$Path,[int]$MaxDepth=5,[int]$MaxNodes=200)
+    $payload=Get-FormalStructured (Invoke-FormalMcp -ToolName 'query_runtime_node' -Arguments @{node_path=$Path;properties=@();include_children=$true;max_depth=$MaxDepth;max_nodes=$MaxNodes;timeout_msec=30000} -TimeoutSeconds 45)
+    if(-not[bool]$payload.success-or-not[bool]$payload.result.found-or[bool]$payload.result.tree_truncated){throw "Runtime node tree missing or truncated: $Path"}
+    return $payload.result.tree
+}
+
+function Get-FormalTreeRows {
+    param([Parameter(Mandatory=$true)][object]$Root)
+    $rows=[Collections.Generic.List[object]]::new();$stack=[Collections.Generic.Stack[object]]::new();$stack.Push($Root)
+    while($stack.Count-gt0){
+        $row=$stack.Pop();$rows.Add($row)
+        $children=@()
+        if($null-ne$row.PSObject.Properties['children']){$children=@($row.children)}
+        for($index=$children.Count-1;$index-ge0;$index-=1){$stack.Push($children[$index])}
+    }
+    return @($rows)
+}
+
+function Get-FormalTreeCenter {
+    param([Parameter(Mandatory=$true)][object]$Row)
+    if(-not[bool]$Row.properties.visible-or[double]$Row.properties.size.x-le0-or[double]$Row.properties.size.y-le0){throw "Runtime UI node is not visibly actionable: $($Row.path)"}
+    return @{x=([double]$Row.properties.global_position.x+[double]$Row.properties.size.x/2.0);y=([double]$Row.properties.global_position.y+[double]$Row.properties.size.y/2.0)}
+}
+
+function Find-FormalHandCard {
+    param([ValidateSet('military','facility')][string]$Domain)
+    $queryCallIndex=$script:callIndex+1
+    $tree=Get-FormalNodeTree -Path 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/HandScroll/HandRail' -MaxDepth 5 -MaxNodes 160
+    $candidate=Get-Pr90FormalCardCandidateV1 -Tree $tree -Surface hand -Domain $Domain -TreeTruncated $false
+    if($null-ne$candidate){$candidate|Add-Member -NotePropertyName query_call_index -NotePropertyValue $queryCallIndex}
+    return $candidate
+}
+
+function Find-FormalTrackCard {
+    param([ValidateSet('military')][string]$Domain='military')
+    $queryCallIndex=$script:callIndex+1
+    $tree=Get-FormalNodeTree -Path 'V075GameScreen/RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackScroll/TrackRail' -MaxDepth 5 -MaxNodes 240
+    $candidate=Get-Pr90FormalCardCandidateV1 -Tree $tree -Surface track -Domain $Domain -TreeTruncated $false
+    if($null-ne$candidate){$candidate|Add-Member -NotePropertyName query_call_index -NotePropertyValue $queryCallIndex}
+    return $candidate
+}
+
+function Ensure-FormalCombatSurfaceVisible {
+    $surfacePath='V075GameScreen/RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/Margin/Rows/SurfaceHost/CombatSurface'
+    $collapsePath='V075GameScreen/RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/Margin/Rows/Header/CollapseButton'
+    $initialQueryCallIndex=$script:callIndex+1
+    $surfaceBefore=Get-FormalNode -Path $surfacePath -Properties @()
+    $expandPerformed=$false;$expandCallIndex=0
+    if(-not[bool]$surfaceBefore.properties.visible){
+        $collapse=Get-FormalNode -Path $collapsePath -Properties @('disabled')
+        if([bool]$collapse.requested_properties.disabled-or-not[bool]$collapse.properties.visible-or[double]$collapse.properties.size.x-le0-or[double]$collapse.properties.size.y-le0){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the public combat-surface expand control is not actionable'}
+        $expandCallIndex=$script:callIndex+1;$null=Send-FormalTaps @(@{x=([double]$collapse.properties.global_position.x+[double]$collapse.properties.size.x/2.0);y=([double]$collapse.properties.global_position.y+[double]$collapse.properties.size.y/2.0)})
+        $expandPerformed=$true;$null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
+    }
+    $readyQueryCallIndex=$script:callIndex+1
+    $surfaceAfter=Get-FormalNode -Path $surfacePath -Properties @()
+    if(-not[bool]$surfaceAfter.properties.visible-or[double]$surfaceAfter.properties.size.x-le0-or[double]$surfaceAfter.properties.size.y-le0){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the production combat surface did not become visibly actionable'}
+    return [pscustomobject][ordered]@{path=$surfacePath;surface_before=$surfaceBefore;surface_after=$surfaceAfter;initial_query_call_index=$initialQueryCallIndex;ready_query_call_index=$readyQueryCallIndex;expand_performed=$expandPerformed;expand_call_index=$expandCallIndex}
+}
+
+function Get-FormalMilitaryMissionChoice {
+    $surface=Ensure-FormalCombatSurfaceVisible
+    $panelPath="$($surface.path)/Rows/PrivateGrid/MilitaryPanel"
+    $panelQueryCallIndex=$script:callIndex+1
+    $militaryPanel=Get-FormalNode -Path $panelPath -Properties @()
+    if(-not[bool]$militaryPanel.properties.visible-or[double]$militaryPanel.properties.size.x-le0-or[double]$militaryPanel.properties.size.y-le0){return $null}
+    $base="$($surface.path)/Rows/PrivateGrid/MilitaryPanel/Margin/Rows"
+    foreach($candidate in @(@('assault_region','Region'),@('assault_monster','Monster'))){
+        $optionPath="$base/TargetMenus/Assault$($candidate[1])Option";$buttonPath="$base/TaskButtons/Assault$($candidate[1])Button"
+        $optionQueryCallIndex=$script:callIndex+1
+        $optionBefore=Get-FormalNode -Path $optionPath -Properties @('disabled','item_count','selected')
+        if([bool]$optionBefore.requested_properties.disabled-or[int]$optionBefore.requested_properties.item_count-le0-or[int]$optionBefore.requested_properties.selected-ne-1-or-not[bool]$optionBefore.properties.visible-or[double]$optionBefore.properties.size.x-le0-or[double]$optionBefore.properties.size.y-le0){continue}
+        $optionSelectCallIndex=$script:callIndex+1
+        $optionCenter=@{x=([double]$optionBefore.properties.global_position.x+[double]$optionBefore.properties.size.x/2.0);y=([double]$optionBefore.properties.global_position.y+[double]$optionBefore.properties.size.y/2.0)}
+        $null=Send-FormalRuntimeEvents @(@{type='mouse_button';button='left';position=$optionCenter;mode='tap'},@{type='action';action='ui_down';mode='tap'},@{type='action';action='ui_accept';mode='tap'})
+        $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
+        $optionResultQueryCallIndex=$script:callIndex+1
+        $optionAfter=Get-FormalNode -Path $optionPath -Properties @('disabled','item_count','selected')
+        $buttonQueryCallIndex=$script:callIndex+1
+        $buttonAfter=Get-FormalNode -Path $buttonPath -Properties @('disabled')
+        $missionUiGreen=Test-Pr90FormalMilitaryMissionUiTransitionV1 `
+            -SurfaceBefore $surface.surface_before `
+            -SurfaceAfter $surface.surface_after `
+            -MilitaryPanelAfter $militaryPanel `
+            -OptionBefore $optionBefore `
+            -OptionAfter $optionAfter `
+            -TaskButtonAfter $buttonAfter `
+            -MissionKind ([string]$candidate[0]) `
+            -SurfaceExpandPerformed ([bool]$surface.expand_performed)
+        if(-not$missionUiGreen){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: military option selection did not enable the exact production task button'}
+        return [pscustomobject][ordered]@{mission_kind=[string]$candidate[0];path=$buttonPath;text=[string]$buttonAfter.properties.text;query_call_index=$buttonQueryCallIndex;center=[pscustomobject][ordered]@{x=([double]$buttonAfter.properties.global_position.x+[double]$buttonAfter.properties.size.x/2.0);y=([double]$buttonAfter.properties.global_position.y+[double]$buttonAfter.properties.size.y/2.0)};panel_path=$panelPath;panel_query_call_index=$panelQueryCallIndex;option_path=$optionPath;option_item_count=[int]$optionBefore.requested_properties.item_count;option_selected_before=[int]$optionBefore.requested_properties.selected;option_selected_after=[int]$optionAfter.requested_properties.selected;option_query_call_index=$optionQueryCallIndex;option_select_call_index=$optionSelectCallIndex;option_result_query_call_index=$optionResultQueryCallIndex;surface=$surface}
+    }
+    return $null
+}
+
+function Get-FormalFirstChoiceButton {
+    param([string]$Path,[string]$RequiredNamePattern='')
+    $treeQueryCallIndex=$script:callIndex+1
+    $tree=Get-FormalNodeTree -Path $Path -MaxDepth 4 -MaxNodes 100
+    foreach($row in @(Get-FormalTreeRows -Root $tree)){
+        if([string]$row.type-cne'Button'-or-not[bool]$row.properties.visible){continue}
+        if(-not[string]::IsNullOrWhiteSpace($RequiredNamePattern)-and[string]$row.name-cnotmatch$RequiredNamePattern){continue}
+        $nodeQueryCallIndex=$script:callIndex+1
+        $node=Get-FormalNode -Path ([string]$row.path) -Properties @('disabled')
+        $disabled=$node.requested_properties.disabled
+        if($disabled-is[bool]-and-not[bool]$disabled){return [pscustomobject][ordered]@{path=[string]$row.path;text=[string]$row.properties.text;center=Get-FormalTreeCenter -Row $row;tree_query_call_index=$treeQueryCallIndex;node_query_call_index=$nodeQueryCallIndex}}
+    }
+    return $null
+}
+
+function Get-FormalMcpEvidenceRecord {
+    param([int]$CallIndex,[ValidateSet('query_runtime_node','send_runtime_input')][string]$ToolName)
+    $requestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-{1}.json' -f $CallIndex,$ToolName)
+    $rawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-{1}.jsonrpc.json' -f $CallIndex,$ToolName)
+    foreach($requiredPath in @($requestPath,$rawPath)){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal MCP evidence missing: $requiredPath"}}
+    return [pscustomobject][ordered]@{request_path=[IO.Path]::GetFullPath($requestPath);request_sha256=Get-Pr90ProbeBSha256 $requestPath;raw_path=[IO.Path]::GetFullPath($rawPath);raw_sha256=Get-Pr90ProbeBSha256 $rawPath}
+}
+
 function Get-FormalProperty {
     param([string]$Path, [string]$Name)
     return (Get-FormalNode -Path $Path -Properties @($Name)).requested_properties.$Name
@@ -361,14 +480,19 @@ function Get-FormalCenter {
     return @{x=([double]$node.properties.global_position.x + [double]$node.properties.size.x / 2.0);y=([double]$node.properties.global_position.y + [double]$node.properties.size.y / 2.0)}
 }
 
-function Send-FormalTaps {
-    param([hashtable[]]$Centers)
-    $events = @($Centers | ForEach-Object { @{type='mouse_button';button='left';position=$_;mode='tap'} })
+function Send-FormalRuntimeEvents {
+    param([object[]]$Events)
     $payload = Get-FormalStructured (Invoke-FormalMcp -ToolName 'send_runtime_input' -Arguments @{events=$events;timeout_msec=60000} -TimeoutSeconds 60)
     $commandId=[string]$payload.command_id
     if (-not [bool]$payload.success -or [string]$payload.command-cne'send_input' -or [string]::IsNullOrWhiteSpace($commandId) -or
         -not[bool]$payload.response.success -or [string]$payload.response.command-cne'send_input' -or [string]$payload.response.id-cne$commandId) { throw 'Formal runtime input failed or returned an unbound command identity.' }
     return $commandId
+}
+
+function Send-FormalTaps {
+    param([hashtable[]]$Centers)
+    $events = @($Centers | ForEach-Object { @{type='mouse_button';button='left';position=$_;mode='tap'} })
+    return Send-FormalRuntimeEvents -Events $events
 }
 
 function Wait-FormalPostInputBridgeReadiness {
@@ -413,38 +537,193 @@ try {
     Poll-FormalCursor -Phase 'phase-1-main-scene' | Out-Null
     $rootNode = Get-FormalNode -Path 'current_scene'
     if ([string]$rootNode.scene_file_path -cne 'res://scenes/main.tscn') { throw 'Formal v5 main-scene identity mismatch.' }
-    $initial = Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
+    $deterministicMatchSeed=900626424
+    $seedInputPath='V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/SeedRow/SeedInput'
+    $seedInputCallIndex=$script:callIndex+1
+    $seedInputValue=[string](Get-FormalProperty -Path $seedInputPath -Name 'text')
+    $seedRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f $seedInputCallIndex);$seedRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f $seedInputCallIndex)
+    foreach($requiredPath in @($seedRequestPath,$seedRawPath)){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal combat seed evidence missing: $requiredPath"}}
+    if($seedInputValue-cne[string]$deterministicMatchSeed){throw "SCENARIO_COMBAT_SEED_IDENTITY_MISMATCH: expected $deterministicMatchSeed, observed $seedInputValue"}
     $startCenter = Get-FormalCenter 'V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/StartConfiguredButton'
     $startInputCommandId=Send-FormalTaps @($startCenter)
     Wait-FormalPostInputBridgeReadiness -ExpectedCommandId $startInputCommandId -ExpectedStreamId $streamId -MinimumCursorAfter ($cursor+1) -MaximumWaitSeconds 60|Out-Null
     Poll-FormalCursor -Phase 'phase-2-new-game' -InnerTimeoutMsec 30000 -OuterTimeoutSeconds 60 | Out-Null
+    $baselineAcceptanceCallIndex=$script:callIndex+1;$acceptance=Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
+    $baselineRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f $baselineAcceptanceCallIndex);$baselineRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f $baselineAcceptanceCallIndex)
+    foreach($requiredPath in @($baselineRequestPath,$baselineRawPath)){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal combat baseline evidence missing: $requiredPath"}}
+    $initialWrapper=$acceptance.combat_wrapper
+    $combatBaseline=[pscustomobject][ordered]@{combat_wrapper=$initialWrapper}
     $rootNode = Get-FormalNode -Path 'V075GameScreen/RootMargin' -Properties @()
     $scrollCenter = @{x=([double]$rootNode.properties.global_position.x + [double]$rootNode.properties.size.x / 2.0);y=([double]$rootNode.properties.global_position.y + [double]$rootNode.properties.size.y / 2.0)}
     $wheel = @(1..20 | ForEach-Object { @{type='mouse_button';button='wheel_down';position=$scrollCenter;mode='tap'} })
+    $wheelUp = @(1..20 | ForEach-Object { @{type='mouse_button';button='wheel_up';position=$scrollCenter;mode='tap'} })
     $wheelPayload = Get-FormalStructured (Invoke-FormalMcp -ToolName 'send_runtime_input' -Arguments @{events=$wheel;timeout_msec=60000} -TimeoutSeconds 60)
     if (-not [bool]$wheelPayload.success) { throw 'Formal v5 scroll input failed.' }
     $lockCenter = Get-FormalCenter 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow/LockButton'
     $finishCenter = Get-FormalCenter 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow/FinishMaintenanceButton'
     Poll-FormalCursor -Phase 'phase-3-early-match' | Out-Null
-    $settled = $false; $acceptance = $initial
+    $settled=$false;$combatTrackAcquisition=$null;$combatScenarioWitness=$null;$combatScenarioWitnessPath='';$combatScenarioWitnessSha='';$facilityAdvanceActionCount=0;$facilityAdvanceSteps=[Collections.Generic.List[object]]::new();$facilityBatchTransitions=[Collections.Generic.List[object]]::new()
     for ($batch=0; $batch -lt 32; $batch += 1) {
+        if($null-eq$combatTrackAcquisition){
+            $preAcquireHandQueryCallIndex=$script:callIndex+1
+            $preAcquireHandTree=Get-FormalNodeTree -Path 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/HandScroll/HandRail' -MaxDepth 5 -MaxNodes 160
+            if($null-ne(Get-Pr90FormalCardCandidateV1 -Tree $preAcquireHandTree -Surface hand -Domain military -TreeTruncated $false)){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the fixed-seed initial hand unexpectedly already contains the submarine-fleet military card'}
+            $preAcquireHandEvidence=Get-FormalMcpEvidenceRecord -CallIndex $preAcquireHandQueryCallIndex -ToolName query_runtime_node
+            $wheelUpPayload=Get-FormalStructured (Invoke-FormalMcp -ToolName 'send_runtime_input' -Arguments @{events=$wheelUp;timeout_msec=60000} -TimeoutSeconds 60)
+            if(-not[bool]$wheelUpPayload.success){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the production track could not be scrolled into the viewport'}
+            $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
+            $trackMilitary=Find-FormalTrackCard
+            if($null-eq$trackMilitary){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: deterministic TrackCard_05 military card is absent'}
+            $trackBefore=[int]$acceptance.interaction_counts.track_acquired;$visibleBefore=[int]$acceptance.track_player_projection_visible_card_count;$realBefore=[int]$acceptance.track_current_real_card_count;$vacancyBefore=[int]$acceptance.track_vacancy_slot_count;$invalidBefore=[int]$acceptance.invalid_action_count
+            $acquireTapCallIndex=$script:callIndex+1;$null=Send-FormalTaps @($trackMilitary.center)
+            $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=350} -TimeoutSeconds 30
+            $acquireAcceptanceCallIndex=$script:callIndex+1;$acquireAcceptance=Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
+            $trackAfter=[int]$acquireAcceptance.interaction_counts.track_acquired;$visibleAfter=[int]$acquireAcceptance.track_player_projection_visible_card_count;$realAfter=[int]$acquireAcceptance.track_current_real_card_count;$vacancyAfter=[int]$acquireAcceptance.track_vacancy_slot_count
+            if($trackAfter-$trackBefore-ne1-or$visibleAfter-$visibleBefore-ne-1-or$realAfter-$realBefore-ne-1-or$vacancyAfter-$vacancyBefore-ne1-or
+                [int]$acquireAcceptance.track_ui_render_capacity-ne10-or[int]$acquireAcceptance.track_physical_slot_count-ne10-or[int]$acquireAcceptance.track_vacancy_interactive_count-ne0-or[int]$acquireAcceptance.track_duplicate_instance_count-ne0-or
+                [int]$acquireAcceptance.track_immediate_authoritative_refill_count-ne0-or[int]$acquireAcceptance.track_supply_rng_draw_delta_on_acquisition-ne0-or[int]$acquireAcceptance.track_supply_cursor_delta_on_acquisition-ne0-or[int]$acquireAcceptance.track_supply_instance_sequence_delta_on_acquisition-ne0-or
+                [int]$acquireAcceptance.invalid_action_count-ne$invalidBefore){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: deterministic military Track acquisition postcondition mismatch'}
+            $acquireRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-send_runtime_input.json' -f $acquireTapCallIndex);$acquireRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-send_runtime_input.jsonrpc.json' -f $acquireTapCallIndex)
+            $trackRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f ([int]$trackMilitary.query_call_index));$trackRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f ([int]$trackMilitary.query_call_index))
+            $acquireAcceptanceRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f $acquireAcceptanceCallIndex);$acquireAcceptanceRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f $acquireAcceptanceCallIndex)
+            foreach($requiredPath in @($trackRequestPath,$trackRawPath,$acquireRequestPath,$acquireRawPath,$acquireAcceptanceRequestPath,$acquireAcceptanceRawPath)){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal combat track acquisition evidence missing: $requiredPath"}}
+            $combatTrackAcquisition=[pscustomobject][ordered]@{card_domain='military';card_node_path=[string]$trackMilitary.path;card_ui_text=[string]$trackMilitary.ui_text;initial_submarine_hand_count=0;pre_acquire_hand_request_path=[string]$preAcquireHandEvidence.request_path;pre_acquire_hand_request_sha256=[string]$preAcquireHandEvidence.request_sha256;pre_acquire_hand_raw_path=[string]$preAcquireHandEvidence.raw_path;pre_acquire_hand_raw_sha256=[string]$preAcquireHandEvidence.raw_sha256;track_acquired_before=$trackBefore;track_acquired_after=$trackAfter;track_acquired_delta=($trackAfter-$trackBefore);track_visible_card_delta=($visibleAfter-$visibleBefore);track_real_card_delta=($realAfter-$realBefore);track_vacancy_delta=($vacancyAfter-$vacancyBefore);track_request_path=[IO.Path]::GetFullPath($trackRequestPath);track_request_sha256=Get-Pr90ProbeBSha256 $trackRequestPath;track_raw_path=[IO.Path]::GetFullPath($trackRawPath);track_raw_sha256=Get-Pr90ProbeBSha256 $trackRawPath;request_path=[IO.Path]::GetFullPath($acquireRequestPath);request_sha256=Get-Pr90ProbeBSha256 $acquireRequestPath;raw_path=[IO.Path]::GetFullPath($acquireRawPath);raw_sha256=Get-Pr90ProbeBSha256 $acquireRawPath;acceptance_request_path=[IO.Path]::GetFullPath($acquireAcceptanceRequestPath);acceptance_request_sha256=Get-Pr90ProbeBSha256 $acquireAcceptanceRequestPath;acceptance_raw_path=[IO.Path]::GetFullPath($acquireAcceptanceRawPath);acceptance_raw_sha256=Get-Pr90ProbeBSha256 $acquireAcceptanceRawPath}
+            $wheelRestorePayload=Get-FormalStructured (Invoke-FormalMcp -ToolName 'send_runtime_input' -Arguments @{events=$wheel;timeout_msec=60000} -TimeoutSeconds 60)
+            if(-not[bool]$wheelRestorePayload.success){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the combat controls could not be restored to the viewport after Track acquisition'}
+            $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
+            $acceptance=$acquireAcceptance
+        }
+        if($null-eq$combatScenarioWitness){
+            $militaryCard=Find-FormalHandCard -Domain 'military'
+            $missionChoice=$null;$cardSelectionAcceptance=$null;$cardTapCallIndex=0;$cardAcceptanceCallIndex=0;$cardSelectedBefore=0;$cardSelectedAfter=0
+            if($null-ne$militaryCard){
+                $cardSelectedBefore=[int]$acceptance.interaction_counts.card_selected;$cardInvalidBefore=[int]$acceptance.invalid_action_count
+                $cardTapCallIndex=$script:callIndex+1;$null=Send-FormalTaps @($militaryCard.center)
+                $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=250} -TimeoutSeconds 30
+                $cardAcceptanceCallIndex=$script:callIndex+1;$cardSelectionAcceptance=Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state';$cardSelectedAfter=[int]$cardSelectionAcceptance.interaction_counts.card_selected
+                if($cardSelectedAfter-$cardSelectedBefore-ne1-or[int]$cardSelectionAcceptance.invalid_action_count-ne$cardInvalidBefore){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the acquired military card was not selected through the production hand UI'}
+                $acceptance=$cardSelectionAcceptance
+                $missionChoice=Get-FormalMilitaryMissionChoice
+                if($null-eq$missionChoice){
+                    $null=Send-FormalTaps @($militaryCard.center)
+                    $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
+                    $acceptance=Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
+                }
+            }
+            if($null-ne$militaryCard-and$null-ne$missionChoice){
+                $militaryIntentBefore=[int]$acceptance.combat_wrapper.military_intent_count;$missionTapCallIndex=$script:callIndex+1;$null=Send-FormalTaps @($missionChoice.center)
+                $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=300} -TimeoutSeconds 30
+                $acceptanceCallIndex=$script:callIndex+1;$missionAcceptance=Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state';$militaryIntentAfter=[int]$missionAcceptance.combat_wrapper.military_intent_count
+                if($militaryIntentAfter-$militaryIntentBefore-ne1){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: military mission was not legally submitted through the UI'}
+                $handRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f ([int]$militaryCard.query_call_index));$handRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f ([int]$militaryCard.query_call_index))
+                $cardRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-send_runtime_input.json' -f $cardTapCallIndex);$cardRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-send_runtime_input.jsonrpc.json' -f $cardTapCallIndex)
+                $cardAcceptanceRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f $cardAcceptanceCallIndex);$cardAcceptanceRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f $cardAcceptanceCallIndex)
+                $surfaceInitialQueryRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f ([int]$missionChoice.surface.initial_query_call_index));$surfaceInitialQueryRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f ([int]$missionChoice.surface.initial_query_call_index))
+                $surfaceReadyQueryRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f ([int]$missionChoice.surface.ready_query_call_index));$surfaceReadyQueryRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f ([int]$missionChoice.surface.ready_query_call_index))
+                $missionPanelQueryRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f ([int]$missionChoice.panel_query_call_index));$missionPanelQueryRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f ([int]$missionChoice.panel_query_call_index))
+                $surfaceExpandRequestPath='';$surfaceExpandRawPath=''
+                if([bool]$missionChoice.surface.expand_performed){$surfaceExpandRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-send_runtime_input.json' -f ([int]$missionChoice.surface.expand_call_index));$surfaceExpandRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-send_runtime_input.jsonrpc.json' -f ([int]$missionChoice.surface.expand_call_index))}
+                $missionOptionQueryRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f ([int]$missionChoice.option_query_call_index));$missionOptionQueryRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f ([int]$missionChoice.option_query_call_index))
+                $missionOptionRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-send_runtime_input.json' -f ([int]$missionChoice.option_select_call_index));$missionOptionRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-send_runtime_input.jsonrpc.json' -f ([int]$missionChoice.option_select_call_index))
+                $missionOptionResultQueryRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f ([int]$missionChoice.option_result_query_call_index));$missionOptionResultQueryRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f ([int]$missionChoice.option_result_query_call_index))
+                $missionQueryRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f ([int]$missionChoice.query_call_index));$missionQueryRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f ([int]$missionChoice.query_call_index))
+                $missionRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-send_runtime_input.json' -f $missionTapCallIndex);$missionRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-send_runtime_input.jsonrpc.json' -f $missionTapCallIndex)
+                $acceptanceRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f $acceptanceCallIndex);$acceptanceRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f $acceptanceCallIndex)
+                $scenarioRequiredPaths=@($seedRequestPath,$seedRawPath,$baselineRequestPath,$baselineRawPath,[string]$combatTrackAcquisition.pre_acquire_hand_request_path,[string]$combatTrackAcquisition.pre_acquire_hand_raw_path,$handRequestPath,$handRawPath,$cardRequestPath,$cardRawPath,$cardAcceptanceRequestPath,$cardAcceptanceRawPath,$surfaceInitialQueryRequestPath,$surfaceInitialQueryRawPath,$surfaceReadyQueryRequestPath,$surfaceReadyQueryRawPath,$missionPanelQueryRequestPath,$missionPanelQueryRawPath,$missionOptionQueryRequestPath,$missionOptionQueryRawPath,$missionOptionRequestPath,$missionOptionRawPath,$missionOptionResultQueryRequestPath,$missionOptionResultQueryRawPath,$missionQueryRequestPath,$missionQueryRawPath,$missionRequestPath,$missionRawPath,$acceptanceRequestPath,$acceptanceRawPath)
+                if([bool]$missionChoice.surface.expand_performed){$scenarioRequiredPaths+=@($surfaceExpandRequestPath,$surfaceExpandRawPath)}
+                foreach($requiredPath in $scenarioRequiredPaths){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal combat scenario evidence missing: $requiredPath"}}
+                $combatScenarioWitness=[pscustomobject][ordered]@{schema='SpaceSyndicateFormalCombatScenarioWitnessV1';run_id=$RunId;status='PASS';deterministic_match_seed=$deterministicMatchSeed;seed_input_path=$seedInputPath;seed_input_value=$seedInputValue;seed_request_path=[IO.Path]::GetFullPath($seedRequestPath);seed_request_sha256=Get-Pr90ProbeBSha256 $seedRequestPath;seed_raw_path=[IO.Path]::GetFullPath($seedRawPath);seed_raw_sha256=Get-Pr90ProbeBSha256 $seedRawPath;baseline_request_path=[IO.Path]::GetFullPath($baselineRequestPath);baseline_request_sha256=Get-Pr90ProbeBSha256 $baselineRequestPath;baseline_raw_path=[IO.Path]::GetFullPath($baselineRawPath);baseline_raw_sha256=Get-Pr90ProbeBSha256 $baselineRawPath;initial_submarine_hand_count=[int]$combatTrackAcquisition.initial_submarine_hand_count;pre_acquire_hand_request_path=[string]$combatTrackAcquisition.pre_acquire_hand_request_path;pre_acquire_hand_request_sha256=[string]$combatTrackAcquisition.pre_acquire_hand_request_sha256;pre_acquire_hand_raw_path=[string]$combatTrackAcquisition.pre_acquire_hand_raw_path;pre_acquire_hand_raw_sha256=[string]$combatTrackAcquisition.pre_acquire_hand_raw_sha256;acquired_card_domain=[string]$combatTrackAcquisition.card_domain;acquired_card_node_path=[string]$combatTrackAcquisition.card_node_path;acquired_card_ui_text=[string]$combatTrackAcquisition.card_ui_text;track_acquired_before=[int]$combatTrackAcquisition.track_acquired_before;track_acquired_after=[int]$combatTrackAcquisition.track_acquired_after;track_acquired_delta=[int]$combatTrackAcquisition.track_acquired_delta;track_visible_card_delta=[int]$combatTrackAcquisition.track_visible_card_delta;track_real_card_delta=[int]$combatTrackAcquisition.track_real_card_delta;track_vacancy_delta=[int]$combatTrackAcquisition.track_vacancy_delta;track_request_path=[string]$combatTrackAcquisition.track_request_path;track_request_sha256=[string]$combatTrackAcquisition.track_request_sha256;track_raw_path=[string]$combatTrackAcquisition.track_raw_path;track_raw_sha256=[string]$combatTrackAcquisition.track_raw_sha256;acquire_request_path=[string]$combatTrackAcquisition.request_path;acquire_request_sha256=[string]$combatTrackAcquisition.request_sha256;acquire_raw_path=[string]$combatTrackAcquisition.raw_path;acquire_raw_sha256=[string]$combatTrackAcquisition.raw_sha256;acquire_acceptance_request_path=[string]$combatTrackAcquisition.acceptance_request_path;acquire_acceptance_request_sha256=[string]$combatTrackAcquisition.acceptance_request_sha256;acquire_acceptance_raw_path=[string]$combatTrackAcquisition.acceptance_raw_path;acquire_acceptance_raw_sha256=[string]$combatTrackAcquisition.acceptance_raw_sha256;facility_advance_steps=@($facilityAdvanceSteps);facility_batch_transitions=@($facilityBatchTransitions);staged_card_domain='military';staged_card_node_path=[string]$militaryCard.path;staged_card_ui_text=[string]$militaryCard.ui_text;mission_kind=[string]$missionChoice.mission_kind;mission_button_path=[string]$missionChoice.path;mission_button_text=[string]$missionChoice.text;military_intent_before=$militaryIntentBefore;military_intent_after=$militaryIntentAfter;military_intent_delta=($militaryIntentAfter-$militaryIntentBefore);hand_request_path=[IO.Path]::GetFullPath($handRequestPath);hand_request_sha256=Get-Pr90ProbeBSha256 $handRequestPath;hand_raw_path=[IO.Path]::GetFullPath($handRawPath);hand_raw_sha256=Get-Pr90ProbeBSha256 $handRawPath;mission_query_request_path=[IO.Path]::GetFullPath($missionQueryRequestPath);mission_query_request_sha256=Get-Pr90ProbeBSha256 $missionQueryRequestPath;mission_query_raw_path=[IO.Path]::GetFullPath($missionQueryRawPath);mission_query_raw_sha256=Get-Pr90ProbeBSha256 $missionQueryRawPath;mission_request_path=[IO.Path]::GetFullPath($missionRequestPath);mission_request_sha256=Get-Pr90ProbeBSha256 $missionRequestPath;mission_raw_path=[IO.Path]::GetFullPath($missionRawPath);mission_raw_sha256=Get-Pr90ProbeBSha256 $missionRawPath;acceptance_request_path=[IO.Path]::GetFullPath($acceptanceRequestPath);acceptance_request_sha256=Get-Pr90ProbeBSha256 $acceptanceRequestPath;acceptance_raw_path=[IO.Path]::GetFullPath($acceptanceRawPath);acceptance_raw_sha256=Get-Pr90ProbeBSha256 $acceptanceRawPath;canonical_payload_sha256=''}
+                $combatScenarioWitness|Add-Member -NotePropertyName facility_advance_action_count -NotePropertyValue $facilityAdvanceActionCount
+                $combatScenarioWitness|Add-Member -NotePropertyName card_selected_before -NotePropertyValue $cardSelectedBefore
+                $combatScenarioWitness|Add-Member -NotePropertyName card_selected_after -NotePropertyValue $cardSelectedAfter
+                $combatScenarioWitness|Add-Member -NotePropertyName card_selected_delta -NotePropertyValue ($cardSelectedAfter-$cardSelectedBefore)
+                $combatScenarioWitness|Add-Member -NotePropertyName combat_surface_path -NotePropertyValue ([string]$missionChoice.surface.path)
+                $combatScenarioWitness|Add-Member -NotePropertyName combat_surface_initial_visible -NotePropertyValue ([bool]$missionChoice.surface.surface_before.properties.visible)
+                $combatScenarioWitness|Add-Member -NotePropertyName combat_surface_final_visible -NotePropertyValue ([bool]$missionChoice.surface.surface_after.properties.visible)
+                $combatScenarioWitness|Add-Member -NotePropertyName combat_surface_expand_performed -NotePropertyValue ([bool]$missionChoice.surface.expand_performed)
+                $combatScenarioWitness|Add-Member -NotePropertyName mission_option_path -NotePropertyValue ([string]$missionChoice.option_path)
+                $combatScenarioWitness|Add-Member -NotePropertyName mission_panel_path -NotePropertyValue ([string]$missionChoice.panel_path)
+                $combatScenarioWitness|Add-Member -NotePropertyName mission_option_item_count -NotePropertyValue ([int]$missionChoice.option_item_count)
+                $combatScenarioWitness|Add-Member -NotePropertyName mission_option_selected_before -NotePropertyValue ([int]$missionChoice.option_selected_before)
+                $combatScenarioWitness|Add-Member -NotePropertyName mission_option_selected_after -NotePropertyValue ([int]$missionChoice.option_selected_after)
+                foreach($evidenceField in @(
+                    @('surface_initial_query_request',$surfaceInitialQueryRequestPath),@('surface_initial_query_raw',$surfaceInitialQueryRawPath),
+                    @('surface_ready_query_request',$surfaceReadyQueryRequestPath),@('surface_ready_query_raw',$surfaceReadyQueryRawPath),
+                    @('card_request',$cardRequestPath),@('card_raw',$cardRawPath),
+                    @('card_acceptance_request',$cardAcceptanceRequestPath),@('card_acceptance_raw',$cardAcceptanceRawPath),
+                    @('mission_panel_query_request',$missionPanelQueryRequestPath),@('mission_panel_query_raw',$missionPanelQueryRawPath),
+                    @('mission_option_query_request',$missionOptionQueryRequestPath),@('mission_option_query_raw',$missionOptionQueryRawPath),
+                    @('mission_option_request',$missionOptionRequestPath),@('mission_option_raw',$missionOptionRawPath),
+                    @('mission_option_result_query_request',$missionOptionResultQueryRequestPath),@('mission_option_result_query_raw',$missionOptionResultQueryRawPath)
+                )){
+                    $combatScenarioWitness|Add-Member -NotePropertyName ($evidenceField[0]+'_path') -NotePropertyValue ([IO.Path]::GetFullPath([string]$evidenceField[1]))
+                    $combatScenarioWitness|Add-Member -NotePropertyName ($evidenceField[0]+'_sha256') -NotePropertyValue (Get-Pr90ProbeBSha256 ([string]$evidenceField[1]))
+                }
+                if([bool]$missionChoice.surface.expand_performed){
+                    $combatScenarioWitness|Add-Member -NotePropertyName surface_expand_request_path -NotePropertyValue ([IO.Path]::GetFullPath($surfaceExpandRequestPath))
+                    $combatScenarioWitness|Add-Member -NotePropertyName surface_expand_request_sha256 -NotePropertyValue (Get-Pr90ProbeBSha256 $surfaceExpandRequestPath)
+                    $combatScenarioWitness|Add-Member -NotePropertyName surface_expand_raw_path -NotePropertyValue ([IO.Path]::GetFullPath($surfaceExpandRawPath))
+                    $combatScenarioWitness|Add-Member -NotePropertyName surface_expand_raw_sha256 -NotePropertyValue (Get-Pr90ProbeBSha256 $surfaceExpandRawPath)
+                }
+                $combatScenarioWitness.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $combatScenarioWitness
+                $combatScenarioWitnessPath=Join-Path $EvidenceRoot 'phases/004-formal-combat-scenario-witness.json';Write-StartupImmutableJson -Path $combatScenarioWitnessPath -Value $combatScenarioWitness -WriteSha256Sidecar|Out-Null
+                $combatScenarioWitnessSha=Get-Pr90ProbeBSha256 $combatScenarioWitnessPath;$acceptance=$missionAcceptance
+            }
+            if($null-eq$combatScenarioWitness){
+                for($actionSlot=0;$actionSlot-lt5;$actionSlot+=1){
+                    $facilityCard=Find-FormalHandCard -Domain 'facility'
+                    if($null-eq$facilityCard){break}
+                    $beforeSelected=[int]$acceptance.interaction_counts.card_selected;$beforeTarget=[int]$acceptance.interaction_counts.target_bound;$beforeQueue=[int]$acceptance.queue_count;$beforeInvalid=[int]$acceptance.invalid_action_count
+                    $facilityCardTapCallIndex=$script:callIndex+1;$null=Send-FormalTaps @($facilityCard.center);$null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
+                    $targetRailOpen=Get-FormalFirstChoiceButton -Path 'V075GameScreen/RootMargin/Shell/TargetPanel/TargetMargin/TargetRow/TargetScroll/TargetRail'
+                    if($null-eq$targetRailOpen-or[string]$targetRailOpen.text-cnotlike'目标列表 · *'){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: facility target list opener is unavailable'}
+                    $targetRailOpenTapCallIndex=$script:callIndex+1;$null=Send-FormalTaps @($targetRailOpen.center);$null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
+                    $facilityTarget=Get-FormalFirstChoiceButton -Path 'V075GameScreen/PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Body/TargetScroll/VirtualContent/Rows' -RequiredNamePattern '^VirtualTargetRow\d{2}$'
+                    if($null-eq$facilityTarget){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: virtualized facility target rail has no legal enabled binding'}
+                    $facilityTargetTapCallIndex=$script:callIndex+1;$null=Send-FormalTaps @($facilityTarget.center);$null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=250} -TimeoutSeconds 30
+                    $facilityAcceptanceCallIndex=$script:callIndex+1;$acceptance=Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
+                    if([int]$acceptance.interaction_counts.card_selected-ne($beforeSelected+1)-or[int]$acceptance.interaction_counts.target_bound-ne($beforeTarget+1)-or[int]$acceptance.queue_count-ne($beforeQueue+1)-or[int]$acceptance.invalid_action_count-ne$beforeInvalid){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: deterministic facility hand-advance action was not legally queued'}
+                    $facilityAdvanceActionCount+=1
+                    $facilityStep=[ordered]@{step_index=$facilityAdvanceActionCount;batch_index=$batch;action_slot=$actionSlot;card_node_path=[string]$facilityCard.path;card_ui_text=[string]$facilityCard.ui_text;target_opener_path=[string]$targetRailOpen.path;target_opener_text=[string]$targetRailOpen.text;target_node_path=[string]$facilityTarget.path;target_ui_text=[string]$facilityTarget.text;card_selected_before=$beforeSelected;card_selected_after=[int]$acceptance.interaction_counts.card_selected;target_bound_before=$beforeTarget;target_bound_after=[int]$acceptance.interaction_counts.target_bound;queue_before=$beforeQueue;queue_after=[int]$acceptance.queue_count;invalid_action_before=$beforeInvalid;invalid_action_after=[int]$acceptance.invalid_action_count}
+                    foreach($evidenceSpec in @(
+                        @('facility_hand_query',[int]$facilityCard.query_call_index,'query_runtime_node'),@('facility_card',[int]$facilityCardTapCallIndex,'send_runtime_input'),
+                        @('target_opener_tree_query',[int]$targetRailOpen.tree_query_call_index,'query_runtime_node'),@('target_opener_node_query',[int]$targetRailOpen.node_query_call_index,'query_runtime_node'),@('target_opener',[int]$targetRailOpenTapCallIndex,'send_runtime_input'),
+                        @('target_tree_query',[int]$facilityTarget.tree_query_call_index,'query_runtime_node'),@('target_node_query',[int]$facilityTarget.node_query_call_index,'query_runtime_node'),@('target',[int]$facilityTargetTapCallIndex,'send_runtime_input'),
+                        @('acceptance',[int]$facilityAcceptanceCallIndex,'query_runtime_node')
+                    )){
+                        $record=Get-FormalMcpEvidenceRecord -CallIndex ([int]$evidenceSpec[1]) -ToolName ([string]$evidenceSpec[2]);$prefix=[string]$evidenceSpec[0]
+                        $facilityStep[$prefix+'_request_path']=[string]$record.request_path;$facilityStep[$prefix+'_request_sha256']=[string]$record.request_sha256;$facilityStep[$prefix+'_raw_path']=[string]$record.raw_path;$facilityStep[$prefix+'_raw_sha256']=[string]$record.raw_sha256
+                    }
+                    $facilityAdvanceSteps.Add([pscustomobject]$facilityStep)
+                }
+            }
+        }
         $null=Send-FormalTaps @($lockCenter,$finishCenter)
         $null = Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=300} -TimeoutSeconds 30
-        $acceptance = Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
+        $postBatchAcceptanceCallIndex=$script:callIndex+1;$acceptance = Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
+        if($null-ne$combatTrackAcquisition-and$null-eq$combatScenarioWitness-and$batch-lt2-and$facilityAdvanceActionCount-eq(($batch+1)*5)){
+            if([int]$acceptance.interaction_counts.card_selected-ne$facilityAdvanceActionCount-or[int]$acceptance.interaction_counts.target_bound-ne$facilityAdvanceActionCount-or[int]$acceptance.queue_count-ne0-or[int]$acceptance.invalid_action_count-ne0){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: new-batch acceptance did not preserve cumulative interaction counts while resetting the queued action count'}
+            $batchTransitionEvidence=Get-FormalMcpEvidenceRecord -CallIndex $postBatchAcceptanceCallIndex -ToolName query_runtime_node
+            $facilityBatchTransitions.Add([pscustomobject][ordered]@{transition_index=$batch+1;prior_batch_index=$batch;next_batch_index=$batch+1;card_selected_count=[int]$acceptance.interaction_counts.card_selected;target_bound_count=[int]$acceptance.interaction_counts.target_bound;queue_count=[int]$acceptance.queue_count;invalid_action_count=[int]$acceptance.invalid_action_count;acceptance_request_path=[string]$batchTransitionEvidence.request_path;acceptance_request_sha256=[string]$batchTransitionEvidence.request_sha256;acceptance_raw_path=[string]$batchTransitionEvidence.raw_path;acceptance_raw_sha256=[string]$batchTransitionEvidence.raw_sha256})
+        }
         $phase = if($batch -lt 4){'phase-3-early-match'}elseif($batch -lt 8){'phase-4-mid-match'}elseif($batch -lt 12){'phase-5-combat-facility'}elseif($batch -lt 16){'phase-6-victory'}else{'phase-7-settlement'}
         Poll-FormalCursor -Phase "$phase-batch-$batch" | Out-Null
         if ([bool]$acceptance.match_completed -and [bool]$acceptance.settlement_visible) { $settled = $true; break }
     }
     if (-not $settled) { throw 'Formal v5 natural UI match did not settle within 32 batches.' }
+    if($null-eq$combatScenarioWitness){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the bounded five-action hand advance did not carry the purchased military card into a legal mission before settlement'}
     $debug = $acceptance.runtime_acceptance_debug; $presentation = $debug.combat_presentation; $wrapper = $acceptance.combat_wrapper; $surface = $wrapper.surface
     $requiredEdges = [int]$wrapper.presentation_shared_consumer_count + [int]$wrapper.presentation_signal_connection_count + [int]$wrapper.presentation_source_bind_count
     $legacyEdges = [int]$wrapper.presentation_local_preview_consumer_count
     $duplicateEdges = [Math]::Max(0,[int]$wrapper.presentation_signal_connection_count-1) + [Math]::Max(0,[int]$wrapper.presentation_source_bind_count-1)
-    $green = [bool]$acceptance.match_completed -and [bool]$acceptance.settlement_visible -and [int]$debug.final_settlement_count -eq 1 -and [int]$debug.duplicate_settlement_count -eq 0 -and [int]$presentation.applied_receipt_count -gt 0 -and [int]$presentation.collision_receipt_count -eq 0 -and [int]$presentation.duplicate_receipt_count -eq 0 -and [int]$presentation.rejected_receipt_count -eq 0 -and $requiredEdges -eq 3 -and $legacyEdges -eq 0 -and $duplicateEdges -eq 0 -and [int]$debug.runtime_error_count -eq 0 -and [int]$debug.hidden_info_violation_count -eq 0 -and [int]$debug.invalid_action_count -eq 0 -and [int]$debug.nonfinite_count -eq 0 -and [int]$surface.presentation_cue_collision_count -eq 0 -and [int]$surface.presentation_cue_duplicate_count -eq 0
-    if (-not $green) { throw 'Formal v5 production acceptance/presentation gate failed.' }
+    $combatGate=Get-Pr90FormalCombatPresentationGateV1 -BeforeAcceptance $combatBaseline -AfterAcceptance $acceptance -ScenarioWitness $combatScenarioWitness
+    if([string]$combatGate.classification-ceq'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED'){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: no nonempty combat source receipt followed the witnessed UI action'}
+    if(-not[bool]$combatGate.green){throw "PRODUCT_PRESENTATION_CHAIN_FAILURE: $($combatGate.classification)"}
+    $green = [bool]$acceptance.match_completed -and [bool]$acceptance.settlement_visible -and [int]$debug.final_settlement_count -eq 1 -and [int]$debug.duplicate_settlement_count -eq 0 -and $requiredEdges -eq 3 -and $legacyEdges -eq 0 -and $duplicateEdges -eq 0 -and [int]$debug.runtime_error_count -eq 0 -and [int]$debug.hidden_info_violation_count -eq 0 -and [int]$debug.invalid_action_count -eq 0 -and [int]$debug.nonfinite_count -eq 0
+    if (-not $green) { throw 'Formal v5 production acceptance gate failed after the combat presentation chain passed.' }
     Poll-FormalCursor -Phase 'phase-7-final-settlement' | Out-Null
     if ($pollCount -le 8) { throw 'Formal v5 cursor polling count is insufficient.' }
-    $formalPayload = [ordered]@{startup_milestones=12;startup_raw_count=@(Get-ChildItem -LiteralPath (Join-Path $EvidenceRoot 'mcp-raw') -File -ErrorAction SilentlyContinue).Count;startup_phase0_count=1;startup_stream_id=$startupStreamId;main_runtime_stream_id=$mainRuntimeStreamId;expected_stream_transition_count=1;unexpected_stream_transition_count=0;main_stream_id_stable=$true;main_stream_transition_path=$mainStreamTransitionPath;main_stream_transition_sha256=$mainStreamTransitionSha;ready_witness_count=@($readyWitnesses).Count;formal_event_poll_count=$pollCount;natural_match_reached_settled=$true;final_settlement_count=[int]$debug.final_settlement_count;presentation_receipt_count=[int]$presentation.applied_receipt_count;presentation_collision_count=[int]$presentation.collision_receipt_count;duplicate_presentation_effect_count=([int]$presentation.duplicate_receipt_count+[int]$surface.presentation_cue_duplicate_count);required_presentation_edge_count=$requiredEdges;legacy_presentation_edge_count=$legacyEdges;duplicate_presentation_edge_count=$duplicateEdges;runtime_error_count=[int]$debug.runtime_error_count;hidden_info_violation_count=[int]$debug.hidden_info_violation_count;invalid_action_count=[int]$debug.invalid_action_count;nonfinite_count=[int]$debug.nonfinite_count;duplicate_settlement_count=[int]$debug.duplicate_settlement_count}
+    $formalPayload = [ordered]@{startup_milestones=12;startup_raw_count=@(Get-ChildItem -LiteralPath (Join-Path $EvidenceRoot 'mcp-raw') -File -ErrorAction SilentlyContinue).Count;startup_phase0_count=1;startup_stream_id=$startupStreamId;main_runtime_stream_id=$mainRuntimeStreamId;expected_stream_transition_count=1;unexpected_stream_transition_count=0;main_stream_id_stable=$true;main_stream_transition_path=$mainStreamTransitionPath;main_stream_transition_sha256=$mainStreamTransitionSha;ready_witness_count=@($readyWitnesses).Count;formal_event_poll_count=$pollCount;natural_match_reached_settled=$true;deterministic_match_seed=$deterministicMatchSeed;combat_scenario_witness_path=[IO.Path]::GetFullPath($combatScenarioWitnessPath);combat_scenario_witness_sha256=$combatScenarioWitnessSha;combat_source_receipt_count=[int]$combatGate.source_count;combat_presentation_receipt_count=[int]$combatGate.presentation_count;combat_map_cue_count=[int]$combatGate.map_cue_count;combat_surface_cue_count=[int]$combatGate.surface_cue_count;final_settlement_count=[int]$debug.final_settlement_count;presentation_receipt_count=[int]$presentation.applied_receipt_count;presentation_collision_count=[int]$presentation.collision_receipt_count;duplicate_presentation_effect_count=([int]$presentation.duplicate_receipt_count+[int]$surface.presentation_cue_duplicate_count);required_presentation_edge_count=$requiredEdges;legacy_presentation_edge_count=$legacyEdges;duplicate_presentation_edge_count=$duplicateEdges;runtime_error_count=[int]$debug.runtime_error_count;hidden_info_violation_count=[int]$debug.hidden_info_violation_count;invalid_action_count=[int]$debug.invalid_action_count;nonfinite_count=[int]$debug.nonfinite_count;duplicate_settlement_count=[int]$debug.duplicate_settlement_count}
 } catch {
     $primaryFailure = $_
 } finally {
