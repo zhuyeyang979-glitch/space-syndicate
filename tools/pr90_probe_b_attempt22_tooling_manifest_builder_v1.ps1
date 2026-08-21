@@ -21,10 +21,10 @@ param(
 )
 $ErrorActionPreference='Stop';Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot 'pr90_probe_b_attempt22_contract_v1.psm1') -Force
-$baseHead='8a6c9195c5e291ae74a9e4b59da46a120322f07b';$baseTree='2731f520133c53cc85f798f84672263cf17b8377'
-$sealedBaseManifestSha256='402c55827e6c67cce3774474005327e07e314ab6f5a5d046bf4d95b56cbe5880';$sealedBaseSealSha256='b1c98fbcef2ac2c9e451be42e994d9d85cd7e64b2b109990e909289eb9399e2b';$sealedBaseSelfTestSha256='88092c49c2f525b7c827f22f014e8d7c894fa71f8dbad9a00ea48043c14eebf9';$sealedFrozenInputSha256='3a064504628f4168d74b2558fa7473fbe3f00288e79deec5362184ce71f6e2d5'
+$baseHead='01de4990ae8287ac10d3d1d52367fa103cac1b9d';$baseTree='d95fffd228fa3575644f672665fa8c4e0301f84f'
+$sealedBaseManifestSha256='bf0d3073c9720f404b2a5567cf1b0dc5042495e2728b67fdc49c4a307bb5440b';$sealedBaseSealSha256='eee6c88ced6a8cd7e0c8234148b9484f35b614398cbed1391741ed021edb78ed';$sealedBaseSelfTestSha256='e3edb4e4d13fff55a6b94ee18dd4ab518d369a1795fbebe4409e2db9b0efd50b';$sealedFrozenInputSha256='3a064504628f4168d74b2558fa7473fbe3f00288e79deec5362184ce71f6e2d5'
 $frozenRecoveryHead='44f5ef84185f3488dfde7551a787571337b0f531';$frozenRecoveryTree='f58146e6325f6ce08cfda4d807be6133c9a0373a'
-if($ExpectedBaseToolingManifestSha256-cne$sealedBaseManifestSha256-or$ExpectedBaseToolingSealSha256-cne$sealedBaseSealSha256-or$ExpectedBaseSelfTestSha256-cne$sealedBaseSelfTestSha256-or$ExpectedFrozenInputInventorySha256-cne$sealedFrozenInputSha256){throw 'Frozen 8a6c9195 authority hash arguments are not exact.'}
+if($ExpectedBaseToolingManifestSha256-cne$sealedBaseManifestSha256-or$ExpectedBaseToolingSealSha256-cne$sealedBaseSealSha256-or$ExpectedBaseSelfTestSha256-cne$sealedBaseSelfTestSha256-or$ExpectedFrozenInputInventorySha256-cne$sealedFrozenInputSha256){throw 'Frozen 01de4990 authority hash arguments are not exact.'}
 $root=(Resolve-Path -LiteralPath $ToolingWorktree).Path
 $head=(& git -C $root rev-parse HEAD).Trim();$tree=(& git -C $root rev-parse 'HEAD^{tree}').Trim();$parent=(& git -C $root rev-parse 'HEAD^').Trim()
 if($parent-cne$baseHead-or$head-ceq$baseHead-or@(& git -C $root rev-list --count "$baseHead..$head")[0]-ne'1'){throw 'Result recovery Tooling commit identity/count mismatch.'}
@@ -42,11 +42,11 @@ $newSelfTest=Get-Content -Raw -LiteralPath $NewSelfTestPath|ConvertFrom-Json -De
 $forensics=Get-Content -Raw -LiteralPath $ListenerForensicsPath|ConvertFrom-Json -Depth 100
 $frozenInput=Get-Content -Raw -LiteralPath $FrozenInputInventoryPath|ConvertFrom-Json -Depth 100
 if([string]$baseManifest.schema-cne'Pr90ProbeBV2ResultRecoveryToolingManifestV1'-or[string]$baseManifest.status-cne'READY'-or[string]$baseManifest.tooling_head_sha-cne$baseHead-or[string]$baseManifest.tooling_tree_sha-cne$baseTree-or[string]$baseManifest.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $baseManifest)-or
-   [string]$baseSeal.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSealV1'-or[string]$baseSeal.status-cne'SEALED'-or[string]$baseSeal.tooling_head_sha-cne$baseHead-or[string]$baseSeal.tooling_tree_sha-cne$baseTree-or[string]$baseSeal.manifest_sha256-cne$ExpectedBaseToolingManifestSha256-or[string]$baseSeal.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $baseSeal)){throw 'Frozen 8a6c9195 Tooling authority contract mismatch.'}
-if([string]$baseSelfTest.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSelfTestV1'-or[string]$baseSelfTest.selftest_revision-cne'PR90_ATTEMPT22_FORMAL_COMBAT_PRIVATE_PAYLOAD_IDENTITY_REPAIR_V16'-or[string]$baseSelfTest.status-cne'PASS'-or[int]$baseSelfTest.new_selftest_case_count-ne260-or[int]$baseSelfTest.total_tooling_selftest_pass_count-ne586-or[int]$baseSelfTest.total_tooling_selftest_failure_count-ne0-or
-   (Get-Pr90ProbeBSha256 $BaseSelfTestPath)-cne[string]$baseManifest.new_selftest_sha256){throw 'Frozen 8a6c9195 Tooling self-test is not the exact 260-case V16 receipt.'}
-if(-not(Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 $newSelfTest)-or[int]$newSelfTest.new_selftest_case_count-ne260-or
-   [string]$newSelfTest.selftest_case_name_inventory_sha256-cne'8041c92e4a0bf96b5ba7d4618bbeb6e3a3fc6ae645a5e24dd04bd0234093888a'){throw 'Attempt22 formal combat V075 profile identity repair self-test version or exact case inventory mismatch.'}
+   [string]$baseSeal.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSealV1'-or[string]$baseSeal.status-cne'SEALED'-or[string]$baseSeal.tooling_head_sha-cne$baseHead-or[string]$baseSeal.tooling_tree_sha-cne$baseTree-or[string]$baseSeal.manifest_sha256-cne$ExpectedBaseToolingManifestSha256-or[string]$baseSeal.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $baseSeal)){throw 'Frozen 01de4990 Tooling authority contract mismatch.'}
+if([string]$baseSelfTest.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSelfTestV1'-or[string]$baseSelfTest.selftest_revision-cne'PR90_ATTEMPT22_FORMAL_COMBAT_V075_PROFILE_IDENTITY_REPAIR_V17'-or[string]$baseSelfTest.status-cne'PASS'-or[int]$baseSelfTest.new_selftest_case_count-ne260-or[int]$baseSelfTest.total_tooling_selftest_pass_count-ne586-or[int]$baseSelfTest.total_tooling_selftest_failure_count-ne0-or
+   (Get-Pr90ProbeBSha256 $BaseSelfTestPath)-cne[string]$baseManifest.new_selftest_sha256){throw 'Frozen 01de4990 Tooling self-test is not the exact 260-case V17 receipt.'}
+if(-not(Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 $newSelfTest)-or[int]$newSelfTest.new_selftest_case_count-ne264-or
+   [string]$newSelfTest.selftest_case_name_inventory_sha256-cne'a5c5dcca0b334e2ba77a3a2a5fa7e1dab048bbafd0cfdd548b2c79bfbfc93d60'){throw 'Attempt22 formal tap-center viewport repair self-test version or exact case inventory mismatch.'}
 if([string]$forensics.status-cne'ROOT_CAUSE_RESOLVED'-or[int]$forensics.sample_count-ne23-or[string]$forensics.root_cause_class-cne'J'-or[bool]$forensics.characterization_probe_required){throw 'Frozen listener forensics contract mismatch.'}
 if([string]$frozenInput.schema-cne'Pr90ProbeBV2FrozenInputInventoryV1'-or[string]$frozenInput.status-cne'FROZEN'-or[string]$frozenInput.tooling_head_sha-cne$frozenRecoveryHead-or[string]$frozenInput.tooling_tree_sha-cne$frozenRecoveryTree-or
    (Get-Pr90ProbeBSha256 $FrozenInputInventoryPath)-cne[string]$baseManifest.frozen_input_inventory_sha256-or
@@ -63,12 +63,12 @@ $added=@()
 $formalReachable=@('tools/invoke_role_godot_mcp.ps1','tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1','tools/pr90_attempt21_mcp_startup_contract.psm1','tools/pr90_mcp_startup_state_machine_v1.psm1','tools/pr90_probe_b_attempt22_contract_v1.psm1','tools/release_harness/pr90_canonical_import_authority_v3.ps1','tools/role_godot_mcp_process_identity.psm1')
 $purposeByPath=@{
  'tools/invoke_role_godot_mcp.ps1'='V2 control and GUI endpoint identity-bound MCP invocation'
- 'tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1'='formal orchestration with public UI combat selection plus exact owner-private card identity evidence, presentation receipts, scoped cleanup, and terminal evidence'
+ 'tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1'='formal orchestration with bounded viewport navigation, normalized tap centers, public UI combat selection, scoped cleanup, and terminal evidence'
  'tools/pr90_attempt21_mcp_startup_contract.psm1'='startup snapshots, canonical state, and explicit process identity'
  'tools/pr90_attempt22_preformal_dry_run_v2.ps1'='22-of-22 zero-process formal command plan'
  'tools/pr90_mcp_startup_state_machine_v1.psm1'='M2 atomic authorization consumption and formal accounting'
- 'tools/pr90_probe_b_attempt22_contract_v1.psm1'='current Attempt22 schemas, public-label and private-payload combat identity binding, and fail-closed predicates'
- 'tools/pr90_probe_b_attempt22_selftest_v1.ps1'='versioned private-payload combat identity and presentation-chain self-test with stale-report rejection'
+ 'tools/pr90_probe_b_attempt22_contract_v1.psm1'='current Attempt22 schemas, canonical tap-center and viewport predicates, combat evidence binding, and fail-closed validation'
+ 'tools/pr90_probe_b_attempt22_selftest_v1.ps1'='versioned mixed-center and clipped-viewport negative self-test with combat-chain and stale-report rejection'
  'tools/pr90_probe_b_attempt22_tooling_manifest_builder_v1.ps1'='exact 5M/0A Tooling inventory authority'
  'tools/pr90_probe_b_attempt22_tooling_seal_builder_v1.ps1'='post-commit Tooling seal'
  'tools/release_harness/pr90_canonical_import_authority_v3.ps1'='unchanged inherited canonical import harness with typed process-start identity, exact launcher-PID wait, V2 endpoint owner identity, and scoped cleanup'
@@ -89,7 +89,7 @@ $authorizedRuntimeChanges=@('tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1'
 $runtimeMismatch=[Collections.Generic.List[string]]::new();$authorizedRuntimeChangeCount=0
 foreach($relative in $runtimeReachable){$baseRow=@($baseManifest.tooling_files|Where-Object{([string]$_.relative_path).Replace('\','/')-ceq$relative});$newRow=@($rows|Where-Object{[string]$_.relative_path-ceq$relative});if($newRow.Count-ne1){$runtimeMismatch.Add($relative);continue};if($baseRow.Count-eq0-and$added-ccontains$relative-and$authorizedRuntimeChanges-ccontains$relative){$authorizedRuntimeChangeCount+=1;continue};if($baseRow.Count-ne1){$runtimeMismatch.Add($relative);continue};$changed=([string]$baseRow[0].sha256-cne[string]$newRow[0].sha256);if($authorizedRuntimeChanges-ccontains$relative){if($changed){$authorizedRuntimeChangeCount+=1}else{$runtimeMismatch.Add("AUTHORIZED_RUNTIME_NOT_CHANGED:$relative")}}elseif($changed){$runtimeMismatch.Add($relative)}}
 $productCodeChangeCount=@($diffRows|Where-Object{[string]$_.relative_path-notlike'tools/*'}).Count;$productTestChangeCount=@($diffRows|Where-Object{[string]$_.relative_path-match'(^|/)(?:test|tests)/|(?:_test|\.test)\.'}).Count
-$eligible=($scopeErrors.Count-eq0-and$worktreeBlobMismatch-eq0-and$runtimeMismatch.Count-eq0-and$authorizedRuntimeChangeCount-eq2-and$productCodeChangeCount-eq0-and$productTestChangeCount-eq0-and[int]$newSelfTest.new_selftest_case_count-eq260-and[string]$newSelfTest.selftest_case_name_inventory_sha256-ceq'8041c92e4a0bf96b5ba7d4618bbeb6e3a3fc6ae645a5e24dd04bd0234093888a'-and(Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 $newSelfTest))
+$eligible=($scopeErrors.Count-eq0-and$worktreeBlobMismatch-eq0-and$runtimeMismatch.Count-eq0-and$authorizedRuntimeChangeCount-eq2-and$productCodeChangeCount-eq0-and$productTestChangeCount-eq0-and[int]$newSelfTest.new_selftest_case_count-eq264-and[string]$newSelfTest.selftest_case_name_inventory_sha256-ceq'a5c5dcca0b334e2ba77a3a2a5fa7e1dab048bbafd0cfdd548b2c79bfbfc93d60'-and(Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 $newSelfTest))
 $diffInventoryRows=@($diffRows|ForEach-Object{$relative=[string]$_.relative_path;$row=@($rows|Where-Object{[string]$_.relative_path-ceq$relative})[0];[pscustomobject][ordered]@{status=[string]$_.status;relative_path=$relative;git_blob_sha=[string]$row.git_blob_sha;sha256=[string]$row.sha256;byte_count=[long]$row.byte_count;purpose=[string]$row.purpose;formal_reachable=[bool]$row.formal_reachable}})
 $getHash={param($relative)Get-Pr90ProbeBSha256 (Join-Path $root $relative)}
 $manifest=[pscustomobject][ordered]@{

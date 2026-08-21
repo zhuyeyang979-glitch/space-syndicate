@@ -375,17 +375,35 @@ function Get-FormalTreeCenter {
     return @{x=([double]$Row.properties.global_position.x+[double]$Row.properties.size.x/2.0);y=([double]$Row.properties.global_position.y+[double]$Row.properties.size.y/2.0)}
 }
 
+function Get-FormalRootGatedCenter {
+    param(
+        [Parameter(Mandatory=$true)][object]$Node,
+        [Parameter(Mandatory=$true)][object]$ViewportNode,
+        [Parameter(Mandatory=$true)][string]$Context
+    )
+    $center=Get-Pr90FormalRootActionCenterV1 -Node $Node -ViewportNode $ViewportNode
+    if($null-eq$center){throw "Formal refreshed action center is not root-viewport actionable: $Context"}
+    return $center
+}
+
 function Find-FormalHandCard {
     param(
         [ValidateSet('military','facility')][string]$Domain,
         [string]$ExpectedDefinitionId='',
         [string]$ExpectedSourceInstanceId=''
     )
-    $queryCallIndex=$script:callIndex+1
-    $tree=Get-FormalNodeTree -Path 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/HandScroll/HandRail' -MaxDepth 5 -MaxNodes 160
+    $railPath='V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/HandScroll/HandRail'
+    $tree=Get-FormalNodeTree -Path $railPath -MaxDepth 5 -MaxNodes 160
     $candidate=Get-Pr90FormalCardCandidateV1 -Tree $tree -Surface hand -Domain $Domain -TreeTruncated $false
     if($null-ne$candidate){
+        $viewport=Move-FormalRootViewportToNode -TargetPath ([string]$candidate.path)
+        $queryCallIndex=$script:callIndex+1
+        $tree=Get-FormalNodeTree -Path $railPath -MaxDepth 5 -MaxNodes 160
+        $candidate=Get-Pr90FormalCardCandidateV1 -Tree $tree -Surface hand -Domain $Domain -TreeTruncated $false
+        if($null-eq$candidate){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the selected public hand card disappeared after root navigation'}
+        $candidate.center=Get-FormalRootGatedCenter -Node $candidate -ViewportNode $viewport.viewport_node -Context ([string]$candidate.path)
         $candidate|Add-Member -NotePropertyName query_call_index -NotePropertyValue $queryCallIndex
+        $candidate|Add-Member -NotePropertyName viewport_query_call_index -NotePropertyValue ([int]$viewport.viewport_query_call_index)
         if($Domain-ceq'military'){
             if([string]::IsNullOrWhiteSpace($ExpectedDefinitionId)){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: a military hand card cannot be accepted without an exact private definition identity'}
             $payloadQueryCallIndex=$script:callIndex+1
@@ -415,10 +433,19 @@ function Find-FormalHandCard {
 
 function Find-FormalTrackCard {
     param([ValidateSet('military')][string]$Domain='military')
-    $queryCallIndex=$script:callIndex+1
-    $tree=Get-FormalNodeTree -Path 'V075GameScreen/RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackScroll/TrackRail' -MaxDepth 5 -MaxNodes 240
+    $railPath='V075GameScreen/RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackScroll/TrackRail'
+    $tree=Get-FormalNodeTree -Path $railPath -MaxDepth 5 -MaxNodes 240
     $candidate=Get-Pr90FormalCardCandidateV1 -Tree $tree -Surface track -Domain $Domain -TreeTruncated $false
-    if($null-ne$candidate){$candidate|Add-Member -NotePropertyName query_call_index -NotePropertyValue $queryCallIndex}
+    if($null-ne$candidate){
+        $viewport=Move-FormalRootViewportToNode -TargetPath ([string]$candidate.path)
+        $queryCallIndex=$script:callIndex+1
+        $tree=Get-FormalNodeTree -Path $railPath -MaxDepth 5 -MaxNodes 240
+        $candidate=Get-Pr90FormalCardCandidateV1 -Tree $tree -Surface track -Domain $Domain -TreeTruncated $false
+        if($null-eq$candidate){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: deterministic TrackCard_05 disappeared after root navigation'}
+        $candidate.center=Get-FormalRootGatedCenter -Node $candidate -ViewportNode $viewport.viewport_node -Context ([string]$candidate.path)
+        $candidate|Add-Member -NotePropertyName query_call_index -NotePropertyValue $queryCallIndex
+        $candidate|Add-Member -NotePropertyName viewport_query_call_index -NotePropertyValue ([int]$viewport.viewport_query_call_index)
+    }
     return $candidate
 }
 
@@ -429,11 +456,14 @@ function Ensure-FormalCombatSurfaceVisible {
     $surfaceBefore=Get-FormalNode -Path $surfacePath -Properties @()
     $expandPerformed=$false;$expandCallIndex=0
     if(-not[bool]$surfaceBefore.properties.visible){
+        $collapseViewport=Move-FormalRootViewportToNode -TargetPath $collapsePath
         $collapse=Get-FormalNode -Path $collapsePath -Properties @('disabled')
         if([bool]$collapse.requested_properties.disabled-or-not[bool]$collapse.properties.visible-or[double]$collapse.properties.size.x-le0-or[double]$collapse.properties.size.y-le0){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the public combat-surface expand control is not actionable'}
-        $expandCallIndex=$script:callIndex+1;$null=Send-FormalTaps @(@{x=([double]$collapse.properties.global_position.x+[double]$collapse.properties.size.x/2.0);y=([double]$collapse.properties.global_position.y+[double]$collapse.properties.size.y/2.0)})
+        $collapseCenter=Get-FormalRootGatedCenter -Node $collapse -ViewportNode $collapseViewport.viewport_node -Context $collapsePath
+        $expandCallIndex=$script:callIndex+1;$null=Send-FormalTaps @($collapseCenter)
         $expandPerformed=$true;$null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
     }
+    $null=Move-FormalRootViewportToNode -TargetPath $surfacePath
     $readyQueryCallIndex=$script:callIndex+1
     $surfaceAfter=Get-FormalNode -Path $surfacePath -Properties @()
     if(-not[bool]$surfaceAfter.properties.visible-or[double]$surfaceAfter.properties.size.x-le0-or[double]$surfaceAfter.properties.size.y-le0){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the production combat surface did not become visibly actionable'}
@@ -449,15 +479,17 @@ function Get-FormalMilitaryMissionChoice {
     $base="$($surface.path)/Rows/PrivateGrid/MilitaryPanel/Margin/Rows"
     foreach($candidate in @(@('assault_region','Region'),@('assault_monster','Monster'))){
         $optionPath="$base/TargetMenus/Assault$($candidate[1])Option";$buttonPath="$base/TaskButtons/Assault$($candidate[1])Button"
+        $optionViewport=Move-FormalRootViewportToNode -TargetPath $optionPath
         $optionQueryCallIndex=$script:callIndex+1
         $optionBefore=Get-FormalNode -Path $optionPath -Properties @('disabled','item_count','selected')
         if([bool]$optionBefore.requested_properties.disabled-or[int]$optionBefore.requested_properties.item_count-le0-or[int]$optionBefore.requested_properties.selected-ne-1-or-not[bool]$optionBefore.properties.visible-or[double]$optionBefore.properties.size.x-le0-or[double]$optionBefore.properties.size.y-le0){continue}
         $optionSelectCallIndex=$script:callIndex+1
-        $optionCenter=@{x=([double]$optionBefore.properties.global_position.x+[double]$optionBefore.properties.size.x/2.0);y=([double]$optionBefore.properties.global_position.y+[double]$optionBefore.properties.size.y/2.0)}
+        $optionCenter=Get-FormalRootGatedCenter -Node $optionBefore -ViewportNode $optionViewport.viewport_node -Context $optionPath
         $null=Send-FormalRuntimeEvents @(@{type='mouse_button';button='left';position=$optionCenter;mode='tap'},@{type='action';action='ui_down';mode='tap'},@{type='action';action='ui_accept';mode='tap'})
         $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
         $optionResultQueryCallIndex=$script:callIndex+1
         $optionAfter=Get-FormalNode -Path $optionPath -Properties @('disabled','item_count','selected')
+        $buttonViewport=Move-FormalRootViewportToNode -TargetPath $buttonPath
         $buttonQueryCallIndex=$script:callIndex+1
         $buttonAfter=Get-FormalNode -Path $buttonPath -Properties @('disabled')
         $missionUiGreen=Test-Pr90FormalMilitaryMissionUiTransitionV1 `
@@ -470,22 +502,28 @@ function Get-FormalMilitaryMissionChoice {
             -MissionKind ([string]$candidate[0]) `
             -SurfaceExpandPerformed ([bool]$surface.expand_performed)
         if(-not$missionUiGreen){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: military option selection did not enable the exact production task button'}
-        return [pscustomobject][ordered]@{mission_kind=[string]$candidate[0];path=$buttonPath;text=[string]$buttonAfter.properties.text;query_call_index=$buttonQueryCallIndex;center=[pscustomobject][ordered]@{x=([double]$buttonAfter.properties.global_position.x+[double]$buttonAfter.properties.size.x/2.0);y=([double]$buttonAfter.properties.global_position.y+[double]$buttonAfter.properties.size.y/2.0)};panel_path=$panelPath;panel_query_call_index=$panelQueryCallIndex;option_path=$optionPath;option_item_count=[int]$optionBefore.requested_properties.item_count;option_selected_before=[int]$optionBefore.requested_properties.selected;option_selected_after=[int]$optionAfter.requested_properties.selected;option_query_call_index=$optionQueryCallIndex;option_select_call_index=$optionSelectCallIndex;option_result_query_call_index=$optionResultQueryCallIndex;surface=$surface}
+        $buttonCenter=Get-FormalRootGatedCenter -Node $buttonAfter -ViewportNode $buttonViewport.viewport_node -Context $buttonPath
+        return [pscustomobject][ordered]@{mission_kind=[string]$candidate[0];path=$buttonPath;text=[string]$buttonAfter.properties.text;query_call_index=$buttonQueryCallIndex;center=$buttonCenter;panel_path=$panelPath;panel_query_call_index=$panelQueryCallIndex;option_path=$optionPath;option_item_count=[int]$optionBefore.requested_properties.item_count;option_selected_before=[int]$optionBefore.requested_properties.selected;option_selected_after=[int]$optionAfter.requested_properties.selected;option_query_call_index=$optionQueryCallIndex;option_select_call_index=$optionSelectCallIndex;option_result_query_call_index=$optionResultQueryCallIndex;surface=$surface}
     }
     return $null
 }
 
 function Get-FormalFirstChoiceButton {
     param([string]$Path,[string]$RequiredNamePattern='')
-    $treeQueryCallIndex=$script:callIndex+1
     $tree=Get-FormalNodeTree -Path $Path -MaxDepth 4 -MaxNodes 100
     foreach($row in @(Get-FormalTreeRows -Root $tree)){
         if([string]$row.type-cne'Button'-or-not[bool]$row.properties.visible){continue}
         if(-not[string]::IsNullOrWhiteSpace($RequiredNamePattern)-and[string]$row.name-cnotmatch$RequiredNamePattern){continue}
+        $selectedPath=[string]$row.path
+        $choiceViewport=Move-FormalRootViewportToNode -TargetPath $selectedPath
+        $treeQueryCallIndex=$script:callIndex+1
+        $tree=Get-FormalNodeTree -Path $Path -MaxDepth 4 -MaxNodes 100
+        $row=Get-Pr90FormalChoiceTreeRowV1 -Tree $tree -ExpectedPath $selectedPath -RequiredNamePattern $RequiredNamePattern
+        if($null-eq$row){return $null}
         $nodeQueryCallIndex=$script:callIndex+1
-        $node=Get-FormalNode -Path ([string]$row.path) -Properties @('disabled')
+        $node=Get-FormalNode -Path $selectedPath -Properties @('disabled')
         $disabled=$node.requested_properties.disabled
-        if($disabled-is[bool]-and-not[bool]$disabled){return [pscustomobject][ordered]@{path=[string]$row.path;text=[string]$row.properties.text;center=Get-FormalTreeCenter -Row $row;tree_query_call_index=$treeQueryCallIndex;node_query_call_index=$nodeQueryCallIndex}}
+        if($disabled-is[bool]-and-not[bool]$disabled){$choiceCenter=Get-FormalRootGatedCenter -Node $row -ViewportNode $choiceViewport.viewport_node -Context $selectedPath;return [pscustomobject][ordered]@{path=[string]$row.path;text=[string]$row.properties.text;center=$choiceCenter;tree_query_call_index=$treeQueryCallIndex;node_query_call_index=$nodeQueryCallIndex}}
     }
     return $null
 }
@@ -509,6 +547,28 @@ function Get-FormalCenter {
     return @{x=([double]$node.properties.global_position.x + [double]$node.properties.size.x / 2.0);y=([double]$node.properties.global_position.y + [double]$node.properties.size.y / 2.0)}
 }
 
+function Move-FormalRootViewportToNode {
+    param([Parameter(Mandatory=$true)][string]$TargetPath,[int]$MaximumScrollAttempts=16)
+    $viewportPath='V075GameScreen/RootMargin';$previousDecision=$null;$scrollCount=0
+    for($attempt=0;$attempt-le$MaximumScrollAttempts;$attempt+=1){
+        $viewportQueryCallIndex=$script:callIndex+1;$viewport=Get-FormalNode -Path $viewportPath -Properties @()
+        $targetQueryCallIndex=$script:callIndex+1;$target=Get-FormalNode -Path $TargetPath -Properties @()
+        if(-not[bool]$target.properties.visible-or[double]$target.properties.size.x-le0-or[double]$target.properties.size.y-le0){throw "Formal viewport target is not visibly actionable: $TargetPath"}
+        $targetCenter=@{x=([double]$target.properties.global_position.x+[double]$target.properties.size.x/2.0);y=([double]$target.properties.global_position.y+[double]$target.properties.size.y/2.0)}
+        $decision=Get-Pr90FormalTapViewportDecisionV1 -Center $targetCenter -ViewportNode $viewport
+        if([bool]$decision.green){return [pscustomobject][ordered]@{target_path=$TargetPath;center=$decision.center;viewport_node=$viewport;viewport_query_call_index=$viewportQueryCallIndex;target_query_call_index=$targetQueryCallIndex;scroll_count=$scrollCount}}
+        if([string]$decision.classification-cne'VERTICAL_OUT_OF_BOUNDS'){throw "Formal viewport target cannot be reached by vertical scrolling: $TargetPath ($($decision.classification))"}
+        if($null-ne$previousDecision-and-not(Test-Pr90FormalTapViewportProgressV1 -Before $previousDecision -After $decision)){throw "Formal viewport scroll did not converge toward target: $TargetPath"}
+        if($attempt-eq$MaximumScrollAttempts){throw "Formal viewport target remained off-screen after bounded scrolling: $TargetPath"}
+        $viewportCenter=@{x=([double]$viewport.properties.global_position.x+[double]$viewport.properties.size.x-8.0);y=([double]$viewport.properties.global_position.y+[double]$viewport.properties.size.y/2.0)}
+        if(-not(Test-Pr90FormalTapCenterInScreenV1 -Center $viewportCenter)){throw 'Formal root viewport scroll anchor is outside the formal input surface'}
+        $scrollEvents=@(1..4|ForEach-Object{@{type='mouse_button';button=[string]$decision.direction;position=$viewportCenter;mode='tap'}})
+        $null=Send-FormalRuntimeEvents -Events $scrollEvents;$null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
+        $scrollCount+=4;$previousDecision=$decision
+    }
+    throw "Formal viewport target navigation exhausted unexpectedly: $TargetPath"
+}
+
 function Send-FormalRuntimeEvents {
     param([object[]]$Events)
     $payload = Get-FormalStructured (Invoke-FormalMcp -ToolName 'send_runtime_input' -Arguments @{events=$events;timeout_msec=60000} -TimeoutSeconds 60)
@@ -519,8 +579,9 @@ function Send-FormalRuntimeEvents {
 }
 
 function Send-FormalTaps {
-    param([hashtable[]]$Centers)
-    $events = @($Centers | ForEach-Object { @{type='mouse_button';button='left';position=$_;mode='tap'} })
+    param([object[]]$Centers)
+    $events=@($Centers|ForEach-Object{$center=ConvertTo-Pr90FormalTapCenterV1 -Center $_;if($null-eq$center-or-not(Test-Pr90FormalTapCenterInScreenV1 -Center $center)){throw 'Formal tap center is invalid or outside the formal input surface'};@{type='mouse_button';button='left';position=$center;mode='tap'}})
+    if($events.Count-ne$Centers.Count-or$events.Count-eq0){throw 'Formal tap center normalization did not preserve exact cardinality'}
     return Send-FormalRuntimeEvents -Events $events
 }
 
@@ -582,14 +643,6 @@ try {
     foreach($requiredPath in @($baselineRequestPath,$baselineRawPath)){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal combat baseline evidence missing: $requiredPath"}}
     $initialWrapper=$acceptance.combat_wrapper
     $combatBaseline=[pscustomobject][ordered]@{combat_wrapper=$initialWrapper}
-    $rootNode = Get-FormalNode -Path 'V075GameScreen/RootMargin' -Properties @()
-    $scrollCenter = @{x=([double]$rootNode.properties.global_position.x + [double]$rootNode.properties.size.x / 2.0);y=([double]$rootNode.properties.global_position.y + [double]$rootNode.properties.size.y / 2.0)}
-    $wheel = @(1..20 | ForEach-Object { @{type='mouse_button';button='wheel_down';position=$scrollCenter;mode='tap'} })
-    $wheelUp = @(1..20 | ForEach-Object { @{type='mouse_button';button='wheel_up';position=$scrollCenter;mode='tap'} })
-    $wheelPayload = Get-FormalStructured (Invoke-FormalMcp -ToolName 'send_runtime_input' -Arguments @{events=$wheel;timeout_msec=60000} -TimeoutSeconds 60)
-    if (-not [bool]$wheelPayload.success) { throw 'Formal v5 scroll input failed.' }
-    $lockCenter = Get-FormalCenter 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow/LockButton'
-    $finishCenter = Get-FormalCenter 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow/FinishMaintenanceButton'
     Poll-FormalCursor -Phase 'phase-3-early-match' | Out-Null
     $settled=$false;$combatTrackAcquisition=$null;$combatScenarioWitness=$null;$combatScenarioWitnessPath='';$combatScenarioWitnessSha='';$facilityAdvanceActionCount=0;$facilityAdvanceSteps=[Collections.Generic.List[object]]::new();$facilityBatchTransitions=[Collections.Generic.List[object]]::new()
     for ($batch=0; $batch -lt 32; $batch += 1) {
@@ -601,9 +654,6 @@ try {
             $preAcquireHandTree=Get-FormalNodeTree -Path 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/HandScroll/HandRail' -MaxDepth 5 -MaxNodes 160
             if($null-ne(Get-Pr90FormalCardCandidateV1 -Tree $preAcquireHandTree -Surface hand -Domain military -TreeTruncated $false)){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the fixed-seed initial hand unexpectedly already contains a public military card'}
             $preAcquireHandEvidence=Get-FormalMcpEvidenceRecord -CallIndex $preAcquireHandQueryCallIndex -ToolName query_runtime_node
-            $wheelUpPayload=Get-FormalStructured (Invoke-FormalMcp -ToolName 'send_runtime_input' -Arguments @{events=$wheelUp;timeout_msec=60000} -TimeoutSeconds 60)
-            if(-not[bool]$wheelUpPayload.success){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the production track could not be scrolled into the viewport'}
-            $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
             $trackMilitary=Find-FormalTrackCard
             if($null-eq$trackMilitary){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: deterministic TrackCard_05 military card is absent'}
             $trackPayloadQueryCallIndex=$script:callIndex+1
@@ -629,15 +679,13 @@ try {
             $trackRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f ([int]$trackMilitary.query_call_index));$trackRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f ([int]$trackMilitary.query_call_index))
             $acquireAcceptanceRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f $acquireAcceptanceCallIndex);$acquireAcceptanceRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f $acquireAcceptanceCallIndex)
             $trackPayloadEvidence=Get-FormalMcpEvidenceRecord -CallIndex $trackPayloadQueryCallIndex -ToolName query_runtime_node
-            foreach($requiredPath in @($trackRequestPath,$trackRawPath,$trackPayloadEvidence.request_path,$trackPayloadEvidence.raw_path,$acquireRequestPath,$acquireRawPath,$acquireAcceptanceRequestPath,$acquireAcceptanceRawPath)){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal combat track acquisition evidence missing: $requiredPath"}}
-            $combatTrackAcquisition=[pscustomobject][ordered]@{card_domain='military';card_node_path=[string]$trackMilitary.path;card_ui_text=[string]$trackMilitary.ui_text;private_definition_id=[string]$trackPayload.card_definition_id;private_instance_id=[string]$trackPayload.instance_id;private_origin_class=[string]$trackPayload.origin_class;private_primary_color=[string]$trackPayload.primary_color;private_primary_asset_cost=[int]$trackPayload.primary_asset_cost;initial_public_military_hand_candidate_count=0;pre_acquire_hand_request_path=[string]$preAcquireHandEvidence.request_path;pre_acquire_hand_request_sha256=[string]$preAcquireHandEvidence.request_sha256;pre_acquire_hand_raw_path=[string]$preAcquireHandEvidence.raw_path;pre_acquire_hand_raw_sha256=[string]$preAcquireHandEvidence.raw_sha256;track_request_path=[IO.Path]::GetFullPath($trackRequestPath);track_request_sha256=Get-Pr90ProbeBSha256 $trackRequestPath;track_raw_path=[IO.Path]::GetFullPath($trackRawPath);track_raw_sha256=Get-Pr90ProbeBSha256 $trackRawPath;track_payload_request_path=[string]$trackPayloadEvidence.request_path;track_payload_request_sha256=[string]$trackPayloadEvidence.request_sha256;track_payload_raw_path=[string]$trackPayloadEvidence.raw_path;track_payload_raw_sha256=[string]$trackPayloadEvidence.raw_sha256;track_acquired_before=$trackBefore;track_acquired_after=$trackAfter;track_acquired_delta=($trackAfter-$trackBefore);track_visible_card_delta=($visibleAfter-$visibleBefore);track_real_card_delta=($realAfter-$realBefore);track_vacancy_delta=($vacancyAfter-$vacancyBefore);request_path=[IO.Path]::GetFullPath($acquireRequestPath);request_sha256=Get-Pr90ProbeBSha256 $acquireRequestPath;raw_path=[IO.Path]::GetFullPath($acquireRawPath);raw_sha256=Get-Pr90ProbeBSha256 $acquireRawPath;acceptance_request_path=[IO.Path]::GetFullPath($acquireAcceptanceRequestPath);acceptance_request_sha256=Get-Pr90ProbeBSha256 $acquireAcceptanceRequestPath;acceptance_raw_path=[IO.Path]::GetFullPath($acquireAcceptanceRawPath);acceptance_raw_sha256=Get-Pr90ProbeBSha256 $acquireAcceptanceRawPath}
+            $trackViewportEvidence=Get-FormalMcpEvidenceRecord -CallIndex ([int]$trackMilitary.viewport_query_call_index) -ToolName query_runtime_node
+            foreach($requiredPath in @($trackRequestPath,$trackRawPath,$trackViewportEvidence.request_path,$trackViewportEvidence.raw_path,$trackPayloadEvidence.request_path,$trackPayloadEvidence.raw_path,$acquireRequestPath,$acquireRawPath,$acquireAcceptanceRequestPath,$acquireAcceptanceRawPath)){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal combat track acquisition evidence missing: $requiredPath"}}
+            $combatTrackAcquisition=[pscustomobject][ordered]@{card_domain='military';card_node_path=[string]$trackMilitary.path;card_ui_text=[string]$trackMilitary.ui_text;private_definition_id=[string]$trackPayload.card_definition_id;private_instance_id=[string]$trackPayload.instance_id;private_origin_class=[string]$trackPayload.origin_class;private_primary_color=[string]$trackPayload.primary_color;private_primary_asset_cost=[int]$trackPayload.primary_asset_cost;initial_public_military_hand_candidate_count=0;pre_acquire_hand_request_path=[string]$preAcquireHandEvidence.request_path;pre_acquire_hand_request_sha256=[string]$preAcquireHandEvidence.request_sha256;pre_acquire_hand_raw_path=[string]$preAcquireHandEvidence.raw_path;pre_acquire_hand_raw_sha256=[string]$preAcquireHandEvidence.raw_sha256;track_viewport_request_path=[string]$trackViewportEvidence.request_path;track_viewport_request_sha256=[string]$trackViewportEvidence.request_sha256;track_viewport_raw_path=[string]$trackViewportEvidence.raw_path;track_viewport_raw_sha256=[string]$trackViewportEvidence.raw_sha256;track_request_path=[IO.Path]::GetFullPath($trackRequestPath);track_request_sha256=Get-Pr90ProbeBSha256 $trackRequestPath;track_raw_path=[IO.Path]::GetFullPath($trackRawPath);track_raw_sha256=Get-Pr90ProbeBSha256 $trackRawPath;track_payload_request_path=[string]$trackPayloadEvidence.request_path;track_payload_request_sha256=[string]$trackPayloadEvidence.request_sha256;track_payload_raw_path=[string]$trackPayloadEvidence.raw_path;track_payload_raw_sha256=[string]$trackPayloadEvidence.raw_sha256;track_acquired_before=$trackBefore;track_acquired_after=$trackAfter;track_acquired_delta=($trackAfter-$trackBefore);track_visible_card_delta=($visibleAfter-$visibleBefore);track_real_card_delta=($realAfter-$realBefore);track_vacancy_delta=($vacancyAfter-$vacancyBefore);request_path=[IO.Path]::GetFullPath($acquireRequestPath);request_sha256=Get-Pr90ProbeBSha256 $acquireRequestPath;raw_path=[IO.Path]::GetFullPath($acquireRawPath);raw_sha256=Get-Pr90ProbeBSha256 $acquireRawPath;acceptance_request_path=[IO.Path]::GetFullPath($acquireAcceptanceRequestPath);acceptance_request_sha256=Get-Pr90ProbeBSha256 $acquireAcceptanceRequestPath;acceptance_raw_path=[IO.Path]::GetFullPath($acquireAcceptanceRawPath);acceptance_raw_sha256=Get-Pr90ProbeBSha256 $acquireAcceptanceRawPath}
             $combatTrackAcquisition|Add-Member -NotePropertyName private_asset_cost_profile -NotePropertyValue ([string]$trackPayload.asset_cost_profile)
             $combatTrackAcquisition|Add-Member -NotePropertyName private_track_revision -NotePropertyValue ([int]$trackPayload.track_revision)
             $combatTrackAcquisition|Add-Member -NotePropertyName private_claimable_from_scroll_sequence -NotePropertyValue ([int]$trackPayload.claimable_from_scroll_sequence)
             $combatTrackAcquisition|Add-Member -NotePropertyName card_definition_registry_sha256 -NotePropertyValue $combatCardRegistrySha256
-            $wheelRestorePayload=Get-FormalStructured (Invoke-FormalMcp -ToolName 'send_runtime_input' -Arguments @{events=$wheel;timeout_msec=60000} -TimeoutSeconds 60)
-            if(-not[bool]$wheelRestorePayload.success){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the combat controls could not be restored to the viewport after Track acquisition'}
-            $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
             $acceptance=$acquireAcceptance
         }
         if($null-eq$combatScenarioWitness){
@@ -652,7 +700,9 @@ try {
                 $acceptance=$cardSelectionAcceptance
                 $missionChoice=Get-FormalMilitaryMissionChoice
                 if($null-eq$missionChoice){
-                    $null=Send-FormalTaps @($militaryCard.center)
+                    $freshSelectedMilitary=Find-FormalHandCard -Domain 'military' -ExpectedDefinitionId ([string]$combatTrackAcquisition.private_definition_id) -ExpectedSourceInstanceId ([string]$combatTrackAcquisition.private_instance_id)
+                    if($null-eq$freshSelectedMilitary-or[string]$freshSelectedMilitary.private_instance_id-cne[string]$militaryCard.private_instance_id){throw 'SCENARIO_COMBAT_PRECONDITION_NOT_REACHED: the selected military card could not be freshly rebound for safe deselection'}
+                    $null=Send-FormalTaps @($freshSelectedMilitary.center)
                     $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=200} -TimeoutSeconds 30
                     $acceptance=Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
                 }
@@ -677,7 +727,7 @@ try {
                 $missionQueryRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f ([int]$missionChoice.query_call_index));$missionQueryRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f ([int]$missionChoice.query_call_index))
                 $missionRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-send_runtime_input.json' -f $missionTapCallIndex);$missionRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-send_runtime_input.jsonrpc.json' -f $missionTapCallIndex)
                 $acceptanceRequestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-query_runtime_node.json' -f $acceptanceCallIndex);$acceptanceRawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-query_runtime_node.jsonrpc.json' -f $acceptanceCallIndex)
-                $scenarioRequiredPaths=@($seedRequestPath,$seedRawPath,$baselineRequestPath,$baselineRawPath,[string]$combatTrackAcquisition.pre_acquire_hand_request_path,[string]$combatTrackAcquisition.pre_acquire_hand_raw_path,[string]$combatTrackAcquisition.track_request_path,[string]$combatTrackAcquisition.track_raw_path,[string]$combatTrackAcquisition.track_payload_request_path,[string]$combatTrackAcquisition.track_payload_raw_path,$handRequestPath,$handRawPath,$handPayloadRequestPath,$handPayloadRawPath,$cardRequestPath,$cardRawPath,$cardAcceptanceRequestPath,$cardAcceptanceRawPath,$surfaceInitialQueryRequestPath,$surfaceInitialQueryRawPath,$surfaceReadyQueryRequestPath,$surfaceReadyQueryRawPath,$missionPanelQueryRequestPath,$missionPanelQueryRawPath,$missionOptionQueryRequestPath,$missionOptionQueryRawPath,$missionOptionRequestPath,$missionOptionRawPath,$missionOptionResultQueryRequestPath,$missionOptionResultQueryRawPath,$missionQueryRequestPath,$missionQueryRawPath,$missionRequestPath,$missionRawPath,$acceptanceRequestPath,$acceptanceRawPath)
+                $scenarioRequiredPaths=@($seedRequestPath,$seedRawPath,$baselineRequestPath,$baselineRawPath,[string]$combatTrackAcquisition.pre_acquire_hand_request_path,[string]$combatTrackAcquisition.pre_acquire_hand_raw_path,[string]$combatTrackAcquisition.track_viewport_request_path,[string]$combatTrackAcquisition.track_viewport_raw_path,[string]$combatTrackAcquisition.track_request_path,[string]$combatTrackAcquisition.track_raw_path,[string]$combatTrackAcquisition.track_payload_request_path,[string]$combatTrackAcquisition.track_payload_raw_path,$handRequestPath,$handRawPath,$handPayloadRequestPath,$handPayloadRawPath,$cardRequestPath,$cardRawPath,$cardAcceptanceRequestPath,$cardAcceptanceRawPath,$surfaceInitialQueryRequestPath,$surfaceInitialQueryRawPath,$surfaceReadyQueryRequestPath,$surfaceReadyQueryRawPath,$missionPanelQueryRequestPath,$missionPanelQueryRawPath,$missionOptionQueryRequestPath,$missionOptionQueryRawPath,$missionOptionRequestPath,$missionOptionRawPath,$missionOptionResultQueryRequestPath,$missionOptionResultQueryRawPath,$missionQueryRequestPath,$missionQueryRawPath,$missionRequestPath,$missionRawPath,$acceptanceRequestPath,$acceptanceRawPath)
                 if([bool]$missionChoice.surface.expand_performed){$scenarioRequiredPaths+=@($surfaceExpandRequestPath,$surfaceExpandRawPath)}
                 foreach($requiredPath in $scenarioRequiredPaths){if(-not(Test-Path -LiteralPath $requiredPath -PathType Leaf)){throw "Formal combat scenario evidence missing: $requiredPath"}}
                 $combatScenarioWitness=[pscustomobject][ordered]@{schema='SpaceSyndicateFormalCombatScenarioWitnessV1';run_id=$RunId;status='PASS';deterministic_match_seed=$deterministicMatchSeed;seed_input_path=$seedInputPath;seed_input_value=$seedInputValue;seed_request_path=[IO.Path]::GetFullPath($seedRequestPath);seed_request_sha256=Get-Pr90ProbeBSha256 $seedRequestPath;seed_raw_path=[IO.Path]::GetFullPath($seedRawPath);seed_raw_sha256=Get-Pr90ProbeBSha256 $seedRawPath;baseline_request_path=[IO.Path]::GetFullPath($baselineRequestPath);baseline_request_sha256=Get-Pr90ProbeBSha256 $baselineRequestPath;baseline_raw_path=[IO.Path]::GetFullPath($baselineRawPath);baseline_raw_sha256=Get-Pr90ProbeBSha256 $baselineRawPath;initial_public_military_hand_candidate_count=[int]$combatTrackAcquisition.initial_public_military_hand_candidate_count;pre_acquire_hand_request_path=[string]$combatTrackAcquisition.pre_acquire_hand_request_path;pre_acquire_hand_request_sha256=[string]$combatTrackAcquisition.pre_acquire_hand_request_sha256;pre_acquire_hand_raw_path=[string]$combatTrackAcquisition.pre_acquire_hand_raw_path;pre_acquire_hand_raw_sha256=[string]$combatTrackAcquisition.pre_acquire_hand_raw_sha256;acquired_card_domain=[string]$combatTrackAcquisition.card_domain;acquired_card_node_path=[string]$combatTrackAcquisition.card_node_path;acquired_card_ui_text=[string]$combatTrackAcquisition.card_ui_text;acquired_card_definition_id=[string]$combatTrackAcquisition.private_definition_id;acquired_card_instance_id=[string]$combatTrackAcquisition.private_instance_id;acquired_card_origin_class=[string]$combatTrackAcquisition.private_origin_class;acquired_card_primary_color=[string]$combatTrackAcquisition.private_primary_color;acquired_card_primary_asset_cost=[int]$combatTrackAcquisition.private_primary_asset_cost;track_acquired_before=[int]$combatTrackAcquisition.track_acquired_before;track_acquired_after=[int]$combatTrackAcquisition.track_acquired_after;track_acquired_delta=[int]$combatTrackAcquisition.track_acquired_delta;track_visible_card_delta=[int]$combatTrackAcquisition.track_visible_card_delta;track_real_card_delta=[int]$combatTrackAcquisition.track_real_card_delta;track_vacancy_delta=[int]$combatTrackAcquisition.track_vacancy_delta;track_request_path=[string]$combatTrackAcquisition.track_request_path;track_request_sha256=[string]$combatTrackAcquisition.track_request_sha256;track_raw_path=[string]$combatTrackAcquisition.track_raw_path;track_raw_sha256=[string]$combatTrackAcquisition.track_raw_sha256;track_payload_request_path=[string]$combatTrackAcquisition.track_payload_request_path;track_payload_request_sha256=[string]$combatTrackAcquisition.track_payload_request_sha256;track_payload_raw_path=[string]$combatTrackAcquisition.track_payload_raw_path;track_payload_raw_sha256=[string]$combatTrackAcquisition.track_payload_raw_sha256;acquire_request_path=[string]$combatTrackAcquisition.request_path;acquire_request_sha256=[string]$combatTrackAcquisition.request_sha256;acquire_raw_path=[string]$combatTrackAcquisition.raw_path;acquire_raw_sha256=[string]$combatTrackAcquisition.raw_sha256;acquire_acceptance_request_path=[string]$combatTrackAcquisition.acceptance_request_path;acquire_acceptance_request_sha256=[string]$combatTrackAcquisition.acceptance_request_sha256;acquire_acceptance_raw_path=[string]$combatTrackAcquisition.acceptance_raw_path;acquire_acceptance_raw_sha256=[string]$combatTrackAcquisition.acceptance_raw_sha256;facility_advance_steps=@($facilityAdvanceSteps);facility_batch_transitions=@($facilityBatchTransitions);staged_card_domain='military';staged_card_node_path=[string]$militaryCard.path;staged_card_ui_text=[string]$militaryCard.ui_text;staged_card_definition_id=[string]$militaryCard.private_definition_id;staged_card_instance_id=[string]$militaryCard.private_instance_id;staged_card_origin_class=[string]$militaryCard.private_origin_class;staged_card_primary_color=[string]$militaryCard.private_primary_color;staged_card_primary_asset_cost=[int]$militaryCard.private_primary_asset_cost;mission_kind=[string]$missionChoice.mission_kind;mission_button_path=[string]$missionChoice.path;mission_button_text=[string]$missionChoice.text;military_intent_before=$militaryIntentBefore;military_intent_after=$militaryIntentAfter;military_intent_delta=($militaryIntentAfter-$militaryIntentBefore);hand_request_path=[IO.Path]::GetFullPath($handRequestPath);hand_request_sha256=Get-Pr90ProbeBSha256 $handRequestPath;hand_raw_path=[IO.Path]::GetFullPath($handRawPath);hand_raw_sha256=Get-Pr90ProbeBSha256 $handRawPath;hand_payload_request_path=[IO.Path]::GetFullPath($handPayloadRequestPath);hand_payload_request_sha256=Get-Pr90ProbeBSha256 $handPayloadRequestPath;hand_payload_raw_path=[IO.Path]::GetFullPath($handPayloadRawPath);hand_payload_raw_sha256=Get-Pr90ProbeBSha256 $handPayloadRawPath;mission_query_request_path=[IO.Path]::GetFullPath($missionQueryRequestPath);mission_query_request_sha256=Get-Pr90ProbeBSha256 $missionQueryRequestPath;mission_query_raw_path=[IO.Path]::GetFullPath($missionQueryRawPath);mission_query_raw_sha256=Get-Pr90ProbeBSha256 $missionQueryRawPath;mission_request_path=[IO.Path]::GetFullPath($missionRequestPath);mission_request_sha256=Get-Pr90ProbeBSha256 $missionRequestPath;mission_raw_path=[IO.Path]::GetFullPath($missionRawPath);mission_raw_sha256=Get-Pr90ProbeBSha256 $missionRawPath;acceptance_request_path=[IO.Path]::GetFullPath($acceptanceRequestPath);acceptance_request_sha256=Get-Pr90ProbeBSha256 $acceptanceRequestPath;acceptance_raw_path=[IO.Path]::GetFullPath($acceptanceRawPath);acceptance_raw_sha256=Get-Pr90ProbeBSha256 $acceptanceRawPath;canonical_payload_sha256=''}
@@ -685,6 +735,10 @@ try {
                 $combatScenarioWitness|Add-Member -NotePropertyName card_selected_before -NotePropertyValue $cardSelectedBefore
                 $combatScenarioWitness|Add-Member -NotePropertyName card_selected_after -NotePropertyValue $cardSelectedAfter
                 $combatScenarioWitness|Add-Member -NotePropertyName card_selected_delta -NotePropertyValue ($cardSelectedAfter-$cardSelectedBefore)
+                $combatScenarioWitness|Add-Member -NotePropertyName track_viewport_request_path -NotePropertyValue ([string]$combatTrackAcquisition.track_viewport_request_path)
+                $combatScenarioWitness|Add-Member -NotePropertyName track_viewport_request_sha256 -NotePropertyValue ([string]$combatTrackAcquisition.track_viewport_request_sha256)
+                $combatScenarioWitness|Add-Member -NotePropertyName track_viewport_raw_path -NotePropertyValue ([string]$combatTrackAcquisition.track_viewport_raw_path)
+                $combatScenarioWitness|Add-Member -NotePropertyName track_viewport_raw_sha256 -NotePropertyValue ([string]$combatTrackAcquisition.track_viewport_raw_sha256)
                 $combatScenarioWitness|Add-Member -NotePropertyName combat_surface_path -NotePropertyValue ([string]$missionChoice.surface.path)
                 $combatScenarioWitness|Add-Member -NotePropertyName combat_surface_initial_visible -NotePropertyValue ([bool]$missionChoice.surface.surface_before.properties.visible)
                 $combatScenarioWitness|Add-Member -NotePropertyName combat_surface_final_visible -NotePropertyValue ([bool]$missionChoice.surface.surface_after.properties.visible)
@@ -753,7 +807,9 @@ try {
                 }
             }
         }
-        $null=Send-FormalTaps @($lockCenter,$finishCenter)
+        $lockViewport=Move-FormalRootViewportToNode -TargetPath 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow/LockButton';$null=Send-FormalTaps @($lockViewport.center)
+        $null=Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=120} -TimeoutSeconds 30
+        $finishViewport=Move-FormalRootViewportToNode -TargetPath 'V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow/FinishMaintenanceButton';$null=Send-FormalTaps @($finishViewport.center)
         $null = Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=300} -TimeoutSeconds 30
         $postBatchAcceptanceCallIndex=$script:callIndex+1;$acceptance = Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
         if($null-ne$combatTrackAcquisition-and$null-eq$combatScenarioWitness-and$batch-lt2-and$facilityAdvanceActionCount-eq(($batch+1)*5)){

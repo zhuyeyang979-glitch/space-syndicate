@@ -402,6 +402,72 @@ function Get-Pr90FormalUiTreeRowsV1 {
     return @($rows)
 }
 
+function ConvertTo-Pr90FormalTapCenterV1 {
+    param([AllowNull()][object]$Center)
+    if($null-eq$Center){return $null}
+    try{
+        if($Center-is[Collections.IDictionary]){
+            $names=@($Center.Keys|ForEach-Object{[string]$_});if(@(Compare-Object -ReferenceObject @('x','y') -DifferenceObject $names).Count-ne0){return $null};$xValue=$Center['x'];$yValue=$Center['y']
+        }else{
+            $names=@($Center.PSObject.Properties.Name);if(@(Compare-Object -ReferenceObject @('x','y') -DifferenceObject $names).Count-ne0){return $null};$xValue=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Center -Name 'x';$yValue=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Center -Name 'y'
+        }
+        $numericTypes=@([byte],[sbyte],[int16],[uint16],[int32],[uint32],[int64],[uint64],[single],[double],[decimal])
+        if($xValue-is[bool]-or$yValue-is[bool]-or-not($numericTypes-contains$xValue.GetType())-or-not($numericTypes-contains$yValue.GetType())){return $null}
+        $x=[double]$xValue;$y=[double]$yValue
+        if([double]::IsNaN($x)-or[double]::IsInfinity($x)-or[double]::IsNaN($y)-or[double]::IsInfinity($y)){return $null}
+        return @{x=$x;y=$y}
+    }catch{return $null}
+}
+
+function Get-Pr90FormalTapViewportDecisionV1 {
+    param([AllowNull()][object]$Center,[AllowNull()][object]$ViewportNode)
+    $invalid=[pscustomobject][ordered]@{green=$false;classification='INVALID';direction='';distance=[double]::PositiveInfinity;center=$null}
+    try{
+        $normalized=ConvertTo-Pr90FormalTapCenterV1 -Center $Center
+        if($null-eq$normalized-or$null-eq$ViewportNode){return $invalid}
+        $properties=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $ViewportNode -Name 'properties'
+        $position=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $properties -Name 'global_position'
+        $size=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $properties -Name 'size'
+        $topLeft=ConvertTo-Pr90FormalTapCenterV1 -Center $position
+        $extent=ConvertTo-Pr90FormalTapCenterV1 -Center $size
+        $visible=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $properties -Name 'visible'
+        if($null-eq$topLeft-or$null-eq$extent-or$visible-isnot[bool]-or-not$visible-or[double]$extent.x-le0-or[double]$extent.y-le0){return $invalid}
+        $left=[double]$topLeft.x;$top=[double]$topLeft.y;$right=$left+[double]$extent.x;$bottom=$top+[double]$extent.y
+        if([double]$normalized.x-lt$left-or[double]$normalized.x-ge$right){return [pscustomobject][ordered]@{green=$false;classification='HORIZONTAL_OUT_OF_BOUNDS';direction='';distance=[Math]::Min([Math]::Abs([double]$normalized.x-$left),[Math]::Abs([double]$normalized.x-$right));center=$normalized}}
+        if([double]$normalized.y-lt$top){return [pscustomobject][ordered]@{green=$false;classification='VERTICAL_OUT_OF_BOUNDS';direction='wheel_up';distance=$top-[double]$normalized.y;center=$normalized}}
+        if([double]$normalized.y-ge$bottom){return [pscustomobject][ordered]@{green=$false;classification='VERTICAL_OUT_OF_BOUNDS';direction='wheel_down';distance=[double]$normalized.y-$bottom;center=$normalized}}
+        return [pscustomobject][ordered]@{green=$true;classification='INSIDE';direction='';distance=0.0;center=$normalized}
+    }catch{return $invalid}
+}
+
+function Test-Pr90FormalTapViewportProgressV1 {
+    param([AllowNull()][object]$Before,[AllowNull()][object]$After)
+    try{
+        if($null-eq$Before-or$null-eq$After-or[bool]$Before.green){return $false}
+        if([bool]$After.green){return $true}
+        return [string]$Before.classification-ceq'VERTICAL_OUT_OF_BOUNDS'-and[string]$After.classification-ceq'VERTICAL_OUT_OF_BOUNDS'-and[double]$After.distance-lt[double]$Before.distance
+    }catch{return $false}
+}
+
+function Test-Pr90FormalTapCenterInScreenV1 {
+    param([AllowNull()][object]$Center,[double]$Width=1600.0,[double]$Height=960.0)
+    $normalized=ConvertTo-Pr90FormalTapCenterV1 -Center $Center
+    return $null-ne$normalized-and$Width-gt0-and$Height-gt0-and[double]$normalized.x-ge0-and[double]$normalized.x-lt$Width-and[double]$normalized.y-ge0-and[double]$normalized.y-lt$Height
+}
+
+function Get-Pr90FormalRootActionCenterV1 {
+    param([AllowNull()][object]$Node,[AllowNull()][object]$ViewportNode)
+    try{
+        $properties=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Node -Name 'properties'
+        $visible=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $properties -Name 'visible'
+        if($visible-isnot[bool]-or-not[bool]$visible){return $null}
+        $center=Get-Pr90FormalNodeCenterV1 -Node $Node
+        $decision=Get-Pr90FormalTapViewportDecisionV1 -Center $center -ViewportNode $ViewportNode
+        if(-not[bool]$decision.green-or-not(Test-Pr90FormalTapCenterInScreenV1 -Center $decision.center)){return $null}
+        return $decision.center
+    }catch{return $null}
+}
+
 function Get-Pr90FormalCardCandidateV1 {
     param(
         [AllowNull()][object]$Tree,
@@ -431,7 +497,7 @@ function Get-Pr90FormalCardCandidateV1 {
                 $labelText.Contains('军队',[StringComparison]::Ordinal)-and$labelText.Contains('STANDARD',[StringComparison]::Ordinal)-and$labelText.Contains('标准设施牌',[StringComparison]::Ordinal)-and$labelText.Contains('预绑定目标',[StringComparison]::Ordinal)
             }
         }else{$Surface-ceq'hand'-and($labelText.Contains('市场',[StringComparison]::Ordinal)-or$labelText.Contains('工厂',[StringComparison]::Ordinal))}
-        if($matches){return [pscustomobject][ordered]@{surface=$Surface;domain=$Domain;path=$cardPath;ui_text=$labelText;center=[pscustomobject][ordered]@{x=([double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $position -Name 'x')+[double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $size -Name 'x')/2.0);y=([double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $position -Name 'y')+[double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $size -Name 'y')/2.0)}}}
+        if($matches){return [pscustomobject][ordered]@{surface=$Surface;domain=$Domain;path=$cardPath;ui_text=$labelText;properties=$properties;center=[pscustomobject][ordered]@{x=([double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $position -Name 'x')+[double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $size -Name 'x')/2.0);y=([double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $position -Name 'y')+[double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $size -Name 'y')/2.0)}}}
     }
     return $null
 }
@@ -548,7 +614,7 @@ function Get-Pr90FormalMcpEvidenceTypedV1 {
 
 function Test-Pr90FormalPointExactV1 {
     param([AllowNull()][object]$Observed,[AllowNull()][object]$Expected)
-    try{return $null-ne$Observed-and$null-ne$Expected-and[double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Observed -Name 'x')-eq[double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Expected -Name 'x')-and[double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Observed -Name 'y')-eq[double](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Expected -Name 'y')}catch{return $false}
+    try{$observedCenter=ConvertTo-Pr90FormalTapCenterV1 $Observed;$expectedCenter=ConvertTo-Pr90FormalTapCenterV1 $Expected;return $null-ne$observedCenter-and$null-ne$expectedCenter-and[double]$observedCenter.x-eq[double]$expectedCenter.x-and[double]$observedCenter.y-eq[double]$expectedCenter.y}catch{return $false}
 }
 
 function Get-Pr90FormalNodeCenterV1 {
@@ -564,7 +630,7 @@ function Test-Pr90FormalSendCenterV1 {
     param([AllowNull()][object]$SendEvidence,[AllowNull()][object]$SourceNode)
     try{
         $events=@($SendEvidence.request.arguments.events);$center=Get-Pr90FormalNodeCenterV1 -Node $SourceNode
-        return $events.Count-gt0-and[string]$events[0].type-ceq'mouse_button'-and(Test-Pr90FormalPointExactV1 -Observed $events[0].position -Expected $center)
+        return $events.Count-gt0-and[string]$events[0].type-ceq'mouse_button'-and(Test-Pr90FormalTapCenterInScreenV1 -Center $center)-and(Test-Pr90FormalPointExactV1 -Observed $events[0].position -Expected $center)
     }catch{return $false}
 }
 
@@ -609,7 +675,7 @@ function Get-Pr90FormalCombatPresentationGateV1 {
         $surfacePath='V075GameScreen/RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/Margin/Rows/SurfaceHost/CombatSurface'
         $evidenceDescriptors=@(
             @('seed','query_runtime_node',[string]$ScenarioWitness.seed_input_path,@(),@('text'),$false),@('baseline','query_runtime_node','V075GameScreen',@(),@('acceptance_state'),$false),
-            @('pre_acquire_hand','query_runtime_node','V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/HandScroll/HandRail',@(),@(),$true),@('track','query_runtime_node','V075GameScreen/RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackScroll/TrackRail',@(),@(),$true),@('track_payload','query_runtime_node',[string]$ScenarioWitness.acquired_card_node_path,@(),@('_payload'),$false),@('acquire','send_runtime_input','',@('mouse_button'),@(),$null),@('acquire_acceptance','query_runtime_node','V075GameScreen',@(),@('acceptance_state'),$false),
+            @('pre_acquire_hand','query_runtime_node','V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/HandScroll/HandRail',@(),@(),$true),@('track_viewport','query_runtime_node','V075GameScreen/RootMargin',@(),@(),$false),@('track','query_runtime_node','V075GameScreen/RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackScroll/TrackRail',@(),@(),$true),@('track_payload','query_runtime_node',[string]$ScenarioWitness.acquired_card_node_path,@(),@('_payload'),$false),@('acquire','send_runtime_input','',@('mouse_button'),@(),$null),@('acquire_acceptance','query_runtime_node','V075GameScreen',@(),@('acceptance_state'),$false),
             @('hand','query_runtime_node','V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/HandScroll/HandRail',@(),@(),$true),@('hand_payload','query_runtime_node',[string]$ScenarioWitness.staged_card_node_path,@(),@('_payload'),$false),@('card','send_runtime_input','',@('mouse_button'),@(),$null),@('card_acceptance','query_runtime_node','V075GameScreen',@(),@('acceptance_state'),$false),
             @('surface_initial_query','query_runtime_node',$surfacePath,@(),@(),$false),@('surface_ready_query','query_runtime_node',$surfacePath,@(),@(),$false),
             @('mission_panel_query','query_runtime_node',[string]$ScenarioWitness.mission_panel_path,@(),@(),$false),@('mission_option_query','query_runtime_node',[string]$ScenarioWitness.mission_option_path,@(),@('disabled','item_count','selected'),$false),@('mission_option','send_runtime_input','',@('mouse_button','action','action'),@(),$null),@('mission_option_result_query','query_runtime_node',[string]$ScenarioWitness.mission_option_path,@(),@('disabled','item_count','selected'),$false),
@@ -641,9 +707,11 @@ function Get-Pr90FormalCombatPresentationGateV1 {
             $trackRow=@(Get-Pr90FormalUiTreeRowsV1 -Root $evidenceByPrefix.track.result.tree|Where-Object{[string](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $_ -Name 'path')-ceq[string]$ScenarioWitness.acquired_card_node_path})|Select-Object -First 1
             $handRow=@(Get-Pr90FormalUiTreeRowsV1 -Root $evidenceByPrefix.hand.result.tree|Where-Object{[string](Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $_ -Name 'path')-ceq[string]$ScenarioWitness.staged_card_node_path})|Select-Object -First 1
             $missionTransition=Test-Pr90FormalMilitaryMissionUiTransitionV1 -SurfaceBefore $evidenceByPrefix.surface_initial_query.result -SurfaceAfter $evidenceByPrefix.surface_ready_query.result -MilitaryPanelAfter $evidenceByPrefix.mission_panel_query.result -OptionBefore $evidenceByPrefix.mission_option_query.result -OptionAfter $evidenceByPrefix.mission_option_result_query.result -TaskButtonAfter $evidenceByPrefix.mission_query.result -MissionKind ([string]$ScenarioWitness.mission_kind) -SurfaceExpandPerformed ([bool]$ScenarioWitness.combat_surface_expand_performed)
-            $mainEvidenceSemanticsGreen=([string](Get-Pr90FormalRequestedValueV1 -Evidence $evidenceByPrefix.seed -Name 'text')-ceq[string]$ScenarioWitness.seed_input_value-and[string]$ScenarioWitness.seed_input_value-ceq'900626424'-and[int64]$ScenarioWitness.deterministic_match_seed-eq900626424-and[string]$ScenarioWitness.card_definition_registry_sha256-ceq'0a06f99a7ed010595865ed7d1c339fe15516586891e60c2c912729a745d92932'-and
+            $mainEvidenceSemanticsGreen=([int]$evidenceByPrefix.track_viewport.call_index-lt[int]$evidenceByPrefix.track.call_index-and[int]$evidenceByPrefix.track.call_index-lt[int]$evidenceByPrefix.track_payload.call_index-and[int]$evidenceByPrefix.track_payload.call_index-lt[int]$evidenceByPrefix.acquire.call_index-and[int]$evidenceByPrefix.acquire.call_index-lt[int]$evidenceByPrefix.acquire_acceptance.call_index-and
+                [string](Get-Pr90FormalRequestedValueV1 -Evidence $evidenceByPrefix.seed -Name 'text')-ceq[string]$ScenarioWitness.seed_input_value-and[string]$ScenarioWitness.seed_input_value-ceq'900626424'-and[int64]$ScenarioWitness.deterministic_match_seed-eq900626424-and[string]$ScenarioWitness.card_definition_registry_sha256-ceq'0a06f99a7ed010595865ed7d1c339fe15516586891e60c2c912729a745d92932'-and
                 (ConvertTo-Pr90ProbeBCanonicalJson $baselineAcceptance.combat_wrapper)-ceq(ConvertTo-Pr90ProbeBCanonicalJson $BeforeAcceptance.combat_wrapper)-and
-                $null-ne$trackCandidate-and[string]$trackCandidate.path-ceq[string]$ScenarioWitness.acquired_card_node_path-and[string]$trackCandidate.ui_text-ceq[string]$ScenarioWitness.acquired_card_ui_text-and(Test-Pr90FormalSendCenterV1 -SendEvidence $evidenceByPrefix.acquire -SourceNode $trackRow)-and
+                $null-ne$trackCandidate-and[string]$trackCandidate.path-ceq[string]$ScenarioWitness.acquired_card_node_path-and[string]$trackCandidate.ui_text-ceq[string]$ScenarioWitness.acquired_card_ui_text-and
+                (Get-Pr90FormalTapViewportDecisionV1 -Center $trackCandidate.center -ViewportNode $evidenceByPrefix.track_viewport.result).green-and(Test-Pr90FormalTapCenterInScreenV1 -Center $trackCandidate.center)-and(Test-Pr90FormalSendCenterV1 -SendEvidence $evidenceByPrefix.acquire -SourceNode $trackRow)-and
                 $null-ne$trackPrivatePayload-and[string]$trackPrivatePayload.instance_id-ceq[string]$ScenarioWitness.acquired_card_instance_id-and[string]$ScenarioWitness.acquired_card_instance_id-ceq'track.card.00000005'-and[string]$trackPrivatePayload.card_definition_id-ceq[string]$ScenarioWitness.acquired_card_definition_id-and[string]$ScenarioWitness.acquired_card_definition_id-ceq'military.submarine_fleet.life.rank_1'-and
                 [string]$trackPrivatePayload.card_kind-ceq'normal_card'-and[int]$trackPrivatePayload.level-eq1-and[string]$trackPrivatePayload.primary_color-ceq[string]$ScenarioWitness.acquired_card_primary_color-and[string]$ScenarioWitness.acquired_card_primary_color-ceq'life'-and[int]$trackPrivatePayload.local_slot_index-eq5-and$trackPrivatePayload.claimable-is[bool]-and[bool]$trackPrivatePayload.claimable-and[string]$trackPrivatePayload.claimability_state-ceq'claimable'-and[string]$trackPrivatePayload.origin_class-ceq[string]$ScenarioWitness.acquired_card_origin_class-and[string]$ScenarioWitness.acquired_card_origin_class-ceq'standard'-and[string]$trackPrivatePayload.asset_cost_profile-ceq[string]$ScenarioWitness.acquired_card_asset_cost_profile-and[string]$ScenarioWitness.acquired_card_asset_cost_profile-ceq'v075_military_track_color_rank_1'-and[int]$trackPrivatePayload.track_revision-eq[int]$ScenarioWitness.acquired_card_track_revision-and[int]$ScenarioWitness.acquired_card_track_revision-eq4-and[int]$trackPrivatePayload.claimable_from_scroll_sequence-eq[int]$ScenarioWitness.acquired_card_claimable_from_scroll_sequence-and[int]$ScenarioWitness.acquired_card_claimable_from_scroll_sequence-eq0-and[int]$trackPrivatePayload.primary_asset_cost-eq[int]$ScenarioWitness.acquired_card_primary_asset_cost-and[int]$ScenarioWitness.acquired_card_primary_asset_cost-eq2-and$trackPrivatePayload.starter_badge-is[bool]-and-not[bool]$trackPrivatePayload.starter_badge-and
                 [int]$baselineAcceptance.interaction_counts.track_acquired-eq[int]$ScenarioWitness.track_acquired_before-and[int]$acquireAcceptance.interaction_counts.track_acquired-eq[int]$ScenarioWitness.track_acquired_after-and
@@ -728,7 +796,7 @@ function Get-Pr90FormalCombatPresentationGateV1 {
         }
         $witnessGreen=($null-ne$ScenarioWitness-and[string]$ScenarioWitness.schema-ceq'SpaceSyndicateFormalCombatScenarioWitnessV1'-and[string]$ScenarioWitness.status-ceq'PASS'-and
             [int64]$ScenarioWitness.deterministic_match_seed-eq900626424-and[string]$ScenarioWitness.acquired_card_domain-ceq'military'-and
-            [int]$ScenarioWitness.initial_public_military_hand_candidate_count-eq0-and$preAcquireHandGreen-and[string]$ScenarioWitness.acquired_card_node_path-like'*/TrackRail/TrackCard_05'-and[int]$ScenarioWitness.track_acquired_delta-eq1-and[int]$ScenarioWitness.facility_advance_action_count-eq15-and$facilityStepsGreen-and
+            [int]$ScenarioWitness.initial_public_military_hand_candidate_count-eq0-and$preAcquireHandGreen-and[string]$ScenarioWitness.acquired_card_node_path-like'*/TrackRail/TrackCard_05'-and$null-eq$ScenarioWitness.PSObject.Properties['track_viewport_scroll_count']-and[int]$ScenarioWitness.track_acquired_delta-eq1-and[int]$ScenarioWitness.facility_advance_action_count-eq15-and$facilityStepsGreen-and
             [int]$ScenarioWitness.track_visible_card_delta-eq-1-and[int]$ScenarioWitness.track_real_card_delta-eq-1-and[int]$ScenarioWitness.track_vacancy_delta-eq1-and
             [string]$ScenarioWitness.acquired_card_ui_text-like'*NORMAL*'-and[string]$ScenarioWitness.acquired_card_ui_text-like'*L1*'-and[string]$ScenarioWitness.acquired_card_ui_text-like'*军队*'-and[string]$ScenarioWitness.acquired_card_ui_text-like'*成本 2*'-and[string]$ScenarioWitness.acquired_card_ui_text-like'*进入弃牌*'-and
             [string]$ScenarioWitness.staged_card_domain-ceq'military'-and[string]$ScenarioWitness.staged_card_node_path-like'*/HandRail/*'-and[string]$ScenarioWitness.staged_card_ui_text-like'*军队*'-and[string]$ScenarioWitness.staged_card_ui_text-like'*STANDARD*'-and[string]$ScenarioWitness.staged_card_ui_text-like'*标准设施牌*'-and[string]$ScenarioWitness.staged_card_ui_text-like'*预绑定目标*'-and
@@ -815,6 +883,10 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
         'NEGATIVE_FORMAL_PHASE2_COMMAND_STATE_IDENTITY_DRIFT_REJECTED',
         'FORMAL_PHASE2_FAILURE_CLASSIFICATION_DISTINGUISHES_PRODUCT_FROM_OBSERVER',
         'FORMAL_PHASE2_READINESS_PRECEDES_STRICT_30S_CURSOR_POLL',
+        'FORMAL_TAP_CENTER_NORMALIZATION_ACCEPTS_MIXED_PRODUCERS',
+        'FORMAL_TAP_VIEWPORT_BOUNDED_SCROLL_CONVERGENCE',
+        'NEGATIVE_FORMAL_TAP_CENTER_INVALID_OR_NONFINITE_REJECTED',
+        'NEGATIVE_FORMAL_TAP_VIEWPORT_OFFSCREEN_OR_STAGNANT_REJECTED',
         'FORMAL_COMBAT_SCENARIO_UI_ACTION_WITNESS_BOUND',
         'FORMAL_COMBAT_TRACK_MILITARY_SELECTOR_PRODUCTION_SHAPE',
         'FORMAL_COMBAT_FACILITY_FALLBACK_SELECTOR_PRODUCTION_SHAPE',
@@ -874,7 +946,7 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
     if(@(Compare-Object -ReferenceObject $requiredFields -DifferenceObject @($Receipt.PSObject.Properties.Name)).Count-ne0){return $false}
     $revision=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Receipt -Name 'selftest_revision'
     if([string]$Receipt.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSelfTestV1'-or[string]$Receipt.status-cne'PASS'-or
-       [string]$revision-cne'PR90_ATTEMPT22_FORMAL_COMBAT_V075_PROFILE_IDENTITY_REPAIR_V17'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
+       [string]$revision-cne'PR90_ATTEMPT22_FORMAL_TAP_CENTER_VIEWPORT_REPAIR_V18'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
        [int]$Receipt.new_selftest_case_count-ne@($Receipt.cases).Count-or[int]$Receipt.new_selftest_pass_count-ne[int]$Receipt.new_selftest_case_count-or
        [int]$Receipt.new_selftest_failure_count-ne0-or[int]$Receipt.total_tooling_selftest_pass_count-ne(326+[int]$Receipt.new_selftest_case_count)-or[int]$Receipt.total_tooling_selftest_failure_count-ne0-or
        [int]$Receipt.authorization_negative_test_fail_count-ne0-or[int]$Receipt.false_green_count-ne0-or[int]$Receipt.missing_prerequisite_false_accept_count-ne0-or
