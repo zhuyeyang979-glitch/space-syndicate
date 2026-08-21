@@ -403,8 +403,10 @@ function Invoke-ImportPass([string]$Label) {
     $launchScript = Join-Path $script:ToolingRoot 'tools/launch_role_godot_mcp.ps1'
     $stopScript = Join-Path $script:ToolingRoot 'tools/stop_role_godot_mcp.ps1'
     $launchReceiptPath = Join-Path $script:Evidence "$Label-launch-receipt.json"
+    $launcherStdoutPath = Join-Path $script:Evidence "$Label-launcher.stdout.log"
+    $launcherStderrPath = Join-Path $script:Evidence "$Label-launcher.stderr.log"
     $cleanupPath = Join-Path $script:Evidence "$Label-cleanup.json"
-    foreach ($path in @($launchReceiptPath, "$launchReceiptPath.sha256", $cleanupPath, "$cleanupPath.sha256")) {
+    foreach ($path in @($launchReceiptPath, "$launchReceiptPath.sha256", $launcherStdoutPath, $launcherStderrPath, $cleanupPath, "$cleanupPath.sha256")) {
         if (Test-Path -LiteralPath $path) { throw "Refusing overwrite: $path" }
     }
     if (@(Get-NetTCPConnection -State Listen -LocalPort 7576 -ErrorAction SilentlyContinue).Count -ne 0 -or
@@ -435,8 +437,25 @@ function Invoke-ImportPass([string]$Label) {
     $primaryFailure = $null
     $cleanupFailure = $null
     try {
-        & (Join-Path $PSHOME 'pwsh.exe') @launchArguments | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "$Label sealed launcher failed: exit=$LASTEXITCODE" }
+        # Wait for the exact launcher PID, not for native-pipeline EOF. The
+        # long-lived Godot child can inherit the launcher's output handles;
+        # PowerShell's native pipeline then waits forever even after the
+        # launcher has written its receipt and exited.
+        $launcher = Start-Process -FilePath (Join-Path $PSHOME 'pwsh.exe') -ArgumentList $launchArguments `
+            -RedirectStandardOutput $launcherStdoutPath -RedirectStandardError $launcherStderrPath `
+            -PassThru -WindowStyle Hidden
+        $launcherExited = $launcher.WaitForExit(120000)
+        if (-not $launcherExited) {
+            try {
+                Stop-Process -Id $launcher.Id -Force -ErrorAction Stop
+                if (-not $launcher.WaitForExit(10000)) { throw 'launcher did not exit after exact-PID stop' }
+            } catch {
+                throw "$Label sealed launcher timeout cleanup failed: $($_.Exception.Message)"
+            }
+            throw "$Label sealed launcher did not exit within 120 seconds."
+        }
+        $launcherExitCode = [int]$launcher.ExitCode
+        if ($launcherExitCode -ne 0) { throw "$Label sealed launcher failed: exit=$launcherExitCode" }
         $launchReceipt = Get-Content -Raw -LiteralPath $launchReceiptPath | ConvertFrom-Json -Depth 30
         if (
             [string]$launchReceipt.schema -cne 'McpGodotProcessStartReceiptV1' -or
