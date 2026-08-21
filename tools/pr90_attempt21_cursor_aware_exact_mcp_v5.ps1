@@ -132,7 +132,7 @@ $authorityGreen=([string]$validation.schema-ceq'Pr90Attempt22AuthorizationValida
     [IO.Path]::GetFullPath([string]$formalSeal.formal_prelaunch_ignored_inventory_path)-ceq$prelaunchFull-and
     [IO.Path]::GetFullPath([string]$formalSeal.formal_terminal_manifest_path)-ceq$terminalFull-and[IO.Path]::GetFullPath([string]$formalSeal.formal_finalizer_result_path)-ceq$finalizerFull-and
     [string]$formalSeal.sealed_baseline_sha256-ceq$ExpectedSealedBaselineSha256-and[string]$formalSeal.class_cache_sha256-ceq$ExpectedClassCacheSha256-and
-    [string]$formalSeal.godot_executable_sha256-ceq$ExpectedGodotGuiSha256-and[string]$formalSeal.import_finalizer_sha256-ceq$ExpectedImportFinalizerBindingSha256-and[string]$formalSeal.import_runner_sha256-ceq$ExpectedImportRunnerSha256-and
+    [string]$formalSeal.godot_gui_sha256-ceq$ExpectedGodotGuiSha256-and[string]$formalSeal.import_finalizer_sha256-ceq$ExpectedImportFinalizerBindingSha256-and[string]$formalSeal.import_runner_sha256-ceq$ExpectedImportRunnerSha256-and
     [string]$toolingManifest.status-ceq'READY'-and[string]$toolingManifest.tooling_head_sha-ceq$currentToolingHead-and[string]$toolingManifest.tooling_tree_sha-ceq$currentToolingTree-and
     [string]$toolingManifest.canonical_payload_sha256-ceq(Get-Pr90ProbeBCanonicalSha256 $toolingManifest)-and$toolingStatus.Count-eq0-and$toolingInventoryMismatch.Count-eq0-and
     [string]$toolingSeal.status-ceq'SEALED'-and[string]$toolingSeal.tooling_head_sha-ceq$currentToolingHead-and[string]$toolingSeal.tooling_tree_sha-ceq$currentToolingTree-and[string]$toolingSeal.manifest_sha256-ceq$ExpectedStartupToolingManifestSha256-and[string]$toolingSeal.canonical_payload_sha256-ceq(Get-Pr90ProbeBCanonicalSha256 $toolingSeal))
@@ -269,7 +269,7 @@ function Invoke-FormalMcp {
         -ExpectedControlProcessId ([int]$m5Connection.control_process_pid) -ExpectedControlProcessStartUtc ([string]$m5Connection.process_start_time_utc) -ExpectedLaunchSessionId ([string]$m5Connection.launch_session_id) `
         -ExpectedControlProcessSha256 ([string]$formalSeal.godot_console_sha256) -ExpectedPort $Port -ExpectedConnectionSha256 ([string]$m5Receipt.connection_sha256) `
         -EndpointOwnershipAttestationPath $endpointOwnershipAttestationPath -ExpectedEndpointOwnershipAttestationSha256 ([string]$m5Receipt.evidence_sha256) `
-        -ExpectedEndpointOwnerPid ([int]$m5Connection.endpoint_owner_pid) -ExpectedEndpointOwnerPath $GodotGuiPath -ExpectedEndpointOwnerSha256 ([string]$formalSeal.godot_executable_sha256) `
+        -ExpectedEndpointOwnerPid ([int]$m5Connection.endpoint_owner_pid) -ExpectedEndpointOwnerPath $GodotGuiPath -ExpectedEndpointOwnerSha256 ([string]$formalSeal.godot_gui_sha256) `
         -ExpectedEndpointOwnerCreationFiletimeUtc ([string]$m5Connection.endpoint_owner_creation_time_filetime_utc) -ExpectedEndpointOwnerSessionId ([int]$m5Connection.endpoint_owner_windows_session_id) `
         -ExpectedEndpointOwnerUserSid ([string]$m5Connection.endpoint_owner_user_sid) 2>&1)
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $raw)) { throw "Formal v5 MCP call $ToolName failed: $($output -join ' ')" }
