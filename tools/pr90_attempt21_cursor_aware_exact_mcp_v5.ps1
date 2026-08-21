@@ -303,8 +303,8 @@ function Test-FormalPageContract {
 }
 
 function Poll-FormalCursor {
-    param([string]$Phase)
-    $payload = Get-FormalStructured (Invoke-FormalMcp -ToolName 'get_runtime_events' -Arguments @{max_events=100;timeout_msec=10000;stream_id=$streamId;since_sequence=$cursor} -TimeoutSeconds 60)
+    param([string]$Phase,[int]$InnerTimeoutMsec=10000,[int]$OuterTimeoutSeconds=60)
+    $payload = Get-FormalStructured (Invoke-FormalMcp -ToolName 'get_runtime_events' -Arguments @{max_events=100;timeout_msec=$InnerTimeoutMsec;stream_id=$streamId;since_sequence=$cursor} -TimeoutSeconds $OuterTimeoutSeconds)
     $result = $payload.result
     $check = Test-FormalPageContract -Page $result -ExpectedStream $streamId -ExpectedCursor $cursor
     if (-not $check.green -or [bool]$result.event_window_overflowed) { throw "Formal cursor phase $Phase failed: $($check.issues -join ',')" }
@@ -365,7 +365,43 @@ function Send-FormalTaps {
     param([hashtable[]]$Centers)
     $events = @($Centers | ForEach-Object { @{type='mouse_button';button='left';position=$_;mode='tap'} })
     $payload = Get-FormalStructured (Invoke-FormalMcp -ToolName 'send_runtime_input' -Arguments @{events=$events;timeout_msec=60000} -TimeoutSeconds 60)
-    if (-not [bool]$payload.success) { throw 'Formal runtime input failed.' }
+    $commandId=[string]$payload.command_id
+    if (-not [bool]$payload.success -or [string]$payload.command-cne'send_input' -or [string]::IsNullOrWhiteSpace($commandId) -or
+        -not[bool]$payload.response.success -or [string]$payload.response.command-cne'send_input' -or [string]$payload.response.id-cne$commandId) { throw 'Formal runtime input failed or returned an unbound command identity.' }
+    return $commandId
+}
+
+function Wait-FormalPostInputBridgeReadiness {
+    param(
+        [Parameter(Mandatory=$true)][string]$ExpectedCommandId,
+        [Parameter(Mandatory=$true)][string]$ExpectedStreamId,
+        [Parameter(Mandatory=$true)][int64]$MinimumCursorAfter,
+        [int]$MaximumWaitSeconds=60
+    )
+    $attemptRows=[Collections.Generic.List[object]]::new();$firstGreen=$null;$secondGreen=$null;$lastStatus=$null;$lastObservationClass='MCP_STATUS_UNAVAILABLE';$hardFailureClass='';$sawProductReadinessStall=$false
+    $started=[DateTimeOffset]::UtcNow;$deadline=$started.AddSeconds($MaximumWaitSeconds)
+    while([DateTimeOffset]::UtcNow-lt$deadline){
+        $statusCallIndex=$script:callIndex+1;$statusPayload=$null;$errorText=''
+        try{$statusPayload=Get-FormalStructured (Invoke-FormalMcp -ToolName 'get_runtime_bridge_status' -Arguments @{} -TimeoutSeconds 10);$lastStatus=$statusPayload}catch{$errorText=$_.Exception.Message}
+        $minimumModified=if($null-eq$firstGreen){[long]0}else{[long]$firstGreen.state_modified_unix}
+        $effectiveMinimumCursor=if($null-eq$firstGreen){$MinimumCursorAfter}else{[Math]::Max([int64]$MinimumCursorAfter,[int64]$firstGreen.state.runtime_event_cursor.buffered_last_event_sequence)}
+        $lastObservationClass=Get-Pr90FormalPostInputReadinessObservationClassV1 -Status $statusPayload -ObservationError $errorText -ExpectedStreamId $ExpectedStreamId -MinimumCursorAfter $effectiveMinimumCursor -ExpectedCommandId $ExpectedCommandId -AllowPendingExpectedCommandState ($null-eq$firstGreen)
+        $sampleGreen=Test-Pr90FormalPostInputBridgeReadinessSampleV1 -Status $statusPayload -ExpectedStreamId $ExpectedStreamId -MinimumCursorAfter $effectiveMinimumCursor -ExpectedCommandId $ExpectedCommandId -MinimumStateModifiedUnix $minimumModified -MaximumStateAgeMsec 2500
+        if($lastObservationClass-in@('READINESS_IDENTITY_GREEN','AWAITING_EXPECTED_COMMAND_HEARTBEAT')-and-not$sampleGreen){$sawProductReadinessStall=$true}
+        $requestPath=Join-Path $EvidenceRoot ('requests/{0:D4}-get_runtime_bridge_status.json' -f $statusCallIndex);$rawPath=Join-Path $EvidenceRoot ('mcp-raw/{0:D4}-get_runtime_bridge_status.jsonrpc.json' -f $statusCallIndex)
+        $attemptRows.Add([pscustomobject][ordered]@{call_index=$statusCallIndex;sample_green=$sampleGreen;observation_class=$lastObservationClass;effective_minimum_cursor=$effectiveMinimumCursor;state_modified_unix=if($null-ne$statusPayload){[long]$statusPayload.state_modified_unix}else{0};state_age_msec=if($null-ne$statusPayload){[long]$statusPayload.state_age_msec}else{-1};stream_id=if($null-ne$statusPayload){[string]$statusPayload.state.runtime_event_cursor.stream_id}else{''};cursor_after=if($null-ne$statusPayload){[int64]$statusPayload.state.runtime_event_cursor.buffered_last_event_sequence}else{0};last_command_id=if($null-ne$statusPayload){[string]$statusPayload.state.last_command_id}else{''};request_path=[IO.Path]::GetFullPath($requestPath);request_sha256=if(Test-Path -LiteralPath $requestPath -PathType Leaf){Get-Pr90ProbeBSha256 $requestPath}else{''};raw_path=[IO.Path]::GetFullPath($rawPath);raw_sha256=if(Test-Path -LiteralPath $rawPath -PathType Leaf){Get-Pr90ProbeBSha256 $rawPath}else{''};error=$errorText})
+        if($lastObservationClass-in@('RUNTIME_EVENT_OVERFLOW','RUNTIME_IDENTITY_DRIFT','RUNTIME_CURSOR_REGRESSION')){$hardFailureClass=$lastObservationClass;break}
+        if($sampleGreen){if($null-eq$firstGreen){$firstGreen=$statusPayload}else{$secondGreen=$statusPayload;break}}
+        Start-Sleep -Milliseconds 1000
+    }
+    $passed=[string]::IsNullOrWhiteSpace($hardFailureClass)-and$null-ne$firstGreen-and$null-ne$secondGreen
+    $failureClass=Resolve-Pr90FormalPostInputReadinessOutcomeV1 -Passed $passed -HardFailureClass $hardFailureClass -SawProductReadinessStall $sawProductReadinessStall -LastObservationClass $lastObservationClass
+    $witness=[pscustomobject][ordered]@{schema='SpaceSyndicatePostInputBridgeReadinessV1';run_id=$RunId;status=if($passed){'PASS'}else{'BLOCKED'};failure_class=$failureClass;hard_failure_class=$hardFailureClass;saw_product_readiness_stall=$sawProductReadinessStall;expected_stream_id=$ExpectedStreamId;expected_command_id=$ExpectedCommandId;minimum_cursor_after=$MinimumCursorAfter;maximum_wait_seconds=$MaximumWaitSeconds;maximum_state_age_msec=2500;attempt_count=$attemptRows.Count;first_heartbeat_state_modified_unix=if($null-ne$firstGreen){[long]$firstGreen.state_modified_unix}else{0};first_heartbeat_cursor_after=if($null-ne$firstGreen){[int64]$firstGreen.state.runtime_event_cursor.buffered_last_event_sequence}else{0};second_heartbeat_state_modified_unix=if($null-ne$secondGreen){[long]$secondGreen.state_modified_unix}else{0};second_heartbeat_cursor_after=if($null-ne$secondGreen){[int64]$secondGreen.state.runtime_event_cursor.buffered_last_event_sequence}else{0};last_observation_class=$lastObservationClass;last_observed_state_modified_unix=if($null-ne$lastStatus){[long]$lastStatus.state_modified_unix}else{0};last_observed_state_age_msec=if($null-ne$lastStatus){[long]$lastStatus.state_age_msec}else{-1};last_observed_stream_id=if($null-ne$lastStatus){[string]$lastStatus.state.runtime_event_cursor.stream_id}else{''};last_observed_cursor_after=if($null-ne$lastStatus){[int64]$lastStatus.state.runtime_event_cursor.buffered_last_event_sequence}else{0};last_observed_command_id=if($null-ne$lastStatus){[string]$lastStatus.state.last_command_id}else{''};attempts=@($attemptRows);canonical_payload_sha256=''}
+    $witness.canonical_payload_sha256=Get-Pr90ProbeBCanonicalSha256 $witness
+    $witnessPath=Join-Path $EvidenceRoot 'phases/002-phase-2-post-input-bridge-readiness.json'
+    Write-StartupImmutableJson -Path $witnessPath -Value $witness -WriteSha256Sidecar|Out-Null
+    if(-not$passed){throw "${failureClass}: post-input bridge did not produce two fresh exact-identity heartbeats within $MaximumWaitSeconds seconds."}
+    return $secondGreen
 }
 
 try {
@@ -379,9 +415,9 @@ try {
     if ([string]$rootNode.scene_file_path -cne 'res://scenes/main.tscn') { throw 'Formal v5 main-scene identity mismatch.' }
     $initial = Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
     $startCenter = Get-FormalCenter 'V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/StartConfiguredButton'
-    Send-FormalTaps @($startCenter)
-    $null = Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=500} -TimeoutSeconds 30
-    Poll-FormalCursor -Phase 'phase-2-new-game' | Out-Null
+    $startInputCommandId=Send-FormalTaps @($startCenter)
+    Wait-FormalPostInputBridgeReadiness -ExpectedCommandId $startInputCommandId -ExpectedStreamId $streamId -MinimumCursorAfter ($cursor+1) -MaximumWaitSeconds 60|Out-Null
+    Poll-FormalCursor -Phase 'phase-2-new-game' -InnerTimeoutMsec 30000 -OuterTimeoutSeconds 60 | Out-Null
     $rootNode = Get-FormalNode -Path 'V075GameScreen/RootMargin' -Properties @()
     $scrollCenter = @{x=([double]$rootNode.properties.global_position.x + [double]$rootNode.properties.size.x / 2.0);y=([double]$rootNode.properties.global_position.y + [double]$rootNode.properties.size.y / 2.0)}
     $wheel = @(1..20 | ForEach-Object { @{type='mouse_button';button='wheel_down';position=$scrollCenter;mode='tap'} })
@@ -392,7 +428,7 @@ try {
     Poll-FormalCursor -Phase 'phase-3-early-match' | Out-Null
     $settled = $false; $acceptance = $initial
     for ($batch=0; $batch -lt 32; $batch += 1) {
-        Send-FormalTaps @($lockCenter,$finishCenter)
+        $null=Send-FormalTaps @($lockCenter,$finishCenter)
         $null = Invoke-FormalMcp -ToolName 'wait_msec' -Arguments @{duration=300} -TimeoutSeconds 30
         $acceptance = Get-FormalProperty -Path 'V075GameScreen' -Name 'acceptance_state'
         $phase = if($batch -lt 4){'phase-3-early-match'}elseif($batch -lt 8){'phase-4-mid-match'}elseif($batch -lt 12){'phase-5-combat-facility'}elseif($batch -lt 16){'phase-6-victory'}else{'phase-7-settlement'}
