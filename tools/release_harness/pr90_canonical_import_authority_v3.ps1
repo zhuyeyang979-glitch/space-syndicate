@@ -18,6 +18,7 @@ Import-Module (Join-Path $script:ToolingRoot 'tools/pr90_mcp_endpoint_ownership_
 Import-Module (Join-Path $script:ToolingRoot 'tools/pr90_listener_process_identity_reader_v1.psm1') -Force
 Import-Module (Join-Path $script:ToolingRoot 'tools/pr90_endpoint_listener_record_v1.psm1') -Force
 Import-Module (Join-Path $script:ToolingRoot 'tools/pr90_probe_b_attempt22_contract_v1.psm1') -Force
+Import-Module (Join-Path $script:ToolingRoot 'tools/role_godot_mcp_process_identity.psm1') -Force
 
 
 function Get-Sha256([string]$Path) {
@@ -217,14 +218,12 @@ function Wait-CanonicalEndpointOwnerV2 {
     param(
         [Parameter(Mandatory = $true)][string]$Label,
         [Parameter(Mandatory = $true)][object]$LaunchReceipt,
-        [Parameter(Mandatory = $true)][string]$LaunchReceiptPath
+        [Parameter(Mandatory = $true)][string]$LaunchReceiptPath,
+        [Parameter(Mandatory = $true)][DateTime]$ExpectedControlStartUtc
     )
     $controlPid = [int]$LaunchReceipt.pid
     $control = Read-EndpointListenerOwnerIdentityV1 -PidValue $controlPid
-    $expectedControlFiletime = [DateTimeOffset]::Parse(
-        [string]$LaunchReceipt.process_start_time_utc,
-        [Globalization.CultureInfo]::InvariantCulture
-    ).UtcDateTime.ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
+    $expectedControlFiletime = $ExpectedControlStartUtc.ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
     $expectedGuiPath = $script:GodotGui
     $controlGreen = (
         [bool]$control.exists -and [bool]$control.identity_read_green -and
@@ -329,7 +328,7 @@ function Wait-CanonicalEndpointOwnerV2 {
         control_process_pid = $controlPid
         worktree = $script:Root
         godot_path = $script:Godot
-        process_start_time_utc = [string]$LaunchReceipt.process_start_time_utc
+        process_start_time_utc = $ExpectedControlStartUtc.ToString('o')
         command_line = [string]$control.command_line
         endpoint_ownership_contract_version = 2
         endpoint_owner_pid = [int]$owner.pid
@@ -472,12 +471,10 @@ function Invoke-ImportPass([string]$Label) {
             throw "$Label sealed launch token escaped the disposable clone."
         }
         $candidatePid = [int]$launchReceipt.pid
-        $candidateStartUtc = [string]$launchReceipt.process_start_time_utc
         try {
-            $candidateCreationFiletime = [DateTimeOffset]::Parse(
-                $candidateStartUtc,
-                [Globalization.CultureInfo]::InvariantCulture
-            ).UtcDateTime.ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
+            $candidateStart = ConvertTo-RoleGodotProcessStartUtc -Token $launchReceipt.process_start_time_utc
+            $candidateStartUtc = $candidateStart.ToString('o')
+            $candidateCreationFiletime = $candidateStart.ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
         } catch {
             throw "$Label sealed launch receipt creation identity is invalid."
         }
@@ -501,7 +498,7 @@ function Invoke-ImportPass([string]$Label) {
             "$launchReceiptSha  $([IO.Path]::GetFileName($launchReceiptPath))" + [Environment]::NewLine
         ) | Out-Null
 
-        $binding = Wait-CanonicalEndpointOwnerV2 -Label $Label -LaunchReceipt $launchReceipt -LaunchReceiptPath $launchReceiptPath
+        $binding = Wait-CanonicalEndpointOwnerV2 -Label $Label -LaunchReceipt $launchReceipt -LaunchReceiptPath $launchReceiptPath -ExpectedControlStartUtc $candidateStart
         $owner = $binding.owner
         Wait-ImportStable
     } catch {

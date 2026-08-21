@@ -384,6 +384,8 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
         'NEGATIVE_CANONICAL_IMPORT_MISSING_GUI_SIBLING_PRECREATE_REJECTED',
         'CANONICAL_IMPORT_LAUNCHER_EXACT_PID_WAIT_IGNORES_DESCENDANT_LIFETIME',
         'NEGATIVE_CANONICAL_IMPORT_LAUNCHER_TIMEOUT_FAILS_CLOSED',
+        'CANONICAL_IMPORT_PROCESS_START_TIMESTAMP_PRESERVES_EXACT_UTC_TICKS',
+        'NEGATIVE_CANONICAL_IMPORT_LOCALIZED_TIMESTAMP_REJECTED',
         'STALE_326_SELFTEST_REJECTED',
         'STALE_V1_SELFTEST_REJECTED'
     )
@@ -392,7 +394,7 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
     if(@(Compare-Object -ReferenceObject $requiredFields -DifferenceObject @($Receipt.PSObject.Properties.Name)).Count-ne0){return $false}
     $revision=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Receipt -Name 'selftest_revision'
     if([string]$Receipt.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSelfTestV1'-or[string]$Receipt.status-cne'PASS'-or
-       [string]$revision-cne'PR90_ATTEMPT22_CANONICAL_IMPORT_PIPELINE_LIFECYCLE_REPAIR_V8'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
+       [string]$revision-cne'PR90_ATTEMPT22_CANONICAL_IMPORT_PROCESS_START_IDENTITY_REPAIR_V9'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
        [int]$Receipt.new_selftest_case_count-ne@($Receipt.cases).Count-or[int]$Receipt.new_selftest_pass_count-ne[int]$Receipt.new_selftest_case_count-or
        [int]$Receipt.new_selftest_failure_count-ne0-or[int]$Receipt.total_tooling_selftest_pass_count-ne(326+[int]$Receipt.new_selftest_case_count)-or[int]$Receipt.total_tooling_selftest_failure_count-ne0-or
        [int]$Receipt.authorization_negative_test_fail_count-ne0-or[int]$Receipt.false_green_count-ne0-or[int]$Receipt.missing_prerequisite_false_accept_count-ne0-or
