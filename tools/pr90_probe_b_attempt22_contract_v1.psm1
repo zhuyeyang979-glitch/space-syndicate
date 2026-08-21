@@ -360,14 +360,17 @@ function Get-Pr90FormalPostInputReadinessObservationClassV1 {
         $state=$Status.state;$cursor=$state.runtime_event_cursor;$latest=$Status.latest_response
         if(-not[bool]$Status.installed-or-not[bool]$Status.script_exists-or-not[bool]$Status.state_exists-or-not[bool]$Status.response_exists){return 'MCP_STATUS_UNAVAILABLE'}
         if([bool]$cursor.event_window_overflowed-or[bool]$cursor.event_window_saturated-or[int64]$cursor.event_overflow_count-ne0){return 'RUNTIME_EVENT_OVERFLOW'}
-        if([string]$state.status-cne'running'-or[bool]$state.paused-or[string]$state.current_scene.scene_file_path-cne'res://scenes/main.tscn'-or
+        if([bool]$state.paused-or[string]$state.current_scene.scene_file_path-cne'res://scenes/main.tscn'-or
            [string]$latest.id-cne$ExpectedCommandId-or[string]$latest.command-cne'send_input'-or-not[bool]$latest.success-or
            [string]$cursor.stream_id-cne$ExpectedStreamId){return 'RUNTIME_IDENTITY_DRIFT'}
+        if([string]$state.status-cnotin@('running','command')){return 'RUNTIME_IDENTITY_DRIFT'}
         if([int64]$cursor.next_event_sequence-le[int64]$cursor.buffered_last_event_sequence){return 'RUNTIME_CURSOR_REGRESSION'}
         if($AllowPendingExpectedCommandState-and([string]$state.last_command_id-cne$ExpectedCommandId-or[int64]$cursor.buffered_last_event_sequence-lt$MinimumCursorAfter)){return 'AWAITING_EXPECTED_COMMAND_HEARTBEAT'}
         if([string]$state.last_command_id-cne$ExpectedCommandId){return 'RUNTIME_IDENTITY_DRIFT'}
         if([int64]$cursor.buffered_last_event_sequence-lt$MinimumCursorAfter){return 'RUNTIME_CURSOR_REGRESSION'}
-        return 'READINESS_IDENTITY_GREEN'
+        if([string]$state.status-ceq'running'){return 'READINESS_IDENTITY_GREEN'}
+        if($AllowPendingExpectedCommandState-and[string]$state.status-ceq'command'){return 'AWAITING_POST_COMMAND_RUNNING_HEARTBEAT'}
+        return 'RUNTIME_IDENTITY_DRIFT'
     }catch{return 'MCP_STATUS_UNAVAILABLE'}
 }
 
@@ -418,12 +421,14 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
         'NEGATIVE_FORMAL_MAIN_STREAM_READY_GAP_REJECTED',
         'FORMAL_MAIN_STREAM_REBIND_PRECEDES_PHASE1',
         'FORMAL_PHASE2_RESPONSE_STATE_LAG_TRANSITION_ACCEPTED',
+        'FORMAL_PHASE2_COMMAND_STATE_TRANSITION_WAITS_FOR_RUNNING',
         'FORMAL_PHASE2_POST_INPUT_DOUBLE_HEARTBEAT_ACCEPTED',
         'NEGATIVE_FORMAL_PHASE2_STALE_HEARTBEAT_REJECTED',
         'NEGATIVE_FORMAL_PHASE2_WRONG_COMMAND_ID_REJECTED',
         'NEGATIVE_FORMAL_PHASE2_STREAM_CHANGE_REJECTED',
         'NEGATIVE_FORMAL_PHASE2_INTER_HEARTBEAT_CURSOR_REGRESSION_REJECTED',
         'NEGATIVE_FORMAL_PHASE2_OVERFLOW_REJECTED',
+        'NEGATIVE_FORMAL_PHASE2_COMMAND_STATE_IDENTITY_DRIFT_REJECTED',
         'FORMAL_PHASE2_FAILURE_CLASSIFICATION_DISTINGUISHES_PRODUCT_FROM_OBSERVER',
         'FORMAL_PHASE2_READINESS_PRECEDES_STRICT_30S_CURSOR_POLL',
         'FORMAL_REQUEST_ENVELOPES_IMMUTABLY_PERSISTED',
@@ -469,7 +474,7 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
     if(@(Compare-Object -ReferenceObject $requiredFields -DifferenceObject @($Receipt.PSObject.Properties.Name)).Count-ne0){return $false}
     $revision=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Receipt -Name 'selftest_revision'
     if([string]$Receipt.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSelfTestV1'-or[string]$Receipt.status-cne'PASS'-or
-       [string]$revision-cne'PR90_ATTEMPT22_PHASE2_RUNTIME_READINESS_REPAIR_V12'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
+       [string]$revision-cne'PR90_ATTEMPT22_COMMAND_STATE_HEARTBEAT_REPAIR_V13'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
        [int]$Receipt.new_selftest_case_count-ne@($Receipt.cases).Count-or[int]$Receipt.new_selftest_pass_count-ne[int]$Receipt.new_selftest_case_count-or
        [int]$Receipt.new_selftest_failure_count-ne0-or[int]$Receipt.total_tooling_selftest_pass_count-ne(326+[int]$Receipt.new_selftest_case_count)-or[int]$Receipt.total_tooling_selftest_failure_count-ne0-or
        [int]$Receipt.authorization_negative_test_fail_count-ne0-or[int]$Receipt.false_green_count-ne0-or[int]$Receipt.missing_prerequisite_false_accept_count-ne0-or
