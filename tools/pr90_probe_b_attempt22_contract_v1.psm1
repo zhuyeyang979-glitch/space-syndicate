@@ -387,6 +387,7 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
         'CANONICAL_IMPORT_PROCESS_START_TIMESTAMP_PRESERVES_EXACT_UTC_TICKS',
         'NEGATIVE_CANONICAL_IMPORT_LOCALIZED_TIMESTAMP_REJECTED',
         'FORMAL_GODOT_GUI_CONSOLE_IDENTITIES_DISTINCT_AND_BOUND',
+        'FORMAL_FINALIZER_USES_SEALED_CONSOLE_BINARY',
         'NEGATIVE_GODOT_GUI_IDENTITY_MISSING',
         'NEGATIVE_GODOT_GUI_CONSOLE_IDENTITY_COLLAPSED',
         'NEGATIVE_GODOT_COMPAT_CONSOLE_ALIAS_SWAPPED',
@@ -398,7 +399,7 @@ function Test-Pr90Attempt22FormalRepairSelfTestReceiptV1 {
     if(@(Compare-Object -ReferenceObject $requiredFields -DifferenceObject @($Receipt.PSObject.Properties.Name)).Count-ne0){return $false}
     $revision=Get-Pr90ProbeBOptionalPropertyValueV1 -InputObject $Receipt -Name 'selftest_revision'
     if([string]$Receipt.schema-cne'Pr90ProbeBV2ResultRecoveryToolingSelfTestV1'-or[string]$Receipt.status-cne'PASS'-or
-       [string]$revision-cne'PR90_ATTEMPT22_GODOT_GUI_CONSOLE_IDENTITY_REPAIR_V10'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
+       [string]$revision-cne'PR90_ATTEMPT22_FINALIZER_CONSOLE_IDENTITY_REPAIR_V11'-or[int]$Receipt.base_tooling_selftest_pass_count-ne326-or
        [int]$Receipt.new_selftest_case_count-ne@($Receipt.cases).Count-or[int]$Receipt.new_selftest_pass_count-ne[int]$Receipt.new_selftest_case_count-or
        [int]$Receipt.new_selftest_failure_count-ne0-or[int]$Receipt.total_tooling_selftest_pass_count-ne(326+[int]$Receipt.new_selftest_case_count)-or[int]$Receipt.total_tooling_selftest_failure_count-ne0-or
        [int]$Receipt.authorization_negative_test_fail_count-ne0-or[int]$Receipt.false_green_count-ne0-or[int]$Receipt.missing_prerequisite_false_accept_count-ne0-or
@@ -427,13 +428,13 @@ function Test-Pr90Attempt22ToolingManifestStructureV2 {
         [Parameter(Mandatory = $true)][string]$ExpectedNewSelfTestSha256,[Parameter(Mandatory = $true)][string]$ExpectedFrozenInputSha256
     )
     if($null-eq$Manifest-or$null-eq$BaseManifest-or$null-eq$BaseSeal-or$null-eq$NewSelfTest-or$null-eq$FrozenInput){return $false}
-        $expectedDiff=@('tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1','tools/pr90_attempt22_authorization_manifest_builder_v4.ps1','tools/pr90_attempt22_authorization_seal_builder_v4.ps1','tools/pr90_attempt22_authorization_validator_v4.ps1','tools/pr90_probe_b_attempt22_contract_v1.psm1','tools/pr90_probe_b_attempt22_selftest_v1.ps1','tools/pr90_probe_b_attempt22_tooling_manifest_builder_v1.ps1','tools/pr90_probe_b_attempt22_tooling_seal_builder_v1.ps1')|Sort-Object
+        $expectedDiff=@('tools/pr90_attempt21_cursor_aware_exact_mcp_v5.ps1','tools/pr90_probe_b_attempt22_contract_v1.psm1','tools/pr90_probe_b_attempt22_selftest_v1.ps1','tools/pr90_probe_b_attempt22_tooling_manifest_builder_v1.ps1','tools/pr90_probe_b_attempt22_tooling_seal_builder_v1.ps1')|Sort-Object
     try{
         if([string]$Manifest.schema-cne'Pr90ProbeBV2ResultRecoveryToolingManifestV1'-or[string]$Manifest.status-cne'READY'-or-not[bool]$Manifest.preformal_authorization_eligible-or[bool]$Manifest.startup_probe_b_authorization_eligible-or
            [string]$Manifest.tooling_head_sha-cne$ExpectedHead-or[string]$Manifest.tooling_tree_sha-cne$ExpectedTree-or[string]$Manifest.tooling_parent_sha-cne$ExpectedParent-or
            [string]$Manifest.base_tooling_head_sha-cne$ExpectedParent-or[string]$Manifest.base_tooling_manifest_sha256-cne$ExpectedBaseManifestSha256-or[string]$Manifest.base_tooling_seal_sha256-cne$ExpectedBaseSealSha256-or
            [string]$Manifest.new_selftest_sha256-cne$ExpectedNewSelfTestSha256-or[string]$Manifest.frozen_input_inventory_sha256-cne$ExpectedFrozenInputSha256-or
-            [int]$Manifest.new_tooling_commit_count-ne1-or[int]$Manifest.new_tooling_diff_count-ne8-or[int]$Manifest.new_tooling_modified_count-ne8-or[int]$Manifest.new_tooling_added_count-ne0-or
+            [int]$Manifest.new_tooling_commit_count-ne1-or[int]$Manifest.new_tooling_diff_count-ne5-or[int]$Manifest.new_tooling_modified_count-ne5-or[int]$Manifest.new_tooling_added_count-ne0-or
            [int]$Manifest.tooling_scope_violation_count-ne0-or[int]$Manifest.product_code_change_count-ne0-or[int]$Manifest.product_test_change_count-ne0-or[int]$Manifest.tooling_file_hash_mismatch_count-ne0-or
             [int]$Manifest.authorized_runtime_reachable_change_count-ne2-or[int]$Manifest.runtime_reachable_tooling_hash_mismatch_count-ne0-or
            [string]$Manifest.canonical_payload_sha256-cne(Get-Pr90ProbeBCanonicalSha256 $Manifest)){return $false}
@@ -446,8 +447,8 @@ function Test-Pr90Attempt22ToolingManifestStructureV2 {
            [string]$Manifest.frozen_input_tooling_head_sha-cne[string]$FrozenInput.tooling_head_sha-or[string]$Manifest.frozen_input_tooling_tree_sha-cne[string]$FrozenInput.tooling_tree_sha-or
            [int]$Manifest.frozen_input_count-ne[int]$FrozenInput.input_count-or[string]$Manifest.frozen_input_hash_inventory_sha256-cne[string]$FrozenInput.input_inventory_sha256){return $false}
         $diffRows=@($Manifest.new_tooling_diff);$diffPaths=@($diffRows|ForEach-Object{[string]$_.relative_path}|Sort-Object)
-        if($diffRows.Count-ne8-or@($diffRows|Where-Object{[string]$_.status-ceq'M'}).Count-ne8-or@($diffRows|Where-Object{[string]$_.status-ceq'A'}).Count-ne0-or
-           @($diffRows|Where-Object{[string]$_.status-notin@('M','A')}).Count-ne0-or@($diffPaths|Select-Object -Unique).Count-ne8-or@(Compare-Object $expectedDiff $diffPaths).Count-ne0){return $false}
+        if($diffRows.Count-ne5-or@($diffRows|Where-Object{[string]$_.status-ceq'M'}).Count-ne5-or@($diffRows|Where-Object{[string]$_.status-ceq'A'}).Count-ne0-or
+           @($diffRows|Where-Object{[string]$_.status-notin@('M','A')}).Count-ne0-or@($diffPaths|Select-Object -Unique).Count-ne5-or@(Compare-Object $expectedDiff $diffPaths).Count-ne0){return $false}
         $rows=@($Manifest.tooling_files);$paths=@($rows|ForEach-Object{([string]$_.relative_path).Replace('\','/')}|Sort-Object);$basePaths=@($BaseManifest.tooling_files|ForEach-Object{([string]$_.relative_path).Replace('\','/')}|Sort-Object)
         $expectedToolingPaths=@($basePaths|Sort-Object -Unique)
         if([int]$Manifest.tooling_file_count-ne$rows.Count-or$rows.Count-ne@($paths|Select-Object -Unique).Count-or@(Compare-Object $expectedToolingPaths $paths).Count-ne0){return $false}

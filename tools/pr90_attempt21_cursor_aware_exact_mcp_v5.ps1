@@ -437,7 +437,7 @@ $preFinalizerZero=($productBeforeFinalizer.Count-eq0-and$mcpBeforeFinalizer.Coun
 $finalizerExitCode=-1;$finalizerStatus='BLOCKED';$finalizerInvoked=$false;$finalizerReceiptGreen=$false;$finalizerDetail='cleanup_not_green'
 if($exitPlayGreen-and$stopGreen-and-not$stopForced-and$watchdogStopped-and$preFinalizerZero){
     $finalizerInvoked=$true
-    $finalizerOutput=@(& (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File $ImportFinalizerBindingPath -Worktree $root -BaselinePath $SealedBaselinePath -ClassCachePath $ClassCachePath -GodotPath $GodotGuiPath -ProductHeadSha $ExpectedHeadSha -ProductTreeSha $ExpectedTreeSha -ImportRunnerPath $ImportRunnerPath -ExpectedImportRunnerSha256 $ExpectedImportRunnerSha256 -PrelaunchIgnoredInventoryPath $prelaunchFull -ExpectedPrelaunchIgnoredInventorySha256 $prelaunchSha -OutputPath $finalizerFull 2>&1)
+    $finalizerOutput=@(& (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File $ImportFinalizerBindingPath -Worktree $root -BaselinePath $SealedBaselinePath -ClassCachePath $ClassCachePath -GodotPath $GodotPath -ProductHeadSha $ExpectedHeadSha -ProductTreeSha $ExpectedTreeSha -ImportRunnerPath $ImportRunnerPath -ExpectedImportRunnerSha256 $ExpectedImportRunnerSha256 -PrelaunchIgnoredInventoryPath $prelaunchFull -ExpectedPrelaunchIgnoredInventorySha256 $prelaunchSha -OutputPath $finalizerFull 2>&1)
     $finalizerExitCode=$LASTEXITCODE
     if(Test-Path -LiteralPath $finalizerFull -PathType Leaf){
         try{
