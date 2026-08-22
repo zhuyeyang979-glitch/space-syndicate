@@ -7,7 +7,7 @@ Candidate: `2a365d465f199481da7fa1ef8f734e7525a136f5` / tree
 
 `HISTORICAL_REUSE=ACTIVE`
 
-`CHANGE_CLASS=DOCS_ONLY`
+`CHANGE_CLASS=TOOLING_ONLY+DOCS_ONLY`
 
 `FULL_REPROOF_PERFORMED=false`
 
@@ -29,3 +29,20 @@ The Stage 3 aggregate replay receipt is
 No row claims a production composition cutover, human playtest pass, or
 repository-wide reproof. A future change to an Owner byte or a bound dependency
 must replace inheritance with a scoped sentinel or a new proof.
+
+## Canonical PR status and merge ratchet
+
+The JSON ledger is the sole machine source for the PR #93 status block. It
+records Stage 1/2/3 as isolated green, Golden counts `4/0/0`, production
+cutover `false`, and Stage 4 as pending owner registration. The required check
+name is exactly `V076 Reuse and Point-Inertia Gate`.
+
+The gate was queued without interrupting the active task and activated after
+the preserved PR90 Tooling V19 atomic boundary
+`a80ad3e107491d03e8a1ccf5379fcb44c705f951`. Once the current-Head check is
+green, development resumes at `V076_STAGE_4_PENDING_OWNER_REGISTRATION`.
+
+Ready, merge, release-tag, and production-cutover actions are forbidden until
+that exact check succeeds for the current PR Head. This governance delta does
+not alter any Stage evidence subject SHA and does not promote diagnostic
+evidence to production or human green.

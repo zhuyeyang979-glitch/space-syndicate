@@ -9411,3 +9411,43 @@ deleted. Evidence and the remaining action inventory are recorded in
   Coordinator/registry/barrier/flow import and cross-attempt evidence mixing
   are forbidden; ownership/dependency/privacy/fault tests are only candidate
   `REUSE_AS_TEST` inputs for a separately authorized V0.7.7.
+
+## V0.7.6 reuse and point-inertia mandatory gate
+
+- Activated the queued hard gate at the next safe atomic boundary, after the
+  external PR90 Tooling V19 authority commit
+  `a80ad3e107491d03e8a1ccf5379fcb44c705f951`. The preceding task was preserved
+  and no Stage 1–3 work was restarted or reclassified.
+- Extended the existing Historical Reuse Registry instead of creating a
+  parallel database. Schema v2 registers 18 lifecycle-classified domains and
+  23 components. Seven active domains each have exactly one production Owner;
+  pending and retired domains have none. Four changed authority writers carry
+  complete reuse searches, exact candidate counts/IDs, dispositions, and
+  non-empty extension/adapter/new-owner reasoning.
+- Added the single Delta-only Python aggregator because no existing scanner can
+  jointly validate a Git base/head delta, registry schemas, point inertia, and
+  PR body without Godot. It binds seven existing scanners and directly executes
+  the existing retired-mechanic static scanner in Delta mode; untouched scanner
+  debt is reported but does not block.
+- Added 112 focused self-test cases: the required legal/adversarial Delta
+  fixtures plus current-Head merge-ratchet ordering, immutable activation-root
+  history, inherited product-check prerequisites, exact authority schemas,
+  sticky regression/retirement records, bound production/human Golden evidence,
+  evidence-subject/aggregate cross-links, and legal future release/cutover
+  states, including an evidence-backed legal domain retirement. The expanded
+  set also covers per-commit schema/cardinality, Unicode Git paths, production
+  reference closure, dynamic-load failure, and registry-declared rule sources.
+  All 112 pass
+  with false-green count 0
+  and valid-delta false-reject count 0.
+- Extended the one Inherited Green Ledger with the canonical PR #93 status and
+  current change scope. Golden remains 4 isolated / 0 production / 0 human;
+  production cutover remains false. The card matrix now has 12 monotonic axes
+  for all seven categories while Alpha 0.7 certified cards remain 0.
+- Added the exact CI check `V076 Reuse and Point-Inertia Gate`, a current-push
+  Delta classifier, and Ready/Merge/Tag/Cutover ratchets. The exact
+  `TOOLING_ONLY+DOCS_ONLY` synchronize delta skips the old Godot product reproof;
+  any path outside its closed allowlist restores the bounded product workflow.
+- This focused work ran Python self-tests, the reused static scanner, JSON/schema
+  checks, PR-body comparison, and CI definition checks only. It ran no Godot,
+  MCP, gameplay, Exact-SHA MCP, 79-gate suite, or full-world reproof.

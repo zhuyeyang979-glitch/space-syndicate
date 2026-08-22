@@ -41,6 +41,17 @@ Likewise, future military Direct Action mapping is still absent for all 28
 military rows. The matrix deliberately keeps those counts visible instead of
 resetting them or guessing individual green cards.
 
+## Monotonic certification axes
+
+Each category now carries the same 12 machine fields:
+`CATALOG_VALID`, `SEMANTIC_COMPILED`, `TARGET_QUERY_GREEN`, `PLAN_GREEN`,
+`COMMIT_GREEN`, `RECEIPT_GREEN`, `PLAYER_PROJECTION_GREEN`,
+`AI_PROJECTION_GREEN`, `PRIVACY_GREEN`, `EXACT_ONCE_GREEN`, `REPLAY_GREEN`,
+and `ALPHA07_CERTIFIED`. A field may move only from `false` to `true`, or from
+`true` to `REGRESSED_WITH_EVIDENCE` with bound failure evidence. The schema
+does not certify any new card in this Gate task: Alpha 0.7 certified remains
+zero.
+
 `PRODUCTION_CARD_CERTIFICATION_COMPLETE=false`
 
 `PER_CARD_PRODUCTION_PASS_CLAIM_COUNT=0`

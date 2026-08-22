@@ -1,5 +1,5 @@
 {
-  "schema_version": "space_syndicate.v076.inherited_green_ledger.v1",
+  "schema_version": "space_syndicate.v076.inherited_green_ledger.v2",
   "ledger_id": "v076-inherited-green-ledger-20260821",
   "recorded_on": "2026-08-21",
   "candidate": {
@@ -144,5 +144,59 @@
     "evidence_reexecuted": false,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
     "current_claim": "No full reproof was run or implied for this DOCS_ONLY candidate."
-  }
+  },
+  "canonical_pr_status": {
+    "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
+    "pr_number": 93,
+    "stage_1_status": "ISOLATED_GREEN",
+    "stage_2_status": "ISOLATED_GREEN",
+    "stage_3_status": "ISOLATED_GREEN",
+    "stage_1_ledger_status": "INHERITED_GREEN",
+    "stage_2_ledger_status": "INHERITED_GREEN",
+    "stage_3_ledger_status": "CURRENT_DELTA_GREEN",
+    "historical_reuse_status": "ACTIVE",
+    "point_inertia_status": "ACTIVE",
+    "golden_isolated_green_count": 4,
+    "golden_production_green_count": 0,
+    "golden_human_green_count": 0,
+    "production_cutover_status": false,
+    "latest_completed_stage": "V076_STAGE_3_DETERMINISTIC_MONSTER_L1_DIRECTIONAL_GEODESIC_MOVE",
+    "latest_completed_stage_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+    "next_stage": "V076_STAGE_4_PENDING_OWNER_REGISTRATION",
+    "v075_pr90_dependency_boundary": "REFERENCE_ONLY_EXACT_BASE_NO_V076_CUTOVER"
+  },
+  "canonical_change_scope": {
+    "change_classes": [
+      "TOOLING_ONLY",
+      "DOCS_ONLY"
+    ],
+    "affected_domains": [
+      "v076.governance.reuse_and_point_inertia"
+    ],
+    "affected_owners": [],
+    "focused_tests": [
+      "v076_reuse_point_inertia_gate_selftest",
+      "v076_reuse_point_inertia_gate_validate",
+      "check_v06_mechanic_authority_selftest"
+    ],
+    "inherited_sentinels": [
+      "main_gd_architecture_gate_test",
+      "game_action_semantic_protocol_v1_test",
+      "runtime_authority_audit",
+      "player_facing_privacy_boundary_test",
+      "card_semantic_architecture_scan_test",
+      "main_runtime_composition_test"
+    ],
+    "full_reproof_required": false,
+    "full_reproof_trigger": "NONE",
+    "why_focused_tests_are_sufficient": "Only governance JSON, static Python Tooling, CI, reports and documentation change; no product or rule byte changes."
+  },
+  "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
+  "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
+  "point_inertia_gate_queued": true,
+  "current_task_interrupted_by_gate": false,
+  "current_task_result_preserved": true,
+  "product_development_resume_target": "V076_STAGE_4_PENDING_OWNER_REGISTRATION",
+  "required_check_name": "V076 Reuse and Point-Inertia Gate",
+  "agent_merge_requires_reuse_gate": true
 }

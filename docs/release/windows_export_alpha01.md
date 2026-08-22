@@ -5,6 +5,68 @@ the `space_syndicate_release` and `alpha_0_1` feature tags, embeds the PCK in on
 Windows x86-64 executable, and never treats an earlier executable as evidence
 for the current commit.
 
+## V0.7.6 merge, tag, and cutover ratchet
+
+This Alpha 0.1 export contract does not authorize a V0.7.6 release or production
+cutover. For PR #93, no agent may mark the PR Ready, merge it, create a V0.7.6
+release tag, or begin production cutover until the latest exact-current-Head
+check named `V076 Reuse and Point-Inertia Gate` is completed `SUCCESS` with no
+newer pending or failed run.
+
+Run this read-only preflight from the exact clean candidate worktree. The JSON
+file is temporary and remains outside the repository:
+
+```powershell
+$ErrorActionPreference = "Stop"
+$guardedAction = [string]$env:V076_GUARDED_ACTION
+if ($guardedAction -notin @("READY", "MERGE", "TAG", "CUTOVER")) {
+  throw "Set V076_GUARDED_ACTION to READY, MERGE, TAG, or CUTOVER."
+}
+$expectedHead = (git rev-parse HEAD).Trim()
+$liveJson = gh pr view 93 `
+  --repo zhuyeyang979-glitch/space-syndicate `
+  --json headRefOid,isDraft,state,statusCheckRollup
+if ($LASTEXITCODE -ne 0) {
+  throw "Could not read live PR #93 status."
+}
+$live = $liveJson | ConvertFrom-Json
+if ($live.headRefOid -cne $expectedHead) {
+  throw "PR #93 Head mismatch: expected=$expectedHead live=$($live.headRefOid)"
+}
+if ($guardedAction -eq "READY" -and ($live.state -cne "OPEN" -or $live.isDraft -ne $true)) {
+  throw "READY requires PR #93 to be an open Draft."
+}
+if ($guardedAction -eq "MERGE" -and ($live.state -cne "OPEN" -or $live.isDraft -ne $false)) {
+  throw "MERGE requires PR #93 to be open and already non-Draft."
+}
+if ($guardedAction -in @("TAG", "CUTOVER") -and $live.state -cne "MERGED") {
+  throw "$guardedAction requires PR #93 to be merged."
+}
+$checksPath = Join-Path $env:TEMP "v076-pr93-current-head-checks.json"
+[ordered]@{
+  checks = @($live.statusCheckRollup | ForEach-Object {
+    [ordered]@{
+      name = $_.name
+      status = $_.status
+      conclusion = $_.conclusion
+      head_sha = $live.headRefOid
+    }
+  })
+} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $checksPath -Encoding utf8
+python tools/v076/v076_reuse_point_inertia_gate.py merge-ratchet `
+  --checks-json $checksPath `
+  --expected-head-sha $expectedHead
+if ($LASTEXITCODE -ne 0) {
+  throw "V0.7.6 merge ratchet is not green on the current PR Head."
+}
+```
+
+The preflight is a verifier only. It must not call `gh pr ready`, `gh pr merge`,
+create a tag or release, edit branch protection, or perform a cutover. Those
+remain separate, explicitly authorized actions after all applicable product and
+release gates are satisfied. A successful Gate does not convert isolated Stage
+evidence into production or human-play evidence.
+
 ## Canonical build
 
 Run from a clean, committed worktree:

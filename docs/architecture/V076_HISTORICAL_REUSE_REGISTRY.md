@@ -5,6 +5,19 @@ This registry binds the clean candidate
 record: `POINT_INERTIA=ACTIVE`, `HISTORICAL_REUSE=ACTIVE`, whole-branch merge is
 false, and no full reproof was run.
 
+Schema v2 keeps this file as the single reuse source and adds one
+`component_inventory`: 18 lifecycle-classified domains and 23 registered
+components. Every active domain has exactly one production Owner. Every new or
+changed authority writer binds a completed reuse scan, candidate count,
+candidate IDs, disposition, and the reasons that extension or adaptation is
+insufficient. This is an extension of the existing registry, not a parallel
+component database.
+
+The CI aggregator reuses seven existing architecture sentinels. Only the
+existing retired-mechanic scanner is executed in this Tooling/Docs delta; the
+other six remain inherited sentinels because running their Godot product paths
+would be an unjustified full reproof.
+
 ## Disposition rules
 
 - `ADOPT_AS_OWNER` means one narrow domain keeps exactly one named Owner.

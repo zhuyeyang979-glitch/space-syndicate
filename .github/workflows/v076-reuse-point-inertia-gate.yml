@@ -1,0 +1,209 @@
+name: V076 Reuse and Point-Inertia Gate
+
+"on":
+  pull_request:
+    branches:
+      - codex/v075-monster-military-combat-bd0af5c
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+      - ready_for_review
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to validate
+        required: true
+        default: "93"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: v076-reuse-point-inertia-${{ github.event.pull_request.number || inputs.pr_number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  reuse-point-inertia-gate:
+    name: V076 Reuse and Point-Inertia Gate
+    runs-on: windows-2022
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Resolve exact pull-request context
+        id: pr_context
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $event = Get-Content -LiteralPath $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
+          if ("${{ github.event_name }}" -eq "pull_request") {
+            $pull = $event.pull_request
+          } else {
+            $prNumber = "${{ inputs.pr_number }}"
+            if ($prNumber -notmatch '^\d+$') {
+              throw "workflow_dispatch requires a numeric PR number: $prNumber"
+            }
+            $headers = @{
+              Authorization = "Bearer $env:GITHUB_TOKEN"
+              Accept = "application/vnd.github+json"
+              "X-GitHub-Api-Version" = "2022-11-28"
+            }
+            $pull = Invoke-RestMethod `
+              -Method Get `
+              -Uri "https://api.github.com/repos/${{ github.repository }}/pulls/$prNumber" `
+              -Headers $headers
+          }
+          $head = [string]$pull.head.sha
+          $base = [string]$pull.base.sha
+          $number = [string]$pull.number
+          if ($head -notmatch '^[0-9a-f]{40}$' -or $base -notmatch '^[0-9a-f]{40}$') {
+            throw "Resolved PR identity is incomplete: number=$number base=$base head=$head"
+          }
+          $contextPath = Join-Path $env:RUNNER_TEMP "v076-pr-context.json"
+          [pscustomobject]@{
+            number = [int]$number
+            head_sha = $head
+            base_sha = $base
+            body = [string]$pull.body
+          } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $contextPath -Encoding utf8
+          "head=$head" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "base=$base" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "number=$number" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Checkout exact pull-request head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.pr_context.outputs.head }}
+
+      - name: Verify exact identity and clean source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $expectedHead = "${{ steps.pr_context.outputs.head }}"
+          $baseHead = "${{ steps.pr_context.outputs.base }}"
+          $actualHead = (git rev-parse HEAD).Trim()
+          if ($actualHead -cne $expectedHead) {
+            throw "Checkout mismatch: expected=$expectedHead actual=$actualHead"
+          }
+          & git merge-base --is-ancestor $baseHead $actualHead
+          if ($LASTEXITCODE -ne 0) {
+            throw "PR head is not a descendant of its exact base: base=$baseHead head=$actualHead"
+          }
+          $status = (& git status --porcelain=v1 -uall | Out-String).Trim()
+          if (-not [string]::IsNullOrEmpty($status)) {
+            throw "Gate checkout must start clean: $status"
+          }
+          git diff --check "$baseHead...$actualHead"
+          if ($LASTEXITCODE -ne 0) {
+            throw "git diff --check failed for $baseHead...$actualHead"
+          }
+
+      - name: Resolve the exact gate delta base
+        id: gate_base
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $event = Get-Content -LiteralPath $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
+          $head = "${{ steps.pr_context.outputs.head }}"
+          $gateBase = "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5"
+          $ledgerPath = "docs/architecture/V076_INHERITED_GREEN_LEDGER.json"
+          $ledger = Get-Content -LiteralPath $ledgerPath -Raw | ConvertFrom-Json
+          $declaredBase = [string]$ledger.point_inertia_baseline_sha
+          if ($declaredBase -cne $gateBase) {
+            throw "Ledger cannot redefine the external activation baseline: declared=$declaredBase required=$gateBase"
+          }
+          & git cat-file -e "$gateBase^{commit}"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Canonical point-inertia baseline commit is unavailable: $gateBase"
+          }
+          & git merge-base --is-ancestor $gateBase $head
+          if ($LASTEXITCODE -ne 0) {
+            throw "Canonical point-inertia baseline is not an ancestor: base=$gateBase head=$head"
+          }
+
+          if ([string]$event.action -eq "synchronize") {
+            $before = [string]$event.before
+            if ($before -notmatch '^[0-9a-f]{40}$') {
+              throw "Synchronize event lacks an exact before identity: $before"
+            }
+            & git merge-base --is-ancestor $before $head
+            if ($LASTEXITCODE -ne 0) {
+              throw "Non-fast-forward synchronize history drift: before=$before head=$head"
+            }
+            & git merge-base --is-ancestor $gateBase $before
+            if ($LASTEXITCODE -ne 0) {
+              throw "Synchronize before predates or diverges from Gate activation: activation=$gateBase before=$before"
+            }
+          }
+
+          "gate_base=$gateBase" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Output "V076_GATE_BASE_REF=$gateBase"
+          Write-Output "V076_GATE_BASE_SOURCE=external_activation_boundary"
+
+      - name: Run focused gate self-test and read-only validation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $beforeStatus = (& git status --porcelain=v1 -uall | Out-String).Trim()
+          if (-not [string]::IsNullOrEmpty($beforeStatus)) {
+            throw "Workspace changed before gate execution: $beforeStatus"
+          }
+
+          $event = Get-Content -LiteralPath $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
+          $context = Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP "v076-pr-context.json") -Raw | ConvertFrom-Json
+          $prBodyPath = Join-Path $env:RUNNER_TEMP "v076-pr-body.md"
+          $reportJson = Join-Path $env:RUNNER_TEMP "v076-reuse-point-inertia-gate.json"
+          $reportMarkdown = Join-Path $env:RUNNER_TEMP "v076-reuse-point-inertia-gate.md"
+          [IO.File]::WriteAllText(
+            $prBodyPath,
+            [string]$context.body,
+            [Text.UTF8Encoding]::new($false)
+          )
+
+          & python tools/v076/v076_reuse_point_inertia_gate_selftest.py
+          if ($LASTEXITCODE -ne 0) {
+            throw "V076 reuse and point-inertia self-test failed."
+          }
+
+          & python tools/v076/v076_reuse_point_inertia_gate.py validate `
+            --project $env:GITHUB_WORKSPACE `
+            --pr-base-ref "${{ steps.pr_context.outputs.base }}" `
+            --inertia-base-ref "${{ steps.gate_base.outputs.gate_base }}" `
+            --gate-base-ref "${{ steps.gate_base.outputs.gate_base }}" `
+            --head-ref "${{ steps.pr_context.outputs.head }}" `
+            --pr-body-file $prBodyPath `
+            --report-json $reportJson `
+            --report-md $reportMarkdown
+          if ($LASTEXITCODE -ne 0) {
+            throw "V076 reuse and point-inertia validation failed."
+          }
+
+          Get-Content -LiteralPath $reportMarkdown -Raw | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+          $afterStatus = (& git status --porcelain=v1 -uall | Out-String).Trim()
+          if ($afterStatus -cne $beforeStatus) {
+            throw "Gate mutated the repository: before=[$beforeStatus] after=[$afterStatus]"
+          }
+
+          Write-Output "CI_GATE_READ_ONLY=true"
+          Write-Output "CI_PRODUCT_RUNTIME_MUTATION_COUNT=0"
+          Write-Output "CI_GAMEPLAY_EXECUTION_COUNT=0"
+          Write-Output "CI_FULL_PRODUCT_REPROOF_COUNT=0"
+
+      - name: Upload read-only gate reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v076-reuse-point-inertia-gate-${{ steps.pr_context.outputs.head }}
+          path: |
+            ${{ runner.temp }}/v076-reuse-point-inertia-gate.json
+            ${{ runner.temp }}/v076-reuse-point-inertia-gate.md
+          if-no-files-found: error
+          retention-days: 30

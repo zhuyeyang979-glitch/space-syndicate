@@ -1,5 +1,9 @@
 # V0.7.6 Owner reuse map
 
+schema_version: space_syndicate.v076.owner_reuse_map.v1
+
+registry_id: V076_OWNER_REUSE_MAP
+
 This map enforces one Owner per domain at candidate head
 `2a365d465f199481da7fa1ef8f734e7525a136f5`. Consumers may adapt data or
 contracts, but they may not inherit authority by association.

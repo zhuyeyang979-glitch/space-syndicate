@@ -1,5 +1,5 @@
 {
-  "schema_version": "space_syndicate.v076.card_certification_matrix.v1",
+  "schema_version": "space_syndicate.v076.card_certification_matrix.v2",
   "matrix_id": "v076-card-certification-matrix-20260821",
   "recorded_on": "2026-08-21",
   "candidate_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
@@ -35,12 +35,18 @@
     "effect_review_pending_total": 132
   },
   "certification_dimensions": [
-    "CATALOG_IDENTITY_AND_SHAPE",
-    "SEMANTIC_COMPILE_READINESS",
-    "PASSIVE_PROJECTION",
-    "RUNTIME_OWNER_ROUTE",
-    "V076_EXACT_MAPPING",
-    "PRODUCTION_HUMAN_PLAY"
+    "CATALOG_VALID",
+    "SEMANTIC_COMPILED",
+    "TARGET_QUERY_GREEN",
+    "PLAN_GREEN",
+    "COMMIT_GREEN",
+    "RECEIPT_GREEN",
+    "PLAYER_PROJECTION_GREEN",
+    "AI_PROJECTION_GREEN",
+    "PRIVACY_GREEN",
+    "EXACT_ONCE_GREEN",
+    "REPLAY_GREEN",
+    "ALPHA07_CERTIFIED"
   ],
   "inherited_evidence": [
     {
@@ -103,6 +109,20 @@
       "runtime_route_certification": "ISOLATED_OWNER_ADAPTER_EVIDENCE_ONLY",
       "v076_exact_mapping": "UNVERIFIED",
       "production_human_play": "UNVERIFIED",
+      "certification": {
+        "CATALOG_VALID": true,
+        "SEMANTIC_COMPILED": true,
+        "TARGET_QUERY_GREEN": false,
+        "PLAN_GREEN": false,
+        "COMMIT_GREEN": false,
+        "RECEIPT_GREEN": false,
+        "PLAYER_PROJECTION_GREEN": false,
+        "AI_PROJECTION_GREEN": false,
+        "PRIVACY_GREEN": false,
+        "EXACT_ONCE_GREEN": false,
+        "REPLAY_GREEN": false,
+        "ALPHA07_CERTIFIED": false
+      },
       "per_card_green_claimed": false
     },
     {
@@ -116,6 +136,20 @@
       "effect_review_pending_count": 64,
       "v076_exact_mapping": "UNVERIFIED",
       "production_human_play": "UNVERIFIED",
+      "certification": {
+        "CATALOG_VALID": true,
+        "SEMANTIC_COMPILED": true,
+        "TARGET_QUERY_GREEN": false,
+        "PLAN_GREEN": false,
+        "COMMIT_GREEN": false,
+        "RECEIPT_GREEN": false,
+        "PLAYER_PROJECTION_GREEN": false,
+        "AI_PROJECTION_GREEN": false,
+        "PRIVACY_GREEN": false,
+        "EXACT_ONCE_GREEN": false,
+        "REPLAY_GREEN": false,
+        "ALPHA07_CERTIFIED": false
+      },
       "per_card_green_claimed": false
     },
     {
@@ -128,6 +162,20 @@
       "runtime_route_certification": "ISOLATED_OWNER_AND_BATCH_TEST_EVIDENCE_ONLY",
       "v076_exact_mapping": "UNVERIFIED",
       "production_human_play": "UNVERIFIED",
+      "certification": {
+        "CATALOG_VALID": true,
+        "SEMANTIC_COMPILED": true,
+        "TARGET_QUERY_GREEN": false,
+        "PLAN_GREEN": false,
+        "COMMIT_GREEN": false,
+        "RECEIPT_GREEN": false,
+        "PLAYER_PROJECTION_GREEN": false,
+        "AI_PROJECTION_GREEN": false,
+        "PRIVACY_GREEN": false,
+        "EXACT_ONCE_GREEN": false,
+        "REPLAY_GREEN": false,
+        "ALPHA07_CERTIFIED": false
+      },
       "per_card_green_claimed": false
     },
     {
@@ -144,6 +192,20 @@
       "effect_review_pending_count": 8,
       "v076_exact_mapping": "UNVERIFIED",
       "production_human_play": "UNVERIFIED",
+      "certification": {
+        "CATALOG_VALID": true,
+        "SEMANTIC_COMPILED": true,
+        "TARGET_QUERY_GREEN": false,
+        "PLAN_GREEN": false,
+        "COMMIT_GREEN": false,
+        "RECEIPT_GREEN": false,
+        "PLAYER_PROJECTION_GREEN": false,
+        "AI_PROJECTION_GREEN": false,
+        "PRIVACY_GREEN": false,
+        "EXACT_ONCE_GREEN": false,
+        "REPLAY_GREEN": false,
+        "ALPHA07_CERTIFIED": false
+      },
       "per_card_green_claimed": false
     },
     {
@@ -158,6 +220,20 @@
       "v076_exact_mapping": "UNVERIFIED",
       "directional_move_exact_mapping_claim_count": 0,
       "production_human_play": "UNVERIFIED",
+      "certification": {
+        "CATALOG_VALID": true,
+        "SEMANTIC_COMPILED": true,
+        "TARGET_QUERY_GREEN": false,
+        "PLAN_GREEN": false,
+        "COMMIT_GREEN": false,
+        "RECEIPT_GREEN": false,
+        "PLAYER_PROJECTION_GREEN": false,
+        "AI_PROJECTION_GREEN": false,
+        "PRIVACY_GREEN": false,
+        "EXACT_ONCE_GREEN": false,
+        "REPLAY_GREEN": false,
+        "ALPHA07_CERTIFIED": false
+      },
       "per_card_green_claimed": false,
       "honesty_note": "Stage 3 proves an isolated Monster L1 movement domain; it does not certify any of these 32 catalog records."
     },
@@ -173,6 +249,20 @@
       "v076_exact_mapping": "UNVERIFIED",
       "direct_action_exact_mapping_claim_count": 0,
       "production_human_play": "UNVERIFIED",
+      "certification": {
+        "CATALOG_VALID": true,
+        "SEMANTIC_COMPILED": true,
+        "TARGET_QUERY_GREEN": false,
+        "PLAN_GREEN": false,
+        "COMMIT_GREEN": false,
+        "RECEIPT_GREEN": false,
+        "PLAYER_PROJECTION_GREEN": false,
+        "AI_PROJECTION_GREEN": false,
+        "PRIVACY_GREEN": false,
+        "EXACT_ONCE_GREEN": false,
+        "REPLAY_GREEN": false,
+        "ALPHA07_CERTIFIED": false
+      },
       "per_card_green_claimed": false
     },
     {
@@ -185,6 +275,20 @@
       "runtime_route_certification": "UNVERIFIED",
       "v076_exact_mapping": "UNVERIFIED",
       "production_human_play": "UNVERIFIED",
+      "certification": {
+        "CATALOG_VALID": true,
+        "SEMANTIC_COMPILED": true,
+        "TARGET_QUERY_GREEN": false,
+        "PLAN_GREEN": false,
+        "COMMIT_GREEN": false,
+        "RECEIPT_GREEN": false,
+        "PLAYER_PROJECTION_GREEN": false,
+        "AI_PROJECTION_GREEN": false,
+        "PRIVACY_GREEN": false,
+        "EXACT_ONCE_GREEN": false,
+        "REPLAY_GREEN": false,
+        "ALPHA07_CERTIFIED": false
+      },
       "per_card_green_claimed": false
     }
   ],
@@ -196,7 +300,8 @@
     "effect_review_pending_count": 132,
     "v076_exact_per_card_mapping_claim_count": 0,
     "per_card_production_pass_claim_count": 0,
-    "human_play_certified_card_claim_count": 0
+    "human_play_certified_card_claim_count": 0,
+    "alpha07_certified_card_count": 0
   },
   "hard_blocks": [
     "32 monster records require exact V076 mapping evidence",

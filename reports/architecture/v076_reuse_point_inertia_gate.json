@@ -1,0 +1,1692 @@
+{
+  "status": "PASS",
+  "check_name": "V076 Reuse and Point-Inertia Gate",
+  "failures": [],
+  "metrics": {
+    "CANONICAL_REUSE_GATE_IMPLEMENTATION_COUNT": 1,
+    "EXISTING_SCANNER_INVENTORY_COUNT": 7,
+    "REUSED_SCANNER_COUNT": 7,
+    "NEW_SCANNER_REASON": "NO_EXISTING_SCANNER_ACCEPTS_GIT_BASE_HEAD_DELTA_AND_PR_BODY_WITHOUT_GODOT",
+    "PARALLEL_ARCHITECTURE_SCANNER_COUNT_DELTA": 0,
+    "HISTORICAL_REUSE_REGISTRY_IMPLEMENTATION_COUNT": 1,
+    "OWNER_REUSE_MAP_IMPLEMENTATION_COUNT": 1,
+    "INHERITED_GREEN_LEDGER_IMPLEMENTATION_COUNT": 1,
+    "GOLDEN_PLAYTEST_SCENARIO_IMPLEMENTATION_COUNT": 1,
+    "ACTIVE_DOMAIN_OWNER_COUNT_MISMATCH": 0,
+    "PENDING_DOMAIN_IMPLICIT_OWNER_COUNT": 0,
+    "RETIRED_DOMAIN_ACTIVE_OWNER_COUNT": 0,
+    "REFERENCE_ONLY_AUTHORITY_WRITE_COUNT": 0,
+    "PARALLEL_PRODUCTION_OWNER_COUNT": 0,
+    "NEW_OWNER_WITHOUT_REUSE_SCAN_COUNT": 0,
+    "NEW_OWNER_WITH_REUSABLE_EXISTING_OWNER_COUNT": 0,
+    "UNJUSTIFIED_REIMPLEMENTATION_COUNT": 0,
+    "UNCLASSIFIED_NEW_COMPONENT_COUNT": 0,
+    "REGISTERED_COMPONENT_PATH_MISSING_COUNT": 0,
+    "NON_OWNER_WITHOUT_OWNER_BINDING_COUNT": 0,
+    "DIAGNOSTIC_BENCH_PRODUCTION_OWNER_COUNT": 0,
+    "TEST_SUPPORT_PRODUCTION_OWNER_COUNT": 0,
+    "OWNER_REPLACEMENT_WITHOUT_SUPERSESSION_COUNT": 0,
+    "DUAL_WRITE_COUNT": 0,
+    "FALLBACK_COUNT": 0,
+    "OLD_OWNER_STILL_PRODUCTION_REACHABLE_COUNT": 0,
+    "RETIRED_IMPLEMENTATION_REACTIVATION_COUNT": 0,
+    "INHERITED_GREEN_SILENT_REMOVAL_COUNT": 0,
+    "OWNER_SILENT_REPLACEMENT_COUNT": 0,
+    "COMPONENT_INVENTORY_SILENT_DELETE_COUNT": 0,
+    "DOMAIN_INVENTORY_SILENT_DELETE_COUNT": 0,
+    "UNIQUE_OWNER_DOMAIN_SILENT_DELETE_COUNT": 0,
+    "COMPONENT_IDENTITY_SILENT_REPLACEMENT_COUNT": 0,
+    "GLOBAL_AUTHORITY_SURFACE_OWNER_MISMATCH_COUNT": 0,
+    "GOLDEN_SCENARIO_STEP_DELETE_COUNT": 0,
+    "GOLDEN_SCENARIO_STEP_COUNT_MONOTONIC": true,
+    "GOLDEN_HUMAN_FALSE_GREEN_COUNT": 0,
+    "GOLDEN_PRODUCTION_FALSE_GREEN_COUNT": 0,
+    "DIAGNOSTIC_AS_HUMAN_PASS_COUNT": 0,
+    "CARD_CERTIFICATION_RESET_COUNT": 0,
+    "ALPHA07_CERTIFIED_CARD_COUNT_MONOTONIC": true,
+    "CERTIFIED_CARD_SILENT_REGRESSION_COUNT": 0,
+    "HISTORICAL_REUSE_ENTRY_SILENT_DELETE_COUNT": 0,
+    "UNJUSTIFIED_FULL_REPROOF_COUNT": 0,
+    "TOOLING_ONLY_FULL_PRODUCT_REPROOF_COUNT": 0,
+    "UNTOUCHED_LEGACY_DEBT_BLOCK_COUNT": 0,
+    "TOUCHED_UNCLASSIFIED_LEGACY_COMPONENT_COUNT": 0,
+    "PRODUCT_CODE_CHANGE_COUNT": 0,
+    "PRODUCT_RULE_CHANGE_COUNT": 0,
+    "UNNECESSARY_FULL_SUITE_RUN_COUNT": 0,
+    "FULL_WORLD_REPROOF_COUNT": 0,
+    "CHANGE_CLASS_DECLARED": true,
+    "TEST_SCOPE_DERIVED_FROM_CHANGE_CLASS": true,
+    "PR93_BODY_STATUS_BLOCK_PRESENT": true,
+    "PR93_BODY_STATUS_MATCH": true,
+    "PR93_DESCRIPTION_STAGE3_CURRENT": true,
+    "PR93_BODY_STALE_STAGE_COUNT": 0,
+    "PR93_DESCRIPTION_FALSE_GREEN_COUNT": 0,
+    "STAGE_PARENT_IS_PREVIOUS_STAGE_DESCENDANT": true,
+    "DELTA_ONLY_GATE": true,
+    "LEGACY_UNTOUCHED_DEBT_BLOCK_COUNT": 0,
+    "NEW_OR_CHANGED_COMPONENT_GATE_COVERAGE": "100_PERCENT",
+    "CI_GATE_READ_ONLY": true,
+    "CI_PRODUCT_RUNTIME_MUTATION_COUNT": 0,
+    "CI_GAMEPLAY_EXECUTION_COUNT": 0,
+    "CI_FULL_PRODUCT_REPROOF_COUNT": 0,
+    "AGENT_MERGE_REQUIRES_REUSE_GATE": true,
+    "READY_TRANSITION_WITHOUT_GATE_COUNT": 0,
+    "MERGE_WITHOUT_GATE_COUNT": 0,
+    "GITHUB_REQUIRED_STATUS_CHECK_CONFIGURED": false,
+    "GITHUB_REQUIRED_STATUS_CONFIGURATION_PENDING": true,
+    "OWNER_MAP_IMPLEMENTATION_COUNT": 1,
+    "SUPERSESSION_MAP_IMPLEMENTATION_COUNT": 1,
+    "CARD_CERTIFICATION_MATRIX_IMPLEMENTATION_COUNT": 1,
+    "NEW_COMPONENT_REGISTRY_COVERAGE": "100_PERCENT",
+    "TOUCHED_UNCLASSIFIED_COMPONENT_COUNT": 0,
+    "NEW_UNCLASSIFIED_COMPONENT_COUNT": 0,
+    "GOLDEN_PASS_SILENT_REGRESSION_COUNT": 0,
+    "CARD_ID_SILENT_REPLACEMENT_COUNT": 0,
+    "PER_CARD_FALSE_GREEN_COUNT": 0,
+    "STAGE_BRANCH_RESTART_COUNT": 0,
+    "READY_WITHOUT_REUSE_GATE_COUNT": 0,
+    "TAG_WITHOUT_REUSE_GATE_COUNT": 0,
+    "PRODUCTION_COMPOSITION_CHANGE_COUNT": 0
+  },
+  "schema_version": "space_syndicate.v076.reuse_point_inertia_gate_report.v1",
+  "direction_amendment_id": "V076_REUSE_POINT_INERTIA_MANDATORY_CI_AND_REVIEW_GATE_V1",
+  "gate_activation_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
+  "v076_gate_base_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
+  "pr_base_ref": "770d741f05964facda4afcbddcdeb3e7f40571d5",
+  "head_ref": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
+  "head_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
+  "include_worktree": true,
+  "evaluated_source": "HEAD_PLUS_WORKTREE",
+  "merge_base_sha": "770d741f05964facda4afcbddcdeb3e7f40571d5",
+  "point_inertia_history_base_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
+  "point_inertia_history_transition_count": 1,
+  "point_inertia_history_failure_count": 0,
+  "scanner_inventory": [
+    {
+      "scanner_id": "architecture",
+      "path": "tests/main_gd_architecture_gate_test.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    },
+    {
+      "scanner_id": "semantic_architecture",
+      "path": "tests/game_action_semantic_protocol_v1_test.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    },
+    {
+      "scanner_id": "owner",
+      "path": "scripts/diagnostics/runtime_authority_audit.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    },
+    {
+      "scanner_id": "main_retirement",
+      "path": "tools/rules/check_v06_mechanic_authority.py",
+      "reuse_mode": "EXECUTED_STATIC_SCANNER",
+      "present": true
+    },
+    {
+      "scanner_id": "privacy",
+      "path": "tests/player_facing_privacy_boundary_test.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    },
+    {
+      "scanner_id": "card_semantic",
+      "path": "tests/card_semantic_architecture_scan_test.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    },
+    {
+      "scanner_id": "production_composition",
+      "path": "tests/main_runtime_composition_test.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    }
+  ],
+  "retired_mechanic_scanner": {
+    "status": "FAIL",
+    "retired_production_identifier_count": 9,
+    "source_splitting_evasion_count": 0,
+    "rule_authority_unreferenced_mechanic_count": 0,
+    "allowlisted_hit_count": 138,
+    "registry_errors": [
+      "card_semantic_projection_v1_migration: authority section missing: 7. 卡牌履带与牌桌窗口"
+    ],
+    "unreferenced_mechanics": [],
+    "production_hits": [
+      {
+        "path": "scripts/tools/full_run_quality_driver.gd",
+        "line": 212,
+        "identifier": "contract_reject"
+      },
+      {
+        "path": "scripts/tools/full_run_quality_driver.gd",
+        "line": 4716,
+        "identifier": "contract_reject"
+      },
+      {
+        "path": "scripts/tools/full_run_quality_driver.gd",
+        "line": 4726,
+        "identifier": "contract_reject"
+      },
+      {
+        "path": "scripts/tools/full_run_quality_driver.gd",
+        "line": 4733,
+        "identifier": "contract_reject"
+      },
+      {
+        "path": "scripts/tools/full_run_quality_driver.gd",
+        "line": 4745,
+        "identifier": "contract_reject"
+      },
+      {
+        "path": "scripts/tools/full_run_quality_driver.gd",
+        "line": 4749,
+        "identifier": "contract_reject"
+      },
+      {
+        "path": "scripts/v075/telemetry/v075_combat_telemetry_bridge.gd",
+        "line": 229,
+        "identifier": "contract_reject"
+      },
+      {
+        "path": "scripts/v076/simulation/v076_deterministic_kernel.gd",
+        "line": 1067,
+        "identifier": "contract_reject"
+      },
+      {
+        "path": "scripts/v076/simulation/v076_deterministic_kernel.gd",
+        "line": 1069,
+        "identifier": "contract_reject"
+      }
+    ],
+    "source_splitting_hits": [],
+    "allowlisted_hits": [],
+    "scanner_selftest": {
+      "status": "PASS",
+      "case_count": 11,
+      "failures": []
+    },
+    "scanner_selftest_exit_code": 0,
+    "summary_exit_code": 1,
+    "inherited_summary_status": "FAIL",
+    "delta_production_hits": [],
+    "delta_source_splitting_hits": [],
+    "delta_status": "PASS",
+    "summary_contract_valid": true
+  },
+  "gate_selftest": {
+    "CASE_FAILURE_COUNT": 0,
+    "FALSE_GREEN_COUNT": 0,
+    "INVALID_DELTA_CASE_COUNT": 80,
+    "REUSE_POINT_INERTIA_GATE_SELFTEST_CASE_COUNT": 112,
+    "REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT": 112,
+    "REUSE_POINT_INERTIA_GATE_SELFTEST_STATUS": "PASS",
+    "VALID_DELTA_CASE_COUNT": 32,
+    "VALID_DELTA_FALSE_REJECT_COUNT": 0,
+    "cases": [
+      {
+        "case_id": "01",
+        "description": "valid extension of existing owner",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "02",
+        "description": "valid consumer bound to existing owner",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "03",
+        "description": "valid adapter reuses historical result",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "04",
+        "description": "valid non-production diagnostic bench",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "05",
+        "description": "new owner without reuse scan",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GLOBAL_AUTHORITY_SURFACE_PARALLEL_OWNER:owns_tick:2",
+          "NEW_OWNER_WITHOUT_REUSE_SCAN:component.unsearched.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "06",
+        "description": "two production owners in one active domain",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "ACTIVE_DOMAIN_OWNER_COUNT:map:2"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "07",
+        "description": "consumer without owner binding",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "NON_OWNER_WITHOUT_OWNER_BINDING:component.map.unbound_consumer"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "08",
+        "description": "new component missing classification",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "UNCLASSIFIED_NEW_COMPONENT:scripts/v076/unclassified/runtime_component.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "09",
+        "description": "owner replacement without supersession",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:component.map.existing_owner:owns_identity",
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:component.map.existing_owner:owns_tick",
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:component.map.existing_owner:production_reachable",
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:component.map.existing_owner:reads_authority",
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:component.map.existing_owner:writes_authority",
+          "OWNER_REPLACEMENT_WITHOUT_SUPERSESSION:component.map.replacement_owner",
+          "OWNER_SILENT_REPLACEMENT:map",
+          "SUPERSESSION_FORWARD_LINK_WITHOUT_ENTRY:component.map.existing_owner:component.map.replacement_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "10",
+        "description": "owner replacement retains dual write",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "OWNER_REPLACEMENT_WITH_DUAL_WRITE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "11",
+        "description": "owner replacement retains fallback",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "OWNER_REPLACEMENT_WITH_FALLBACK"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "12",
+        "description": "old owner remains production reachable",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "OLD_OWNER_STILL_PRODUCTION_REACHABLE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "13",
+        "description": "retired implementation is reactivated",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GLOBAL_AUTHORITY_SURFACE_PARALLEL_OWNER:owns_tick:2",
+          "RETIRED_IMPLEMENTATION_REACTIVATED:component.retired_reactivation.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "14",
+        "description": "historical reuse entry is silently deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORICAL_REUSE_ENTRY_SILENT_DELETE:reuse.inherited.only"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "15",
+        "description": "inherited green stage is silently deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "INHERITED_GREEN_SILENT_REMOVAL:stage.2",
+          "INHERITED_STAGE_ORDER_OR_PREFIX_CHANGED"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "16",
+        "description": "golden scenario step is deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_SCENARIO_STEP_DELETE:golden.deleted.step"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "17",
+        "description": "diagnostic fixture impersonates human green",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_STATUS_GOLDEN_COUNT_MISMATCH:golden_human_green_count",
+          "CANONICAL_STATUS_GOLDEN_COUNT_MISMATCH:golden_isolated_green_count",
+          "DIAGNOSTIC_AS_HUMAN_PASS:golden.map.owner",
+          "GOLDEN_HUMAN_COUNT_MISMATCH",
+          "GOLDEN_HUMAN_FALSE_GREEN:golden.map.owner",
+          "GOLDEN_ISOLATED_COUNT_MISMATCH",
+          "GOLDEN_PRODUCTION_COUNT_MISMATCH",
+          "GOLDEN_SUMMARY_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "18",
+        "description": "card certification matrix is reset",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "ALPHA07_CERTIFIED_CARD_COUNT_NOT_MONOTONIC",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:AI_PROJECTION_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:ALPHA07_CERTIFIED",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:CATALOG_VALID",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:COMMIT_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:EXACT_ONCE_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:PLAN_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:PLAYER_PROJECTION_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:PRIVACY_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:RECEIPT_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:REPLAY_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:SEMANTIC_COMPILED",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:TARGET_QUERY_GREEN"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "19",
+        "description": "tooling-only delta demands full reproof",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_CHANGE_SCOPE_REASON:HEAD:why_focused_tests_are_insufficient",
+          "CANONICAL_CHANGE_SCOPE_SCHEMA_INVALID:HEAD",
+          "FOCUSED_TEST_SCOPE_MISSING",
+          "TOOLING_ONLY_FULL_PRODUCT_REPROOF",
+          "UNJUSTIFIED_FULL_REPROOF"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "20",
+        "description": "full reproof has no trigger",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_CHANGE_SCOPE_REASON:HEAD:why_focused_tests_are_insufficient",
+          "CANONICAL_CHANGE_SCOPE_SCHEMA_INVALID:HEAD",
+          "CANONICAL_CHANGE_SCOPE_TRIGGER:HEAD",
+          "FOCUSED_TEST_SCOPE_MISSING",
+          "TOOLING_ONLY_FULL_PRODUCT_REPROOF",
+          "UNJUSTIFIED_FULL_REPROOF"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "21",
+        "description": "PR body canonical status block is missing",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PR93_DESCRIPTION_STAGE3_STALE",
+          "STALE_PR_STATUS_BLOCK:COUNT:0",
+          "STALE_PR_STATUS_BLOCK:MISSING"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "22",
+        "description": "PR body stage description is stale",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_LATEST_COMPLETED_STAGE_MISMATCH",
+          "LATEST_STAGE_LEDGER_SUBJECT_MISMATCH",
+          "PR93_DESCRIPTION_STAGE3_STALE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "23",
+        "description": "PR body falsely claims production cutover",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PRODUCTION_CUTOVER_EVIDENCE_MISSING"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "24",
+        "description": "untouched historical debt does not block",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "25",
+        "description": "touched historical component remains unclassified",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "TOUCHED_UNCLASSIFIED_LEGACY_COMPONENT:tests/legacy/pr70_runtime_attempt.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "26",
+        "description": "normal stage inheritance",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "27",
+        "description": "stage restarts from an old base",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "STAGE_PARENT_NOT_PREVIOUS_STAGE_DESCENDANT"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "28",
+        "description": "retired PR70 runtime attempt is revived",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GLOBAL_AUTHORITY_SURFACE_PARALLEL_OWNER:owns_tick:2",
+          "RETIRED_IMPLEMENTATION_REACTIVATED:component.pr70_runtime_revival.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "29",
+        "description": "new owner was searched but reasons are empty",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GLOBAL_AUTHORITY_SURFACE_PARALLEL_OWNER:owns_tick:2",
+          "OWNER_REUSE_REASON_EMPTY:component.empty_reasons.owner:why_adapter_is_insufficient",
+          "OWNER_REUSE_REASON_EMPTY:component.empty_reasons.owner:why_existing_owner_cannot_be_extended",
+          "OWNER_REUSE_REASON_EMPTY:component.empty_reasons.owner:why_new_owner_is_required"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "30",
+        "description": "valid atomic owner replacement",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "31",
+        "description": "production owner references an unknown domain",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_DOMAIN_UNKNOWN:component.unknown_domain.owner:domain.not.registered"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "32",
+        "description": "component inventory row is silently deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "ACTIVE_DOMAIN_OWNER_COUNT:map:0",
+          "COMPONENT_INVENTORY_SILENT_DELETE:component.map.existing_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "33",
+        "description": "domain inventory row is silently deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_DOMAIN_UNKNOWN:component.map.existing_owner:map",
+          "DOMAIN_INVENTORY_SILENT_DELETE:map",
+          "UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "34",
+        "description": "unique owner domain row is silently deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "ACTIVE_DOMAIN_UNIQUE_OWNER_MAP_MISMATCH:map",
+          "UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH",
+          "UNIQUE_OWNER_DOMAIN_SILENT_DELETE:map"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "35",
+        "description": "same component id silently changes class and path",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_IDENTITY_SILENT_REPLACEMENT:component.map.existing_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "36",
+        "description": "legacy production script path evades V076-only matching",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "UNCLASSIFIED_NEW_COMPONENT:scripts/runtime/v076_stage4_market_owner.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "37",
+        "description": "canonical authority schema or id is wrong",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "AUTHORITY_ID_MISMATCH:historical_reuse",
+          "AUTHORITY_SCHEMA_MISMATCH:card_matrix"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "38",
+        "description": "canonical PR status uses invented states",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_HISTORICAL_REUSE_STATUS_INVALID",
+          "CANONICAL_STAGE_STATUS_INVALID:3",
+          "PR93_DESCRIPTION_STAGE3_STALE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "39",
+        "description": "human green lacks human and production evidence",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_HUMAN_COUNT_MISMATCH",
+          "GOLDEN_HUMAN_FALSE_GREEN:golden.map.owner",
+          "GOLDEN_ISOLATED_COUNT_MISMATCH",
+          "GOLDEN_PRODUCTION_COUNT_MISMATCH",
+          "GOLDEN_SUMMARY_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "40",
+        "description": "Alpha certification is true without prerequisite axes",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:AI_PROJECTION_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:ALPHA07_CERTIFIED",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:COMMIT_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:EXACT_ONCE_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:PLAN_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:PLAYER_PROJECTION_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:PRIVACY_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:RECEIPT_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:REPLAY_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:TARGET_QUERY_GREEN"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "41",
+        "description": "second domain reuses the deterministic Kernel class and authority surfaces",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_CLASS_NAME_NOT_UNIQUE",
+          "GLOBAL_AUTHORITY_SURFACE_PARALLEL_OWNER:owns_tick:2"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "42",
+        "description": "negative Stage 3 prose cannot satisfy the current-status sentence",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PR93_DESCRIPTION_STAGE3_STALE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "43",
+        "description": "unrelated focused test list cannot prove the gate delta",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "TOOLING_FOCUSED_TEST_SET_INCOMPLETE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "44",
+        "description": "production consumer reconnects a retired implementation",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "RETIRED_IMPLEMENTATION_REACTIVATED:component.map.retired_consumer"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "45",
+        "description": "consumer binds another consumer instead of the canonical owner",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "NON_OWNER_BOUND_TO_NON_OWNER:component.map.consumer_b:component.map.consumer_a"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "46",
+        "description": "release candidate may request an evidence-scoped full reproof",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "47",
+        "description": "production cutover with atomic evidence remains a legal future state",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "48",
+        "description": "multiple canonical PR status blocks are rejected",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "STALE_PR_STATUS_BLOCK:COUNT:2",
+          "STALE_PR_STATUS_BLOCK:MISSING"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "49",
+        "description": "free prose cannot claim human green or cutover beyond canonical status",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PR93_DESCRIPTION_FALSE_GREEN:production_cutover"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "50",
+        "description": "product delta omits the affected canonical owner",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_CHANGE_SCOPE_AFFECTED_OWNERS_EMPTY:HEAD",
+          "PRODUCT_DELTA_AFFECTED_OWNERS_INCOMPLETE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "51",
+        "description": "merge ratchet accepts one completed success on the expected head",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "52",
+        "description": "merge ratchet rejects duplicate exact-name checks",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "53",
+        "description": "merge ratchet rejects a success from a stale head",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "54",
+        "description": "merge ratchet accepts duplicate completed successes on the expected head",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "55",
+        "description": "merge ratchet uses the latest identified current-head run",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "56",
+        "description": "merge ratchet rejects a newer pending current-head run",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "57",
+        "description": "activation-root history walk rejects an intermediate green reset",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CARD_CERTIFICATION_RESET:selftest-history:ordinary_cards:ALPHA07_CERTIFIED",
+          "ALPHA07_CERTIFIED_CARD_COUNT_NOT_MONOTONIC:selftest-history"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "58",
+        "description": "activation-root history walk accepts a stable monotonic transition",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "59",
+        "description": "valid inherited scanner debt remains grandfathered for an empty Delta",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "60",
+        "description": "non-JSON or invalid retired-scanner summary fails closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "61",
+        "description": "CI binds immutable Gate history and inherits product skips only from a green Head",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "62",
+        "description": "self-asserted Golden human evidence cannot impersonate bound production artifacts",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_HUMAN_FALSE_GREEN:golden.map.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "63",
+        "description": "cryptographically bound production Golden evidence is a legal future state",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "64",
+        "description": "typed human-executed evidence bound to production receipts is legal",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "65",
+        "description": "regression evidence is sticky and cannot be washed through a second commit",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "INHERITED_GREEN_REGRESSION_NOT_STICKY:selftest-regression-wash:V076_STAGE_3_DETERMINISTIC_MONSTER_L1_DIRECTIONAL_GEODESIC_MOVE",
+          "GOLDEN_SCENARIO_REGRESSION_NOT_STICKY:selftest-regression-wash:golden.map.owner",
+          "CARD_CERTIFICATION_REGRESSION_NOT_STICKY:selftest-regression-wash:ordinary_cards:RECEIPT_GREEN"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "66",
+        "description": "a complete unchanged regression marker remains a legal retained record",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "67",
+        "description": "a RETIRED reuse disposition cannot be reactivated by rewriting the row",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "RETIRED_REUSE_DISPOSITION_REACTIVATED:selftest-retired-sticky:reuse.retired.sticky"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "68",
+        "description": "an active domain cannot silently retire without explicit evidence",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_NONACTIVE_DOMAIN_ACTIVE_OWNER:selftest-domain-retirement:map",
+          "ACTIVE_DOMAIN_LIFECYCLE_SILENT_DOWNGRADE:selftest-domain-retirement:map"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "69",
+        "description": "an existing owner authority surface cannot silently turn off",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:selftest-owner-surface:component.map.existing_owner:writes_authority"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "70",
+        "description": "Golden and ledger evidence subjects must match the canonical candidate SHA",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_EVIDENCE_SUBJECT_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "71",
+        "description": "Golden aggregate and step inventories cannot contradict their rows",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_SUMMARY_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "72",
+        "description": "an explicit constitution-backed domain retirement remains a legal future state",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "73",
+        "description": "a three-field supersession row cannot authorize an owner replacement",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SUPERSESSION_FIELDS_MISSING:component.map.replacement_owner:consumer_inventory,cutover_commit,dual_write_count,fallback_count,kind,migration_strategy,new_owner_path,new_owner_production_owner_count,old_owner_path,old_owner_production_reachability,old_owner_retirement_status,replacement_reason,replay_impact,rng_impact,save_impact,supersession_id",
+          "SUPERSESSION_ID_NOT_UNIQUE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "74",
+        "description": "a retained A-to-B-to-C supersession chain is a legal sequential replacement",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "75",
+        "description": "an unknown Golden state cannot bridge two otherwise valid commits",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_SCENARIO_STATUS_INVALID:selftest-unknown-golden:golden.map.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "76",
+        "description": "a bot observer cannot satisfy typed HUMAN_EXECUTED evidence",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_HUMAN_FALSE_GREEN:golden.map.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "77",
+        "description": "a diagnostic surface cannot impersonate production Golden evidence",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "DIAGNOSTIC_AS_PRODUCTION_PASS:golden.map.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "78",
+        "description": "the evidence subject commit must bind the declared Git tree",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "EVIDENCE_SUBJECT_GIT_TREE_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "79",
+        "description": "a retired domain cannot be reactivated in a later commit",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "RETIRED_DOMAIN_REACTIVATED:selftest-retired-domain-reactivation:map"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "80",
+        "description": "every Godot-loadable production root fails closed when its component is unregistered",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PRODUCT_DELTA_COMPONENT_CLASSIFICATION_INCOMPLETE",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:addons/funplay_mcp/runtime/stage4_runtime_owner.gd",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:addons/unknown_runtime/stage4_runtime_owner.gd",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:assets/v076/new_surface.tres",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:export_presets.cfg",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:localization/v076_stage4.po",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:project.godot",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:shaders/v076_stage4_owner.gdshader",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:themes/GameTheme.tres",
+          "UNCLASSIFIED_NEW_COMPONENT:addons/funplay_mcp/runtime/stage4_runtime_owner.gd",
+          "UNCLASSIFIED_NEW_COMPONENT:addons/unknown_runtime/stage4_runtime_owner.gd",
+          "UNCLASSIFIED_NEW_COMPONENT:assets/v076/new_surface.tres",
+          "UNCLASSIFIED_NEW_COMPONENT:export_presets.cfg",
+          "UNCLASSIFIED_NEW_COMPONENT:localization/v076_stage4.po",
+          "UNCLASSIFIED_NEW_COMPONENT:project.godot",
+          "UNCLASSIFIED_NEW_COMPONENT:shaders/v076_stage4_owner.gdshader",
+          "UNCLASSIFIED_NEW_COMPONENT:themes/GameTheme.tres"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "81",
+        "description": "current production rule authorities cannot pass under a tooling or docs-only declaration",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PRODUCT_DELTA_COMPONENT_CLASSIFICATION_INCOMPLETE",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:data/cards/v076_stage4.json",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:resources/cards/runtime/v076_stage4.tres",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:resources/rules/v076_stage4.tres",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:README.md",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:data/cards/v076_stage4.json",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:docs/rules/v076_stage4.md",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:docs/rules_v06_runtime_directive.md",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:docs/tabletop_rulebook_v06.md",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:resources/cards/runtime/v076_stage4.tres",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:resources/rules/v076_stage4.tres"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "82",
+        "description": "an unregistered product commit remains a history failure even if the next commit registers it",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:selftest-code-before-registry:scripts/v076/stage4_history/runtime_owner.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "83",
+        "description": "supersession entries and reciprocal links are append-only history",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SUPERSESSION_ENTRY_SILENT_DELETE:selftest-supersession-history-erasure:selftest.atomic.replacement.one",
+          "COMPONENT_SUPERSESSION_LINK_SHRANK:selftest-supersession-history-erasure:component.map.existing_owner:superseded_by",
+          "COMPONENT_SUPERSESSION_LINK_SHRANK:selftest-supersession-history-erasure:component.map.replacement_owner:supersedes"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "84",
+        "description": "an owner supersession graph cannot cycle back to a retired owner",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SUPERSESSION_GRAPH_INVALID",
+          "SUPERSESSION_OWNER_STATE_INVALID:component.map.replacement_owner->component.map.existing_owner",
+          "SUPERSESSION_RECIPROCAL_LINK_MISSING:component.map.replacement_owner->component.map.existing_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "85",
+        "description": "an unused Owner may be atomically replaced with an explicit empty consumer inventory",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "86",
+        "description": "every future Stage ledger row must use a canonical point-inertia state",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "INHERITED_STAGE_LEDGER_STATUS_INVALID:V076_STAGE_4_UNKNOWN"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "87",
+        "description": "an evidence-backed card regression preserves the cumulative certified-card count",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "88",
+        "description": "an honestly described evidence-backed Stage regression is a legal point-inertia state",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "89",
+        "description": "the public committed-history orchestrator rejects code-before-registry across two commits",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:e739b1f0267a->946380a24e28:scripts/v076/stage4_history/runtime_owner.gd",
+          "HISTORY_COMPONENT_CLASS_DECLARATION_MISMATCH:7826aadfce5b:component.stage4_history.owner:scripts/v076/stage4_history/runtime_owner.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "90",
+        "description": "the public committed-history orchestrator accepts atomic registry plus implementation",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "91",
+        "description": "Godot sidecars inherit their source binding without bypassing runtime addon coverage",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "92",
+        "description": "NUL-safe rename classification preserves old, new, and Unicode rule paths",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "93",
+        "description": "regression evidence must descend from an actually green prior state",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CARD_CERTIFICATION_REGRESSION_WITHOUT_GREEN_ORIGIN:ordinary_cards:ALPHA07_CERTIFIED",
+          "INHERITED_STAGE_REGRESSION_WITHOUT_GREEN_ORIGIN:selftest-regression-origin:V076_STAGE_4_NEVER_GREEN",
+          "GOLDEN_SCENARIO_REGRESSION_WITHOUT_GREEN_ORIGIN:selftest-regression-origin:golden.never.green"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "94",
+        "description": "an established authority cannot erase its reuse scan by relabeling itself inherited",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_CHANGE_CLASS_REVERTED_TO_INHERITED:selftest-reuse-scan-erasure:component.map.existing_owner",
+          "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID:selftest-reuse-scan-erasure:component.map.existing_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "95",
+        "description": "composition changes expose trusted-path runtime files while ordinary product plus test deltas stay focused",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "96",
+        "description": "runtime data extensions and future card rule roots fail closed without reclassifying compendium presentation",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "97",
+        "description": "every historical authority snapshot enforces full rows, nonempty scope, and owner cardinality",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_COMPONENT_REQUIRED_FIELDS:component.map.existing_owner:focused_test_ids",
+          "HISTORY_COMPONENT_STRING_LIST_FIELD:component.map.existing_owner:focused_test_ids",
+          "HISTORY_CHANGE_SCOPE_FOCUSED_TESTS_EMPTY:selftest-empty-scope",
+          "HISTORY_CHANGE_SCOPE_SENTINELS_EMPTY:selftest-empty-scope",
+          "HISTORY_ACTIVE_DOMAIN_OWNER_COUNT:selftest-double-owner-snapshot:map:2"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "98",
+        "description": "a registered non-production diagnostic in a trusted tools path remains a legal focused delta",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "99",
+        "description": "the canonical main scene cannot self-declare as non-production tooling",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PRODUCT_DELTA_FOCUSED_TESTS_INCOMPLETE",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:scenes/main.tscn"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "100",
+        "description": "Stage status cannot outrun Golden evidence or introduce a capability-free ghost Stage",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_STAGE_STATUS_WITHOUT_GOLDEN_EVIDENCE:3",
+          "PR93_DESCRIPTION_STAGE3_STALE",
+          "INHERITED_STAGE_WITHOUT_NEW_GOLDEN_CAPABILITY:V076_STAGE_4_GHOST_NO_CAPABILITY"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "101",
+        "description": "PR prose rejects English and Chinese false-green claims without misreading the next Stage clause",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PR93_DESCRIPTION_FALSE_GREEN:human_green",
+          "PR93_DESCRIPTION_FALSE_GREEN:human_green",
+          "PR93_DESCRIPTION_FALSE_GREEN:production_cutover"
+        ],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "102",
+        "description": "hash-bound scripted fixture evidence cannot impersonate the canonical production scene",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_PRODUCTION_FALSE_GREEN:golden.map.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "103",
+        "description": "regression evidence binds a real commit and registered affected owner",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SELFTEST_REGRESSION_EVIDENCE_INVALID:selftest-bad-regression-binding:stage:V076_STAGE_3_DETERMINISTIC_MONSTER_L1_DIRECTIONAL_GEODESIC_MOVE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "104",
+        "description": "an owner supersession cutover must bind a real commit-shaped identity",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SUPERSESSION_CUTOVER_COMMIT_INVALID:component.map.replacement_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "105",
+        "description": "production cutover evidence binds the candidate, canonical scene, receipt, and typed owner set",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PRODUCTION_CUTOVER_EVIDENCE_MISSING"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "106",
+        "description": "Golden evidence subject must be a Head ancestor with an unchanged product tree",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "EVIDENCE_SUBJECT_NOT_HEAD_ANCESTOR",
+          "EVIDENCE_SUBJECT_PRODUCT_TREE_DRIFT"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "107",
+        "description": "a registry-only production Owner cannot precede its implementation commit",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_REGISTERED_COMPONENT_PATH_MISSING:1558ee7ac0d5:component.stage4_history.owner:scripts/v076/stage4_history/runtime_owner.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "108",
+        "description": "a previously harmless tools file is classified at the exact commit that production first references it",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING:d61563e5781b->a3891322d914:component.main.composition",
+          "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:d61563e5781b->a3891322d914:scripts/tools/hidden_runtime_owner.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "109",
+        "description": "the Gate reuses registry-declared rule sources without treating broad scanner inputs as rules",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:docs/ai_runtime_ownership_contract.md"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "110",
+        "description": "production closure follows const loads while ignoring comments and editor-only sections",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "111",
+        "description": "a newly introduced unresolved dynamic production load fails closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "DYNAMIC_REFERENCE_UNRESOLVED"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "112",
+        "description": "real Git rename records preserve Unicode card authority paths without quote loss",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      }
+    ],
+    "check_name": "V076 Reuse and Point-Inertia Gate",
+    "fixture_model": "ValidationInput->validate_model",
+    "gate_implementation_sha256": "1488bd75649c610a522e23ed0b5e94ab0426cea41e6541a9069240684c24c208",
+    "godot_execution_count": 0,
+    "repository_mutation_count": 0,
+    "schema_version": "space_syndicate.v076.reuse_point_inertia_gate_selftest.v1",
+    "selftest_script_sha256": "663179e2749b589bfcaa2c533db21f6b75efbb35b644dae46c46311afc27feee"
+  },
+  "REUSE_POINT_INERTIA_GATE_SELFTEST_STATUS": "PASS",
+  "REUSE_POINT_INERTIA_GATE_SELFTEST_CASE_COUNT": 112,
+  "REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT": 112,
+  "FALSE_GREEN_COUNT": 0,
+  "VALID_DELTA_FALSE_REJECT_COUNT": 0,
+  "changed_path_count": 52,
+  "gate_changed_path_count": 19,
+  "implementation_bindings": [
+    {
+      "path": "tools/v076/v076_reuse_point_inertia_gate.py",
+      "sha256": "1488bd75649c610a522e23ed0b5e94ab0426cea41e6541a9069240684c24c208",
+      "byte_count": 224304
+    },
+    {
+      "path": "tools/v076/v076_reuse_point_inertia_gate_selftest.py",
+      "sha256": "663179e2749b589bfcaa2c533db21f6b75efbb35b644dae46c46311afc27feee",
+      "byte_count": 121702
+    },
+    {
+      "path": ".github/workflows/v076-reuse-point-inertia-gate.yml",
+      "sha256": "53df197439797d7ec5307b449961acb4a406d61fcdbadf226fdeed4c4b0b1a70",
+      "byte_count": 8881
+    },
+    {
+      "path": ".github/workflows/v075-pr90-acceptance.yml",
+      "sha256": "ddd0833a156ab9d1049dffcc01c0c3cdd8b3ed37ab57878419dbcf7034d2e215",
+      "byte_count": 16806
+    },
+    {
+      "path": "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+      "sha256": "c2877852fa21a80808b24c31b871ca6915df698da3ecaee01026ba8521cda12a",
+      "byte_count": 53543
+    },
+    {
+      "path": "docs/architecture/V076_SUPERSESSION_MAP.json",
+      "sha256": "6083c246429bcae4639fdf89a24af6b09f1ffc386b580a257fa94f97b3afb6b6",
+      "byte_count": 9052
+    },
+    {
+      "path": "docs/architecture/V076_OWNER_REUSE_MAP.md",
+      "sha256": "5167e6933d4903d1b43d1f0b35b347ba0d4de127b2904b83f5ebab6bb25e0b6d",
+      "byte_count": 5048
+    },
+    {
+      "path": "docs/architecture/V076_INHERITED_GREEN_LEDGER.json",
+      "sha256": "b4b2db8fc22667eef8c81dab08a4ffd0adb096fa4feee95ccc35409cb6b143a1",
+      "byte_count": 8297
+    },
+    {
+      "path": "docs/architecture/V076_ALPHA07_GOLDEN_PLAYTEST_SCENARIO.json",
+      "sha256": "612ffa9f83a301379852730ed6ed57d3446f651a0bd5fcf4337003b36d8dff67",
+      "byte_count": 7762
+    },
+    {
+      "path": "reports/card_certification/v076_card_certification_matrix.json",
+      "sha256": "da40edafd785138687268579fd0acbd2584ee7c54c5c6d150bc3f6023a79b3fb",
+      "byte_count": 11355
+    }
+  ]
+}
