@@ -1,7 +1,7 @@
 # V0.7.6 inherited green ledger
 
-Candidate: `bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4` / tree
-`3133d8c4f00ee5110336b8b8efb7f8fe60523d15`, Draft PR #93.
+Candidate: `a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b` / tree
+`c8c4577c832665f937888d7ad215821e90518710`, Draft PR #93.
 
 `POINT_INERTIA=ACTIVE`
 
@@ -20,7 +20,7 @@ new full-world proof.
 | Stage 1 deterministic kernel | `INHERITED_GREEN` | `V076DeterministicKernel` | Origin `57/57`, 2,000 replay, 0 mismatch; Stage 3 Kernel V2 direct-owner regression `74/74`, 2,000 replay, 0 mismatch | Stage 3 changed Kernel/replay bytes. This is a revalidated direct Owner delta, not an unchanged-byte claim. |
 | Stage 2 shared half-edge sphere | `INHERITED_GREEN` | `V076SharedHalfEdgePartitionV1` | `90/90`; 2,000 distinct seeds plus 2,000 fresh same-seed generations; generation/validation/partition/terrain mismatch and float-authority counts all 0 | Generator, topology, validator, and codec are unchanged. Only the map reducer received the Kernel V2 ABI adaptation; `90/90` is the current sentinel. |
 | Stage 3 Monster L1 geodesic move | `CURRENT_DELTA_GREEN` | `V076MonsterL1ReducerV1` | `47/47`; 1,000 seeds x 2 replay, 0 mismatch; isolated warning-clean Bench PASS with `errors=[]` | Bench is diagnostic-only, production cutover is false, and `human_golden_step_06_09=false`. |
-| Stage 4 private military Direct Action | `CURRENT_DELTA_GREEN` | `V076PrivateDirectActionInputOwnerV1` | Owner `7/7`; integration `19/19`; Kernel `74/74`; partition `90/90`; Monster `47/47`; four V075 military contracts; Gate `114/114`; MCP Bench PASS and clean stop | Only STEP10 isolated green. Production/human green are false and all 28 military card mappings remain unverified. |
+| Stage 4 private military Direct Action | `CURRENT_DELTA_GREEN` | `V076PrivateDirectActionInputOwnerV1` | Crosswalk `48/48`; Owner `7/7`; integration `25/25`; Kernel `74/74`; partition `90/90`; Monster `47/47`; four V075 military contracts; Gate self-test `114/114`; MCP Bench PASS and clean stop | STEP10 remains isolated green. All 28 identities close, 12 exact-map, and 16 remain `REAUTHOR_REQUIRED`; production/human green are false. |
 
 The Stage 2 topology remains bound to
 `5cbd98e4027bc2cfd058c857e1a24a5f7c8c61291f1cb7ae7336bcf6851f6452`.
@@ -41,7 +41,8 @@ The required check name is exactly `V076 Reuse and Point-Inertia Gate`.
 The gate was queued without interrupting the active task and activated after
 the preserved PR90 Tooling V19 atomic boundary
 `a80ad3e107491d03e8a1ccf5379fcb44c705f951`. Once the current-Head check is
-green, development resumes at `V076_STAGE_4_EXACT_MILITARY_CARD_MAPPING_PENDING`.
+green, development resumes at
+`V076_STAGE4_MILITARY_AUTHORING_GAP_CLOSURE_ACTIVE_DEFINITION_RANK_COMBAT_PROFILE_ASSAULT_MISSION_AND_PHYSICAL_SPEED`.
 
 Ready, merge, release-tag, and production-cutover actions are forbidden until
 that exact check succeeds for the current PR Head. This Stage 4 evidence does

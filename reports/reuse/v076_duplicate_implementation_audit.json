@@ -2,8 +2,8 @@
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4",
-  "candidate_tree_sha": "3133d8c4f00ee5110336b8b8efb7f8fe60523d15",
+  "candidate_head_sha": "a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b",
+  "candidate_tree_sha": "c8c4577c832665f937888d7ad215821e90518710",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
@@ -11,6 +11,8 @@
     "scripts/v076/map",
     "scripts/v076/monster",
     "scripts/v076/direct_action",
+    "scripts/v076/military",
+    "data/diagnostics/v076_military_card_crosswalk_v1.json",
     "scripts/tools/v076",
     "scenes/tools/v076",
     "current card catalog and semantic services",
@@ -22,7 +24,7 @@
     "frozen Alpha 0.4-C Save/resume lineage"
   ],
   "static_counts": {
-    "v076_class_name_count": 19,
+    "v076_class_name_count": 20,
     "duplicate_v076_class_name_count": 0,
     "product_repo_pr90_tool_file_count": 0,
     "authoritative_domain_duplicate_owner_count": 0,
@@ -127,6 +129,11 @@
       "result": "Stage 4 registers one new private-input Owner while every reused dependency retains its existing tick, topology, catalog, asset-quantity, military-unit-state, and mission-contract boundary."
     },
     {
+      "source": "CardRuntimeCatalogV06Resource + frozen V075 military sources",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "One read-only Crosswalk Adapter closes 28 source identities, exact-maps 12 active records, and records 16 authoring gaps without creating a catalog, compiler, or Owner."
+    },
+    {
       "source": "PR64/PR80",
       "disposition": "REUSE_AS_TEST",
       "result": "Test patterns only; no registry execution, Save adapter, RNG adapter, Kernel, or dispatcher imported."
@@ -184,7 +191,9 @@
     {
       "boundary": "v06 military card to V076 DirectAction exact mapping",
       "record_count": 28,
-      "status": "UNVERIFIED"
+      "exact_mapped_count": 12,
+      "reauthor_required_count": 16,
+      "status": "PARTIAL"
     },
     {
       "boundary": "final atomic asset owner cutover",

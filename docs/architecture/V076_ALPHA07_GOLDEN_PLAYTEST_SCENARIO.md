@@ -22,7 +22,7 @@ It is a plan and evidence ledger, not a human-play result.
 | STEP07 | Inspect globe and select legal target | `PENDING` | Requires human use of the production map and typed target binding. |
 | STEP08 | Acquire and submit one legal card | `PENDING` | Requires one real card instance through acquisition, hand, target, and resolution Owners. |
 | STEP09 | Resolve production Monster move/consequence | `PENDING` | Current Stage 3 Bench cannot satisfy this step. |
-| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | Owner `7/7`, isolated integration `19/19`, physical ETA 45 ticks, one Kernel root/execution, no public batch/sushi track, warning-clean changed files, clean MCP stop. Exact 28-card mapping remains unverified. |
+| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | Owner `7/7`, Crosswalk `48/48`, isolated integration `25/25`, 28/28 identities, 12 exact mappings, 16 explicit authoring gaps, physical ETA 45 ticks, no public batch/sushi track, new-file warnings 0, hard errors 0, clean MCP stop. |
 | STEP11 | Observe economy/route/asset consequence | `PENDING` | Requires one atomic asset Owner and exact-once presentation. |
 | STEP12 | Observe AI action and privacy | `PENDING` | Requires production AI with viewer-scoped hidden-information proof. |
 | STEP13 | Reach victory qualification/final audit | `PENDING` | Requires a full human run without fixture state injection. |
@@ -36,8 +36,10 @@ it cannot be relabeled as a human or production pass for STEP06-STEP09.
 
 The Stage 4 Direct Action Bench is also diagnostic-only. It proves the generic
 private authorization, exact-once, geodesic ETA, mission, asset-consumption,
-and withdrawal path for STEP10, but it is not production or human evidence and
-does not certify all 28 military card mappings.
+and withdrawal path for STEP10. The same Bench now validates the single
+Crosswalk Adapter: 12 frozen active cards exact-map and 16 deferred cards remain
+`REAUTHOR_REQUIRED`. It is not production or human evidence and does not turn
+those 16 gaps into green mappings.
 
 STEP01, STEP06-STEP09, and STEP11-STEP15 remain pending. Any production or
 human Golden claim must come from the exact future production candidate and a

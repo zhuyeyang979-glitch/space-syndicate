@@ -1,8 +1,9 @@
 # V0.7.6 card certification matrix
 
-This is an inherited-evidence matrix at
-`2a365d465f199481da7fa1ef8f734e7525a136f5`, not a new card proof.
-`CHANGE_CLASS=DOCS_ONLY`; no Godot or current-head catalog suite was run.
+This matrix is bound to the focused Crosswalk implementation at
+`a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b`.
+`CHANGE_CLASS=CROSS_DOMAIN_INTEGRATION`; the scoped Crosswalk and inherited
+sentinels ran, while unrelated full-catalog production certification did not.
 
 ## What is actually inherited
 
@@ -27,7 +28,7 @@ This is an inherited-evidence matrix at
 | Supply/demand | 8 / 2 | Active compile readiness | Isolated owner/batch test evidence | `UNVERIFIED` | Not claimed |
 | Interaction/counter | 12 / 3 | Projection-only | No inherited execution certification | `UNVERIFIED` | Not claimed |
 | Monster | 32 / 8 | Projection-only | V0.7.5 group capability evidence only | `UNVERIFIED` — exact directional-move mappings verified: 0 | Not claimed |
-| Military | 28 / 7 | Projection-only | V0.7.5 group capability evidence only | `UNVERIFIED` — exact DirectAction mappings verified: 0 | Not claimed |
+| Military | 28 / 7 | Projection-only | V0.7.6 Stage 4 isolated Crosswalk | `PARTIAL_12_OF_28` — 16 `REAUTHOR_REQUIRED` | Not claimed |
 | Organization | 20 / 5 | Projection-only | Owner metadata remains pending | `UNVERIFIED` | Not claimed |
 
 The three active cohorts total 256; the four projection-only cohorts total 92.
@@ -37,9 +38,11 @@ profiles, and 8 legacy interaction effects.
 
 Stage 3's isolated Monster L1 route proves deterministic movement and replay,
 but it is not a card route and certifies none of the 32 monster catalog rows.
-Likewise, future military Direct Action mapping is still absent for all 28
-military rows. The matrix deliberately keeps those counts visible instead of
-resetting them or guessing individual green cards.
+The military Crosswalk closes all 28 source identities and fingerprints. The
+three frozen V0.7.5 active families supply 12 exact Direct Action bindings; the
+four deferred families supply 16 explicit authoring gaps. No legacy protection,
+terrain, cooldown, or persistent-unit value was guessed into an assault rule.
+The matrix keeps those 16 records visible instead of claiming false green.
 
 ## Monotonic certification axes
 

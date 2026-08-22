@@ -9484,3 +9484,24 @@ deleted. Evidence and the remaining action inventory are recorded in
   human counts stay 0. Production composition and `main.tscn` are unchanged;
   all 28 military card mappings remain `UNVERIFIED` and no full-world reproof
   was claimed.
+
+## V0.7.6 Stage 4 military card Crosswalk
+
+- Added one read-only `V076MilitaryCardCrosswalkV1` Adapter over the unique
+  `CardRuntimeCatalogV06Resource` source. All 28 military machine identities,
+  seven I-IV family ladders, and 28 canonical source fingerprints close without
+  copying card names, art, descriptions, or full price definitions.
+- The frozen V0.7.5 active catalog and balance profiles authorize exactly three
+  families / 12 cards. Orbital Bomber, Heavy Tank, Missile Emplacement, and Star
+  Ocean Battleship remain deferred, so 16 records are `REAUTHOR_REQUIRED` with
+  an explicit field-level report. No legacy protection or persistent-unit value
+  was converted into an assault rule and no numeric fallback was invented.
+- Focused verification passed: Crosswalk `48/48`, Owner `7/7`, extended Stage 4
+  Bench `25/25`, Kernel `74/74`, half-edge `90/90`, Monster geodesic `47/47`,
+  and all four V0.7.5 military contracts. Godot MCP ran the existing Stage 4
+  Bench with new-file warnings 0, hard errors 0, and a clean stop.
+- Bound the product delta to implementation commit
+  `a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b` and tree
+  `c8c4577c832665f937888d7ad215821e90518710`. STEP10 remains the same isolated
+  Golden step; production/human green, `main.tscn` changes, public batch entries,
+  shared sushi-track resolution, and full-world reproof all remain zero/false.

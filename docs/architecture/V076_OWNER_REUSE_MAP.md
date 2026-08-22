@@ -5,7 +5,7 @@ schema_version: space_syndicate.v076.owner_reuse_map.v1
 registry_id: V076_OWNER_REUSE_MAP
 
 This map enforces one Owner per domain at candidate head
-`bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4`. Consumers may adapt data or
+`a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b`. Consumers may adapt data or
 contracts, but they may not inherit authority by association.
 
 | Domain | Unique Owner | Reused source | Disposition | Consumer boundary |
@@ -20,6 +20,7 @@ contracts, but they may not inherit authority by association.
 | Semantic transform/cache | `CardSemanticCatalogService` | PR #62 compiler/schema | `ADOPT_AS_OWNER` | Deterministic transform only; not an executor. |
 | Passive AI/PlayerFace projection | Existing PR #63 descendants | PR #63 | `ADAPT_AS_CONSUMER` | Viewer/privacy patterns only; no production AI or gameplay authority. |
 | Private Direct Action input | `V076PrivateDirectActionInputOwnerV1` | PR #65 authorization pattern + V076 Kernel/half-edge + current catalog/assets/military + V075 mission core | `ADOPT_AS_OWNER` | Owns only the authorized envelope, own-hand revalidation, exact-once submission ledger, source-collision rejection, and Kernel root-command submission. It owns no tick, Authority Sequence, RNG, military unit state, asset quantity, topology, presentation, or card catalog. |
+| Military card Crosswalk | `V076PrivateDirectActionInputOwnerV1` (unchanged) | `CardRuntimeCatalogV06Resource` + V076 authority codec + frozen V075 active catalog/balance/mission contract | `ADAPT_AS_CONSUMER` | `V076MilitaryCardCrosswalkV1` is one read-only Adapter: 28 identities close, 12 exact-map, 16 remain `REAUTHOR_REQUIRED`. It owns no source definition, numeric authoring, input ledger, movement, unit state, asset quantity, or presentation. |
 | Current six-color asset quantity | `PlayerManaRuntimeController` | Current production descendant | `ADAPT_AS_CONSUMER` | Stage 4 may use reservation/settlement APIs only; it may not copy balances or create an asset ledger. |
 | Current military unit state | `MilitaryRuntimeController` | Current production descendant + V075 mission-core contract | `ADAPT_AS_CONSUMER` | Stage 4 delegates `ASSAULT_REGION` or `ASSAULT_MONSTER` once, follows a physical geodesic ETA, then withdraws. `GUARD`, `PROTECT`, teleport, retarget, and persistent commands are forbidden. |
 | Codex/PlayerFace presentation | `CardCodexPublicSourceService` | PR #66 current descendant | `ADOPT_AS_OWNER` | DTO/presentation aliases cannot become rules. |
@@ -45,12 +46,12 @@ contracts, but they may not inherit authority by association.
   `b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40`,
   348 cards / 87 families.
 
-The 32 monster cards and 28 military cards retain `UNVERIFIED` exact V076
-mapping. Neither historical capability coverage, Stage 3 isolated movement,
-nor the Stage 4 generic Direct Action path certifies those individual card
-records.
+The 32 monster cards retain `UNVERIFIED` exact V076 mapping. Military mapping
+is now honestly `PARTIAL_12_OF_28`: all 28 source identities and fingerprints
+close, while 16 deferred records require explicit authoring before they can
+enter Alpha 0.7.
 
 Stage 4 evidence is bound to implementation tree
-`3133d8c4f00ee5110336b8b8efb7f8fe60523d15`: the private Direct Action domain
+`c8c4577c832665f937888d7ad215821e90518710`: the private Direct Action domain
 has one Owner, no supersession, no second Kernel/topology/catalog/asset/military
 Owner, and no production composition cutover.
