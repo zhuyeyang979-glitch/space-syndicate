@@ -74,8 +74,8 @@
     },
     {
       "domain_id": "future.private_direct_action_input",
-      "lifecycle": "PENDING_FUTURE_DOMAIN",
-      "owner_component_id": ""
+      "lifecycle": "ACTIVE_CURRENT_DOMAIN",
+      "owner_component_id": "component.v076.private_direct_action_input"
     },
     {
       "domain_id": "future.v076_adapter_acceptance",
@@ -691,6 +691,179 @@
       "golden_scenario_steps": ["STEP05"]
     },
     {
+      "component_id": "component.v076.private_direct_action_input",
+      "class_name": "V076PrivateDirectActionInputOwnerV1",
+      "path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "domain_id": "future.private_direct_action_input",
+      "component_role": "OWNER",
+      "production_reachable": true,
+      "writes_authority": true,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": true,
+      "owns_presentation": false,
+      "owner_component_id": "component.v076.private_direct_action_input",
+      "owner_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "reuse_disposition": "ADOPT_AS_OWNER",
+      "reuse_source_ids": [
+        "reuse.pr65.authorized_semantic_envelope",
+        "reuse.v076.kernel.current",
+        "reuse.v076.map.current",
+        "reuse.current.card_runtime_catalog",
+        "reuse.current.player_mana_asset_owner",
+        "reuse.current.military_runtime_owner",
+        "reuse.v075.military_mission_core"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.pr65.authorized_semantic_envelope",
+        "reuse.v076.kernel.current",
+        "reuse.v076.map.current",
+        "reuse.current.card_runtime_catalog",
+        "reuse.current.player_mana_asset_owner",
+        "reuse.current.military_runtime_owner",
+        "reuse.v075.military_mission_core"
+      ],
+      "new_component_justification": "Stage 4 needs one private input authority for authorized envelopes, own-hand revalidation, exact-once submission identity, source-collision rejection, and Kernel root-command submission. PR65 may authorize but may not execute; the Kernel may order and replay but may not own private hand membership; the partition, catalog, asset, and military unit-state Owners retain their existing domains. This Owner may not own tick, Authority Sequence, RNG, military unit state, asset quantity, map topology, presentation, or card definitions.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "focused_test_ids": [
+        "v076_private_direct_action_input_owner_test",
+        "v076_private_military_direct_action_integration_test"
+      ],
+      "golden_scenario_steps": ["STEP10"],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 7,
+        "reuse_candidate_ids": [
+          "reuse.pr65.authorized_semantic_envelope",
+          "reuse.v076.kernel.current",
+          "reuse.v076.map.current",
+          "reuse.current.card_runtime_catalog",
+          "reuse.current.player_mana_asset_owner",
+          "reuse.current.military_runtime_owner",
+          "reuse.v075.military_mission_core"
+        ],
+        "selected_reuse_disposition": "ADOPT_AS_OWNER",
+        "why_existing_owner_cannot_be_extended": "PR65 is an authorization Consumer pattern and cannot execute; the Kernel cannot own private hand membership; the partition, catalog, asset, and military Owners cannot absorb cross-domain input authorization without violating their single-owner boundaries.",
+        "why_adapter_is_insufficient": "A stateless Adapter can translate an accepted command but cannot own the exact-once submission ledger or reject same-source payload collisions authoritatively.",
+        "why_new_owner_is_required": "The previously pending private Direct Action domain needs exactly one authority for private source authorization and root-command submission identity while every reused dependency remains the sole Owner of its own state."
+      }
+    },
+    {
+      "component_id": "component.v076.private_direct_action_reducer",
+      "class_name": "V076PrivateDirectActionReducerV1",
+      "path": "scripts/v076/direct_action/v076_private_direct_action_reducer_v1.gd",
+      "domain_id": "future.private_direct_action_input",
+      "component_role": "REDUCER",
+      "production_reachable": true,
+      "writes_authority": true,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.v076.private_direct_action_input",
+      "owner_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.v076.kernel.current",
+        "reuse.v076.map.current",
+        "reuse.v075.military_mission_core"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v076.kernel.current",
+        "reuse.v076.map.current",
+        "reuse.v075.military_mission_core"
+      ],
+      "new_component_justification": "Pure fresh-handler reducer for the private input Owner's Kernel-owned domain state. It validates the canonical half-edge route, waits until the scheduled physical ETA, resolves one V075 mission contract, and records withdrawal intent; it owns no tick, RNG, military unit state, assets, topology, catalog, or presentation.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "focused_test_ids": [
+        "v076_private_direct_action_input_owner_test",
+        "v076_private_military_direct_action_integration_test"
+      ],
+      "golden_scenario_steps": ["STEP10"],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 3,
+        "reuse_candidate_ids": [
+          "reuse.v076.kernel.current",
+          "reuse.v076.map.current",
+          "reuse.v075.military_mission_core"
+        ],
+        "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
+        "why_existing_owner_cannot_be_extended": "The private Direct Action Owner remains the authority; the Kernel and mission core stay unchanged and are consumed through their existing contracts.",
+        "why_adapter_is_insufficient": "A passive adapter cannot implement the Kernel's pure fresh-handler reducer ABI or atomically record the accepted mission receipt in owner-bound domain state.",
+        "why_new_owner_is_required": "NOT_REQUIRED; component.v076.private_direct_action_input remains the unique Owner and this reducer may write only under that binding."
+      }
+    },
+    {
+      "component_id": "component.v076.private_military_direct_action_bench",
+      "class_name": "V076PrivateMilitaryDirectActionBench",
+      "path": "scripts/tools/v076/v076_private_military_direct_action_bench.gd",
+      "domain_id": "future.private_direct_action_input",
+      "component_role": "DIAGNOSTIC_BENCH",
+      "production_reachable": false,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": true,
+      "owner_component_id": "component.v076.private_direct_action_input",
+      "owner_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "reuse_disposition": "REUSE_AS_TEST",
+      "reuse_source_ids": [
+        "reuse.pr65.authorized_semantic_envelope",
+        "reuse.v076.kernel.current",
+        "reuse.v076.map.current",
+        "reuse.current.player_mana_asset_owner",
+        "reuse.current.military_runtime_owner",
+        "reuse.v075.military_mission_core"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.pr65.authorized_semantic_envelope",
+        "reuse.v076.kernel.current",
+        "reuse.v076.map.current",
+        "reuse.current.player_mana_asset_owner",
+        "reuse.current.military_runtime_owner",
+        "reuse.v075.military_mission_core"
+      ],
+      "new_component_justification": "Editable isolated production-wiring Bench that proves STEP10 without changing main.tscn. Its visible PASS is diagnostic evidence only and explicitly leaves production and human green false.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "TEST_ORACLE_ONLY",
+      "focused_test_ids": [
+        "v076_private_military_direct_action_integration_test"
+      ],
+      "golden_scenario_steps": ["STEP10"]
+    },
+    {
       "component_id": "component.current.card_runtime_catalog",
       "class_name": "CardRuntimeCatalogService",
       "path": "scripts/runtime/card_runtime_catalog_service.gd",
@@ -866,9 +1039,10 @@
     },
     {
       "domain_id": "future.private_direct_action_input",
-      "unique_owner": "UNASSIGNED_PENDING_ATOMIC_CUTOVER",
-      "owner_count": 0,
-      "binding_status": "PENDING"
+      "unique_owner": "V076PrivateDirectActionInputOwnerV1",
+      "owner_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "owner_count": 1,
+      "binding_status": "ACTIVE_STAGE4_ISOLATED"
     },
     {
       "domain_id": "future.v076_adapter_acceptance",
@@ -982,6 +1156,52 @@
       },
       "adapted_scope": "Capability-bound own-hand membership, exact source revalidation, replay/collision rejection, and private authorization patterns.",
       "forbidden_scope": "The legacy v06 source port may not become an execution owner."
+    },
+    {
+      "reuse_id": "reuse.current.card_runtime_catalog",
+      "domain_id": "current.gameplay_card_definitions",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "class_name": "CardRuntimeCatalogService",
+        "path": "scripts/runtime/card_runtime_catalog_service.gd"
+      },
+      "adapted_scope": "Exact authored card-definition lookup for the accepted private source binding.",
+      "forbidden_scope": "The private Direct Action Owner may consume definitions but may not define, copy, or mutate the card catalog."
+    },
+    {
+      "reuse_id": "reuse.current.player_mana_asset_owner",
+      "domain_id": "current.player_six_color_asset_quantity",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "class_name": "PlayerManaRuntimeController",
+        "path": "scripts/runtime/player_mana_runtime_controller.gd"
+      },
+      "adapted_scope": "Availability, reservation, commit, consume, and release APIs from the current six-color asset-quantity Owner.",
+      "forbidden_scope": "No Stage 4 ledger may copy balances, reserve independently, or become an asset-quantity Owner."
+    },
+    {
+      "reuse_id": "reuse.current.military_runtime_owner",
+      "domain_id": "current.military_unit_state",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "class_name": "MilitaryRuntimeController",
+        "path": "scripts/runtime/military_runtime_controller.gd",
+        "scene": "scenes/runtime/MilitaryRuntimeController.tscn"
+      },
+      "adapted_scope": "Existing military unit roster and command execution ownership; Stage 4 may delegate one accepted mission but may not duplicate unit state.",
+      "forbidden_scope": "No private input ledger may own, copy, tick, save, or present military units. GUARD and PROTECT are forbidden Stage 4 mission inputs."
+    },
+    {
+      "reuse_id": "reuse.v075.military_mission_core",
+      "domain_id": "future.private_direct_action_input",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "class_name": "V075MilitaryMissionCore",
+        "path": "scripts/v075/military/v075_military_mission_core.gd",
+        "bench": "scenes/tools/v075/V075MilitaryMissionBench.tscn"
+      },
+      "adapted_scope": "Exactly two one-shot mission contracts: ASSAULT_REGION and ASSAULT_MONSTER, locked target identity, one resolution, withdrawal, and typed asset/card lifecycle intents.",
+      "forbidden_scope": "No GUARD, PROTECT, retarget, teleport, persistent military action, public batch, or direct asset/card-zone mutation."
     },
     {
       "reuse_id": "reuse.pr66.codex_playerface",

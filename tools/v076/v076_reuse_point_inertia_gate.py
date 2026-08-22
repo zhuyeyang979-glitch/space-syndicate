@@ -913,6 +913,55 @@ def _supersession_chain_is_atomic(
     return True
 
 
+def _pending_domain_first_owner_activation(
+    domain_id: str,
+    old_domains: dict[str, dict[str, Any]],
+    new_domains: dict[str, dict[str, Any]],
+    old_components: dict[str, dict[str, Any]],
+    new_components: dict[str, dict[str, Any]],
+    old_owner_row: dict[str, Any] | None = None,
+) -> bool:
+    """Allow only the first atomic Owner of a constitutionally pending domain."""
+    old_domain = old_domains.get(domain_id, {})
+    new_domain = new_domains.get(domain_id, {})
+    old_owner_id = str(old_domain.get("owner_component_id", ""))
+    new_owner_id = str(new_domain.get("owner_component_id", ""))
+    new_owner = new_components.get(new_owner_id, {})
+    old_domain_owners = [
+        component
+        for component in old_components.values()
+        if isinstance(component, dict)
+        and component.get("domain_id") == domain_id
+        and component.get("component_role") == "OWNER"
+        and component.get("production_reachable") is True
+    ]
+    legacy_pending_placeholder = bool(
+        not old_domain
+        and isinstance(old_owner_row, dict)
+        and old_owner_row.get("owner_count") == 0
+        and old_owner_row.get("binding_status") == "PENDING"
+        and str(old_owner_row.get("unique_owner", "")).startswith("UNASSIGNED_")
+    )
+    return bool(
+        (
+            old_domain.get("lifecycle") == "PENDING_FUTURE_DOMAIN"
+            or legacy_pending_placeholder
+        )
+        and old_owner_id == ""
+        and not old_domain_owners
+        and new_domain.get("lifecycle") == "ACTIVE_CURRENT_DOMAIN"
+        and new_owner_id
+        and new_owner_id not in old_components
+        and isinstance(new_owner, dict)
+        and new_owner.get("domain_id") == domain_id
+        and new_owner.get("component_role") == "OWNER"
+        and new_owner.get("production_reachable") is True
+        and new_owner.get("writes_authority") is True
+        and new_owner.get("owner_component_id") == new_owner_id
+        and new_owner.get("owner_path") == new_owner.get("path")
+    )
+
+
 def _supersession_graph_is_acyclic(entries: list[dict[str, Any]]) -> bool:
     edges: dict[str, str] = {}
     for row in entries:
@@ -1960,6 +2009,15 @@ def _monotonic_transition_failures(
     for domain_id, old_owner_row in old_owners.items():
         new_owner_row = new_owners.get(domain_id)
         if not new_owner_row or old_owner_row.get("unique_owner") == new_owner_row.get("unique_owner"):
+            continue
+        if _pending_domain_first_owner_activation(
+            domain_id,
+            old_domains,
+            new_domains,
+            old_components,
+            new_components,
+            old_owner_row,
+        ):
             continue
         old_component_id = str(old_domains.get(domain_id, {}).get("owner_component_id", ""))
         new_component_id = str(new_domains.get(domain_id, {}).get("owner_component_id", ""))
@@ -3145,6 +3203,15 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
     for domain_id, old in base_owners.items():
         new = head_owners.get(domain_id)
         if not new or old.get("unique_owner") == new.get("unique_owner"):
+            continue
+        if _pending_domain_first_owner_activation(
+            domain_id,
+            base_domains,
+            head_domains,
+            base_components,
+            head_components,
+            old,
+        ):
             continue
         old_component_id = str(base_domains.get(domain_id, {}).get("owner_component_id", ""))
         new_component_id = str(head_domains.get(domain_id, {}).get("owner_component_id", ""))

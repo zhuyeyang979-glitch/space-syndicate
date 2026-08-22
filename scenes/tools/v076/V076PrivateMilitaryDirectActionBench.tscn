@@ -1,0 +1,79 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/v076/v076_private_military_direct_action_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="2_coordinator"]
+[ext_resource type="Script" path="res://scripts/v076/simulation/v076_deterministic_kernel.gd" id="3_kernel"]
+[ext_resource type="Script" path="res://scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd" id="4_owner"]
+
+[node name="V076PrivateMilitaryDirectActionBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.027, 0.047, 0.086, 1)
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -390.0
+offset_top = -170.0
+offset_right = 390.0
+offset_bottom = 170.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 24
+
+[node name="Content" type="VBoxContainer" parent="Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576, 0.773, 0.992, 1)
+theme_override_font_sizes/font_size = 25
+text = "V0.7.6 · 私有军事 Direct Action"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Panel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 34
+text = "RUNNING · Stage 4 isolated"
+horizontal_alignment = 1
+
+[node name="DetailLabel" type="Label" parent="Panel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.796, 0.835, 0.91, 1)
+theme_override_font_sizes/font_size = 18
+text = "验证私有授权、exact-once、物理 ETA 与任务后撤离…"
+horizontal_alignment = 1
+
+[node name="GameRuntimeCoordinator" parent="." instance=ExtResource("2_coordinator")]
+
+[node name="V076DeterministicKernel" type="Node" parent="."]
+script = ExtResource("3_kernel")
+
+[node name="V076PrivateDirectActionInputOwnerV1" type="Node" parent="."]
+script = ExtResource("4_owner")

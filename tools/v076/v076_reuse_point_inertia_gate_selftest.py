@@ -420,6 +420,71 @@ def _add_non_owner(
     return component
 
 
+def _pending_domain_first_owner_fixture() -> gate.ValidationInput:
+    data = _valid_input()
+    domain_id = "future.private_direct_action_input"
+    component_id = "component.stage4.private_direct_action.owner"
+    component_path = "scripts/v076/direct_action/private_direct_action_owner.gd"
+    pending_domain = {
+        "domain_id": domain_id,
+        "lifecycle": "PENDING_FUTURE_DOMAIN",
+        "owner_component_id": "",
+    }
+    pending_owner_row = {
+        "domain_id": domain_id,
+        "unique_owner": "UNASSIGNED_PENDING_ATOMIC_CUTOVER",
+        "owner_count": 0,
+        "binding_status": "PENDING",
+    }
+    data.baseline_authorities["historical_reuse"][
+        "unique_owner_domains"
+    ].append(copy.deepcopy(pending_owner_row))
+    registry = data.authorities["historical_reuse"]
+    registry["domain_inventory"].append(copy.deepcopy(pending_domain))
+    registry["unique_owner_domains"].append(copy.deepcopy(pending_owner_row))
+
+    owner = _component(
+        component_id,
+        component_path,
+        domain_id,
+        "OWNER",
+        production_reachable=True,
+        reuse_disposition="ADOPT_AS_OWNER",
+        include_reuse_scan=True,
+    )
+    owner["owns_tick"] = False
+    owner["change_class"] = "CROSS_DOMAIN_INTEGRATION"
+    owner["owner_component_id"] = component_id
+    owner["owner_path"] = component_path
+    registry["component_inventory"].append(owner)
+    registry["domain_inventory"][-1] = {
+        "domain_id": domain_id,
+        "lifecycle": "ACTIVE_CURRENT_DOMAIN",
+        "owner_component_id": component_id,
+    }
+    registry["unique_owner_domains"][-1] = {
+        "domain_id": domain_id,
+        "unique_owner": owner["class_name"],
+        "owner_path": component_path,
+        "owner_count": 1,
+        "binding_status": "ACTIVE_STAGE4_ISOLATED",
+    }
+    scope = data.authorities["inherited_green"]["canonical_change_scope"]
+    scope["change_classes"] = ["CROSS_DOMAIN_INTEGRATION"]
+    scope["affected_domains"] = [domain_id]
+    scope["affected_owners"] = [component_id]
+    scope["focused_tests"] = list(owner["focused_test_ids"])
+    scope["why_focused_tests_are_sufficient"] = (
+        "The first pending-domain Owner is registered and implemented atomically."
+    )
+    data.changed_paths = [{"status": "A", "path": component_path}]
+    data.gate_changed_paths = copy.deepcopy(data.changed_paths)
+    if data.component_declared_classes is not None:
+        data.component_declared_classes[component_path] = owner["class_name"]
+    data.pr_body = _pr_body(data)
+    return data
+
+
 def _prepare_atomic_replacement(data: gate.ValidationInput) -> dict[str, Any]:
     registry = _registry(data)
     old = registry["component_inventory"][0]
@@ -3031,6 +3096,17 @@ print('not-json'); raise SystemExit(2)
         "PASS",
         "PASS" if not unicode_path_failures else "FAIL",
         unicode_path_failures,
+    )
+
+    pending_activation_report = gate.validate_model(
+        _pending_domain_first_owner_fixture()
+    )
+    append_direct_case(
+        "113",
+        "a pending future domain may atomically register its first unique Owner",
+        "PASS",
+        str(pending_activation_report.get("status", "FAIL")),
+        [str(value) for value in pending_activation_report.get("failures", [])],
     )
 
     pass_count = sum(result["status"] == "PASS" for result in results)

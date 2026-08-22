@@ -167,36 +167,60 @@
   },
   "canonical_change_scope": {
     "change_classes": [
-      "TOOLING_ONLY",
-      "DOCS_ONLY"
+      "CROSS_DOMAIN_INTEGRATION",
+      "DOMAIN_CORE",
+      "TEST_ORACLE_ONLY",
+      "TOOLING_ONLY"
     ],
     "affected_domains": [
-      "v076.governance.reuse_and_point_inertia"
+      "future.private_direct_action_input",
+      "v076.execution_order_tick_rng_snapshot_replay",
+      "v076.spherical_partition_authority",
+      "v076.monster_l1_directional_geodesic_move",
+      "current.gameplay_card_definitions",
+      "current.player_six_color_asset_quantity",
+      "current.military_unit_state"
     ],
-    "affected_owners": [],
+    "affected_owners": [
+      "component.v076.private_direct_action_input",
+      "component.v076.kernel",
+      "component.v076.partition",
+      "component.v076.monster_l1",
+      "component.current.card_runtime_catalog",
+      "PlayerManaRuntimeController",
+      "MilitaryRuntimeController"
+    ],
     "focused_tests": [
+      "v076_private_direct_action_input_owner_test",
+      "v076_private_military_direct_action_integration_test",
+      "v076_deterministic_kernel_test",
+      "v076_shared_half_edge_partition_test",
+      "v076_shared_half_edge_partition_2000_seed_test",
+      "v076_monster_l1_directional_geodesic_move_test",
+      "v075_military_two_task_contract_test",
+      "v075_military_no_guard_test",
+      "v075_military_no_retarget_test",
+      "v075_military_withdraw_to_discard_test",
       "v076_reuse_point_inertia_gate_selftest",
       "v076_reuse_point_inertia_gate_validate",
       "check_v06_mechanic_authority_selftest"
     ],
     "inherited_sentinels": [
-      "main_gd_architecture_gate_test",
-      "game_action_semantic_protocol_v1_test",
-      "runtime_authority_audit",
-      "player_facing_privacy_boundary_test",
-      "card_semantic_architecture_scan_test",
-      "main_runtime_composition_test"
+      "V076_KERNEL",
+      "V076_HALF_EDGE_SPHERE",
+      "PR65_AUTHORIZATION_PATTERN",
+      "REUSE_POINT_INERTIA_GATE"
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "Only governance JSON, static Python Tooling, CI, reports and documentation change; no product or rule byte changes."
+    "why_focused_tests_are_sufficient": "Stage 4 is an isolated cross-domain integration bounded to one private Direct Action input Owner and its direct consumers. It does not cut over main.tscn, alter inherited Owner formulas, certify all military cards, or claim production/human green."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
   "point_inertia_gate_queued": true,
   "current_task_interrupted_by_gate": false,
   "current_task_result_preserved": true,
-  "product_development_resume_target": "V076_STAGE_4_PENDING_OWNER_REGISTRATION",
+  "product_development_resume_target": "V076_STAGE_4_PRIVATE_DIRECT_ACTION_ISOLATED_IMPLEMENTATION",
   "required_check_name": "V076 Reuse and Point-Inertia Gate",
   "agent_merge_requires_reuse_gate": true
 }
