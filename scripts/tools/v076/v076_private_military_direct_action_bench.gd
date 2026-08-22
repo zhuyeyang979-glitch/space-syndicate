@@ -16,6 +16,12 @@ const MilitaryProfileCatalog := preload(
 const SemanticCatalogResource := preload(
 	"res://scripts/cards/card_runtime_catalog_v06_resource.gd"
 )
+const ReplayRunner := preload(
+	"res://scripts/v076/simulation/v076_replay_runner.gd"
+)
+const DirectActionReducer := preload(
+	"res://scripts/v076/direct_action/v076_private_direct_action_reducer_v1.gd"
+)
 const ACTIVE_CATALOG_PATH := "res://data/v075/v075_combat_active_catalog.json"
 const BALANCE_DEFAULTS_PATH := "res://docs/rules/v075_combat_balance_defaults.json"
 
@@ -234,7 +240,8 @@ func _run_bench() -> void:
 			== int(submitted.get("eta_ticks", -1))
 			and int(submitted.get("total_distance_mu", 0)) > 0
 			and str(submitted.get("eta_receipt_fingerprint", "")).length() == 64,
-		"the exact private card/action binding submits one future geodesic Kernel command"
+		"the exact private card/action binding submits one future geodesic Kernel command (%s)"
+			% str(submitted.get("reason", ""))
 	)
 	var duplicate_submission := direct_action_owner.submit_private_military_direct_action(bundle, request)
 	_expect(
@@ -291,27 +298,81 @@ func _run_bench() -> void:
 		"no teleport or early mission effect occurs along the geodesic route"
 	)
 	var arrival := kernel.advance_ticks(1)
-	var settled := direct_action_owner.settle_completed_submission(SUBMISSION_ID)
+	var arrival_state := kernel.domain_state(
+		V076PrivateDirectActionInputOwnerV1.DOMAIN_ID
+	)
+	var arrival_entry := ((arrival_state.get(
+		"submission_ledger", {}
+	) as Dictionary).get(SUBMISSION_ID, {}) as Dictionary)
+	var arrival_settlement := direct_action_owner.settle_completed_submission(
+		SUBMISSION_ID
+	)
+	_expect(
+		bool(arrival.get("accepted", false))
+			and str(arrival_entry.get("phase", ""))
+				== DirectActionReducer.PHASE_ARRIVED
+			and int(arrival_entry.get("arrival_tick", -1))
+				== int(submitted.get("scheduled_tick", -2))
+			and (arrival_entry.get("mission_receipt", {}) as Dictionary).is_empty()
+			and not bool(arrival_settlement.get("accepted", true))
+			and military.roster_snapshot(true).size() == 1,
+		"the exact ETA tick records ARRIVED without attacking or withdrawing"
+	)
+	var execution := kernel.advance_ticks(1)
+	var execution_state := kernel.domain_state(
+		V076PrivateDirectActionInputOwnerV1.DOMAIN_ID
+	)
+	var execution_entry := ((execution_state.get(
+		"submission_ledger", {}
+	) as Dictionary).get(SUBMISSION_ID, {}) as Dictionary)
+	var execution_settlement := direct_action_owner.settle_completed_submission(
+		SUBMISSION_ID
+	)
+	var mission_receipt := execution_entry.get(
+		"mission_receipt", {}
+	) as Dictionary
+	_expect(
+		bool(execution.get("accepted", false))
+			and str(execution_entry.get("phase", ""))
+				== DirectActionReducer.PHASE_EXECUTED_ONCE
+			and int(execution_entry.get("execution_count", 0)) == 1
+			and int(execution_entry.get("execution_tick", -1))
+				== int(submitted.get("scheduled_tick", -2)) + 1
+			and not bool(execution_settlement.get("accepted", true))
+			and military.roster_snapshot(true).size() == 1,
+		"the next Kernel tick executes exactly one locked assault and cannot settle early"
+	)
+	var withdrawal := kernel.advance_ticks(1)
 	var domain_state := kernel.domain_state(
 		V076PrivateDirectActionInputOwnerV1.DOMAIN_ID
 	)
 	var ledger := domain_state.get("submission_ledger", {}) as Dictionary
 	var entry := ledger.get(SUBMISSION_ID, {}) as Dictionary
-	var mission_receipt := entry.get("mission_receipt", {}) as Dictionary
+	var settled := direct_action_owner.settle_completed_submission(SUBMISSION_ID)
+	mission_receipt = entry.get("mission_receipt", {}) as Dictionary
 	_expect(
-		bool(arrival.get("accepted", false))
+		bool(withdrawal.get("accepted", false))
+			and str(entry.get("phase", ""))
+				== DirectActionReducer.PHASE_WITHDRAWAL_READY
+			and int(entry.get("withdrawal_intent_count", 0)) == 1
 			and bool(settled.get("accepted", false))
 			and bool(settled.get("withdrawn", false))
 			and military.roster_snapshot(true).is_empty(),
-		"arrival executes one mission through the existing military Owner, then withdraws"
+		"the third lifecycle tick emits one withdrawal intent, then the existing unit Owner removes the unit"
 	)
 	_expect(
 		str(mission_receipt.get("outcome", "")) == "resolved"
 			and str(mission_receipt.get("mission_state_after", "")) == "withdrawn"
+			and int(mission_receipt.get("allocated_damage_total", 0))
+				== int((MilitaryProfileCatalog.new().profile_by_id(
+					str(submitted.get("profile_id", ""))
+				).get("assault_region_profile", {}) as Dictionary).get(
+					"damage_budget", -1
+				))
 			and int(mission_receipt.get("retarget_count", -1)) == 0
 			and int(mission_receipt.get("persistent_source_count", -1)) == 0
 			and int(mission_receipt.get("bound_action_count", -1)) == 0,
-		"V075 mission contract resolves once with no retarget or persistent action"
+		"the V075 mission contract emits Profile-authored damage once with no retarget or persistence"
 	)
 	var asset_after := assets.availability_snapshot(
 		AuthorizationFixture.AI_ACTOR_INDEX
@@ -336,6 +397,31 @@ func _run_bench() -> void:
 			) == asset_after,
 		"settlement replay cannot consume assets or withdraw twice"
 	)
+	var lifecycle_before_idle := kernel.domain_state(
+		V076PrivateDirectActionInputOwnerV1.DOMAIN_ID
+	)
+	var idle_advance := kernel.advance_ticks(3)
+	var lifecycle_after_idle := kernel.domain_state(
+		V076PrivateDirectActionInputOwnerV1.DOMAIN_ID
+	)
+	_expect(
+		bool(idle_advance.get("accepted", false))
+			and lifecycle_after_idle == lifecycle_before_idle
+			and kernel.execution_log().size() == 3,
+		"no attack, retarget, repeat, or second withdrawal occurs after withdrawal"
+	)
+	var replay_envelope := kernel.build_replay_recipe()
+	var replay := ReplayRunner.new().verify(
+		replay_envelope.get("recipe", {}) as Dictionary,
+		str(replay_envelope.get("recipe_sha256", "")),
+		{V076PrivateDirectActionInputOwnerV1.DOMAIN_ID: DirectActionReducer}
+	)
+	_expect(
+		str(replay.get("status", "")) == "PASS"
+			and int(replay.get("root_command_count", -1)) == 1
+			and int(replay.get("derived_command_count", -1)) == 2,
+		"root-only replay regenerates the exact execute and withdrawal lineage"
+	)
 	var final_debug := direct_action_owner.debug_snapshot()
 	_expect(
 		int(final_debug.get("submission_count", 0)) == 1
@@ -356,7 +442,15 @@ func _run_bench() -> void:
 		"mission_receipt_fingerprint": str(mission_receipt.get(
 			"receipt_fingerprint", ""
 		)),
+		"arrival_tick": int(entry.get("arrival_tick", -1)),
+		"execution_tick": int(entry.get("execution_tick", -1)),
+		"withdrawal_ready_tick": int(entry.get("withdrawal_ready_tick", -1)),
+		"lifecycle_phase": str(entry.get("phase", "")),
+		"lifecycle_transition_order": (entry.get(
+			"transition_order", []
+		) as Array).duplicate(),
 		"kernel_root_command_count": kernel.root_commands().size(),
+		"kernel_derived_command_count": kernel.derived_commands().size(),
 		"kernel_execution_count": kernel.execution_log().size(),
 		"public_batch_entry_count": 0,
 		"shared_sushi_track_resolution_count": 0,
@@ -431,7 +525,7 @@ func _finish(evidence: Dictionary) -> void:
 	status_label.text = "PASS · Stage 4 isolated" if passed else "FAIL · Stage 4 isolated"
 	status_label.modulate = Color("#86efac") if passed else Color("#fca5a5")
 	detail_label.text = (
-		"私有授权 → Kernel 根命令 → 半边球 ETA → 一次任务 → 撤离\n"
+		"私有授权 → 物理 ETA → 到达 → 攻击一次 → 撤离\n"
 		+ "Crosswalk：28/28 exact · 0 reauthor · Profile 权威唯一\n"
 		+ "允许：ASSAULT_REGION / ASSAULT_MONSTER · 公共批次=0\n"
 		+ "checks=%d  failures=%d  production=false  human=false"

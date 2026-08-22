@@ -27,7 +27,7 @@ const DomainReducer := preload(
 const SCHEMA_VERSION := 1
 const DOMAIN_ID := "future.private_direct_action_input"
 const OWNER_ID := "component.v076.private_direct_action_input"
-const COMMAND_TYPE := "execute_private_military_direct_action"
+const COMMAND_TYPE := DomainReducer.COMMAND_TYPE_ARRIVE
 const DOMAIN_PRIORITY := 40
 const MISSION_ASSAULT_REGION := "ASSAULT_REGION"
 const MISSION_ASSAULT_MONSTER := "ASSAULT_MONSTER"
@@ -212,8 +212,7 @@ func submit_private_military_direct_action(
 	):
 		return _reject("private_direct_action_catalog_definition_not_military")
 	var card_rank: int = int(_card_catalog_owner.rank(catalog_card_id))
-	var military_damage: int = int(catalog_definition.get("military_damage", 0))
-	if card_rank < 1 or card_rank > 4 or military_damage < 1:
+	if card_rank < 1 or card_rank > 4:
 		return _reject("private_direct_action_catalog_authority_invalid")
 	var authorized_card_id := str((revalidated.get(
 		"instance_decision_state", {}
@@ -307,13 +306,23 @@ func submit_private_military_direct_action(
 		)),
 		asset_reservation_id
 	)
+	var region_profile := profile.get("assault_region_profile", {}) as Dictionary
+	var monster_profile := profile.get("assault_monster_profile", {}) as Dictionary
+	var region_damage_budget := int(region_profile.get("damage_budget", 0))
+	var monster_damage := int(monster_profile.get("damage", 0))
+	if region_damage_budget < 1 or monster_damage < 1:
+		_asset_quantity_owner.release_reservation(
+			asset_reservation_id,
+			"private_direct_action_profile_combat_invalid"
+		)
+		return _reject("private_direct_action_profile_combat_invalid")
 	var card_authority: Dictionary = MissionCore.build_card_authority(
 		str((revalidated.get("instance_decision_state", {}) as Dictionary).get(
 			"card_id", ""
 		)),
 		card_rank,
-		military_damage,
-		military_damage,
+		region_damage_budget,
+		monster_damage,
 		str(request.get("source_effect_id", "")),
 		int(asset_commit.get("revision", asset_plan.get("expected_revision", 0)))
 	)
@@ -334,7 +343,7 @@ func submit_private_military_direct_action(
 		return _reject("private_direct_action_mission_lock_rejected")
 
 	var payload: Dictionary = {
-		"schema_version": SCHEMA_VERSION,
+		"schema_version": DomainReducer.ROOT_PAYLOAD_SCHEMA_VERSION,
 		"submission_id": submission_id,
 		"authorization_bundle_fingerprint": str(revalidated.get(
 			"bundle_fingerprint", ""
@@ -366,7 +375,7 @@ func submit_private_military_direct_action(
 	payload["payload_fingerprint"] = StateCodec.fingerprint(
 		_payload_without_fingerprint(payload)
 	)
-	var command_id: String = "v076.private-direct-action.%s" % submission_id
+	var command_id: String = "v076.private-direct-action.%s.arrive" % submission_id
 	var built: Dictionary = AuthorityCommand.build(
 		command_id,
 		DOMAIN_ID,
@@ -427,6 +436,8 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 	if not ledger.has(submission_id):
 		return _reject("private_direct_action_mission_not_arrived")
 	var entry: Dictionary = ledger[submission_id] as Dictionary
+	if str(entry.get("phase", "")) != DomainReducer.PHASE_WITHDRAWAL_READY:
+		return _reject("private_direct_action_mission_withdrawal_not_ready")
 	var mission_receipt: Dictionary = entry.get("mission_receipt", {}) as Dictionary
 	if not bool(MissionCore.receipt_validation_report(
 		mission_receipt
@@ -436,6 +447,9 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 		"submission_id": submission_id,
 		"receipt_fingerprint": str(mission_receipt.get(
 			"receipt_fingerprint", ""
+		)),
+		"withdrawal_transition_fingerprint": str(entry.get(
+			"last_transition_fingerprint", ""
 		)),
 	})
 	if _settlement_fingerprint_by_id.has(submission_id):
@@ -457,7 +471,7 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 		int(entry.get("military_unit_uid", 0))
 	))
 	if unit_index < 0:
-		return _reject("private_direct_action_military_unit_missing_at_arrival")
+		return _reject("private_direct_action_military_unit_missing_at_withdrawal")
 	var asset_receipt: Dictionary = _asset_quantity_owner.consume_reservation(
 		str(entry.get("asset_reservation_id", "")),
 		{
@@ -516,6 +530,11 @@ func debug_snapshot() -> Dictionary:
 		"forbidden_missions": FORBIDDEN_MISSIONS.duplicate(),
 		"movement_mode": "PHYSICAL_GEODESIC_ETA_NO_TELEPORT",
 		"completion_mode": "EXECUTE_ONE_MISSION_THEN_WITHDRAW",
+		"lifecycle_phases": [
+			DomainReducer.PHASE_ARRIVED,
+			DomainReducer.PHASE_EXECUTED_ONCE,
+			DomainReducer.PHASE_WITHDRAWAL_READY,
+		],
 		"submission_count": _submission_fingerprint_by_id.size(),
 		"settlement_count": _settlement_fingerprint_by_id.size(),
 		"collision_count": _collision_count,

@@ -746,7 +746,8 @@
       "change_class": "CROSS_DOMAIN_INTEGRATION",
       "focused_test_ids": [
         "v076_private_direct_action_input_owner_test",
-        "v076_private_military_direct_action_integration_test"
+        "v076_private_military_direct_action_integration_test",
+        "v076_military_mission_lifecycle_reducer_test"
       ],
       "golden_scenario_steps": ["STEP10"],
       "reuse_scan": {
@@ -799,21 +800,24 @@
         "reuse.v076.kernel.current",
         "reuse.v076.map.current",
         "reuse.v075.military_mission_core",
+        "reuse.v076.military_unit_profile_authority.current",
         "reuse.v076.military_physical_eta.current"
       ],
       "reuse_candidates_considered": [
         "reuse.v076.kernel.current",
         "reuse.v076.map.current",
         "reuse.v075.military_mission_core",
+        "reuse.v076.military_unit_profile_authority.current",
         "reuse.v076.military_physical_eta.current"
       ],
-      "new_component_justification": "Pure fresh-handler reducer for the private input Owner's Kernel-owned domain state. It validates the canonical half-edge route, waits until the scheduled physical ETA, resolves one V075 mission contract, and records withdrawal intent; it owns no tick, RNG, military unit state, assets, topology, catalog, or presentation.",
+      "new_component_justification": "Pure fresh-handler reducer for the private input Owner's Kernel-owned domain state. It validates the canonical half-edge route plus Profile-bound ETA, records ARRIVED at the physical ETA tick, derives exactly one execution on the next tick, and derives exactly one withdrawal-ready intent on the following tick. It owns no tick, RNG, military unit state, assets, topology, catalog, or presentation.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
       "focused_test_ids": [
         "v076_private_direct_action_input_owner_test",
-        "v076_private_military_direct_action_integration_test"
+        "v076_private_military_direct_action_integration_test",
+        "v076_military_mission_lifecycle_reducer_test"
       ],
       "golden_scenario_steps": ["STEP10"],
       "reuse_scan": {
@@ -826,15 +830,16 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 4,
+        "reuse_candidate_count": 5,
         "reuse_candidate_ids": [
           "reuse.v076.kernel.current",
           "reuse.v076.map.current",
           "reuse.v075.military_mission_core",
+          "reuse.v076.military_unit_profile_authority.current",
           "reuse.v076.military_physical_eta.current"
         ],
         "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
-        "why_existing_owner_cannot_be_extended": "The private Direct Action Owner remains the authority; the Kernel and mission core stay unchanged and are consumed through their existing contracts.",
+        "why_existing_owner_cannot_be_extended": "The private Direct Action Owner remains the authority; Kernel owns tick, sequence, derivation, and replay; Profile owns combat and speed; ETA owns only distance-plus-speed-to-ticks; V075 Mission Core owns locked assault semantics. None may absorb the lifecycle ledger without collapsing an existing boundary.",
         "why_adapter_is_insufficient": "A passive adapter cannot implement the Kernel's pure fresh-handler reducer ABI or atomically record the accepted mission receipt in owner-bound domain state.",
         "why_new_owner_is_required": "NOT_REQUIRED; component.v076.private_direct_action_input remains the unique Owner and this reducer may write only under that binding."
       }
@@ -1190,7 +1195,8 @@
       "superseded_by": [],
       "change_class": "TEST_ORACLE_ONLY",
       "focused_test_ids": [
-        "v076_private_military_direct_action_integration_test"
+        "v076_private_military_direct_action_integration_test",
+        "v076_military_mission_lifecycle_reducer_test"
       ],
       "golden_scenario_steps": ["STEP10"]
     },

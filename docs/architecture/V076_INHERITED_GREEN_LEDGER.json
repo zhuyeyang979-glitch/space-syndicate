@@ -368,6 +368,7 @@
     ],
     "focused_tests": [
       "v076_private_direct_action_input_owner_test",
+      "v076_military_mission_lifecycle_reducer_test",
       "v076_military_unit_profile_authoring_v1_test",
       "v076_military_card_crosswalk_v1_test",
       "v076_military_physical_eta_owner_test",
@@ -391,7 +392,7 @@
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "This Stage 4 infrastructure delta binds all 28 military source cards to one explicit Profile Authority, closes the 16 authorized playtest authoring gaps, and gives physical distance plus authored speed exactly one integer ETA/receipt Owner. Focused Profile, Crosswalk, ETA, private-input integration, Kernel, half-edge, Monster, V075 mission, and Gate sentinels cover every changed or consumed boundary. The delta does not cut over main.tscn, implement the tick-driven mission lifecycle reducer, certify production cards, run a full-world reproof, or claim production/human green."
+    "why_focused_tests_are_sufficient": "This Stage 4 delta extends the already-registered private Direct Action reducer under its existing unique Owner: ARRIVED is recorded at exact physical ETA, then Kernel-derived commands execute one Profile-authored V075 assault and emit one withdrawal-ready intent on consecutive ticks. Focused lifecycle, private-input integration, Profile, Crosswalk, ETA, Kernel, half-edge, Monster, V075 mission, and Gate sentinels cover every changed or consumed boundary. The delta does not cut over main.tscn, add per-tick unit position state, certify production cards, run a full-world reproof, or claim production/human green."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
