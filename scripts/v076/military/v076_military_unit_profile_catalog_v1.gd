@@ -118,8 +118,9 @@ func validate_document(
 	balance_defaults: Dictionary
 ) -> Dictionary:
 	var errors: Array[String] = []
-	var records: Array = document.get("records", []) as Array \
-		if document.get("records", []) is Array else []
+	var records: Array = []
+	if document.get("records", []) is Array:
+		records = (document.get("records", []) as Array).duplicate(true)
 	var source_index := _source_military_index(catalog_snapshot)
 	var inherited_profiles: Dictionary = balance_defaults.get(
 		"military_definition_rank_profiles", {}
