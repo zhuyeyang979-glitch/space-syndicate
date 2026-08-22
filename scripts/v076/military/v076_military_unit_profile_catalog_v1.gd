@@ -89,7 +89,9 @@ func load_document() -> Dictionary:
 func normalize_json_value(value: Variant) -> Variant:
 	if value is float:
 		var number := float(value)
-		return int(number) if number == floor(number) else number
+		if number == floor(number):
+			return int(number)
+		return number
 	if value is Array:
 		var items: Array = []
 		for item in value:
