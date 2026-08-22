@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/tools/v076/v076_private_military_direct_action_bench.gd" id="1_bench"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="2_coordinator"]
 [ext_resource type="Script" path="res://scripts/v076/simulation/v076_deterministic_kernel.gd" id="3_kernel"]
 [ext_resource type="Script" path="res://scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd" id="4_owner"]
+[ext_resource type="Script" path="res://scripts/v076/military/v076_military_physical_eta_owner_v1.gd" id="5_eta"]
 
 [node name="V076PrivateMilitaryDirectActionBench" type="Control"]
 layout_mode = 3
@@ -74,6 +75,9 @@ horizontal_alignment = 1
 
 [node name="V076DeterministicKernel" type="Node" parent="."]
 script = ExtResource("3_kernel")
+
+[node name="V076MilitaryPhysicalEtaOwnerV1" type="Node" parent="."]
+script = ExtResource("5_eta")
 
 [node name="V076PrivateDirectActionInputOwnerV1" type="Node" parent="."]
 script = ExtResource("4_owner")

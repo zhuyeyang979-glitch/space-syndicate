@@ -78,6 +78,16 @@
       "owner_component_id": "component.v076.private_direct_action_input"
     },
     {
+      "domain_id": "v076.military_unit_profile_authority",
+      "lifecycle": "ACTIVE_CURRENT_DOMAIN",
+      "owner_component_id": "component.v076.military_unit_profile_authority"
+    },
+    {
+      "domain_id": "v076.military_physical_eta",
+      "lifecycle": "ACTIVE_CURRENT_DOMAIN",
+      "owner_component_id": "component.v076.military_physical_eta"
+    },
+    {
       "domain_id": "future.v076_adapter_acceptance",
       "lifecycle": "PENDING_FUTURE_DOMAIN",
       "owner_component_id": ""
@@ -715,7 +725,9 @@
         "reuse.current.card_runtime_catalog",
         "reuse.current.player_mana_asset_owner",
         "reuse.current.military_runtime_owner",
-        "reuse.v075.military_mission_core"
+        "reuse.v075.military_mission_core",
+        "reuse.v076.military_unit_profile_authority.current",
+        "reuse.v076.military_physical_eta.current"
       ],
       "reuse_candidates_considered": [
         "reuse.pr65.authorized_semantic_envelope",
@@ -724,7 +736,9 @@
         "reuse.current.card_runtime_catalog",
         "reuse.current.player_mana_asset_owner",
         "reuse.current.military_runtime_owner",
-        "reuse.v075.military_mission_core"
+        "reuse.v075.military_mission_core",
+        "reuse.v076.military_unit_profile_authority.current",
+        "reuse.v076.military_physical_eta.current"
       ],
       "new_component_justification": "Stage 4 needs one private input authority for authorized envelopes, own-hand revalidation, exact-once submission identity, source-collision rejection, and Kernel root-command submission. PR65 may authorize but may not execute; the Kernel may order and replay but may not own private hand membership; the partition, catalog, asset, and military unit-state Owners retain their existing domains. This Owner may not own tick, Authority Sequence, RNG, military unit state, asset quantity, map topology, presentation, or card definitions.",
       "supersedes": [],
@@ -745,7 +759,7 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 7,
+        "reuse_candidate_count": 9,
         "reuse_candidate_ids": [
           "reuse.pr65.authorized_semantic_envelope",
           "reuse.v076.kernel.current",
@@ -753,7 +767,9 @@
           "reuse.current.card_runtime_catalog",
           "reuse.current.player_mana_asset_owner",
           "reuse.current.military_runtime_owner",
-          "reuse.v075.military_mission_core"
+          "reuse.v075.military_mission_core",
+          "reuse.v076.military_unit_profile_authority.current",
+          "reuse.v076.military_physical_eta.current"
         ],
         "selected_reuse_disposition": "ADOPT_AS_OWNER",
         "why_existing_owner_cannot_be_extended": "PR65 is an authorization Consumer pattern and cannot execute; the Kernel cannot own private hand membership; the partition, catalog, asset, and military Owners cannot absorb cross-domain input authorization without violating their single-owner boundaries.",
@@ -782,12 +798,14 @@
       "reuse_source_ids": [
         "reuse.v076.kernel.current",
         "reuse.v076.map.current",
-        "reuse.v075.military_mission_core"
+        "reuse.v075.military_mission_core",
+        "reuse.v076.military_physical_eta.current"
       ],
       "reuse_candidates_considered": [
         "reuse.v076.kernel.current",
         "reuse.v076.map.current",
-        "reuse.v075.military_mission_core"
+        "reuse.v075.military_mission_core",
+        "reuse.v076.military_physical_eta.current"
       ],
       "new_component_justification": "Pure fresh-handler reducer for the private input Owner's Kernel-owned domain state. It validates the canonical half-edge route, waits until the scheduled physical ETA, resolves one V075 mission contract, and records withdrawal intent; it owns no tick, RNG, military unit state, assets, topology, catalog, or presentation.",
       "supersedes": [],
@@ -808,11 +826,12 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 3,
+        "reuse_candidate_count": 4,
         "reuse_candidate_ids": [
           "reuse.v076.kernel.current",
           "reuse.v076.map.current",
-          "reuse.v075.military_mission_core"
+          "reuse.v075.military_mission_core",
+          "reuse.v076.military_physical_eta.current"
         ],
         "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
         "why_existing_owner_cannot_be_extended": "The private Direct Action Owner remains the authority; the Kernel and mission core stay unchanged and are consumed through their existing contracts.",
@@ -841,13 +860,15 @@
       "reuse_source_ids": [
         "reuse.current.card_runtime_catalog_v06",
         "reuse.v076.kernel.current",
-        "reuse.v075.military_mission_core"
+        "reuse.v075.military_mission_core",
+        "reuse.v076.military_unit_profile_authority.current"
       ],
       "reuse_candidates_considered": [
         "reuse.current.card_runtime_catalog_v06",
         "reuse.pr62.semantic_compiler",
         "reuse.v076.kernel.current",
-        "reuse.v075.military_mission_core"
+        "reuse.v075.military_mission_core",
+        "reuse.v076.military_unit_profile_authority.current"
       ],
       "new_component_justification": "One read-only Crosswalk adapter validates source-card fingerprints and binds authored catalog fields to the existing private Direct Action contract. It creates no catalog, compiler, input Owner, asset Owner, unit-state Owner, movement Owner, tick, RNG, replay, map, or presentation authority.",
       "supersedes": [],
@@ -868,12 +889,13 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 4,
+        "reuse_candidate_count": 5,
         "reuse_candidate_ids": [
           "reuse.current.card_runtime_catalog_v06",
           "reuse.pr62.semantic_compiler",
           "reuse.v076.kernel.current",
-          "reuse.v075.military_mission_core"
+          "reuse.v075.military_mission_core",
+          "reuse.v076.military_unit_profile_authority.current"
         ],
         "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
         "why_existing_owner_cannot_be_extended": "The V06 catalog must remain the source-definition Owner and the private Direct Action Owner must remain the input authority; neither may own a cross-domain verification table.",
@@ -901,11 +923,13 @@
       "reuse_disposition": "ADAPT_AS_CONSUMER",
       "reuse_source_ids": [
         "reuse.current.card_runtime_catalog_v06",
-        "reuse.v075.military_mission_core"
+        "reuse.v075.military_mission_core",
+        "reuse.v076.military_unit_profile_authority.current"
       ],
       "reuse_candidates_considered": [
         "reuse.current.card_runtime_catalog_v06",
-        "reuse.v075.military_mission_core"
+        "reuse.v075.military_mission_core",
+        "reuse.v076.military_unit_profile_authority.current"
       ],
       "new_component_justification": "The sole machine Crosswalk stores source identities, source fingerprints, binding references, and honest mapping status only. It copies no card name, art, description, full price definition, family definition, rank definition, or gameplay state.",
       "supersedes": [],
@@ -923,15 +947,204 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 2,
+        "reuse_candidate_count": 3,
         "reuse_candidate_ids": [
           "reuse.current.card_runtime_catalog_v06",
-          "reuse.v075.military_mission_core"
+          "reuse.v075.military_mission_core",
+          "reuse.v076.military_unit_profile_authority.current"
         ],
         "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
         "why_existing_owner_cannot_be_extended": "The source catalog and mission contract remain frozen Owners/sources; the Crosswalk may bind but may not mutate or duplicate either authority.",
         "why_adapter_is_insufficient": "NOT_APPLICABLE; this data is the machine half of the same single Adapter.",
         "why_new_owner_is_required": "NOT_REQUIRED; component.v076.private_direct_action_input remains the unique Owner."
+      }
+    },
+    {
+      "component_id": "component.v076.military_unit_profile_authority",
+      "class_name": "V076MilitaryUnitProfileAuthority",
+      "path": "data/v076/v076_military_unit_profiles_v1.json",
+      "domain_id": "v076.military_unit_profile_authority",
+      "component_role": "OWNER",
+      "production_reachable": true,
+      "writes_authority": true,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": true,
+      "owns_presentation": false,
+      "owner_component_id": "component.v076.military_unit_profile_authority",
+      "owner_path": "data/v076/v076_military_unit_profiles_v1.json",
+      "reuse_disposition": "ADOPT_AS_OWNER",
+      "reuse_source_ids": [
+        "reuse.current.card_runtime_catalog_v06",
+        "reuse.v075.combat_candidate",
+        "reuse.v075.military_mission_core"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.current.card_runtime_catalog_v06",
+        "reuse.v075.combat_candidate",
+        "reuse.v075.military_mission_core",
+        "reuse.current.military_runtime_owner"
+      ],
+      "new_component_justification": "The authorized Alpha 0.7 playtest gap requires one explicit machine authority for 28 military unit Profiles. It inherits twelve frozen V075 combat records, authors sixteen reversible profiles and twenty-eight speeds, and owns no card catalog, asset quantity, route geometry, tick, RNG, replay, unit state, or presentation.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "RULESET_CONSTITUTION",
+      "focused_test_ids": [
+        "v076_military_unit_profile_authoring_v1_test",
+        "v076_military_card_crosswalk_v1_test"
+      ],
+      "golden_scenario_steps": ["STEP10"],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 4,
+        "reuse_candidate_ids": [
+          "reuse.current.card_runtime_catalog_v06",
+          "reuse.v075.combat_candidate",
+          "reuse.v075.military_mission_core",
+          "reuse.current.military_runtime_owner"
+        ],
+        "selected_reuse_disposition": "ADOPT_AS_OWNER",
+        "why_existing_owner_cannot_be_extended": "The V06 card catalog owns source identity and asset cost, V075 owns inherited combat history, and the military runtime owns unit state; none may author the new V076 Profile fields without violating those existing boundaries.",
+        "why_adapter_is_insufficient": "A read-only adapter can expose Profiles but cannot be the unique source for newly authorized Alpha 0.7 speed and combat values.",
+        "why_new_owner_is_required": "The user explicitly authorized new reversible V076 playtest authoring for sixteen missing Profiles and twenty-eight physical speeds, requiring one narrow data authority distinct from every reused Owner."
+      }
+    },
+    {
+      "component_id": "component.v076.military_unit_profile_catalog_adapter",
+      "class_name": "V076MilitaryUnitProfileCatalogV1",
+      "path": "scripts/v076/military/v076_military_unit_profile_catalog_v1.gd",
+      "domain_id": "v076.military_unit_profile_authority",
+      "component_role": "ADAPTER",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.v076.military_unit_profile_authority",
+      "owner_path": "data/v076/v076_military_unit_profiles_v1.json",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.v076.military_unit_profile_authority.current",
+        "reuse.current.card_runtime_catalog_v06",
+        "reuse.v075.combat_candidate",
+        "reuse.v075.military_mission_core"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v076.military_unit_profile_authority.current",
+        "reuse.current.card_runtime_catalog_v06",
+        "reuse.v075.combat_candidate",
+        "reuse.v075.military_mission_core"
+      ],
+      "new_component_justification": "The sole read-only Profile catalog adapter normalizes JSON integer values, validates source/cost/combat provenance, and provides exact Profile lookup. It is not a second card catalog or runtime authority.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "DOMAIN_CORE",
+      "focused_test_ids": [
+        "v076_military_unit_profile_authoring_v1_test",
+        "v076_military_card_crosswalk_v1_test"
+      ],
+      "golden_scenario_steps": ["STEP10"],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 4,
+        "reuse_candidate_ids": [
+          "reuse.v076.military_unit_profile_authority.current",
+          "reuse.current.card_runtime_catalog_v06",
+          "reuse.v075.combat_candidate",
+          "reuse.v075.military_mission_core"
+        ],
+        "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
+        "why_existing_owner_cannot_be_extended": "The Profile data remains the sole Owner; the catalog and V075 sources must remain unchanged and are validated only through their existing contracts.",
+        "why_adapter_is_insufficient": "NOT_APPLICABLE; this component is exactly the one read-only Adapter for the Profile authority.",
+        "why_new_owner_is_required": "NOT_REQUIRED; component.v076.military_unit_profile_authority remains the unique Owner."
+      }
+    },
+    {
+      "component_id": "component.v076.military_physical_eta",
+      "class_name": "V076MilitaryPhysicalEtaOwnerV1",
+      "path": "scripts/v076/military/v076_military_physical_eta_owner_v1.gd",
+      "domain_id": "v076.military_physical_eta",
+      "component_role": "OWNER",
+      "production_reachable": true,
+      "writes_authority": true,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.v076.military_physical_eta",
+      "owner_path": "scripts/v076/military/v076_military_physical_eta_owner_v1.gd",
+      "reuse_disposition": "ADOPT_AS_OWNER",
+      "reuse_source_ids": [
+        "reuse.v076.military_unit_profile_authority.current",
+        "reuse.v076.map.current",
+        "reuse.v076.monster_l1.current",
+        "reuse.v076.kernel.current"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v076.military_unit_profile_authority.current",
+        "reuse.v076.map.current",
+        "reuse.v076.monster_l1.current",
+        "reuse.v076.kernel.current"
+      ],
+      "new_component_justification": "One stateless authority converts the existing canonical geodesic distance and the exact authored Profile speed into integer ETA ticks plus a canonical receipt. It owns neither input and cannot own map, route, tick, replay, unit, asset, card, authorization, attack, or presentation state.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "focused_test_ids": [
+        "v076_military_physical_eta_owner_test",
+        "v076_military_unit_profile_authoring_v1_test",
+        "v076_shared_half_edge_partition_test",
+        "v076_monster_l1_directional_geodesic_move_test",
+        "v076_deterministic_kernel_test"
+      ],
+      "golden_scenario_steps": ["STEP10"],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 4,
+        "reuse_candidate_ids": [
+          "reuse.v076.military_unit_profile_authority.current",
+          "reuse.v076.map.current",
+          "reuse.v076.monster_l1.current",
+          "reuse.v076.kernel.current"
+        ],
+        "selected_reuse_disposition": "ADOPT_AS_OWNER",
+        "why_existing_owner_cannot_be_extended": "The Profile Authority must own speed, the half-edge sphere must own topology and distance, the geodesic adapter must own route validation, and the Kernel must own tick/replay; extending any one would collapse separate authority domains.",
+        "why_adapter_is_insufficient": "An adapter can carry distance and speed but cannot be the unique authoritative formula and canonical receipt source for physical ETA.",
+        "why_new_owner_is_required": "The future Direct Action needs exactly one closed distance-plus-speed-to-ticks operation while every reused dependency retains its original ownership."
       }
     },
     {
@@ -958,7 +1171,9 @@
         "reuse.v076.map.current",
         "reuse.current.player_mana_asset_owner",
         "reuse.current.military_runtime_owner",
-        "reuse.v075.military_mission_core"
+        "reuse.v075.military_mission_core",
+        "reuse.v076.military_unit_profile_authority.current",
+        "reuse.v076.military_physical_eta.current"
       ],
       "reuse_candidates_considered": [
         "reuse.pr65.authorized_semantic_envelope",
@@ -966,7 +1181,9 @@
         "reuse.v076.map.current",
         "reuse.current.player_mana_asset_owner",
         "reuse.current.military_runtime_owner",
-        "reuse.v075.military_mission_core"
+        "reuse.v075.military_mission_core",
+        "reuse.v076.military_unit_profile_authority.current",
+        "reuse.v076.military_physical_eta.current"
       ],
       "new_component_justification": "Editable isolated production-wiring Bench that proves STEP10 without changing main.tscn. Its visible PASS is diagnostic evidence only and explicitly leaves production and human green false.",
       "supersedes": [],
@@ -1159,6 +1376,20 @@
       "binding_status": "ACTIVE_STAGE4_ISOLATED"
     },
     {
+      "domain_id": "v076.military_unit_profile_authority",
+      "unique_owner": "V076MilitaryUnitProfileAuthority",
+      "owner_path": "data/v076/v076_military_unit_profiles_v1.json",
+      "owner_count": 1,
+      "binding_status": "ACTIVE_STAGE4_ISOLATED"
+    },
+    {
+      "domain_id": "v076.military_physical_eta",
+      "unique_owner": "V076MilitaryPhysicalEtaOwnerV1",
+      "owner_path": "scripts/v076/military/v076_military_physical_eta_owner_v1.gd",
+      "owner_count": 1,
+      "binding_status": "ACTIVE_STAGE4_ISOLATED"
+    },
+    {
       "domain_id": "future.v076_adapter_acceptance",
       "unique_owner": "UNASSIGNED_TEST_OWNER",
       "owner_count": 0,
@@ -1329,6 +1560,30 @@
       },
       "adapted_scope": "Exactly two one-shot mission contracts: ASSAULT_REGION and ASSAULT_MONSTER, locked target identity, one resolution, withdrawal, and typed asset/card lifecycle intents.",
       "forbidden_scope": "No GUARD, PROTECT, retarget, teleport, persistent military action, public batch, or direct asset/card-zone mutation."
+    },
+    {
+      "reuse_id": "reuse.v076.military_unit_profile_authority.current",
+      "domain_id": "v076.military_unit_profile_authority",
+      "disposition": "ADOPT_AS_OWNER",
+      "source": {
+        "authority_id": "V076MilitaryUnitProfileAuthority",
+        "path": "data/v076/v076_military_unit_profiles_v1.json",
+        "adapter_class": "V076MilitaryUnitProfileCatalogV1",
+        "adapter_path": "scripts/v076/military/v076_military_unit_profile_catalog_v1.gd"
+      },
+      "adopted_scope": "One explicit 28-record Alpha 0.7 Profile authority: twelve inherited combat profiles, twenty-eight newly authored speeds, and sixteen complete reversible new playtest profiles.",
+      "forbidden_scope": "No card-definition, asset-quantity, map, route, ETA, tick, replay, unit-state, mission execution, or presentation ownership."
+    },
+    {
+      "reuse_id": "reuse.v076.military_physical_eta.current",
+      "domain_id": "v076.military_physical_eta",
+      "disposition": "ADOPT_AS_OWNER",
+      "source": {
+        "class_name": "V076MilitaryPhysicalEtaOwnerV1",
+        "path": "scripts/v076/military/v076_military_physical_eta_owner_v1.gd"
+      },
+      "adopted_scope": "Canonical integer distance plus authored Profile speed to ETA ticks and canonical receipt only.",
+      "forbidden_scope": "No topology, pathfinding, speed table, tick, Authority Sequence, RNG, replay, military unit state, asset quantity, card catalog, authorization, attack, or presentation ownership."
     },
     {
       "reuse_id": "reuse.pr66.codex_playerface",

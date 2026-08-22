@@ -18,8 +18,11 @@ func _init() -> void:
 func _run() -> void:
 	var owner := Owner.new()
 	var debug := owner.debug_snapshot()
-	_expect(debug.get("allowed_missions") == ["ASSAULT_REGION", "ASSAULT_MONSTER"],
-		"the Owner exposes exactly the two authorized missions")
+	_expect(
+		debug.get("allowed_missions") == ["ASSAULT_REGION", "ASSAULT_MONSTER"]
+			and "speed_mu_per_tick" not in Owner.REQUEST_FIELDS,
+		"the Owner exposes two missions and accepts no caller-authored speed"
+	)
 	_expect(debug.get("forbidden_missions") == ["GUARD", "PROTECT"],
 		"guard and protect are explicit negative capabilities")
 	_expect(
@@ -80,7 +83,6 @@ func _valid_request() -> Dictionary:
 		"asset_reservation_plan": {},
 		"source_face_id": 0,
 		"target_face_id": 1,
-		"speed_mu_per_tick": 50_000,
 		"target_region_id": "region.001",
 		"target_monster_source_instance_id": "",
 		"target_region_revision": 1,

@@ -8,6 +8,9 @@ const StateCodec := preload(
 const GeodesicMetric := preload(
 	"res://scripts/v076/monster/v076_integer_geodesic_metric_v1.gd"
 )
+const MilitaryEtaOwner := preload(
+	"res://scripts/v076/military/v076_military_physical_eta_owner_v1.gd"
+)
 const MissionCore := preload(
 	"res://scripts/v075/military/v075_military_mission_core.gd"
 )
@@ -30,7 +33,9 @@ const PAYLOAD_FIELDS := [
 	"current_public_targets",
 	"route",
 	"route_sha256",
-	"eta_ticks",
+	"eta_receipt",
+	"submission_tick",
+	"dispatch_delay_ticks",
 	"asset_reservation_id",
 	"request_fingerprint",
 	"payload_fingerprint",
@@ -84,9 +89,22 @@ func v076_apply_command(
 		str(payload.get("route_sha256", ""))
 	).get("accepted", false)):
 		return _reject(state, "private_direct_action_route_noncanonical")
-	var eta_ticks := int(payload.get("eta_ticks", 0))
-	if eta_ticks < 1 \
-		or int(command.get("scheduled_tick", 0)) != int(command.get("authority_tick", command.get("scheduled_tick", 0))):
+	var eta_receipt := payload.get("eta_receipt", {}) as Dictionary
+	if not bool(MilitaryEtaOwner.receipt_validation_report(
+		eta_receipt, route
+	).get("valid", false)):
+		return _reject(state, "private_direct_action_eta_receipt_invalid")
+	var eta_ticks := int(eta_receipt.get("eta_ticks", -1))
+	var dispatch_delay_ticks := int(payload.get("dispatch_delay_ticks", 0))
+	var submission_tick := int(payload.get("submission_tick", -1))
+	if eta_ticks < 0 \
+			or dispatch_delay_ticks != maxi(1, eta_ticks) \
+			or submission_tick < 0 \
+			or int(command.get("scheduled_tick", 0)) \
+			!= submission_tick + dispatch_delay_ticks \
+			or int(command.get(
+				"authority_tick", command.get("scheduled_tick", 0)
+			)) != int(command.get("scheduled_tick", 0)):
 		return _reject(state, "private_direct_action_eta_invalid")
 	var mission_lock := payload.get("mission_lock", {}) as Dictionary
 	if not bool(MissionCore.mission_lock_validation_report(
@@ -127,6 +145,10 @@ func v076_apply_command(
 		"route_sha256": str(payload.get("route_sha256", "")),
 		"total_distance_mu": int(route.get("total_distance_mu", 0)),
 		"eta_ticks": eta_ticks,
+		"dispatch_delay_ticks": dispatch_delay_ticks,
+		"eta_receipt_fingerprint": str(eta_receipt.get(
+			"receipt_fingerprint", ""
+		)),
 		"mission_kind": mission_kind,
 		"mission_receipt": mission_receipt.duplicate(true),
 	}
@@ -154,6 +176,10 @@ func v076_apply_command(
 			"route_sha256": str(payload.get("route_sha256", "")),
 			"total_distance_mu": int(route.get("total_distance_mu", 0)),
 			"eta_ticks": eta_ticks,
+			"dispatch_delay_ticks": dispatch_delay_ticks,
+			"eta_receipt_fingerprint": str(eta_receipt.get(
+				"receipt_fingerprint", ""
+			)),
 			"mission_receipt_fingerprint": str(mission_receipt.get(
 				"receipt_fingerprint", ""
 			)),

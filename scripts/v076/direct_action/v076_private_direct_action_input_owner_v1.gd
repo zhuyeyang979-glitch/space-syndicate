@@ -11,6 +11,12 @@ const StateCodec := preload(
 const GeodesicMetric := preload(
 	"res://scripts/v076/monster/v076_integer_geodesic_metric_v1.gd"
 )
+const MilitaryCrosswalk := preload(
+	"res://scripts/v076/military/v076_military_card_crosswalk_v1.gd"
+)
+const ProfileCatalog := preload(
+	"res://scripts/v076/military/v076_military_unit_profile_catalog_v1.gd"
+)
 const MissionCore := preload(
 	"res://scripts/v075/military/v075_military_mission_core.gd"
 )
@@ -39,7 +45,6 @@ const REQUEST_FIELDS := [
 	"asset_reservation_plan",
 	"source_face_id",
 	"target_face_id",
-	"speed_mu_per_tick",
 	"target_region_id",
 	"target_monster_source_instance_id",
 	"target_region_revision",
@@ -61,12 +66,18 @@ const REQUEST_FIELDS := [
 @export var military_unit_state_owner_path := NodePath(
 	"../GameRuntimeCoordinator/MilitaryRuntimeController"
 )
+@export var military_physical_eta_owner_path := NodePath(
+	"../V076MilitaryPhysicalEtaOwnerV1"
+)
 
 var _kernel: Variant
 var _source_authorization_port: Variant
 var _card_catalog_owner: Variant
 var _asset_quantity_owner: Variant
 var _military_unit_state_owner: Variant
+var _profile_authority: Variant
+var _military_eta_owner: Variant
+var _military_crosswalk: Variant
 var _configured := false
 var _submission_fingerprint_by_id: Dictionary = {}
 var _submitted_result_by_id: Dictionary = {}
@@ -80,7 +91,9 @@ func configure_dependencies(
 	source_authorization_port: Variant,
 	card_catalog_owner: Variant,
 	asset_quantity_owner: Variant,
-	military_unit_state_owner: Variant
+	military_unit_state_owner: Variant,
+	profile_authority: Variant,
+	military_eta_owner: Variant
 ) -> Dictionary:
 	if _configured:
 		return _reject("private_direct_action_owner_already_configured")
@@ -90,8 +103,22 @@ func configure_dependencies(
 		or card_catalog_owner == null
 		or asset_quantity_owner == null
 		or military_unit_state_owner == null
+		or profile_authority == null
+		or military_eta_owner == null
 	):
 		return _reject("private_direct_action_dependency_missing")
+	if not profile_authority.has_method("profile_by_id") \
+			or not profile_authority.has_method("record_validation_report") \
+			or not military_eta_owner.has_method("calculate_eta") \
+			or not military_eta_owner.has_method("debug_snapshot"):
+		return _reject("private_direct_action_military_eta_dependency_invalid")
+	var eta_debug: Dictionary = military_eta_owner.debug_snapshot()
+	if not bool(eta_debug.get("configured", false)) \
+			or str(eta_debug.get("owner_id", "")) \
+			!= "component.v076.military_physical_eta" \
+			or str(eta_debug.get("speed_owner", "")) \
+			!= ProfileCatalog.PROFILE_AUTHORITY_ID:
+		return _reject("private_direct_action_military_eta_owner_invalid")
 	var registration: Dictionary = kernel.register_domain(
 		DOMAIN_ID,
 		DomainReducer.initial_state(),
@@ -106,6 +133,9 @@ func configure_dependencies(
 	_card_catalog_owner = card_catalog_owner
 	_asset_quantity_owner = asset_quantity_owner
 	_military_unit_state_owner = military_unit_state_owner
+	_profile_authority = profile_authority
+	_military_eta_owner = military_eta_owner
+	_military_crosswalk = MilitaryCrosswalk.new()
 	_configured = true
 	return {
 		"accepted": true,
@@ -116,12 +146,24 @@ func configure_dependencies(
 
 
 func configure_from_scene_paths() -> Dictionary:
+	var profile_authority := ProfileCatalog.new()
+	var eta_owner: Variant = get_node_or_null(military_physical_eta_owner_path)
+	if eta_owner != null \
+			and eta_owner.has_method("debug_snapshot") \
+			and not bool(eta_owner.debug_snapshot().get("configured", false)):
+		var eta_config: Dictionary = eta_owner.configure(profile_authority)
+		if not bool(eta_config.get("accepted", false)):
+			return _reject(str(eta_config.get(
+				"reason", "private_direct_action_military_eta_configuration_failed"
+			)))
 	return configure_dependencies(
 		get_node_or_null(deterministic_kernel_path),
 		get_node_or_null(source_authorization_port_path),
 		get_node_or_null(card_catalog_owner_path),
 		get_node_or_null(asset_quantity_owner_path),
-		get_node_or_null(military_unit_state_owner_path)
+		get_node_or_null(military_unit_state_owner_path),
+		profile_authority,
+		eta_owner
 	)
 
 
@@ -173,6 +215,34 @@ func submit_private_military_direct_action(
 	var military_damage: int = int(catalog_definition.get("military_damage", 0))
 	if card_rank < 1 or card_rank > 4 or military_damage < 1:
 		return _reject("private_direct_action_catalog_authority_invalid")
+	var authorized_card_id := str((revalidated.get(
+		"instance_decision_state", {}
+	) as Dictionary).get("card_id", ""))
+	var crosswalk_record: Dictionary = _military_crosswalk.record_for_card_id(
+		authorized_card_id
+	)
+	if crosswalk_record.is_empty() \
+			or str(crosswalk_record.get("mapping_status", "")) != "EXACT_MAPPED" \
+			or str(crosswalk_record.get("source_card_id", "")) != authorized_card_id:
+		return _reject("private_direct_action_crosswalk_binding_invalid")
+	var profile_id := str(crosswalk_record.get("unit_profile_id", ""))
+	var profile: Dictionary = _profile_authority.profile_by_id(profile_id)
+	if profile.is_empty() \
+			or not bool(_profile_authority.record_validation_report(
+				profile
+			).get("valid", false)) \
+			or int(profile.get("rank", 0)) != card_rank:
+		return _reject("private_direct_action_profile_binding_invalid")
+	var mission_kind := str(request.get("mission_kind", ""))
+	var target_kind := "REGION" \
+		if mission_kind == MISSION_ASSAULT_REGION else "MONSTER"
+	if mission_kind not in (crosswalk_record.get("allowed_missions", []) as Array) \
+			or target_kind not in (crosswalk_record.get(
+				"allowed_target_kinds", []
+			) as Array) \
+			or mission_kind not in (profile.get("allowed_missions", []) as Array) \
+			or target_kind not in (profile.get("allowed_target_kinds", []) as Array):
+		return _reject("private_direct_action_profile_mission_binding_invalid")
 	var actor_index: int = int((
 		(revalidated.get("instance_decision_state", {}) as Dictionary).get(
 			"viewer_ref", {}
@@ -206,11 +276,23 @@ func submit_private_military_direct_action(
 			"reason", "private_direct_action_route_invalid"
 		)))
 	var route: Dictionary = route_result.get("route", {}) as Dictionary
-	var speed_mu_per_tick: int = int(request.get("speed_mu_per_tick", 0))
 	var total_distance_mu: int = int(route.get("total_distance_mu", 0))
-	@warning_ignore("integer_division")
-	var eta_ticks: int = maxi(1, (total_distance_mu + speed_mu_per_tick - 1) \
-		/ speed_mu_per_tick)
+	var eta_result: Dictionary = _military_eta_owner.calculate_eta({
+		"schema_version": 1,
+		"profile_id": profile_id,
+		"expected_profile_fingerprint_sha256": str(profile.get(
+			"canonical_fingerprint", ""
+		)),
+		"route": route.duplicate(true),
+		"route_sha256": str(route_result.get("route_sha256", "")),
+	})
+	if not bool(eta_result.get("accepted", false)):
+		return _reject(str(eta_result.get(
+			"reason", "private_direct_action_military_eta_rejected"
+		)))
+	var eta_ticks := int(eta_result.get("eta_ticks", -1))
+	var dispatch_delay_ticks := maxi(1, eta_ticks)
+	var submission_tick := int(_kernel.current_tick())
 
 	var asset_plan: Dictionary = request.get("asset_reservation_plan", {}) as Dictionary
 	var asset_commit: Dictionary = _asset_quantity_owner.commit_reservation(asset_plan)
@@ -274,7 +356,9 @@ func submit_private_military_direct_action(
 		).duplicate(true),
 		"route": route.duplicate(true),
 		"route_sha256": str(route_result.get("route_sha256", "")),
-		"eta_ticks": eta_ticks,
+		"eta_receipt": (eta_result.get("receipt", {}) as Dictionary).duplicate(true),
+		"submission_tick": submission_tick,
+		"dispatch_delay_ticks": dispatch_delay_ticks,
 		"asset_reservation_id": asset_reservation_id,
 		"request_fingerprint": request_fingerprint,
 		"payload_fingerprint": "",
@@ -288,7 +372,7 @@ func submit_private_military_direct_action(
 		DOMAIN_ID,
 		COMMAND_TYPE,
 		str(request.get("actor_id", "")),
-		_kernel.current_tick() + eta_ticks,
+		submission_tick + dispatch_delay_ticks,
 		DOMAIN_PRIORITY,
 		int(request.get("producer_sequence", 0)),
 		payload
@@ -317,8 +401,14 @@ func submit_private_military_direct_action(
 		"submission_id": submission_id,
 		"command_id": command_id,
 		"command_sha256": str(submitted.get("command_sha256", "")),
-		"scheduled_tick": _kernel.current_tick() + eta_ticks,
+		"scheduled_tick": submission_tick + dispatch_delay_ticks,
 		"eta_ticks": eta_ticks,
+		"dispatch_delay_ticks": dispatch_delay_ticks,
+		"eta_receipt": (eta_result.get("receipt", {}) as Dictionary).duplicate(true),
+		"eta_receipt_fingerprint": str(eta_result.get(
+			"receipt_fingerprint", ""
+		)),
+		"profile_id": profile_id,
 		"route_sha256": str(route_result.get("route_sha256", "")),
 		"total_distance_mu": total_distance_mu,
 		"asset_reservation_id": asset_reservation_id,
@@ -418,6 +508,10 @@ func debug_snapshot() -> Dictionary:
 		"owns_map_topology": false,
 		"owns_presentation": false,
 		"owns_card_catalog": false,
+		"owns_military_profile": false,
+		"owns_physical_eta": false,
+		"military_profile_owner": ProfileCatalog.PROFILE_AUTHORITY_ID,
+		"military_eta_owner": "V076MilitaryPhysicalEtaOwnerV1",
 		"allowed_missions": ALLOWED_MISSIONS.duplicate(),
 		"forbidden_missions": FORBIDDEN_MISSIONS.duplicate(),
 		"movement_mode": "PHYSICAL_GEODESIC_ETA_NO_TELEPORT",
@@ -450,9 +544,7 @@ static func request_validation_report(request: Dictionary) -> Dictionary:
 	var mission_kind: String = str(request.get("mission_kind", ""))
 	if mission_kind not in ALLOWED_MISSIONS or mission_kind in FORBIDDEN_MISSIONS:
 		return {"valid": false, "reason": "private_direct_action_mission_forbidden"}
-	for field in [
-		"military_unit_uid", "speed_mu_per_tick",
-	]:
+	for field in ["military_unit_uid"]:
 		if typeof(request.get(field)) != TYPE_INT or int(request.get(field, 0)) <= 0:
 			return {"valid": false, "reason": "private_direct_action_%s_invalid" % field}
 	for field in [

@@ -248,6 +248,7 @@
     "change_classes": [
       "CROSS_DOMAIN_INTEGRATION",
       "DOMAIN_CORE",
+      "RULESET_CONSTITUTION",
       "TEST_ORACLE_ONLY",
       "TOOLING_ONLY"
     ],
@@ -260,7 +261,9 @@
       "v076.monster_l1_directional_geodesic_move",
       "current.gameplay_card_definitions",
       "current.player_six_color_asset_quantity",
-      "current.military_unit_state"
+      "current.military_unit_state",
+      "v076.military_unit_profile_authority",
+      "v076.military_physical_eta"
     ],
     "affected_owners": [
       "component.v076.private_direct_action_input",
@@ -272,15 +275,19 @@
       "component.v076.monster_l1",
       "component.current.card_runtime_catalog",
       "PlayerManaRuntimeController",
-      "MilitaryRuntimeController"
+      "MilitaryRuntimeController",
+      "component.v076.military_unit_profile_authority",
+      "component.v076.military_unit_profile_catalog_adapter",
+      "component.v076.military_physical_eta"
     ],
     "focused_tests": [
       "v076_private_direct_action_input_owner_test",
+      "v076_military_unit_profile_authoring_v1_test",
       "v076_military_card_crosswalk_v1_test",
+      "v076_military_physical_eta_owner_test",
       "v076_private_military_direct_action_integration_test",
       "v076_deterministic_kernel_test",
       "v076_shared_half_edge_partition_test",
-      "v076_shared_half_edge_partition_2000_seed_test",
       "v076_monster_l1_directional_geodesic_move_test",
       "v075_military_two_task_contract_test",
       "v075_military_no_guard_test",
@@ -298,7 +305,7 @@
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "Stage 4 remains an isolated cross-domain integration bounded to one private Direct Action input Owner and one read-only Crosswalk Adapter. The delta validates the complete 28-card source identity set, exact-maps only the 12 frozen active V075 cards, records 16 authoring gaps, and reruns its direct Kernel/map/Monster/V075 sentinels. It does not cut over main.tscn, alter inherited Owner formulas, certify production cards, or claim production/human green."
+    "why_focused_tests_are_sufficient": "This Stage 4 infrastructure delta binds all 28 military source cards to one explicit Profile Authority, closes the 16 authorized playtest authoring gaps, and gives physical distance plus authored speed exactly one integer ETA/receipt Owner. Focused Profile, Crosswalk, ETA, private-input integration, Kernel, half-edge, Monster, V075 mission, and Gate sentinels cover every changed or consumed boundary. The delta does not cut over main.tscn, implement the tick-driven mission lifecycle reducer, certify production cards, run a full-world reproof, or claim production/human green."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",

@@ -10,6 +10,9 @@ const RULESET_PROFILE := preload(
 const MilitaryCrosswalk := preload(
 	"res://scripts/v076/military/v076_military_card_crosswalk_v1.gd"
 )
+const MilitaryProfileCatalog := preload(
+	"res://scripts/v076/military/v076_military_unit_profile_catalog_v1.gd"
+)
 const SemanticCatalogResource := preload(
 	"res://scripts/cards/card_runtime_catalog_v06_resource.gd"
 )
@@ -51,9 +54,9 @@ func _run_bench() -> void:
 		"the sealed source set closes at 28 records and seven rank ladders"
 	)
 	_expect(
-		int(_crosswalk_report.get("exact_mapped_count", 0)) == 12
-			and int(_crosswalk_report.get("reauthor_required_count", 0)) == 16,
-		"the Bench presents twelve exact mappings and sixteen honest gaps"
+		int(_crosswalk_report.get("exact_mapped_count", 0)) == 28
+			and int(_crosswalk_report.get("reauthor_required_count", 0)) == 0,
+		"all twenty-eight cards bind exactly to the unique Profile Authority"
 	)
 	_expect(
 		int(_crosswalk_report.get("forbidden_mission_token_count", -1)) == 0
@@ -74,9 +77,16 @@ func _run_bench() -> void:
 	var direct_action_owner := get_node_or_null(
 		"V076PrivateDirectActionInputOwnerV1"
 	) as V076PrivateDirectActionInputOwnerV1
-	_expect(coordinator != null and kernel != null and direct_action_owner != null,
-		"isolated Bench composes the production coordinator, Kernel, and private Owner")
-	if coordinator == null or kernel == null or direct_action_owner == null:
+	var eta_owner: Variant = get_node_or_null(
+		"V076MilitaryPhysicalEtaOwnerV1"
+	)
+	_expect(
+		coordinator != null and kernel != null
+			and direct_action_owner != null and eta_owner != null,
+		"isolated Bench composes the coordinator, Kernel, private Owner, and ETA Owner"
+	)
+	if coordinator == null or kernel == null \
+			or direct_action_owner == null or eta_owner == null:
 		_finish({})
 		return
 
@@ -142,17 +152,22 @@ func _run_bench() -> void:
 	)
 
 	var kernel_config := kernel.configure(7604)
+	var profile_authority: Variant = MilitaryProfileCatalog.new()
+	var eta_config: Dictionary = eta_owner.configure(profile_authority)
 	var owner_config := direct_action_owner.configure_dependencies(
 		kernel,
 		source,
 		catalog,
 		assets,
-		military
+		military,
+		profile_authority,
+		eta_owner
 	)
 	_expect(
 		bool(kernel_config.get("accepted", false))
+			and bool(eta_config.get("accepted", false))
 			and bool(owner_config.get("accepted", false)),
-		"the unique private input Owner registers one Kernel domain at tick zero"
+		"Profile, ETA, and private input ownership compose at tick zero"
 	)
 	var owner_debug := direct_action_owner.debug_snapshot()
 	_expect(
@@ -170,8 +185,22 @@ func _run_bench() -> void:
 			and not bool(owner_debug.get("owns_asset_quantity", true))
 			and not bool(owner_debug.get("owns_map_topology", true))
 			and not bool(owner_debug.get("owns_presentation", true))
-			and not bool(owner_debug.get("owns_card_catalog", true)),
+			and not bool(owner_debug.get("owns_card_catalog", true))
+			and not bool(owner_debug.get("owns_military_profile", true))
+			and not bool(owner_debug.get("owns_physical_eta", true)),
 		"the private Owner exposes no inherited authority surface"
+	)
+	var eta_debug: Dictionary = eta_owner.debug_snapshot()
+	_expect(
+		bool(eta_debug.get("owns_eta_formula", false))
+			and not bool(eta_debug.get("owns_tick", true))
+			and not bool(eta_debug.get("owns_map_topology", true))
+			and not bool(eta_debug.get("owns_route_geometry", true))
+			and not bool(eta_debug.get("owns_military_unit_state", true))
+			and not bool(eta_debug.get("owns_asset_quantity", true))
+			and not bool(eta_debug.get("owns_card_catalog", true))
+			and not bool(eta_debug.get("owns_presentation", true)),
+		"the ETA Owner owns only the physical distance-plus-speed formula"
 	)
 
 	_fund_assets(assets, AuthorizationFixture.AI_ACTOR_INDEX)
@@ -201,7 +230,10 @@ func _run_bench() -> void:
 		bool(submitted.get("accepted", false))
 			and not bool(submitted.get("duplicate", true))
 			and int(submitted.get("eta_ticks", 0)) > 1
-			and int(submitted.get("total_distance_mu", 0)) > 0,
+			and int(submitted.get("dispatch_delay_ticks", 0)) \
+			== int(submitted.get("eta_ticks", -1))
+			and int(submitted.get("total_distance_mu", 0)) > 0
+			and str(submitted.get("eta_receipt_fingerprint", "")).length() == 64,
 		"the exact private card/action binding submits one future geodesic Kernel command"
 	)
 	var duplicate_submission := direct_action_owner.submit_private_military_direct_action(bundle, request)
@@ -242,13 +274,14 @@ func _run_bench() -> void:
 	)
 
 	var eta_ticks := int(submitted.get("eta_ticks", 0))
+	var dispatch_delay_ticks := int(submitted.get("dispatch_delay_ticks", 0))
 	var early := direct_action_owner.settle_completed_submission(SUBMISSION_ID)
 	_expect(
 		not bool(early.get("accepted", true))
 			and military.roster_snapshot(true).size() == 1,
 		"the military unit cannot resolve or withdraw before physical ETA"
 	)
-	var pre_arrival := kernel.advance_ticks(eta_ticks - 1)
+	var pre_arrival := kernel.advance_ticks(dispatch_delay_ticks - 1)
 	_expect(
 		bool(pre_arrival.get("accepted", false))
 			and military.roster_snapshot(true).size() == 1
@@ -313,6 +346,11 @@ func _run_bench() -> void:
 	)
 	_finish({
 		"eta_ticks": eta_ticks,
+		"dispatch_delay_ticks": dispatch_delay_ticks,
+		"eta_receipt_fingerprint": str(submitted.get(
+			"eta_receipt_fingerprint", ""
+		)),
+		"profile_id": str(submitted.get("profile_id", "")),
 		"total_distance_mu": int(submitted.get("total_distance_mu", 0)),
 		"route_sha256": str(submitted.get("route_sha256", "")),
 		"mission_receipt_fingerprint": str(mission_receipt.get(
@@ -340,7 +378,6 @@ func _region_request(asset_plan: Dictionary) -> Dictionary:
 		"asset_reservation_plan": asset_plan.duplicate(true),
 		"source_face_id": 0,
 		"target_face_id": 137,
-		"speed_mu_per_tick": 50_000,
 		"target_region_id": "region.007",
 		"target_monster_source_instance_id": "",
 		"target_region_revision": 14,
@@ -395,7 +432,7 @@ func _finish(evidence: Dictionary) -> void:
 	status_label.modulate = Color("#86efac") if passed else Color("#fca5a5")
 	detail_label.text = (
 		"私有授权 → Kernel 根命令 → 半边球 ETA → 一次任务 → 撤离\n"
-		+ "Crosswalk：28/28 身份 · 12 exact · 16 reauthor\n"
+		+ "Crosswalk：28/28 exact · 0 reauthor · Profile 权威唯一\n"
 		+ "允许：ASSAULT_REGION / ASSAULT_MONSTER · 公共批次=0\n"
 		+ "checks=%d  failures=%d  production=false  human=false"
 		% [_checks, _failures.size()]

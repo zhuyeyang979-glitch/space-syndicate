@@ -8,6 +8,9 @@ class_name V076MilitaryCardCrosswalkV1
 const AuthorityCodec := preload(
 	"res://scripts/v076/simulation/v076_authority_state_codec.gd"
 )
+const ProfileCatalog := preload(
+	"res://scripts/v076/military/v076_military_unit_profile_catalog_v1.gd"
+)
 
 const CROSSWALK_PATH := "res://data/diagnostics/v076_military_card_crosswalk_v1.json"
 
@@ -17,6 +20,9 @@ const RANK_SET := [1, 2, 3, 4]
 const LEGAL_MISSIONS := ["ASSAULT_REGION", "ASSAULT_MONSTER"]
 const LEGAL_TARGET_KINDS := ["REGION", "MONSTER"]
 const FORBIDDEN_MISSIONS := ["GUARD", "PROTECT", "DEFEND_REGION"]
+const EXPECTED_PRIOR_EXACT_PROJECTION_SHA256 := (
+	"98d1a65fdcc7dde5712dc19cc14006ae2796946062385118196aeabfdd855078"
+)
 const MAPPING_STATUSES := [
 	"EXACT_MAPPED",
 	"REAUTHOR_REQUIRED",
@@ -73,7 +79,7 @@ func validate(
 func validate_document(
 	document: Dictionary,
 	catalog_snapshot: Dictionary,
-	active_catalog: Dictionary,
+	_active_catalog: Dictionary,
 	balance_defaults: Dictionary
 ) -> Dictionary:
 	var errors: Array[String] = []
@@ -82,13 +88,15 @@ func validate_document(
 	var source_cards := _source_military_cards(catalog_snapshot)
 	var source_index := _index_source_cards(source_cards)
 	var family_ranks := _family_rank_index(source_cards)
-	var active_families := _string_set(_active_family_ids(active_catalog))
-	var deferred_families := _string_set(
-		active_catalog.get("deferred_military_definitions", []) as Array
-	)
 	var profiles: Dictionary = balance_defaults.get(
 		"military_definition_rank_profiles", {}
 	) as Dictionary
+	var profile_catalog := ProfileCatalog.new()
+	var profile_document := profile_catalog.load_document()
+	var profile_report := profile_catalog.validate_document(
+		profile_document, catalog_snapshot, balance_defaults
+	)
+	var profile_index := _profile_index(profile_document)
 	var records: Array = document.get("records", []) \
 		if document.get("records", []) is Array else []
 	var seen: Dictionary = {}
@@ -105,6 +113,7 @@ func validate_document(
 	var fallback_count := 0
 	var positive_cost_count := 0
 	var profile_binding_count := 0
+	var exact_profile_binding_count := 0
 	var unit_profile_id_count := 0
 	var public_batch_count := 0
 	var sushi_count := 0
@@ -117,6 +126,27 @@ func validate_document(
 
 	if str(document.get("component_role", "")) != "ADAPTER":
 		errors.append("component_role_not_adapter")
+	if str(document.get("mapping_status", "")) != "ISOLATED_GREEN_28_OF_28":
+		errors.append("mapping_status_not_exact_green")
+	if str(document.get("profile_authority_id", "")) \
+			!= ProfileCatalog.PROFILE_AUTHORITY_ID:
+		errors.append("profile_authority_binding_invalid")
+	if int(document.get("exact_mapping_preserved_count", 0)) != 12:
+		errors.append("prior_exact_mapping_preservation_invalid")
+	if canonical_prior_exact_projection_fingerprint(document) \
+			!= EXPECTED_PRIOR_EXACT_PROJECTION_SHA256:
+		errors.append("prior_exact_mapping_projection_regressed")
+	var correction_evidence := document.get(
+		"ownership_binding_correction_evidence", {}
+	) as Dictionary
+	if str(correction_evidence.get("status", "")) \
+			!= "REGRESSED_WITH_EVIDENCE" \
+			or int(correction_evidence.get("affected_record_count", 0)) != 12 \
+			or str(correction_evidence.get("scope", "")) \
+			!= "movement_speed_binding_only":
+		errors.append("movement_owner_regression_evidence_invalid")
+	if not bool(profile_report.get("valid", false)):
+		errors.append("profile_authority_invalid")
 	if bool(document.get("owns_card_catalog", true)):
 		errors.append("crosswalk_claims_card_catalog_ownership")
 	if bool(document.get("production_green", true)):
@@ -226,7 +256,8 @@ func validate_document(
 		else:
 			errors.append("asset_cost_binding_invalid:%s" % card_id)
 		if not _validate_movement_binding(
-			record.get("movement_speed_binding", {}) as Dictionary
+			record.get("movement_speed_binding", {}) as Dictionary,
+			unit_profile_id
 		):
 			errors.append("movement_speed_binding_invalid:%s" % card_id)
 
@@ -234,8 +265,10 @@ func validate_document(
 		var short_family := family_id.trim_prefix("unit.military.")
 		var gap_codes: Array = record.get("authoring_gap_codes", []) as Array
 		if status == "EXACT_MAPPED":
-			if short_family not in active_families:
-				errors.append("exact_mapping_family_not_active:%s" % card_id)
+			if not profile_index.has(unit_profile_id):
+				errors.append("exact_mapping_profile_missing:%s" % card_id)
+			else:
+				exact_profile_binding_count += 1
 			if missions != LEGAL_MISSIONS or targets != LEGAL_TARGET_KINDS:
 				errors.append("exact_mapping_action_surface_invalid:%s" % card_id)
 			if not gap_codes.is_empty():
@@ -244,14 +277,14 @@ func validate_document(
 				record.get("combat_profile_binding", {}) as Dictionary,
 				short_family,
 				int(record.get("source_rank", 0)),
-				profiles
+				profiles,
+				profile_index,
+				unit_profile_id
 			):
 				profile_binding_count += 1
 			else:
 				errors.append("combat_profile_binding_invalid:%s" % card_id)
 		elif status == "REAUTHOR_REQUIRED":
-			if short_family not in deferred_families:
-				errors.append("reauthor_family_not_deferred:%s" % card_id)
 			if not missions.is_empty() or not targets.is_empty():
 				errors.append("reauthor_record_claims_action_surface:%s" % card_id)
 			if gap_codes.is_empty():
@@ -307,6 +340,18 @@ func validate_document(
 		],
 		"positive_asset_cost_binding_count": positive_cost_count,
 		"exact_combat_profile_binding_count": profile_binding_count,
+		"profile_binding_coverage": "%d/%d" % [
+			exact_profile_binding_count, records.size(),
+		],
+		"exact_mapping_preserved_count": int(document.get(
+			"exact_mapping_preserved_count", 0
+		)),
+		"regressed_with_evidence_count": int(correction_evidence.get(
+			"affected_record_count", 0
+		)),
+		"prior_exact_mapping_projection_sha256": (
+			canonical_prior_exact_projection_fingerprint(document)
+		),
 		"forbidden_mission_token_count": forbidden_mission_count,
 		"name_based_mission_inference_count": name_inference_count,
 		"text_parse_runtime_rule_count": text_parse_count,
@@ -347,6 +392,24 @@ func canonical_fingerprint(document: Dictionary) -> String:
 	return AuthorityCodec.fingerprint(
 		_canonical_source_machine(fingerprint_payload)
 	)
+
+
+func canonical_prior_exact_projection_fingerprint(document: Dictionary) -> String:
+	var projection: Array = []
+	for record_variant in document.get("records", []):
+		if not (record_variant is Dictionary):
+			continue
+		var record := record_variant as Dictionary
+		if not str(record.get("unit_profile_id", "")).begins_with("v075.military."):
+			continue
+		var row := record.duplicate(true)
+		row.erase("movement_speed_binding")
+		projection.append(row)
+	projection.sort_custom(func(left: Variant, right: Variant) -> bool:
+		return str((left as Dictionary).get("source_card_id", "")) \
+			< str((right as Dictionary).get("source_card_id", ""))
+	)
+	return AuthorityCodec.fingerprint(_canonical_source_machine(projection))
 
 
 func _source_military_cards(catalog: Dictionary) -> Array:
@@ -404,29 +467,51 @@ func _validate_asset_binding(binding: Dictionary, machine: Dictionary) -> bool:
 		and source_amount > 0
 
 
-func _validate_movement_binding(binding: Dictionary) -> bool:
+func _validate_movement_binding(
+	binding: Dictionary,
+	unit_profile_id: String
+) -> bool:
 	return binding == {
-		"future_owner_registration": (
-			"V076_STAGE_4_MILITARY_PHYSICAL_ETA_OWNER_REGISTRATION"
-		),
-		"request_field": "speed_mu_per_tick",
-		"value_authority": "FUTURE_UNIQUE_PHYSICAL_ETA_OWNER",
+		"owner": ProfileCatalog.PROFILE_AUTHORITY_ID,
+		"profile_id_source_field": "unit_profile_id",
+		"source_field": "speed_distance_mu_per_tick",
 		"crosswalk_owns_value": false,
-	}
+	} and not unit_profile_id.is_empty()
 
 
 func _validate_combat_profile_binding(
 	binding: Dictionary,
 	family_id: String,
 	rank: int,
-	profiles: Dictionary
+	profiles: Dictionary,
+	profile_index: Dictionary,
+	unit_profile_id: String
 ) -> bool:
+	if not profile_index.has(unit_profile_id) \
+			or bool(binding.get("crosswalk_owns_values", true)):
+		return false
+	var authored := profile_index[unit_profile_id] as Dictionary
+	if str(authored.get("family_id", "")) != family_id \
+			or int(authored.get("rank", 0)) != rank:
+		return false
+	if family_id in ProfileCatalog.NEW_FAMILY_IDS:
+		return binding.get("owner") == ProfileCatalog.PROFILE_AUTHORITY_ID \
+			and binding.get("profile_ref") == "/%s" % unit_profile_id \
+			and binding.get("required_fields") == [
+				"assault_region_profile.damage_budget",
+				"assault_monster_profile.damage",
+			] \
+			and int((authored.get(
+				"assault_region_profile", {}
+			) as Dictionary).get("damage_budget", 0)) > 0 \
+			and int((authored.get(
+				"assault_monster_profile", {}
+			) as Dictionary).get("damage", 0)) > 0
 	if binding.get("owner") != "V075_COMBAT_BALANCE_DEFAULTS" \
-	or binding.get("profile_ref") \
-	!= "/military_definition_rank_profiles/%s/%d" % [family_id, rank - 1] \
-	or binding.get("required_fields") \
-	!= ["primary_asset_cost", "region_damage_budget", "monster_damage"] \
-	or bool(binding.get("crosswalk_owns_values", true)):
+			or binding.get("profile_ref") \
+			!= "/military_definition_rank_profiles/%s/%d" % [family_id, rank - 1] \
+			or binding.get("required_fields") \
+			!= ["primary_asset_cost", "region_damage_budget", "monster_damage"]:
 		return false
 	var family_profiles: Array = profiles.get(family_id, []) \
 		if profiles.get(family_id, []) is Array else []
@@ -437,6 +522,15 @@ func _validate_combat_profile_binding(
 		and int(profile.get("primary_asset_cost", 0)) > 0 \
 		and int(profile.get("region_damage_budget", 0)) > 0 \
 		and int(profile.get("monster_damage", 0)) > 0
+
+
+func _profile_index(document: Dictionary) -> Dictionary:
+	var result := {}
+	for record_variant in document.get("records", []):
+		if record_variant is Dictionary:
+			var record := record_variant as Dictionary
+			result[str(record.get("profile_id", ""))] = record
+	return result
 
 
 func _string_set(values: Array) -> Dictionary:

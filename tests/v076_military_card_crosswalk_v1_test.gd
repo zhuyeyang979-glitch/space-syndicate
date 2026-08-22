@@ -29,7 +29,7 @@ func _init() -> void:
 		print("V076_MILITARY_CARD_CROSSWALK_DIAGNOSTIC|%s" % JSON.stringify(report))
 
 	_expect(bool(report.get("valid", false)), "canonical Crosswalk validates")
-	_expect(str(report.get("status", "")) == "PARTIAL", "honest result is PARTIAL")
+	_expect(str(report.get("status", "")) == "GREEN", "all 28 mappings are isolated green")
 	_expect(int(report.get("source_military_card_count", 0)) == 28, "source military catalog closes at 28")
 	_expect(int(report.get("source_military_family_count", 0)) == 7, "source military families close at seven")
 	_expect(str(report.get("source_family_rank_coverage", "")) == "7/7", "all families cover ranks I-IV")
@@ -41,9 +41,13 @@ func _init() -> void:
 	_expect(int(report.get("missing_family_rank_record_count", -1)) == 0, "no family/rank record is missing")
 	_expect(str(report.get("unit_profile_id_coverage", "")) == "28/28", "every record names its exact or required unit profile")
 	_expect(int(report.get("positive_asset_cost_binding_count", 0)) == 28, "all records bind a positive catalog-owned cost")
-	_expect(int(report.get("exact_combat_profile_binding_count", 0)) == 12, "twelve active cards bind frozen V075 combat profiles")
-	_expect(int(report.get("exact_mapped_count", 0)) == 12, "three active families produce twelve exact mappings")
-	_expect(int(report.get("reauthor_required_count", 0)) == 16, "four deferred families produce sixteen authoring gaps")
+	_expect(int(report.get("exact_combat_profile_binding_count", 0)) == 28, "all cards bind one inherited or new combat Profile")
+	_expect(str(report.get("profile_binding_coverage", "")) == "28/28", "all Crosswalk rows bind the unique Profile Authority")
+	_expect(int(report.get("exact_mapped_count", 0)) == 28, "all seven families produce exact mappings")
+	_expect(int(report.get("reauthor_required_count", -1)) == 0, "no authoring gap remains")
+	_expect(int(report.get("exact_mapping_preserved_count", 0)) == 12, "the twelve prior exact mappings remain preserved")
+	_expect(int(report.get("regressed_with_evidence_count", 0)) == 12, "the prior movement-owner placeholder is repaired with evidence")
+	_expect(str(report.get("prior_exact_mapping_projection_sha256", "")) == Crosswalk.EXPECTED_PRIOR_EXACT_PROJECTION_SHA256, "all prior exact fields except the evidenced movement binding remain byte-stable")
 	_expect(int(report.get("retired_from_alpha07_count", -1)) == 0, "no source identity is silently retired")
 	_expect(int(report.get("unresolved_source_conflict_count", -1)) == 0, "no source conflict remains")
 	_expect(int(report.get("forbidden_mission_token_count", -1)) == 0, "no forbidden mission enters an active mapping")
@@ -122,7 +126,7 @@ func _init() -> void:
 	human_green["human_green"] = true
 	_expect(_has_error(adapter.validate_document(human_green, catalog_snapshot, active_catalog, balance_defaults), "human_false_green"), "human false-green is rejected")
 
-	print("V076_MILITARY_CARD_CROSSWALK_TEST|status=%s|checks=%d|failures=%d|exact=12|reauthor=16" % [
+	print("V076_MILITARY_CARD_CROSSWALK_TEST|status=%s|checks=%d|failures=%d|exact=28|reauthor=0" % [
 		"PASS" if _failures.is_empty() else "FAIL",
 		_checks,
 		_failures.size(),
