@@ -821,6 +821,120 @@
       }
     },
     {
+      "component_id": "component.v076.military_card_crosswalk_adapter",
+      "class_name": "V076MilitaryCardCrosswalkV1",
+      "path": "scripts/v076/military/v076_military_card_crosswalk_v1.gd",
+      "domain_id": "future.private_direct_action_input",
+      "component_role": "ADAPTER",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.v076.private_direct_action_input",
+      "owner_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.current.card_runtime_catalog_v06",
+        "reuse.v076.kernel.current",
+        "reuse.v075.military_mission_core"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.current.card_runtime_catalog_v06",
+        "reuse.pr62.semantic_compiler",
+        "reuse.v076.kernel.current",
+        "reuse.v075.military_mission_core"
+      ],
+      "new_component_justification": "One read-only Crosswalk adapter validates source-card fingerprints and binds authored catalog fields to the existing private Direct Action contract. It creates no catalog, compiler, input Owner, asset Owner, unit-state Owner, movement Owner, tick, RNG, replay, map, or presentation authority.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "focused_test_ids": [
+        "v076_military_card_crosswalk_v1_test",
+        "v076_private_military_direct_action_integration_test"
+      ],
+      "golden_scenario_steps": ["STEP10"],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 4,
+        "reuse_candidate_ids": [
+          "reuse.current.card_runtime_catalog_v06",
+          "reuse.pr62.semantic_compiler",
+          "reuse.v076.kernel.current",
+          "reuse.v075.military_mission_core"
+        ],
+        "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
+        "why_existing_owner_cannot_be_extended": "The V06 catalog must remain the source-definition Owner and the private Direct Action Owner must remain the input authority; neither may own a cross-domain verification table.",
+        "why_adapter_is_insufficient": "NOT_APPLICABLE; this component is exactly the single stateless Adapter required for the mapping boundary.",
+        "why_new_owner_is_required": "NOT_REQUIRED; component.v076.private_direct_action_input remains the unique Owner."
+      }
+    },
+    {
+      "component_id": "component.v076.military_card_crosswalk_data",
+      "class_name": "V076MilitaryCardCrosswalkV1Data",
+      "path": "data/diagnostics/v076_military_card_crosswalk_v1.json",
+      "domain_id": "future.private_direct_action_input",
+      "component_role": "ADAPTER",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.v076.private_direct_action_input",
+      "owner_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.current.card_runtime_catalog_v06",
+        "reuse.v075.military_mission_core"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.current.card_runtime_catalog_v06",
+        "reuse.v075.military_mission_core"
+      ],
+      "new_component_justification": "The sole machine Crosswalk stores source identities, source fingerprints, binding references, and honest mapping status only. It copies no card name, art, description, full price definition, family definition, rank definition, or gameplay state.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "focused_test_ids": ["v076_military_card_crosswalk_v1_test"],
+      "golden_scenario_steps": ["STEP10"],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 2,
+        "reuse_candidate_ids": [
+          "reuse.current.card_runtime_catalog_v06",
+          "reuse.v075.military_mission_core"
+        ],
+        "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
+        "why_existing_owner_cannot_be_extended": "The source catalog and mission contract remain frozen Owners/sources; the Crosswalk may bind but may not mutate or duplicate either authority.",
+        "why_adapter_is_insufficient": "NOT_APPLICABLE; this data is the machine half of the same single Adapter.",
+        "why_new_owner_is_required": "NOT_REQUIRED; component.v076.private_direct_action_input remains the unique Owner."
+      }
+    },
+    {
       "component_id": "component.v076.private_military_direct_action_bench",
       "class_name": "V076PrivateMilitaryDirectActionBench",
       "path": "scripts/tools/v076/v076_private_military_direct_action_bench.gd",
@@ -1156,6 +1270,19 @@
       },
       "adapted_scope": "Capability-bound own-hand membership, exact source revalidation, replay/collision rejection, and private authorization patterns.",
       "forbidden_scope": "The legacy v06 source port may not become an execution owner."
+    },
+    {
+      "reuse_id": "reuse.current.card_runtime_catalog_v06",
+      "domain_id": "current.v06_semantic_card_source",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "class_name": "CardRuntimeCatalogV06Resource",
+        "path": "scripts/cards/card_runtime_catalog_v06_resource.gd",
+        "resource": "resources/cards/runtime/card_runtime_catalog_v06.tres",
+        "json": "data/cards/card_runtime_catalog_v06.json"
+      },
+      "adapted_scope": "Dynamic enumeration of the sealed 28-card military source set plus exact machine-record identity, family, rank, and asset-cost bindings.",
+      "forbidden_scope": "The Crosswalk may validate a detached catalog snapshot but may not copy, mutate, replace, or become the card-definition Owner."
     },
     {
       "reuse_id": "reuse.current.card_runtime_catalog",

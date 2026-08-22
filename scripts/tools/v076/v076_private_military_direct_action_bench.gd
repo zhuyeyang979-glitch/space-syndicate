@@ -7,6 +7,14 @@ const AuthorizationFixture := preload(
 const RULESET_PROFILE := preload(
 	"res://resources/rules/space_syndicate_ruleset_v06.tres"
 )
+const MilitaryCrosswalk := preload(
+	"res://scripts/v076/military/v076_military_card_crosswalk_v1.gd"
+)
+const SemanticCatalogResource := preload(
+	"res://scripts/cards/card_runtime_catalog_v06_resource.gd"
+)
+const ACTIVE_CATALOG_PATH := "res://data/v075/v075_combat_active_catalog.json"
+const BALANCE_DEFAULTS_PATH := "res://docs/rules/v075_combat_balance_defaults.json"
 
 const MILITARY_CARD_ID := "unit.military.air_superiority_fighter.rank_1"
 const MILITARY_CATALOG_CARD_ID := "制空战斗机1"
@@ -18,6 +26,7 @@ const SUBMISSION_ID := "stage4.private.military.region.001"
 
 var _checks := 0
 var _failures: Array[String] = []
+var _crosswalk_report: Dictionary = {}
 
 
 func _ready() -> void:
@@ -25,6 +34,37 @@ func _ready() -> void:
 
 
 func _run_bench() -> void:
+	var semantic_catalog := SemanticCatalogResource.new()
+	var semantic_catalog_report := semantic_catalog.reload()
+	_expect(bool(semantic_catalog_report.get("valid", false)),
+		"the unique V06 semantic source Owner validates")
+	_crosswalk_report = MilitaryCrosswalk.new().validate(
+		semantic_catalog.catalog_snapshot(),
+		_read_json(ACTIVE_CATALOG_PATH),
+		_read_json(BALANCE_DEFAULTS_PATH)
+	)
+	_expect(bool(_crosswalk_report.get("valid", false)),
+		"the single read-only military Crosswalk validates")
+	_expect(
+		int(_crosswalk_report.get("mapping_record_count", 0)) == 28
+			and str(_crosswalk_report.get("source_family_rank_coverage", "")) == "7/7",
+		"the sealed source set closes at 28 records and seven rank ladders"
+	)
+	_expect(
+		int(_crosswalk_report.get("exact_mapped_count", 0)) == 12
+			and int(_crosswalk_report.get("reauthor_required_count", 0)) == 16,
+		"the Bench presents twelve exact mappings and sixteen honest gaps"
+	)
+	_expect(
+		int(_crosswalk_report.get("forbidden_mission_token_count", -1)) == 0
+			and int(_crosswalk_report.get("mission_fallback_count", -1)) == 0,
+		"the Crosswalk contains only authorized missions and no fallback"
+	)
+	_expect(
+		int(_crosswalk_report.get("public_batch_entry_count", -1)) == 0
+			and int(_crosswalk_report.get("shared_sushi_track_resolution_count", -1)) == 0,
+		"Crosswalk bindings remain private and bypass both shared tracks"
+	)
 	var coordinator := get_node_or_null(
 		"GameRuntimeCoordinator"
 	) as GameRuntimeCoordinator
@@ -341,18 +381,39 @@ func _expect(condition: bool, message: String) -> void:
 		_failures.append(message)
 
 
+func _read_json(path: String) -> Dictionary:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	return (parsed as Dictionary).duplicate(true) if parsed is Dictionary else {}
+
+
 func _finish(evidence: Dictionary) -> void:
 	var passed := _failures.is_empty()
 	status_label.text = "PASS · Stage 4 isolated" if passed else "FAIL · Stage 4 isolated"
 	status_label.modulate = Color("#86efac") if passed else Color("#fca5a5")
 	detail_label.text = (
 		"私有授权 → Kernel 根命令 → 半边球 ETA → 一次任务 → 撤离\n"
-		+ "允许：ASSAULT_REGION / ASSAULT_MONSTER\n"
-		+ "禁止：GUARD / PROTECT / 传送 / 公共批处理\n"
+		+ "Crosswalk：28/28 身份 · 12 exact · 16 reauthor\n"
+		+ "允许：ASSAULT_REGION / ASSAULT_MONSTER · 公共批次=0\n"
 		+ "checks=%d  failures=%d  production=false  human=false"
 		% [_checks, _failures.size()]
 	)
 	var result := evidence.duplicate(true)
+	result["military_card_total_count"] = int(
+		_crosswalk_report.get("mapping_record_count", 0)
+	)
+	result["military_card_exact_mapping_count"] = int(
+		_crosswalk_report.get("exact_mapped_count", 0)
+	)
+	result["military_card_reauthor_required_count"] = int(
+		_crosswalk_report.get("reauthor_required_count", 0)
+	)
+	result["crosswalk_status"] = str(_crosswalk_report.get("status", "INVALID"))
+	result["crosswalk_fingerprint_sha256"] = str(
+		_crosswalk_report.get("crosswalk_fingerprint_sha256", "")
+	)
 	result["status"] = "PASS" if passed else "FAIL"
 	result["check_count"] = _checks
 	result["failure_count"] = _failures.size()

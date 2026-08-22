@@ -1,0 +1,116 @@
+{
+  "schema_version": "space_syndicate.v076.military_authoring_gap_report.v1",
+  "report_id": "v076-stage4-military-authoring-gap-20260823",
+  "recorded_on": "2026-08-23",
+  "status": "PARTIAL",
+  "source_catalog_path": "data/cards/card_runtime_catalog_v06.json",
+  "source_military_card_count": 28,
+  "source_military_family_count": 7,
+  "mapping_record_count": 28,
+  "exact_mapped_count": 12,
+  "reauthor_required_count": 16,
+  "retired_from_alpha07_pool_count": 0,
+  "unresolved_source_conflict_count": 0,
+  "false_green_count": 0,
+  "authoritative_sources": [
+    {
+      "path": "data/cards/card_runtime_catalog_v06.json",
+      "role": "source_card_identity_rank_and_asset_cost_owner"
+    },
+    {
+      "path": "data/v075/v075_combat_active_catalog.json",
+      "role": "frozen_active_military_definition_set"
+    },
+    {
+      "path": "docs/rules/v075_combat_balance_defaults.json",
+      "role": "frozen_active_rank_combat_profile_owner"
+    },
+    {
+      "path": "docs/rules/v075_military_semantic_inventory.json",
+      "role": "active_deferred_and_retired_semantic_classification"
+    }
+  ],
+  "exact_families": [
+    "planetary_defense_force",
+    "air_superiority_fighter",
+    "submarine_fleet"
+  ],
+  "gap_families": [
+    {
+      "family_id": "orbital_bomber",
+      "source_card_ids": [
+        "unit.military.orbital_bomber.rank_1",
+        "unit.military.orbital_bomber.rank_2",
+        "unit.military.orbital_bomber.rank_3",
+        "unit.military.orbital_bomber.rank_4"
+      ],
+      "missing_authoritative_fields": [
+        "v075_active_definition",
+        "v075_rank_region_damage_budget",
+        "v075_rank_monster_damage",
+        "alpha07_allowed_assault_missions"
+      ],
+      "legacy_evidence_disposition": "REFERENCE_ONLY_NOT_VALID_FOR_ALPHA07_MAPPING"
+    },
+    {
+      "family_id": "heavy_tank",
+      "source_card_ids": [
+        "unit.military.heavy_tank.rank_1",
+        "unit.military.heavy_tank.rank_2",
+        "unit.military.heavy_tank.rank_3",
+        "unit.military.heavy_tank.rank_4"
+      ],
+      "missing_authoritative_fields": [
+        "v075_active_definition",
+        "v075_rank_region_damage_budget",
+        "v075_rank_monster_damage",
+        "alpha07_allowed_assault_missions",
+        "physical_geodesic_speed_profile"
+      ],
+      "legacy_evidence_disposition": "REFERENCE_ONLY_TERRAIN_AND_PERSISTENT_UNIT_SEMANTICS_RETIRED"
+    },
+    {
+      "family_id": "missile_emplacement",
+      "source_card_ids": [
+        "unit.military.missile_emplacement.rank_1",
+        "unit.military.missile_emplacement.rank_2",
+        "unit.military.missile_emplacement.rank_3",
+        "unit.military.missile_emplacement.rank_4"
+      ],
+      "missing_authoritative_fields": [
+        "v075_active_definition",
+        "v075_rank_region_damage_budget",
+        "v075_rank_monster_damage",
+        "alpha07_allowed_assault_missions",
+        "arrive_execute_withdraw_mobility_profile"
+      ],
+      "legacy_evidence_disposition": "REFERENCE_ONLY_STATIONARY_PERSISTENT_SOURCE_CONFLICTS_WITH_WITHDRAWAL"
+    },
+    {
+      "family_id": "star_ocean_battleship",
+      "source_card_ids": [
+        "unit.military.star_ocean_battleship.rank_1",
+        "unit.military.star_ocean_battleship.rank_2",
+        "unit.military.star_ocean_battleship.rank_3",
+        "unit.military.star_ocean_battleship.rank_4"
+      ],
+      "missing_authoritative_fields": [
+        "v075_active_definition",
+        "v075_rank_region_damage_budget",
+        "v075_rank_monster_damage",
+        "alpha07_allowed_assault_missions"
+      ],
+      "legacy_evidence_disposition": "REFERENCE_ONLY_NOT_VALID_FOR_ALPHA07_MAPPING"
+    }
+  ],
+  "prohibited_resolution": {
+    "infer_from_card_name": false,
+    "parse_player_description": false,
+    "convert_retired_protection_semantics_to_assault": false,
+    "invent_temporary_numeric_defaults": false,
+    "claim_28_of_28_exact": false
+  },
+  "production_green": false,
+  "human_green": false,
+  "next_task": "V076_STAGE4_MILITARY_AUTHORING_GAP_CLOSURE_ACTIVE_DEFINITION_RANK_COMBAT_PROFILE_ASSAULT_MISSION_AND_PHYSICAL_SPEED"
+}

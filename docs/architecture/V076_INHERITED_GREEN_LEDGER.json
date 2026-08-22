@@ -234,6 +234,8 @@
     ],
     "affected_domains": [
       "future.private_direct_action_input",
+      "current.v06_semantic_card_source",
+      "current.v075_production_combat_candidate",
       "v076.execution_order_tick_rng_snapshot_replay",
       "v076.spherical_partition_authority",
       "v076.monster_l1_directional_geodesic_move",
@@ -243,6 +245,9 @@
     ],
     "affected_owners": [
       "component.v076.private_direct_action_input",
+      "component.v076.military_card_crosswalk_adapter",
+      "component.v076.military_card_crosswalk_data",
+      "component.current.card_runtime_catalog_v06",
       "component.v076.kernel",
       "component.v076.partition",
       "component.v076.monster_l1",
@@ -252,6 +257,7 @@
     ],
     "focused_tests": [
       "v076_private_direct_action_input_owner_test",
+      "v076_military_card_crosswalk_v1_test",
       "v076_private_military_direct_action_integration_test",
       "v076_deterministic_kernel_test",
       "v076_shared_half_edge_partition_test",
@@ -273,7 +279,7 @@
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "Stage 4 is an isolated cross-domain integration bounded to one private Direct Action input Owner and its direct consumers. It does not cut over main.tscn, alter inherited Owner formulas, certify all military cards, or claim production/human green."
+    "why_focused_tests_are_sufficient": "Stage 4 remains an isolated cross-domain integration bounded to one private Direct Action input Owner and one read-only Crosswalk Adapter. The delta validates the complete 28-card source identity set, exact-maps only the 12 frozen active V075 cards, records 16 authoring gaps, and reruns its direct Kernel/map/Monster/V075 sentinels. It does not cut over main.tscn, alter inherited Owner formulas, certify production cards, or claim production/human green."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
