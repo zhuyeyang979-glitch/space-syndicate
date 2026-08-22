@@ -1,20 +1,20 @@
 {
   "schema_version": "space_syndicate.v076.inherited_green_ledger.v2",
   "ledger_id": "v076-inherited-green-ledger-20260821",
-  "recorded_on": "2026-08-21",
+  "recorded_on": "2026-08-23",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
-    "tree_sha": "0a7c885023b75bb3f67d892b79fb8914ef87da6c",
+    "head_sha": "bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4",
+    "tree_sha": "3133d8c4f00ee5110336b8b8efb7f8fe60523d15",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
   "discipline": {
     "point_inertia": "ACTIVE",
     "historical_reuse": "ACTIVE",
-    "change_class": "DOCS_ONLY",
+    "change_class": "CROSS_DOMAIN_INTEGRATION",
     "full_reproof_performed": false,
-    "godot_execution_count": 0,
+    "godot_execution_count": 10,
     "production_composition_changed": false
   },
   "status_vocabulary": [
@@ -136,14 +136,74 @@
         "production_composition_cutover",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_STAGE_4_PRIVATE_MILITARY_DIRECT_ACTION_ISOLATED",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4",
+      "tree_sha": "3133d8c4f00ee5110336b8b8efb7f8fe60523d15",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "PLAYABLE_CAPABILITY",
+      "golden_step_ids": ["STEP10"],
+      "current_owner": "V076PrivateDirectActionInputOwnerV1",
+      "current_owner_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "evidence": [
+        {
+          "evidence_id": "stage4-private-input-owner-contract",
+          "result": "PASS",
+          "checks": "7/7",
+          "allowed_missions": ["ASSAULT_REGION", "ASSAULT_MONSTER"],
+          "forbidden_missions": ["GUARD", "PROTECT"]
+        },
+        {
+          "evidence_id": "stage4-private-military-direct-action-integration",
+          "result": "PASS",
+          "checks": "19/19",
+          "golden_status": "ISOLATED_GREEN",
+          "eta_ticks": 45,
+          "total_distance_mu": 2217508,
+          "kernel_root_command_count": 1,
+          "kernel_execution_count": 1,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0,
+          "route_sha256": "3925e2784627b36a5a4eb3ddec277b84107767caca9974c739439e37a97d727f",
+          "mission_receipt_fingerprint": "92d1f46eebe595805c3f38b25ea7ed97e085f74842b16419a62de489d6ee4e1e"
+        },
+        {
+          "evidence_id": "stage4-godot-mcp-isolated-bench",
+          "result": "PASS",
+          "scene": "res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn",
+          "evidence_scope": "isolated_diagnostic_only",
+          "new_file_warning_count": 0,
+          "hard_error_count": 0,
+          "stop_result": "Godot project stopped",
+          "production_green": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "stage4-inherited-focused-sentinels",
+          "result": "PASS",
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "v075_military_contract_test_count": 4,
+          "gate_selftest_checks": "114/114"
+        }
+      ],
+      "not_claimed": [
+        "production_composition_cutover",
+        "human_playtest_pass",
+        "exact_28_military_card_mapping",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
-    "source_bytes_changed_after_stage3": false,
-    "test_bytes_changed_after_stage3": false,
-    "evidence_reexecuted": false,
+    "source_bytes_changed_after_stage3": true,
+    "test_bytes_changed_after_stage3": true,
+    "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "No full reproof was run or implied for this DOCS_ONLY candidate."
+    "current_claim": "Only the Stage 4 cross-domain delta and its declared inherited sentinels were revalidated; no full-world reproof was run or implied."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -156,13 +216,13 @@
     "stage_3_ledger_status": "CURRENT_DELTA_GREEN",
     "historical_reuse_status": "ACTIVE",
     "point_inertia_status": "ACTIVE",
-    "golden_isolated_green_count": 4,
+    "golden_isolated_green_count": 5,
     "golden_production_green_count": 0,
     "golden_human_green_count": 0,
     "production_cutover_status": false,
-    "latest_completed_stage": "V076_STAGE_3_DETERMINISTIC_MONSTER_L1_DIRECTIONAL_GEODESIC_MOVE",
-    "latest_completed_stage_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
-    "next_stage": "V076_STAGE_4_PENDING_OWNER_REGISTRATION",
+    "latest_completed_stage": "V076_STAGE_4_PRIVATE_MILITARY_DIRECT_ACTION_ISOLATED",
+    "latest_completed_stage_head_sha": "bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4",
+    "next_stage": "V076_STAGE_4_EXACT_MILITARY_CARD_MAPPING_PENDING",
     "v075_pr90_dependency_boundary": "REFERENCE_ONLY_EXACT_BASE_NO_V076_CUTOVER"
   },
   "canonical_change_scope": {
@@ -220,7 +280,7 @@
   "point_inertia_gate_queued": true,
   "current_task_interrupted_by_gate": false,
   "current_task_result_preserved": true,
-  "product_development_resume_target": "V076_STAGE_4_PRIVATE_DIRECT_ACTION_ISOLATED_IMPLEMENTATION",
+  "product_development_resume_target": "V076_STAGE_4_EXACT_MILITARY_CARD_MAPPING_PENDING",
   "required_check_name": "V076 Reuse and Point-Inertia Gate",
   "agent_merge_requires_reuse_gate": true
 }

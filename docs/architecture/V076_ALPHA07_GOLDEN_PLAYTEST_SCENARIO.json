@@ -1,13 +1,13 @@
 {
   "schema_version": "space_syndicate.v076.alpha07_golden_playtest_scenario.v1",
   "scenario_id": "v076-alpha07-golden-playtest-scenario-01",
-  "recorded_on": "2026-08-21",
-  "candidate_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
-  "change_class": "DOCS_ONLY",
+  "recorded_on": "2026-08-23",
+  "candidate_head_sha": "bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4",
+  "change_class": "CROSS_DOMAIN_INTEGRATION",
   "overall_status": "PENDING_HUMAN_PRODUCTION_EXECUTION",
   "human_execution_count": 0,
   "production_pass_count": 0,
-  "isolated_green_count": 4,
+  "isolated_green_count": 5,
   "stage3_diagnostic_only": true,
   "stage3_human_golden_step_06_09": false,
   "full_reproof_performed": false,
@@ -114,12 +114,14 @@
     {
       "step_id": "STEP10",
       "name": "Resolve one military Direct Action",
-      "status": "PENDING",
-      "required_surface": "future private Direct Action channel and military owner",
+      "status": "ISOLATED_GREEN",
+      "required_surface": "V076 Stage 4 isolated production-wiring Bench",
       "human_executed": false,
-      "production_composition": true,
-      "pass_claimed": false,
-      "acceptance": "The exact card/action binding reaches one military owner without public-batch leakage or retargeting."
+      "production_composition": false,
+      "pass_claimed": true,
+      "evidence": "7/7 Owner contract and 19/19 isolated integration; physical ETA 45 ticks, one Kernel root/execution, exact-once settlement, no public batch or shared sushi-track resolution, warning-clean changed files, hard errors 0, clean MCP stop.",
+      "claim_limit": "Diagnostic isolated evidence only. Production and human green remain false; exact mapping for all 28 military cards remains unverified.",
+      "acceptance": "The exact card/action binding reaches the unique private input Owner and delegates one physical geodesic military mission without public-batch leakage, retargeting, teleport, or a second asset/unit-state Owner."
     },
     {
       "step_id": "STEP11",
@@ -178,7 +180,8 @@
       "STEP02",
       "STEP03",
       "STEP04",
-      "STEP05"
+      "STEP05",
+      "STEP10"
     ],
     "pending_step_ids": [
       "STEP01",
@@ -186,7 +189,6 @@
       "STEP07",
       "STEP08",
       "STEP09",
-      "STEP10",
       "STEP11",
       "STEP12",
       "STEP13",

@@ -1,9 +1,9 @@
 {
   "schema_version": "space_syndicate.v076.historical_reuse_registry.v2",
   "registry_id": "v076-historical-reuse-registry-20260821",
-  "recorded_on": "2026-08-21",
-  "candidate_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
-  "change_class": "DOCS_ONLY",
+  "recorded_on": "2026-08-23",
+  "candidate_head_sha": "bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4",
+  "change_class": "CROSS_DOMAIN_INTEGRATION",
   "historical_reuse": "ACTIVE",
   "point_inertia": "ACTIVE",
   "whole_branch_merge_allowed": false,

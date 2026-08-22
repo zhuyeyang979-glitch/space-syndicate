@@ -5,7 +5,7 @@ schema_version: space_syndicate.v076.owner_reuse_map.v1
 registry_id: V076_OWNER_REUSE_MAP
 
 This map enforces one Owner per domain at candidate head
-`2a365d465f199481da7fa1ef8f734e7525a136f5`. Consumers may adapt data or
+`bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4`. Consumers may adapt data or
 contracts, but they may not inherit authority by association.
 
 | Domain | Unique Owner | Reused source | Disposition | Consumer boundary |
@@ -46,5 +46,11 @@ contracts, but they may not inherit authority by association.
   348 cards / 87 families.
 
 The 32 monster cards and 28 military cards retain `UNVERIFIED` exact V076
-mapping. Neither historical capability coverage nor Stage 3 isolated movement
-certifies those individual card records.
+mapping. Neither historical capability coverage, Stage 3 isolated movement,
+nor the Stage 4 generic Direct Action path certifies those individual card
+records.
+
+Stage 4 evidence is bound to implementation tree
+`3133d8c4f00ee5110336b8b8efb7f8fe60523d15`: the private Direct Action domain
+has one Owner, no supersession, no second Kernel/topology/catalog/asset/military
+Owner, and no production composition cutover.

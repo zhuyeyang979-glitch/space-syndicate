@@ -2045,7 +2045,16 @@ def _monotonic_transition_failures(
         failures.append(f"INHERITED_STAGE_ORDER_OR_PREFIX_CHANGED:{label}")
     old_steps = _index(previous["golden"].get("steps", []), "step_id")
     new_steps = _index(current["golden"].get("steps", []), "step_id")
-    newly_added_golden_step_ids = set(new_steps) - set(old_steps)
+    golden_green_statuses = {"ISOLATED_GREEN", "PRODUCTION_GREEN", "HUMAN_GREEN"}
+    newly_proven_golden_step_ids = {
+        step_id
+        for step_id, step in new_steps.items()
+        if step.get("status") in golden_green_statuses
+        and (
+            step_id not in old_steps
+            or old_steps[step_id].get("status") in {"PENDING", "UNVERIFIED"}
+        )
+    }
     for stage_id, old in old_stages.items():
         new = new_stages.get(stage_id)
         if new is None:
@@ -2084,7 +2093,7 @@ def _monotonic_transition_failures(
                 and golden_step_ids
                 and all(
                     isinstance(step_id, str)
-                    and step_id in newly_added_golden_step_ids
+                    and step_id in newly_proven_golden_step_ids
                     for step_id in golden_step_ids
                 )
             )
@@ -2973,13 +2982,20 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
     baseline_stage_ids_for_capability = set(
         _index(baseline_inherited.get("stages", []), "stage_id")
     )
-    baseline_golden_ids_for_capability = set(
-        _index(baseline_golden.get("steps", []), "step_id")
+    baseline_golden_for_capability = _index(
+        baseline_golden.get("steps", []), "step_id"
     )
-    head_golden_ids_for_capability = set(_index(golden.get("steps", []), "step_id"))
-    new_golden_ids_for_capability = (
-        head_golden_ids_for_capability - baseline_golden_ids_for_capability
-    )
+    head_golden_for_capability = _index(golden.get("steps", []), "step_id")
+    new_golden_ids_for_capability = {
+        step_id
+        for step_id, step in head_golden_for_capability.items()
+        if step.get("status") in {"ISOLATED_GREEN", "PRODUCTION_GREEN", "HUMAN_GREEN"}
+        and (
+            step_id not in baseline_golden_for_capability
+            or baseline_golden_for_capability[step_id].get("status")
+            in {"PENDING", "UNVERIFIED"}
+        )
+    }
     stage_ids = [
         str(row.get("stage_id", "")) for row in stage_rows if isinstance(row, dict)
     ]

@@ -9451,3 +9451,36 @@ deleted. Evidence and the remaining action inventory are recorded in
 - This focused work ran Python self-tests, the reused static scanner, JSON/schema
   checks, PR-body comparison, and CI definition checks only. It ran no Godot,
   MCP, gameplay, Exact-SHA MCP, 79-gate suite, or full-world reproof.
+
+## V0.7.6 Stage 4 private military Direct Action input
+
+- Registered `V076PrivateDirectActionInputOwnerV1` as the single Owner for
+  `future.private_direct_action_input`. Its authority is limited to the
+  actor-private authorized envelope, own-hand membership revalidation,
+  exact-once submission identity, source-collision rejection, and Kernel root
+  submission. Tick, Authority Sequence, RNG, topology, catalog, asset quantity,
+  military unit state, and presentation remain with their existing Owners.
+- Reused the PR #65 authorization pattern, V0.7.6 Kernel and half-edge path,
+  `CardRuntimeCatalogService`, `PlayerManaRuntimeController`,
+  `MilitaryRuntimeController`, and `V075MilitaryMissionCore`. The only accepted
+  missions are `ASSAULT_REGION` and `ASSAULT_MONSTER`; `GUARD`, `PROTECT`,
+  teleport, retarget, persistent action, public batch, and shared sushi-track
+  resolution are rejected or absent.
+- Added one pure Kernel reducer and an editable isolated production-wiring Bench.
+  The verified route has ETA 45 ticks and distance 2,217,508 microradians;
+  exactly one root command executes, one mission settles, existing asset
+  quantity is consumed once, and the existing military Owner withdraws the unit.
+- Focused verification passed: Owner `7/7`, integration `19/19`, Kernel `74/74`,
+  half-edge `90/90`, Monster geodesic `47/47`, four V075 military contract
+  sentinels, and Reuse/Point-Inertia Gate Self-Test `114/114`. The final Godot
+  MCP run of
+  `res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn` reported
+  the same `19/19` receipt, zero new-file warnings, zero hard errors, and a clean
+  stop.
+- Bound the evidence to implementation commit
+  `bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4` and tree
+  `3133d8c4f00ee5110336b8b8efb7f8fe60523d15`. Golden STEP10 is
+  `ISOLATED_GREEN` only, raising the isolated count to 5 while production and
+  human counts stay 0. Production composition and `main.tscn` are unchanged;
+  all 28 military card mappings remain `UNVERIFIED` and no full-world reproof
+  was claimed.

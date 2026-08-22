@@ -9,7 +9,7 @@ It is a plan and evidence ledger, not a human-play result.
 
 `PRODUCTION_PASS_COUNT=0`
 
-`ISOLATED_GREEN_COUNT=4`
+`ISOLATED_GREEN_COUNT=5`
 
 | Step | Player journey | Current status | Honest evidence boundary |
 |---|---|---|---|
@@ -22,7 +22,7 @@ It is a plan and evidence ledger, not a human-play result.
 | STEP07 | Inspect globe and select legal target | `PENDING` | Requires human use of the production map and typed target binding. |
 | STEP08 | Acquire and submit one legal card | `PENDING` | Requires one real card instance through acquisition, hand, target, and resolution Owners. |
 | STEP09 | Resolve production Monster move/consequence | `PENDING` | Current Stage 3 Bench cannot satisfy this step. |
-| STEP10 | Resolve one military Direct Action | `PENDING` | Exact 28-card mapping and private Direct Action channel remain unverified. |
+| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | Owner `7/7`, isolated integration `19/19`, physical ETA 45 ticks, one Kernel root/execution, no public batch/sushi track, warning-clean changed files, clean MCP stop. Exact 28-card mapping remains unverified. |
 | STEP11 | Observe economy/route/asset consequence | `PENDING` | Requires one atomic asset Owner and exact-once presentation. |
 | STEP12 | Observe AI action and privacy | `PENDING` | Requires production AI with viewer-scoped hidden-information proof. |
 | STEP13 | Reach victory qualification/final audit | `PENDING` | Requires a full human run without fixture state injection. |
@@ -34,5 +34,11 @@ The Stage 3 route Bench is explicitly `diagnostic_only=true`,
 `human_golden_step_06_09=false`. It may support the isolated STEP05 capability;
 it cannot be relabeled as a human or production pass for STEP06-STEP09.
 
-No step from STEP01 or STEP06-STEP15 is green. The next Golden evidence must
-come from the exact future production candidate and a real human session.
+The Stage 4 Direct Action Bench is also diagnostic-only. It proves the generic
+private authorization, exact-once, geodesic ETA, mission, asset-consumption,
+and withdrawal path for STEP10, but it is not production or human evidence and
+does not certify all 28 military card mappings.
+
+STEP01, STEP06-STEP09, and STEP11-STEP15 remain pending. Any production or
+human Golden claim must come from the exact future production candidate and a
+real human session.

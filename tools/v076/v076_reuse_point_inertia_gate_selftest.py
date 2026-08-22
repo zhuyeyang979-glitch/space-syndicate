@@ -3109,6 +3109,67 @@ print('not-json'); raise SystemExit(2)
         [str(value) for value in pending_activation_report.get("failures", [])],
     )
 
+    predeclared_capability = _valid_input()
+    predeclared_step = {
+        "step_id": "golden.predeclared.stage4",
+        "status": "PENDING",
+        "human_executed": False,
+        "production_composition": False,
+        "pass_claimed": False,
+        "required_surface": "future isolated Stage 4 fixture",
+    }
+    baseline_golden = predeclared_capability.baseline_authorities["golden"]
+    baseline_golden["steps"].append(copy.deepcopy(predeclared_step))
+    baseline_golden["summary"]["step_count"] = 2
+    baseline_golden["summary"]["pending_step_ids"] = [
+        "golden.predeclared.stage4"
+    ]
+    current_golden = predeclared_capability.authorities["golden"]
+    proven_step = copy.deepcopy(predeclared_step)
+    proven_step.update(
+        {
+            "status": "ISOLATED_GREEN",
+            "pass_claimed": True,
+            "evidence": "Focused isolated Stage 4 self-test receipt.",
+        }
+    )
+    current_golden["steps"].append(proven_step)
+    current_golden["isolated_green_count"] = 2
+    current_golden["summary"]["step_count"] = 2
+    current_golden["summary"]["isolated_green_step_ids"] = [
+        "golden.map.owner",
+        "golden.predeclared.stage4",
+    ]
+    current_golden["summary"]["pending_step_ids"] = []
+    stage4_id = "V076_STAGE_4_PREDECLARED_GOLDEN_CAPABILITY"
+    predeclared_capability.authorities["inherited_green"]["stages"].append(
+        {
+            "stage_id": stage4_id,
+            "ledger_status": "CURRENT_DELTA_GREEN",
+            "head_sha": "c" * 40,
+            "stage_kind": "PLAYABLE_CAPABILITY",
+            "golden_step_ids": ["golden.predeclared.stage4"],
+        }
+    )
+    predeclared_status = predeclared_capability.authorities["inherited_green"][
+        "canonical_pr_status"
+    ]
+    predeclared_status["golden_isolated_green_count"] = 2
+    predeclared_status["latest_completed_stage"] = stage4_id
+    predeclared_status["next_stage"] = "V076_STAGE_5_PENDING"
+    predeclared_capability.pr_body = _pr_body(predeclared_capability)
+    predeclared_capability_report = gate.validate_model(predeclared_capability)
+    append_direct_case(
+        "114",
+        "a predeclared pending Golden step may become a new isolated Stage capability",
+        "PASS",
+        str(predeclared_capability_report.get("status", "FAIL")),
+        [
+            str(value)
+            for value in predeclared_capability_report.get("failures", [])
+        ],
+    )
+
     pass_count = sum(result["status"] == "PASS" for result in results)
     case_count = len(results)
     status = (

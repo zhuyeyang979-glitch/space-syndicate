@@ -1,15 +1,16 @@
 {
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
-  "recorded_on": "2026-08-21",
-  "candidate_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
-  "candidate_tree_sha": "0a7c885023b75bb3f67d892b79fb8914ef87da6c",
-  "change_class": "DOCS_ONLY",
+  "recorded_on": "2026-08-23",
+  "candidate_head_sha": "bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4",
+  "candidate_tree_sha": "3133d8c4f00ee5110336b8b8efb7f8fe60523d15",
+  "change_class": "CROSS_DOMAIN_INTEGRATION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
     "scripts/v076/simulation",
     "scripts/v076/map",
     "scripts/v076/monster",
+    "scripts/v076/direct_action",
     "scripts/tools/v076",
     "scenes/tools/v076",
     "current card catalog and semantic services",
@@ -21,7 +22,7 @@
     "frozen Alpha 0.4-C Save/resume lineage"
   ],
   "static_counts": {
-    "v076_class_name_count": 16,
+    "v076_class_name_count": 19,
     "duplicate_v076_class_name_count": 0,
     "product_repo_pr90_tool_file_count": 0,
     "authoritative_domain_duplicate_owner_count": 0,
@@ -48,6 +49,13 @@
       "owner_count": 1,
       "unique_owner": "V076MonsterL1ReducerV1",
       "path": "scripts/v076/monster/v076_monster_l1_reducer_v1.gd",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "future.private_direct_action_input",
+      "owner_count": 1,
+      "unique_owner": "V076PrivateDirectActionInputOwnerV1",
+      "path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
       "duplicate_status": "NONE"
     },
     {
@@ -111,7 +119,12 @@
     {
       "source": "PR63/PR65",
       "disposition": "ADAPT_AS_CONSUMER",
-      "result": "Privacy, viewer, capability, membership, replay, and collision patterns only."
+      "result": "PR65 remains the authorization Consumer pattern for actor-private own-hand capability and membership revalidation; it does not execute or own the Stage 4 ledger."
+    },
+    {
+      "source": "V076 Kernel/half-edge plus current catalog/assets/military and V075 mission core",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "Stage 4 registers one new private-input Owner while every reused dependency retains its existing tick, topology, catalog, asset-quantity, military-unit-state, and mission-contract boundary."
     },
     {
       "source": "PR64/PR80",
