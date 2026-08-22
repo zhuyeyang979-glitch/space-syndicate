@@ -1,7 +1,7 @@
 # V0.7.6 card certification matrix
 
-This matrix is bound to the focused Crosswalk implementation at
-`a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b`.
+This matrix is bound to the focused Profile/Crosswalk/ETA implementation at
+`d134d8ab933d829c42f3a5d57b44f852b8c1d2c9`.
 `CHANGE_CLASS=CROSS_DOMAIN_INTEGRATION`; the scoped Crosswalk and inherited
 sentinels ran, while unrelated full-catalog production certification did not.
 
@@ -28,21 +28,23 @@ sentinels ran, while unrelated full-catalog production certification did not.
 | Supply/demand | 8 / 2 | Active compile readiness | Isolated owner/batch test evidence | `UNVERIFIED` | Not claimed |
 | Interaction/counter | 12 / 3 | Projection-only | No inherited execution certification | `UNVERIFIED` | Not claimed |
 | Monster | 32 / 8 | Projection-only | V0.7.5 group capability evidence only | `UNVERIFIED` — exact directional-move mappings verified: 0 | Not claimed |
-| Military | 28 / 7 | Projection-only | V0.7.6 Stage 4 isolated Crosswalk | `PARTIAL_12_OF_28` — 16 `REAUTHOR_REQUIRED` | Not claimed |
+| Military | 28 / 7 | Projection-only | V0.7.6 Stage 4 isolated Profile/Crosswalk/ETA | `ISOLATED_GREEN_28_OF_28` — 0 `REAUTHOR_REQUIRED` | Not claimed |
 | Organization | 20 / 5 | Projection-only | Owner metadata remains pending | `UNVERIFIED` | Not claimed |
 
 The three active cohorts total 256; the four projection-only cohorts total 92.
 All 348 catalog rows still carry `catalog_ready_runtime_wiring_pending`. Effect
-review remains pending for 132 rows: 64 facility rent profiles, 60 unit
-profiles, and 8 legacy interaction effects.
+review remains pending for 104 rows: 64 facility rent profiles, 32 monster unit
+profiles, and 8 legacy interaction effects. The 28 military Profile reviews are
+closed only at the isolated authoring/mapping layer.
 
 Stage 3's isolated Monster L1 route proves deterministic movement and replay,
 but it is not a card route and certifies none of the 32 monster catalog rows.
 The military Crosswalk closes all 28 source identities and fingerprints. The
-three frozen V0.7.5 active families supply 12 exact Direct Action bindings; the
-four deferred families supply 16 explicit authoring gaps. No legacy protection,
-terrain, cooldown, or persistent-unit value was guessed into an assault rule.
-The matrix keeps those 16 records visible instead of claiming false green.
+three frozen V0.7.5 active families retain twelve inherited combat Profiles;
+all 28 speeds and the sixteen Profiles for four former-gap families are explicit
+reversible V0.7.6 playtest authority. No legacy protection, terrain, cooldown,
+or persistent-unit value was guessed into an assault rule. Physical ETA is
+isolated green with 1,000 seeds, 2,000 replays, 0 mismatch, and 0 teleport.
 
 ## Monotonic certification axes
 
@@ -52,8 +54,8 @@ Each category now carries the same 12 machine fields:
 `AI_PROJECTION_GREEN`, `PRIVACY_GREEN`, `EXACT_ONCE_GREEN`, `REPLAY_GREEN`,
 and `ALPHA07_CERTIFIED`. A field may move only from `false` to `true`, or from
 `true` to `REGRESSED_WITH_EVIDENCE` with bound failure evidence. The schema
-does not certify any new card in this Gate task: Alpha 0.7 certified remains
-zero.
+does not certify any new card in this task: Alpha 0.7 certified remains zero,
+because production composition and human play were not performed.
 
 `PRODUCTION_CARD_CERTIFICATION_COMPLETE=false`
 

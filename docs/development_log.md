@@ -9505,3 +9505,50 @@ deleted. Evidence and the remaining action inventory are recorded in
   `c8c4577c832665f937888d7ad215821e90518710`. STEP10 remains the same isolated
   Golden step; production/human green, `main.tscn` changes, public batch entries,
   shared sushi-track resolution, and full-world reproof all remain zero/false.
+
+## 2026-08-23 — V0.7.6 Stage 4 military Profile authoring and physical ETA
+
+- Preserved the prior Stage 4 row and all twelve exact mappings as historical
+  evidence. The only correction to those twelve records is explicitly marked
+  `REGRESSED_WITH_EVIDENCE` and changes the speed owner from a future placeholder
+  to `V076MilitaryUnitProfileAuthority`; their remaining projection is byte- and
+  semantics-stable under fingerprint
+  `98d1a65fdcc7dde5712dc19cc14006ae2796946062385118196aeabfdd855078`.
+- Registered one 28-record Profile data authority and one read-only catalog
+  Adapter. Twelve combat Profiles stay bound to frozen V0.7.5 values, while all
+  twenty-eight physical speeds and the sixteen former-gap Profiles are explicit
+  reversible `NEW_V076_ALPHA07_PLAYTEST_AUTHORITY` with
+  `FIRST_PLAYTEST_DEFAULT` maturity. Source card identity and positive 2/4/6/9
+  costs remain owned by the existing V06 card catalog.
+- The four new families are deliberately distinct: Orbital Bomber is the fastest
+  flying region striker; Heavy Tank is slow ground force with strong direct
+  region/monster growth; Missile Emplacement is a temporary ground
+  deploy-fire-withdraw platform with relatively stronger monster pressure; Star
+  Ocean Battleship is a large flying long-range generalist. Every I-IV ladder is
+  monotonic, but speed and damage curves are not forced to rise together.
+- No `GUARD`, `PROTECT`, permanent garrison, persistent unit, auto-retarget,
+  auto-repeat, mission fallback, public batch, or shared sushi-track behavior was
+  restored. The Crosswalk now closes 28/28 exact bindings and 0 authoring gaps;
+  it remains an Adapter rather than a card catalog or numeric Owner.
+- Added the unique stateless `V076MilitaryPhysicalEtaOwnerV1`. It consumes the
+  existing canonical integer geodesic route and the exact authored Profile speed,
+  computes ceiling division, and emits a canonical receipt. It owns no map,
+  pathfinder, speed table, tick, Authority Sequence, RNG, replay, unit state,
+  assets, cards, authorization, attack resolution, or presentation.
+- Removed caller-authored speed from the private Direct Action request. Authorized
+  source card ID now binds through the existing Crosswalk to a Profile ID; the
+  reducer validates the ETA receipt. Physical `eta_ticks=0` remains legal for
+  zero distance, while the separate Kernel `dispatch_delay_ticks=max(1, eta)`
+  preserves future-command scheduling without rewriting physical ETA.
+- Focused verification passed: Profile `59/59`, Crosswalk `52/52`, ETA `48/48`
+  with 1,000 seeds / 2,000 replays / 0 mismatch / 0 teleport, Input Owner `7/7`,
+  Stage 4 Bench `26/26`, Kernel `74/74`, half-edge `90/90`, Monster `47/47`, all
+  four V0.7.5 military contracts, and Gate self-test `114/114`. Godot MCP ran the
+  existing STEP10 Bench with new-file warnings 0, hard errors 0, PASS output, and
+  a clean stop; unrelated inherited production warnings were not relabeled.
+- Bound product evidence to implementation commit
+  `d134d8ab933d829c42f3a5d57b44f852b8c1d2c9` and tree
+  `fd6678421967af06914e2a08e1db84ac213d6294`. STEP10 remains the same fifth
+  isolated-green step; production/human green, Alpha 0.7 certified cards,
+  `main.tscn` changes, and full-world reproof remain zero/false. The next atomic
+  task is `V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW`.

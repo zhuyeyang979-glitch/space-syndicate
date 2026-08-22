@@ -2,7 +2,7 @@
   "schema_version": "space_syndicate.v076.alpha07_golden_playtest_scenario.v1",
   "scenario_id": "v076-alpha07-golden-playtest-scenario-01",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b",
+  "candidate_head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "overall_status": "PENDING_HUMAN_PRODUCTION_EXECUTION",
   "human_execution_count": 0,
@@ -119,9 +119,9 @@
       "human_executed": false,
       "production_composition": false,
       "pass_claimed": true,
-      "evidence": "7/7 Owner contract, 48/48 Crosswalk checks, and 25/25 isolated integration; all 28 source identities and fingerprints close, 12 active V075 cards exact-map, 16 deferred cards remain REAUTHOR_REQUIRED, physical ETA stays 45 ticks, and MCP reports new-file warnings 0, hard errors 0, clean stop.",
-      "claim_limit": "Diagnostic isolated evidence only. Production and human green remain false; the 16 deferred military cards are not exact-mapped and have an explicit authoring-gap report.",
-      "acceptance": "The unique card/action binding reaches the existing private input Owner for the 12 frozen active mappings and delegates one physical geodesic military mission without public-batch leakage, retargeting, teleport, invented authoring, or a second asset/unit-state Owner."
+      "evidence": "Profile Authoring 59/59, Crosswalk 52/52, ETA 48/48 with 1,000 seeds and 2,000 replays, Owner 7/7, and isolated Bench 26/26; all 28 cards exact-map, all 16 gaps close under explicit reversible V076 Playtest Authority, ETA mismatch/teleport counts are 0, and MCP reports new-file warnings 0, hard errors 0, clean stop.",
+      "claim_limit": "Diagnostic isolated evidence only. Production and human green remain false; tick-driven arrival, one attack, withdrawal lifecycle, production composition, and per-card certification remain pending.",
+      "acceptance": "The authorized card binds through the one Crosswalk to the one Profile Authority and the one physical ETA receipt Owner before the existing private input Owner submits a Kernel command. There is no public-batch leakage, Guard/Protect, retargeting, teleport, persistent unit, caller-authored speed, or second map/tick/asset/unit/card Owner."
     },
     {
       "step_id": "STEP11",

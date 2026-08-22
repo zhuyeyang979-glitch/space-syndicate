@@ -2,7 +2,7 @@
   "schema_version": "space_syndicate.v076.historical_reuse_registry.v2",
   "registry_id": "v076-historical-reuse-registry-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b",
+  "candidate_head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "historical_reuse": "ACTIVE",
   "point_inertia": "ACTIVE",
@@ -1785,7 +1785,8 @@
   },
   "unverified_boundaries": [
     "Exact V076 mapping for all 32 v06 monster card records",
-    "Exact V076 DirectAction authoring for 16 deferred v06 military card records",
+    "Tick-driven arrive-execute-once-withdraw lifecycle for all 28 exact-mapped military card Profiles",
+    "Production and human certification for all 28 exact-mapped military card Profiles",
     "Public/private classification for every individual card",
     "Final atomic cutover choice between current asset owners and V076 reducer state",
     "Current-head rerun of historical catalog suites and fingerprints"

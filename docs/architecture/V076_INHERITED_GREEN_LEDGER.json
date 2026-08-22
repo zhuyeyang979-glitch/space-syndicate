@@ -4,8 +4,8 @@
   "recorded_on": "2026-08-23",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b",
-    "tree_sha": "c8c4577c832665f937888d7ad215821e90518710",
+    "head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
+    "tree_sha": "fd6678421967af06914e2a08e1db84ac213d6294",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
@@ -215,6 +215,92 @@
         "exact_mapping_for_16_deferred_military_cards",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_STAGE4_MILITARY_AUTHORING_GAP_CLOSURE_AND_PHYSICAL_ETA_SLICE",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
+      "tree_sha": "fd6678421967af06914e2a08e1db84ac213d6294",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Closes the already-green STEP10 authoring and ETA infrastructure inside the existing Stage 4 capability without adding a Golden step or claiming the still-pending tick-driven mission lifecycle.",
+      "golden_step_ids": [
+        "STEP10"
+      ],
+      "current_owners": [
+        "V076MilitaryUnitProfileAuthority",
+        "V076MilitaryPhysicalEtaOwnerV1"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "stage4-military-profile-authoring-v1",
+          "result": "PASS",
+          "checks": "59/59",
+          "profile_record_count": 28,
+          "new_authored_profile_count": 16,
+          "inherited_combat_profile_count": 12,
+          "new_authored_speed_field_count": 28,
+          "active_forbidden_mission_count": 0,
+          "active_persistent_unit_count": 0,
+          "profile_catalog_fingerprint_sha256": "b444752da78cd215606b40957260c3447f8394809eeafdbc165e7b4d5eae88fe"
+        },
+        {
+          "evidence_id": "stage4-military-crosswalk-exact",
+          "result": "PASS",
+          "checks": "52/52",
+          "source_military_card_count": 28,
+          "exact_mapped_count": 28,
+          "reauthor_required_count": 0,
+          "unmapped_card_count": 0,
+          "duplicate_mapping_count": 0,
+          "profile_binding_coverage": "28/28",
+          "crosswalk_fingerprint_sha256": "66251fc75edf3604bb6b985f177e4c09d6b19aa6d42cf0d90bbd5016be0bda89"
+        },
+        {
+          "evidence_id": "stage4-military-physical-eta",
+          "result": "PASS",
+          "checks": "48/48",
+          "distinct_seed_count": 1000,
+          "replay_count": 2000,
+          "eta_mismatch_count": 0,
+          "teleport_count": 0,
+          "distance_owner": "V076SharedHalfEdgePartitionV1",
+          "speed_owner": "V076MilitaryUnitProfileAuthority",
+          "eta_owner": "V076MilitaryPhysicalEtaOwnerV1"
+        },
+        {
+          "evidence_id": "stage4-profile-eta-private-action-integration",
+          "result": "PASS",
+          "owner_checks": "7/7",
+          "bench_checks": "26/26",
+          "eta_ticks": 5,
+          "dispatch_delay_ticks": 5,
+          "profile_id": "v075.military.air_superiority_fighter.rank_1",
+          "eta_receipt_fingerprint": "80630b049882543192af2b071cf3cbbd40835501832e1a3fbc8fd50ca5586a5c",
+          "route_sha256": "3925e2784627b36a5a4eb3ddec277b84107767caca9974c739439e37a97d727f",
+          "new_file_warning_count": 0,
+          "hard_error_count": 0,
+          "stop_result": "Godot project stopped",
+          "production_green": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "stage4-profile-eta-inherited-sentinels",
+          "result": "PASS",
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "v075_military_contract_test_count": 4,
+          "gate_selftest_checks": "114/114"
+        }
+      ],
+      "not_claimed": [
+        "tick_driven_military_mission_lifecycle",
+        "production_composition_cutover",
+        "human_playtest_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
@@ -239,9 +325,9 @@
     "golden_production_green_count": 0,
     "golden_human_green_count": 0,
     "production_cutover_status": false,
-    "latest_completed_stage": "V076_STAGE_4_PRIVATE_MILITARY_DIRECT_ACTION_ISOLATED",
-    "latest_completed_stage_head_sha": "a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b",
-    "next_stage": "V076_STAGE4_MILITARY_AUTHORING_GAP_CLOSURE_ACTIVE_DEFINITION_RANK_COMBAT_PROFILE_ASSAULT_MISSION_AND_PHYSICAL_SPEED",
+    "latest_completed_stage": "V076_STAGE4_MILITARY_AUTHORING_GAP_CLOSURE_AND_PHYSICAL_ETA_SLICE",
+    "latest_completed_stage_head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
+    "next_stage": "V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW",
     "v075_pr90_dependency_boundary": "REFERENCE_ONLY_EXACT_BASE_NO_V076_CUTOVER"
   },
   "canonical_change_scope": {
@@ -312,7 +398,7 @@
   "point_inertia_gate_queued": true,
   "current_task_interrupted_by_gate": false,
   "current_task_result_preserved": true,
-  "product_development_resume_target": "V076_STAGE4_MILITARY_AUTHORING_GAP_CLOSURE_ACTIVE_DEFINITION_RANK_COMBAT_PROFILE_ASSAULT_MISSION_AND_PHYSICAL_SPEED",
+  "product_development_resume_target": "V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW",
   "required_check_name": "V076 Reuse and Point-Inertia Gate",
   "agent_merge_requires_reuse_gate": true
 }

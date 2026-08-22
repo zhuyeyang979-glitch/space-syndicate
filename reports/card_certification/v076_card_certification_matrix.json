@@ -2,7 +2,7 @@
   "schema_version": "space_syndicate.v076.card_certification_matrix.v2",
   "matrix_id": "v076-card-certification-matrix-20260821",
   "recorded_on": "2026-08-21",
-  "candidate_head_sha": "a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b",
+  "candidate_head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "point_inertia": "ACTIVE",
   "historical_reuse": "ACTIVE",
@@ -29,10 +29,10 @@
     "effect_review_status": {
       "rule_confirmed": 216,
       "rent_rate_review_pending": 64,
-      "unit_profile_review_pending": 60,
+      "unit_profile_review_pending": 32,
       "legacy_effect_review_pending": 8
     },
-    "effect_review_pending_total": 132
+    "effect_review_pending_total": 104
   },
   "certification_dimensions": [
     "CATALOG_VALID",
@@ -244,15 +244,23 @@
       "catalog_runtime_owner_label": "military_runtime_controller",
       "semantic_readiness": "PROJECTION_ONLY",
       "identity_and_shape": "INHERITED_GREEN",
-      "runtime_route_certification": "V076_STAGE4_PARTIAL_CROSSWALK_ISOLATED_ONLY",
-      "effect_review_pending_count": 28,
-      "v076_exact_mapping": "PARTIAL_12_OF_28",
-      "direct_action_exact_mapping_claim_count": 12,
-      "reauthor_required_count": 16,
+      "runtime_route_certification": "V076_STAGE4_PROFILE_CROSSWALK_ETA_ISOLATED_ONLY",
+      "effect_review_pending_count": 0,
+      "v076_exact_mapping": "ISOLATED_GREEN_28_OF_28",
+      "direct_action_exact_mapping_claim_count": 28,
+      "reauthor_required_count": 0,
       "retired_from_alpha07_pool_count": 0,
       "unresolved_source_conflict_count": 0,
-      "crosswalk_test_status": "PASS_48_OF_48",
-      "crosswalk_fingerprint_sha256": "148fbc9194a0ad4d143bff359ce92e1a4766e70193988326dd0e275c5ebd7f51",
+      "crosswalk_test_status": "PASS_52_OF_52",
+      "crosswalk_fingerprint_sha256": "66251fc75edf3604bb6b985f177e4c09d6b19aa6d42cf0d90bbd5016be0bda89",
+      "military_profile_authoring_status": "PASS_59_OF_59",
+      "military_profile_record_count": 28,
+      "new_authored_profile_count": 16,
+      "military_physical_eta_status": "PASS_48_OF_48",
+      "military_eta_seed_count": 1000,
+      "military_eta_replay_count": 2000,
+      "military_eta_mismatch_count": 0,
+      "eta_teleport_count": 0,
       "production_human_play": "UNVERIFIED",
       "certification": {
         "CATALOG_VALID": true,
@@ -269,7 +277,7 @@
         "ALPHA07_CERTIFIED": false
       },
       "per_card_green_claimed": false,
-      "honesty_note": "Twelve frozen V075 active records have exact binding evidence. Sixteen deferred records retain identities but require new authoring before they can enter Alpha 0.7; no production or human pass is claimed."
+      "honesty_note": "All twenty-eight records have exact isolated Profile and ETA binding evidence. Twelve combat profiles remain inherited from V075, twenty-eight speeds and sixteen complete Profiles are explicit reversible V076 playtest authoring; no production or human pass is claimed."
     },
     {
       "category_id": "organization",
@@ -303,21 +311,21 @@
     "category_card_count_sum": 348,
     "active_compile_readiness_count": 256,
     "projection_only_count": 92,
-    "effect_review_pending_count": 132,
-    "v076_exact_per_card_mapping_claim_count": 12,
+    "effect_review_pending_count": 104,
+    "v076_exact_per_card_mapping_claim_count": 28,
     "per_card_production_pass_claim_count": 0,
     "human_play_certified_card_claim_count": 0,
     "alpha07_certified_card_count": 0
   },
   "hard_blocks": [
     "32 monster records require exact V076 mapping evidence",
-    "16 deferred military records require active-definition, rank combat-profile, assault-mission, and physical-speed authoring",
+    "28 exact-mapped military records still require tick-driven mission lifecycle, production composition, and human certification",
     "132 records retain effect-review-pending status",
     "all 348 records retain catalog_ready_runtime_wiring_pending metadata",
     "final public/private per-card classification is not proven",
     "final atomic asset owner migration is not proven",
     "the focused current-head Crosswalk suite ran, but unrelated full-catalog production certification was intentionally not run"
   ],
-  "result": "GO_FOR_PARTIAL_MILITARY_CROSSWALK_ONLY",
+  "result": "GO_FOR_ISOLATED_MILITARY_PROFILE_CROSSWALK_ETA_ONLY",
   "production_card_certification_complete": false
 }

@@ -2,13 +2,14 @@
   "schema_version": "space_syndicate.v076.military_authoring_gap_report.v1",
   "report_id": "v076-stage4-military-authoring-gap-20260823",
   "recorded_on": "2026-08-23",
-  "status": "PARTIAL",
+  "status": "ISOLATED_GAP_CLOSED_BY_NEW_V076_AUTHORITY",
+  "candidate_head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
   "source_catalog_path": "data/cards/card_runtime_catalog_v06.json",
   "source_military_card_count": 28,
   "source_military_family_count": 7,
   "mapping_record_count": 28,
-  "exact_mapped_count": 12,
-  "reauthor_required_count": 16,
+  "exact_mapped_count": 28,
+  "reauthor_required_count": 0,
   "retired_from_alpha07_pool_count": 0,
   "unresolved_source_conflict_count": 0,
   "false_green_count": 0,
@@ -28,14 +29,28 @@
     {
       "path": "docs/rules/v075_military_semantic_inventory.json",
       "role": "active_deferred_and_retired_semantic_classification"
+    },
+    {
+      "path": "data/v076/v076_military_unit_profiles_v1.json",
+      "role": "new_v076_alpha07_playtest_profile_authority"
     }
   ],
   "exact_families": [
     "planetary_defense_force",
     "air_superiority_fighter",
-    "submarine_fleet"
+    "submarine_fleet",
+    "orbital_bomber",
+    "heavy_tank",
+    "missile_emplacement",
+    "star_ocean_battleship"
   ],
-  "gap_families": [
+  "historical_gap_snapshot": {
+    "origin_head_sha": "a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b",
+    "exact_mapped_count": 12,
+    "reauthor_required_count": 16,
+    "status": "PARTIAL"
+  },
+  "closed_gap_families": [
     {
       "family_id": "orbital_bomber",
       "source_card_ids": [
@@ -44,13 +59,14 @@
         "unit.military.orbital_bomber.rank_3",
         "unit.military.orbital_bomber.rank_4"
       ],
-      "missing_authoritative_fields": [
+      "historical_missing_authoritative_fields": [
         "v075_active_definition",
         "v075_rank_region_damage_budget",
         "v075_rank_monster_damage",
         "alpha07_allowed_assault_missions"
       ],
-      "legacy_evidence_disposition": "REFERENCE_ONLY_NOT_VALID_FOR_ALPHA07_MAPPING"
+      "legacy_evidence_disposition": "REFERENCE_ONLY_NOT_VALID_FOR_ALPHA07_MAPPING",
+      "resolution": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY"
     },
     {
       "family_id": "heavy_tank",
@@ -60,14 +76,15 @@
         "unit.military.heavy_tank.rank_3",
         "unit.military.heavy_tank.rank_4"
       ],
-      "missing_authoritative_fields": [
+      "historical_missing_authoritative_fields": [
         "v075_active_definition",
         "v075_rank_region_damage_budget",
         "v075_rank_monster_damage",
         "alpha07_allowed_assault_missions",
         "physical_geodesic_speed_profile"
       ],
-      "legacy_evidence_disposition": "REFERENCE_ONLY_TERRAIN_AND_PERSISTENT_UNIT_SEMANTICS_RETIRED"
+      "legacy_evidence_disposition": "REFERENCE_ONLY_TERRAIN_AND_PERSISTENT_UNIT_SEMANTICS_RETIRED",
+      "resolution": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY"
     },
     {
       "family_id": "missile_emplacement",
@@ -77,14 +94,15 @@
         "unit.military.missile_emplacement.rank_3",
         "unit.military.missile_emplacement.rank_4"
       ],
-      "missing_authoritative_fields": [
+      "historical_missing_authoritative_fields": [
         "v075_active_definition",
         "v075_rank_region_damage_budget",
         "v075_rank_monster_damage",
         "alpha07_allowed_assault_missions",
         "arrive_execute_withdraw_mobility_profile"
       ],
-      "legacy_evidence_disposition": "REFERENCE_ONLY_STATIONARY_PERSISTENT_SOURCE_CONFLICTS_WITH_WITHDRAWAL"
+      "legacy_evidence_disposition": "REFERENCE_ONLY_STATIONARY_PERSISTENT_SOURCE_CONFLICTS_WITH_WITHDRAWAL",
+      "resolution": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY"
     },
     {
       "family_id": "star_ocean_battleship",
@@ -94,13 +112,14 @@
         "unit.military.star_ocean_battleship.rank_3",
         "unit.military.star_ocean_battleship.rank_4"
       ],
-      "missing_authoritative_fields": [
+      "historical_missing_authoritative_fields": [
         "v075_active_definition",
         "v075_rank_region_damage_budget",
         "v075_rank_monster_damage",
         "alpha07_allowed_assault_missions"
       ],
-      "legacy_evidence_disposition": "REFERENCE_ONLY_NOT_VALID_FOR_ALPHA07_MAPPING"
+      "legacy_evidence_disposition": "REFERENCE_ONLY_NOT_VALID_FOR_ALPHA07_MAPPING",
+      "resolution": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY"
     }
   ],
   "prohibited_resolution": {
@@ -108,9 +127,22 @@
     "parse_player_description": false,
     "convert_retired_protection_semantics_to_assault": false,
     "invent_temporary_numeric_defaults": false,
-    "claim_28_of_28_exact": false
+    "claim_28_of_28_without_new_authority": false
+  },
+  "authorized_resolution": {
+    "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+    "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+    "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+    "reversible": true,
+    "new_authored_profile_count": 16,
+    "new_authored_speed_field_count": 28,
+    "profile_record_count": 28,
+    "active_forbidden_mission_count": 0,
+    "active_persistent_unit_count": 0,
+    "production_green": false,
+    "human_green": false
   },
   "production_green": false,
   "human_green": false,
-  "next_task": "V076_STAGE4_MILITARY_AUTHORING_GAP_CLOSURE_ACTIVE_DEFINITION_RANK_COMBAT_PROFILE_ASSAULT_MISSION_AND_PHYSICAL_SPEED"
+  "next_task": "V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW"
 }

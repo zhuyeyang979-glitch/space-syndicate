@@ -1,7 +1,7 @@
 # V0.7.6 inherited green ledger
 
-Candidate: `a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b` / tree
-`c8c4577c832665f937888d7ad215821e90518710`, Draft PR #93.
+Candidate: `d134d8ab933d829c42f3a5d57b44f852b8c1d2c9` / tree
+`fd6678421967af06914e2a08e1db84ac213d6294`, Draft PR #93.
 
 `POINT_INERTIA=ACTIVE`
 
@@ -21,6 +21,7 @@ new full-world proof.
 | Stage 2 shared half-edge sphere | `INHERITED_GREEN` | `V076SharedHalfEdgePartitionV1` | `90/90`; 2,000 distinct seeds plus 2,000 fresh same-seed generations; generation/validation/partition/terrain mismatch and float-authority counts all 0 | Generator, topology, validator, and codec are unchanged. Only the map reducer received the Kernel V2 ABI adaptation; `90/90` is the current sentinel. |
 | Stage 3 Monster L1 geodesic move | `CURRENT_DELTA_GREEN` | `V076MonsterL1ReducerV1` | `47/47`; 1,000 seeds x 2 replay, 0 mismatch; isolated warning-clean Bench PASS with `errors=[]` | Bench is diagnostic-only, production cutover is false, and `human_golden_step_06_09=false`. |
 | Stage 4 private military Direct Action | `CURRENT_DELTA_GREEN` | `V076PrivateDirectActionInputOwnerV1` | Crosswalk `48/48`; Owner `7/7`; integration `25/25`; Kernel `74/74`; partition `90/90`; Monster `47/47`; four V075 military contracts; Gate self-test `114/114`; MCP Bench PASS and clean stop | STEP10 remains isolated green. All 28 identities close, 12 exact-map, and 16 remain `REAUTHOR_REQUIRED`; production/human green are false. |
+| Stage 4 Profile authoring + physical ETA infrastructure | `CURRENT_DELTA_GREEN` | `V076MilitaryUnitProfileAuthority`; `V076MilitaryPhysicalEtaOwnerV1` | Profile `59/59`; Crosswalk `52/52`; ETA `48/48`, 1,000 seeds / 2,000 replays / 0 mismatch / 0 teleport; Owner `7/7`; Bench `26/26`; inherited sentinels green; MCP clean stop with new-file warnings 0 and hard errors 0 | `INFRASTRUCTURE` evidence augments the same STEP10. 28/28 exact-map, but tick-driven lifecycle, production composition, human play, and card certification remain pending. |
 
 The Stage 2 topology remains bound to
 `5cbd98e4027bc2cfd058c857e1a24a5f7c8c61291f1cb7ae7336bcf6851f6452`.
@@ -34,15 +35,16 @@ must replace inheritance with a scoped sentinel or a new proof.
 ## Canonical PR status and merge ratchet
 
 The JSON ledger is the sole machine source for the PR #93 status block. It
-records Stage 1/2/3 as isolated green, the Stage 4 isolated capability as the
-latest completed stage, Golden counts `5/0/0`, and production cutover `false`.
+records Stage 1/2/3 as isolated green and the Stage 4 Profile/ETA infrastructure
+slice as the latest completed stage, with Golden counts `5/0/0` and production
+cutover `false`.
 The required check name is exactly `V076 Reuse and Point-Inertia Gate`.
 
 The gate was queued without interrupting the active task and activated after
 the preserved PR90 Tooling V19 atomic boundary
 `a80ad3e107491d03e8a1ccf5379fcb44c705f951`. Once the current-Head check is
 green, development resumes at
-`V076_STAGE4_MILITARY_AUTHORING_GAP_CLOSURE_ACTIVE_DEFINITION_RANK_COMBAT_PROFILE_ASSAULT_MISSION_AND_PHYSICAL_SPEED`.
+`V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW`.
 
 Ready, merge, release-tag, and production-cutover actions are forbidden until
 that exact check succeeds for the current PR Head. This Stage 4 evidence does

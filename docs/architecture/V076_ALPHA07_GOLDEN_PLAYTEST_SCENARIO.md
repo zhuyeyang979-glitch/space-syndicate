@@ -22,7 +22,7 @@ It is a plan and evidence ledger, not a human-play result.
 | STEP07 | Inspect globe and select legal target | `PENDING` | Requires human use of the production map and typed target binding. |
 | STEP08 | Acquire and submit one legal card | `PENDING` | Requires one real card instance through acquisition, hand, target, and resolution Owners. |
 | STEP09 | Resolve production Monster move/consequence | `PENDING` | Current Stage 3 Bench cannot satisfy this step. |
-| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | Owner `7/7`, Crosswalk `48/48`, isolated integration `25/25`, 28/28 identities, 12 exact mappings, 16 explicit authoring gaps, physical ETA 45 ticks, no public batch/sushi track, new-file warnings 0, hard errors 0, clean MCP stop. |
+| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | Profile `59/59`, Crosswalk `52/52`, ETA `48/48` with 1,000 seeds / 2,000 replays / 0 mismatch / 0 teleport, Owner `7/7`, Bench `26/26`, 28/28 exact mappings, no public batch/sushi track, new-file warnings 0, hard errors 0, clean MCP stop. |
 | STEP11 | Observe economy/route/asset consequence | `PENDING` | Requires one atomic asset Owner and exact-once presentation. |
 | STEP12 | Observe AI action and privacy | `PENDING` | Requires production AI with viewer-scoped hidden-information proof. |
 | STEP13 | Reach victory qualification/final audit | `PENDING` | Requires a full human run without fixture state injection. |
@@ -35,11 +35,12 @@ The Stage 3 route Bench is explicitly `diagnostic_only=true`,
 it cannot be relabeled as a human or production pass for STEP06-STEP09.
 
 The Stage 4 Direct Action Bench is also diagnostic-only. It proves the generic
-private authorization, exact-once, geodesic ETA, mission, asset-consumption,
-and withdrawal path for STEP10. The same Bench now validates the single
-Crosswalk Adapter: 12 frozen active cards exact-map and 16 deferred cards remain
-`REAUTHOR_REQUIRED`. It is not production or human evidence and does not turn
-those 16 gaps into green mappings.
+private authorization, exact-once, geodesic ETA receipt, mission,
+asset-consumption, and withdrawal path for STEP10. The same Bench validates one
+Profile Authority, one Crosswalk Adapter, and one ETA Owner: all 28 cards
+exact-map, with twelve inherited combat Profiles, twenty-eight new speeds, and
+sixteen complete reversible V076 playtest Profiles. It is not production or
+human evidence; tick-driven arrival, one attack, and withdrawal remain pending.
 
 STEP01, STEP06-STEP09, and STEP11-STEP15 remain pending. Any production or
 human Golden claim must come from the exact future production candidate and a

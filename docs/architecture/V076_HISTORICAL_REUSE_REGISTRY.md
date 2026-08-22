@@ -1,13 +1,13 @@
 # V0.7.6 historical reuse registry
 
 This registry binds the clean Crosswalk implementation candidate
-`a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b`. It is a
+`d134d8ab933d829c42f3a5d57b44f852b8c1d2c9`. It is a
 `CROSS_DOMAIN_INTEGRATION` decision record: `POINT_INERTIA=ACTIVE`,
 `HISTORICAL_REUSE=ACTIVE`, whole-branch merge is false, and no full reproof was
 run.
 
 Schema v2 keeps this file as the single reuse source and adds one
-`component_inventory`: 18 lifecycle-classified domains and 28 registered
+`component_inventory`: 20 lifecycle-classified domains and 31 registered
 components. Every active domain has exactly one production Owner. Every new or
 changed authority writer binds a completed reuse scan, candidate count,
 candidate IDs, disposition, and the reasons that extension or adaptation is
@@ -35,7 +35,7 @@ would be an unjustified full reproof.
 | PR #63 | `ADAPT_AS_CONSUMER` | Viewer/privacy/fail-closed projection patterns | `PASSIVE_PROJECTIONS_ONLY`; no gameplay or AI Owner. |
 | PR #64 | `REUSE_AS_TEST` | Closed pure-data and adversarial tests | Metadata-only registry must not become a second Kernel or dispatcher. |
 | PR #65 | `ADAPT_AS_CONSUMER` | Capability, own-hand membership, replay/collision rejection | Source authorization port cannot own execution. |
-| V0.6 semantic catalog + V0.7.5 combat freeze | `ADAPT_AS_CONSUMER` | 28 military source identities/fingerprints, three active rank-profile families, two assault mission contracts | The single Crosswalk is an Adapter, not a second catalog/compiler/Owner; 16 deferred records remain authoring gaps. |
+| V0.6 semantic catalog + V0.7.5 combat freeze + V0.7.6 playtest authoring | `ADAPT_AS_CONSUMER` / `ADOPT_AS_OWNER` | 28 source identities/costs, twelve inherited combat Profiles, two assault contracts, twenty-eight new speeds, and sixteen new reversible Profiles | The Profile data is the one new numeric authority; its catalog and Crosswalk are read-only Adapters. No second card catalog, map, unit, asset, or tick Owner is created. |
 | PR #66 | `ADOPT_AS_OWNER` | Current Codex/PlayerFace presentation descendant | Presentation cannot become rule authority. |
 | PR #70 | `RETIRED` | None from the final closed/unmerged branch | No revival, branch merge, or rebuilt parallel card batch. |
 | PR #79 | `ADAPT_AS_CONSUMER` | Current-descendant reducer/port concepts | Must pass V076 ABI/replay/RNG gates; no parallel tick, Kernel, or RNG. |
@@ -78,8 +78,9 @@ and raw evidence must not be copied, rewritten, replayed, or regenerated here.
 A future invocation requires a new explicit exact-SHA authorization.
 
 The 32 monster records remain `UNVERIFIED` for exact V076 mapping. The 28
-military records have one closed Crosswalk: 12 are `EXACT_MAPPED`, 16 are
-`REAUTHOR_REQUIRED`, and none has production or human certification.
+military records have one closed Crosswalk and are all `EXACT_MAPPED` through
+one Profile Authority and one physical ETA Owner. None has production or human
+certification, and the tick-driven mission lifecycle remains pending.
 
 V0.7.6 remains `NEW_GAME_ONLY`. The frozen Alpha 0.4-C reference causes zero
 Save schema, delete, overwrite, or migration changes here. Its implementation

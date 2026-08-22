@@ -2,8 +2,8 @@
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b",
-  "candidate_tree_sha": "c8c4577c832665f937888d7ad215821e90518710",
+  "candidate_head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
+  "candidate_tree_sha": "fd6678421967af06914e2a08e1db84ac213d6294",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
@@ -12,6 +12,7 @@
     "scripts/v076/monster",
     "scripts/v076/direct_action",
     "scripts/v076/military",
+    "data/v076/v076_military_unit_profiles_v1.json",
     "data/diagnostics/v076_military_card_crosswalk_v1.json",
     "scripts/tools/v076",
     "scenes/tools/v076",
@@ -24,7 +25,7 @@
     "frozen Alpha 0.4-C Save/resume lineage"
   ],
   "static_counts": {
-    "v076_class_name_count": 20,
+    "v076_class_name_count": 22,
     "duplicate_v076_class_name_count": 0,
     "product_repo_pr90_tool_file_count": 0,
     "authoritative_domain_duplicate_owner_count": 0,
@@ -58,6 +59,29 @@
       "owner_count": 1,
       "unique_owner": "V076PrivateDirectActionInputOwnerV1",
       "path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "v076.military_unit_profile_authority",
+      "owner_count": 1,
+      "unique_owner": "V076MilitaryUnitProfileAuthority",
+      "path": "data/v076/v076_military_unit_profiles_v1.json",
+      "adapter": "V076MilitaryUnitProfileCatalogV1",
+      "duplicate_speed_table_count": 0,
+      "owns_card_catalog": false,
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "v076.military_physical_eta",
+      "owner_count": 1,
+      "unique_owner": "V076MilitaryPhysicalEtaOwnerV1",
+      "path": "scripts/v076/military/v076_military_physical_eta_owner_v1.gd",
+      "duplicate_pathfinder_count": 0,
+      "owns_tick": false,
+      "owns_map_topology": false,
+      "owns_military_unit_state": false,
+      "owns_asset_quantity": false,
+      "owns_card_catalog": false,
       "duplicate_status": "NONE"
     },
     {
@@ -131,7 +155,17 @@
     {
       "source": "CardRuntimeCatalogV06Resource + frozen V075 military sources",
       "disposition": "ADAPT_AS_CONSUMER",
-      "result": "One read-only Crosswalk Adapter closes 28 source identities, exact-maps 12 active records, and records 16 authoring gaps without creating a catalog, compiler, or Owner."
+      "result": "One read-only Crosswalk Adapter closes 28 source identities and exact-maps all 28 through the one Profile Authority without creating a catalog, compiler, or parallel Owner."
+    },
+    {
+      "source": "V06 identities/costs + V075 combat/mission history + authorized V076 playtest authoring",
+      "disposition": "ADOPT_AS_OWNER",
+      "result": "One Profile data authority inherits twelve combat records, authors twenty-eight speeds and sixteen complete reversible Profiles, and remains distinct from the card catalog and military runtime."
+    },
+    {
+      "source": "V076 half-edge/geodesic route + V076 Profile speed + V076 Kernel codec boundary",
+      "disposition": "ADOPT_AS_OWNER",
+      "result": "One ETA Owner produces integer ETA ticks and a canonical receipt without a second pathfinder, speed table, tick source, or gameplay-state Owner."
     },
     {
       "source": "PR64/PR80",
@@ -170,6 +204,9 @@
     "second gameplay catalog or catalog service",
     "second semantic compiler or cache",
     "second V076 Kernel, tick loop, Domain RNG, Authority Sequence, or replay source",
+    "second V076 military Profile authority or authored speed table",
+    "second geodesic pathfinder or copied half-edge topology for military ETA",
+    "military ETA Owner acquiring tick, replay, map, route, unit, asset, card, authorization, attack, or presentation authority",
     "revived PR70 card batch",
     "PR64 metadata registry promoted to executor",
     "PR65 source authorization port promoted to executor",
@@ -189,11 +226,11 @@
       "status": "UNVERIFIED"
     },
     {
-      "boundary": "v06 military card to V076 DirectAction exact mapping",
+      "boundary": "tick-driven military arrive-execute-once-withdraw lifecycle and production/human certification",
       "record_count": 28,
-      "exact_mapped_count": 12,
-      "reauthor_required_count": 16,
-      "status": "PARTIAL"
+      "exact_mapped_count": 28,
+      "reauthor_required_count": 0,
+      "status": "UNVERIFIED"
     },
     {
       "boundary": "final atomic asset owner cutover",
@@ -204,6 +241,19 @@
       "representative_head_sha": "744b541840dc370ef4af6f93e8af6a024e66ecb3",
       "formal_full_run": false,
       "status": "REFERENCE_ONLY_BLOCKED_UNVERIFIED"
+    }
+  ],
+  "isolated_cleared": [
+    {
+      "boundary": "v06 military card to V076 Profile/Crosswalk/physical ETA exact mapping",
+      "record_count": 28,
+      "exact_mapped_count": 28,
+      "reauthor_required_count": 0,
+      "profile_authority_count": 1,
+      "eta_owner_count": 1,
+      "status": "ISOLATED_GREEN_28_OF_28",
+      "production_green": false,
+      "human_green": false
     }
   ],
   "v076_save_boundary": {
