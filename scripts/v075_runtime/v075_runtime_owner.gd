@@ -51,7 +51,7 @@ const V076StateCodec := preload(
 const V076CombatDamageCore := preload(
 	"res://scripts/v075/combat/v075_combat_damage_core.gd"
 )
-const V075MilitaryMissionCore := preload(
+const MilitaryMissionCore := preload(
 	"res://scripts/v075/military/v075_military_mission_core.gd"
 )
 
@@ -3532,7 +3532,7 @@ func consume_v076_military_consequence(envelope: Dictionary) -> Dictionary:
 		or int(envelope.get("eta_ticks", -1)) < 0
 		or supplied_fingerprint.is_empty()
 		or supplied_fingerprint != expected_fingerprint
-		or not bool(V075MilitaryMissionCore.receipt_validation_report(
+		or not bool(MilitaryMissionCore.receipt_validation_report(
 			mission_receipt
 		).get("valid", false))
 	):
@@ -3552,7 +3552,7 @@ func consume_v076_military_consequence(envelope: Dictionary) -> Dictionary:
 	var task_kind := str(mission_receipt.get("task_kind", ""))
 	var event_kind := (
 		"military_region_assault"
-		if task_kind == V075MilitaryMissionCore.TASK_ASSAULT_REGION
+		if task_kind == MilitaryMissionCore.TASK_ASSAULT_REGION
 		else "military_monster_assault"
 	)
 	var target_region_id := str(mission_receipt.get(
