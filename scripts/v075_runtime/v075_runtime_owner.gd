@@ -5475,6 +5475,57 @@ func _apply_facility_damage_intents(
 	}
 
 
+func consume_v076_military_facility_damage_intents(intents: Array) -> Dictionary:
+	# V076 is a consumer of the existing V075 facility-damage authority.  Keep
+	# all HP/revision mutation, fizzle classification, and exact-once journals
+	# inside this unique runtime Owner instead of duplicating them in Stage 4.
+	for intent_variant in intents:
+		if not (intent_variant is Dictionary):
+			return {
+				"accepted": false,
+				"reason_code": "v076_military_facility_damage_intent_not_dictionary",
+			}
+		var intent := intent_variant as Dictionary
+		if str(intent.get("damage_kind", "")) != "military_region_assault":
+			return {
+				"accepted": false,
+				"reason_code": "v076_military_facility_damage_kind_invalid",
+			}
+	var applied := _apply_facility_damage_intents(
+		_facility_state.duplicate(true),
+		intents
+	)
+	if not bool(applied.get("accepted", false)):
+		return {
+			"accepted": false,
+			"reason_code": str(applied.get(
+				"reason_code",
+				"v076_military_facility_damage_commit_rejected"
+			)),
+			"detail": applied.duplicate(true),
+		}
+	_facility_state = (
+		applied.get("public_batch_state", _facility_state) as Dictionary
+	).duplicate(true)
+	_sync_facility_slots()
+	_clear_v075_submission_caches()
+	_clear_v075_track_projection_cache()
+	var newly_committed := (
+		applied.get("newly_committed_receipts", []) as Array
+	).duplicate(true)
+	_emit_facility_damage_events(newly_committed)
+	var receipts := (applied.get("receipts", []) as Array).duplicate(true)
+	return {
+		"accepted": true,
+		"reason_code": "v076_military_facility_damage_intents_consumed",
+		"duplicate": not receipts.is_empty() and newly_committed.is_empty(),
+		"receipt_count": receipts.size(),
+		"newly_committed_receipt_count": newly_committed.size(),
+		"receipts": receipts,
+		"newly_committed_receipts": newly_committed,
+	}
+
+
 func _facility_effect_integrity_report(
 	processed: Dictionary,
 	witnesses: Dictionary,

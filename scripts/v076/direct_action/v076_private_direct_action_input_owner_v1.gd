@@ -8,6 +8,9 @@ const AuthorityCommand := preload(
 const StateCodec := preload(
 	"res://scripts/v076/simulation/v076_authority_state_codec.gd"
 )
+const DeterministicKernel := preload(
+	"res://scripts/v076/simulation/v076_deterministic_kernel.gd"
+)
 const GeodesicMetric := preload(
 	"res://scripts/v076/monster/v076_integer_geodesic_metric_v1.gd"
 )
@@ -69,6 +72,10 @@ const REQUEST_FIELDS := [
 @export var military_physical_eta_owner_path := NodePath(
 	"../V076MilitaryPhysicalEtaOwnerV1"
 )
+@export var facility_damage_intent_owner_path := NodePath("../V075RuntimeOwner")
+@export var monster_damage_command_pipeline_path := NodePath(
+	"../GameRuntimeCoordinator/RuntimeCommandPipeline"
+)
 
 var _kernel: Variant
 var _source_authorization_port: Variant
@@ -78,10 +85,13 @@ var _military_unit_state_owner: Variant
 var _profile_authority: Variant
 var _military_eta_owner: Variant
 var _military_crosswalk: Variant
+var _facility_damage_intent_owner: Variant
+var _monster_damage_command_pipeline: Variant
 var _configured := false
 var _submission_fingerprint_by_id: Dictionary = {}
 var _submitted_result_by_id: Dictionary = {}
 var _settlement_fingerprint_by_id: Dictionary = {}
+var _damage_settlement_by_id: Dictionary = {}
 var _rejection_count := 0
 var _collision_count := 0
 
@@ -93,7 +103,9 @@ func configure_dependencies(
 	asset_quantity_owner: Variant,
 	military_unit_state_owner: Variant,
 	profile_authority: Variant,
-	military_eta_owner: Variant
+	military_eta_owner: Variant,
+	facility_damage_intent_owner: Variant,
+	monster_damage_command_pipeline: Variant
 ) -> Dictionary:
 	if _configured:
 		return _reject("private_direct_action_owner_already_configured")
@@ -105,6 +117,8 @@ func configure_dependencies(
 		or military_unit_state_owner == null
 		or profile_authority == null
 		or military_eta_owner == null
+		or facility_damage_intent_owner == null
+		or monster_damage_command_pipeline == null
 	):
 		return _reject("private_direct_action_dependency_missing")
 	if not profile_authority.has_method("profile_by_id") \
@@ -112,6 +126,12 @@ func configure_dependencies(
 			or not military_eta_owner.has_method("calculate_eta") \
 			or not military_eta_owner.has_method("debug_snapshot"):
 		return _reject("private_direct_action_military_eta_dependency_invalid")
+	if not facility_damage_intent_owner.has_method(
+		"consume_v076_military_facility_damage_intents"
+	) or not monster_damage_command_pipeline.has_method(
+		"dispatch_military_monster_damage"
+	):
+		return _reject("private_direct_action_damage_sink_dependency_invalid")
 	var eta_debug: Dictionary = military_eta_owner.debug_snapshot()
 	if not bool(eta_debug.get("configured", false)) \
 			or str(eta_debug.get("owner_id", "")) \
@@ -136,6 +156,8 @@ func configure_dependencies(
 	_profile_authority = profile_authority
 	_military_eta_owner = military_eta_owner
 	_military_crosswalk = MilitaryCrosswalk.new()
+	_facility_damage_intent_owner = facility_damage_intent_owner
+	_monster_damage_command_pipeline = monster_damage_command_pipeline
 	_configured = true
 	return {
 		"accepted": true,
@@ -163,7 +185,9 @@ func configure_from_scene_paths() -> Dictionary:
 		get_node_or_null(asset_quantity_owner_path),
 		get_node_or_null(military_unit_state_owner_path),
 		profile_authority,
-		eta_owner
+		eta_owner,
+		get_node_or_null(facility_damage_intent_owner_path),
+		get_node_or_null(monster_damage_command_pipeline_path)
 	)
 
 
@@ -443,6 +467,39 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 		mission_receipt
 	).get("valid", false)):
 		return _reject("private_direct_action_mission_receipt_invalid")
+	var damage_input_fingerprint := StateCodec.fingerprint({
+		"submission_id": submission_id,
+		"mission_receipt_fingerprint": str(mission_receipt.get(
+			"receipt_fingerprint", ""
+		)),
+		"facility_damage_intents": (
+			mission_receipt.get("facility_damage_intents", []) as Array
+		).duplicate(true),
+		"monster_damage_intents": (
+			mission_receipt.get("monster_damage_intents", []) as Array
+		).duplicate(true),
+	})
+	var damage_settlement: Dictionary
+	if _damage_settlement_by_id.has(submission_id):
+		damage_settlement = (
+			_damage_settlement_by_id.get(submission_id, {}) as Dictionary
+		).duplicate(true)
+		if str(damage_settlement.get("input_fingerprint", "")) \
+				!= damage_input_fingerprint:
+			_collision_count += 1
+			return _reject("private_direct_action_damage_settlement_collision")
+	else:
+		damage_settlement = _consume_mission_damage_intents(
+			entry,
+			mission_receipt,
+			damage_input_fingerprint
+		)
+		if not bool(damage_settlement.get("accepted", false)):
+			return _reject(str(damage_settlement.get(
+				"reason",
+				"private_direct_action_damage_settlement_rejected"
+			)))
+		_damage_settlement_by_id[submission_id] = damage_settlement.duplicate(true)
 	var settlement_fingerprint: String = StateCodec.fingerprint({
 		"submission_id": submission_id,
 		"receipt_fingerprint": str(mission_receipt.get(
@@ -450,6 +507,9 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 		)),
 		"withdrawal_transition_fingerprint": str(entry.get(
 			"last_transition_fingerprint", ""
+		)),
+		"damage_settlement_fingerprint": str(damage_settlement.get(
+			"settlement_fingerprint", ""
 		)),
 	})
 	if _settlement_fingerprint_by_id.has(submission_id):
@@ -466,6 +526,7 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 			"receipt_fingerprint": str(mission_receipt.get(
 				"receipt_fingerprint", ""
 			)),
+			"damage_settlement": damage_settlement.duplicate(true),
 		}
 	var unit_index: int = int(_military_unit_state_owner.unit_index_by_uid(
 		int(entry.get("military_unit_uid", 0))
@@ -500,7 +561,130 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 			"receipt_fingerprint", ""
 		)),
 		"asset_outcome": str(asset_receipt.get("outcome", "")),
+		"damage_settlement": damage_settlement.duplicate(true),
 	}
+
+
+func _consume_mission_damage_intents(
+	entry: Dictionary,
+	mission_receipt: Dictionary,
+	input_fingerprint: String
+) -> Dictionary:
+	var facility_intents := (
+		mission_receipt.get("facility_damage_intents", []) as Array
+	).duplicate(true)
+	var monster_intents := (
+		mission_receipt.get("monster_damage_intents", []) as Array
+	).duplicate(true)
+	if not facility_intents.is_empty() and not monster_intents.is_empty():
+		return _damage_reject("private_direct_action_mixed_damage_intents")
+	if monster_intents.size() > 1:
+		return _damage_reject("private_direct_action_monster_damage_intent_count_invalid")
+	var facility_receipts: Array = []
+	var monster_receipts: Array = []
+	if not facility_intents.is_empty():
+		var facility_result: Dictionary = _facility_damage_intent_owner.call(
+			"consume_v076_military_facility_damage_intents",
+			facility_intents
+		) as Dictionary
+		if not bool(facility_result.get("accepted", false)):
+			return _damage_reject(str(facility_result.get(
+				"reason_code",
+				"private_direct_action_facility_damage_sink_rejected"
+			)))
+		facility_receipts = (
+			facility_result.get("receipts", []) as Array
+		).duplicate(true)
+		if facility_receipts.size() != facility_intents.size():
+			return _damage_reject(
+				"private_direct_action_facility_damage_receipt_count_mismatch"
+			)
+	for intent_index in range(monster_intents.size()):
+		var intent := monster_intents[intent_index] as Dictionary
+		var target_uid := _runtime_monster_uid_for_intent(entry, intent)
+		if target_uid <= 0:
+			return _damage_reject(
+				"private_direct_action_monster_runtime_target_binding_missing"
+			)
+		var command := {
+			"command_id": "v076.military-monster-damage.%s.%d" % [
+				str(entry.get("submission_id", "")),
+				intent_index,
+			],
+			"source": "V076 private military Direct Action",
+			"source_kind": "v076_private_direct_action",
+			"source_entity_id": str(intent.get("combat_receipt_id", "")),
+			"unit_uid": int(entry.get("military_unit_uid", 0)),
+			"target_monster_uid": target_uid,
+			"damage": int(intent.get("damage_amount", 0)),
+			"occurred_at_world_us": maxi(
+				1,
+				int(entry.get("execution_tick", 0))
+					* DeterministicKernel.TICK_DURATION_US
+			),
+			"authority_tick": int(entry.get("execution_tick", -1)),
+			"source_intent_fingerprint": str(intent.get(
+				"intent_fingerprint", ""
+			)),
+		}
+		var dispatched: Dictionary = _monster_damage_command_pipeline.call(
+			"dispatch_military_monster_damage",
+			command
+		) as Dictionary
+		if not bool(dispatched.get("handled", false)):
+			return _damage_reject(str(dispatched.get(
+				"reason",
+				"private_direct_action_monster_damage_sink_rejected"
+			)))
+		var sink_receipt := dispatched.get("sink_receipt", {}) as Dictionary
+		if not bool(sink_receipt.get("accepted", false)):
+			return _damage_reject(
+				"private_direct_action_monster_damage_receipt_invalid"
+			)
+		monster_receipts.append(sink_receipt.duplicate(true))
+	var result := {
+		"accepted": true,
+		"reason": "",
+		"input_fingerprint": input_fingerprint,
+		"facility_intent_count": facility_intents.size(),
+		"facility_receipts": facility_receipts,
+		"monster_intent_count": monster_intents.size(),
+		"monster_receipts": monster_receipts,
+		"direct_reducer_mutation_count": 0,
+		"settlement_fingerprint": "",
+	}
+	result["settlement_fingerprint"] = StateCodec.fingerprint(
+		_payload_without_fingerprint(result, "settlement_fingerprint")
+	)
+	return result
+
+
+func _runtime_monster_uid_for_intent(
+	entry: Dictionary,
+	intent: Dictionary
+) -> int:
+	var root_payload := entry.get("root_payload", {}) as Dictionary
+	var target_id := str(intent.get("target_monster_source_instance_id", ""))
+	var expected_generation := int(intent.get("expected_source_generation", 0))
+	var expected_revision := int(intent.get("observed_source_revision", -1))
+	var matched_uid := 0
+	for target_variant in root_payload.get("current_public_targets", []) as Array:
+		if not (target_variant is Dictionary):
+			continue
+		var target := target_variant as Dictionary
+		if str(target.get("source_instance_id", "")) != target_id \
+				or int(target.get("source_generation", 0)) != expected_generation \
+				or int(target.get("source_revision", -1)) != expected_revision:
+			continue
+		var candidate_uid := int(target.get("runtime_monster_uid", 0))
+		if candidate_uid <= 0 or (matched_uid > 0 and matched_uid != candidate_uid):
+			return 0
+		matched_uid = candidate_uid
+	return matched_uid
+
+
+static func _damage_reject(reason: String) -> Dictionary:
+	return {"accepted": false, "reason": reason}
 
 
 func debug_snapshot() -> Dictionary:
@@ -524,8 +708,12 @@ func debug_snapshot() -> Dictionary:
 		"owns_card_catalog": false,
 		"owns_military_profile": false,
 		"owns_physical_eta": false,
+		"owns_facility_damage": false,
+		"owns_monster_damage": false,
 		"military_profile_owner": ProfileCatalog.PROFILE_AUTHORITY_ID,
 		"military_eta_owner": "V076MilitaryPhysicalEtaOwnerV1",
+		"facility_damage_owner": "V075RuntimeOwner",
+		"monster_damage_owner": "MonsterRuntimeController",
 		"allowed_missions": ALLOWED_MISSIONS.duplicate(),
 		"forbidden_missions": FORBIDDEN_MISSIONS.duplicate(),
 		"movement_mode": "PHYSICAL_GEODESIC_ETA_NO_TELEPORT",
@@ -537,6 +725,7 @@ func debug_snapshot() -> Dictionary:
 		],
 		"submission_count": _submission_fingerprint_by_id.size(),
 		"settlement_count": _settlement_fingerprint_by_id.size(),
+		"damage_settlement_count": _damage_settlement_by_id.size(),
 		"collision_count": _collision_count,
 		"rejection_count": _rejection_count,
 		"public_batch_entry_count": 0,
@@ -648,9 +837,12 @@ func _build_mission_lock(
 	)
 
 
-static func _payload_without_fingerprint(payload: Dictionary) -> Dictionary:
+static func _payload_without_fingerprint(
+	payload: Dictionary,
+	fingerprint_field: String = "payload_fingerprint"
+) -> Dictionary:
 	var value: Dictionary = payload.duplicate(true)
-	value.erase("payload_fingerprint")
+	value.erase(fingerprint_field)
 	return value
 
 

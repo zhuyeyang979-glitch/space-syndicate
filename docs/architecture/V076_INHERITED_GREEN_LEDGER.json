@@ -455,7 +455,10 @@
       "MilitaryRuntimeController",
       "component.v076.military_unit_profile_authority",
       "component.v076.military_unit_profile_catalog_adapter",
-      "component.v076.military_physical_eta"
+      "component.v076.military_physical_eta",
+      "component.current.v075_runtime_owner",
+      "RuntimeCommandPipeline",
+      "MonsterRuntimeController"
     ],
     "focused_tests": [
       "v076_private_direct_action_input_owner_test",
@@ -464,6 +467,8 @@
       "v076_military_card_crosswalk_v1_test",
       "v076_military_physical_eta_owner_test",
       "v076_private_military_direct_action_integration_test",
+      "v075_runtime_facility_bridge_integration_test",
+      "simulation_runtime_authority_migration_test",
       "v076_deterministic_kernel_test",
       "v076_shared_half_edge_partition_test",
       "v076_monster_l1_directional_geodesic_move_test",
@@ -483,7 +488,7 @@
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "This Stage 4 delta extends the already-registered private Direct Action reducer under its existing unique Owner: ARRIVED is recorded at exact physical ETA, then Kernel-derived commands execute one Profile-authored V075 assault and emit one withdrawal-ready intent on consecutive ticks. Focused lifecycle, private-input integration, Profile, Crosswalk, ETA, Kernel, half-edge, Monster, V075 mission, and Gate sentinels cover every changed or consumed boundary. The delta does not cut over main.tscn, add per-tick unit position state, certify production cards, run a full-world reproof, or claim production/human green."
+    "why_focused_tests_are_sufficient": "This Stage 4 delta consumes the sealed typed damage intents already emitted by the registered private Direct Action lifecycle. Facility intents enter the existing V075RuntimeOwner bridge and exact-once journals; monster intents enter the existing RuntimeCommandPipeline and MonsterRuntimeController only under SimulationMutationAuthority. Focused private-input, lifecycle, facility-bridge, mutation-authority, Profile, Crosswalk, ETA, Kernel, half-edge, Monster, V075 mission, and Gate sentinels cover every changed or consumed boundary. The delta does not cut over main.tscn, add a damage or unit Owner, change card/ruleset identity, certify production cards, run a full-world reproof, or claim production/human green."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",

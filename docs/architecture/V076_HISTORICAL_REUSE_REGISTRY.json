@@ -701,6 +701,53 @@
       "golden_scenario_steps": ["STEP05"]
     },
     {
+      "component_id": "component.current.v075_runtime_owner",
+      "class_name": "V075RuntimeOwner",
+      "path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "domain_id": "current.v075_production_combat_candidate",
+      "component_role": "OWNER",
+      "production_reachable": true,
+      "writes_authority": true,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": true,
+      "owns_replay": false,
+      "owns_identity": true,
+      "owns_presentation": true,
+      "owner_component_id": "component.current.v075_runtime_owner",
+      "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "reuse_disposition": "ADOPT_AS_OWNER",
+      "reuse_source_ids": ["reuse.v075.combat_candidate"],
+      "reuse_candidates_considered": ["reuse.v075.combat_candidate"],
+      "new_component_justification": "Existing unique V075 production combat candidate Owner, now extended with one narrow V076 military facility-intent consumer entry. Its existing bridge and exact-once journals remain the only facility HP/revision mutation path; no new Owner or parallel facility ledger is introduced.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "focused_test_ids": [
+        "v075_runtime_facility_bridge_integration_test",
+        "v076_private_military_direct_action_integration_test"
+      ],
+      "golden_scenario_steps": ["STEP10"],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 1,
+        "reuse_candidate_ids": ["reuse.v075.combat_candidate"],
+        "selected_reuse_disposition": "ADOPT_AS_OWNER",
+        "why_existing_owner_cannot_be_extended": "NOT_APPLICABLE_EXTENDED_EXISTING_OWNER",
+        "why_adapter_is_insufficient": "A parallel adapter cannot mutate facility HP or reproduce the Owner's bridge, processed-intent, witness, fizzle, and presentation journals without creating a second authority path.",
+        "why_new_owner_is_required": "NOT_REQUIRED_EXISTING_V075_RUNTIME_OWNER_EXTENDED"
+      }
+    },
+    {
       "component_id": "component.v076.private_direct_action_input",
       "class_name": "V076PrivateDirectActionInputOwnerV1",
       "path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
@@ -727,7 +774,8 @@
         "reuse.current.military_runtime_owner",
         "reuse.v075.military_mission_core",
         "reuse.v076.military_unit_profile_authority.current",
-        "reuse.v076.military_physical_eta.current"
+        "reuse.v076.military_physical_eta.current",
+        "reuse.v075.combat_candidate"
       ],
       "reuse_candidates_considered": [
         "reuse.pr65.authorized_semantic_envelope",
@@ -738,16 +786,19 @@
         "reuse.current.military_runtime_owner",
         "reuse.v075.military_mission_core",
         "reuse.v076.military_unit_profile_authority.current",
-        "reuse.v076.military_physical_eta.current"
+        "reuse.v076.military_physical_eta.current",
+        "reuse.v075.combat_candidate"
       ],
-      "new_component_justification": "Stage 4 needs one private input authority for authorized envelopes, own-hand revalidation, exact-once submission identity, source-collision rejection, and Kernel root-command submission. PR65 may authorize but may not execute; the Kernel may order and replay but may not own private hand membership; the partition, catalog, asset, and military unit-state Owners retain their existing domains. This Owner may not own tick, Authority Sequence, RNG, military unit state, asset quantity, map topology, presentation, or card definitions.",
+      "new_component_justification": "Stage 4 needs one private input authority for authorized envelopes, own-hand revalidation, exact-once submission and damage-settlement identity, source-collision rejection, and Kernel root-command submission. It consumes sealed typed intents only through V075RuntimeOwner and RuntimeCommandPipeline; those existing Owners retain all facility and monster HP mutation. PR65 may authorize but may not execute; the Kernel may order and replay but may not own private hand membership. This Owner may not own tick, Authority Sequence, RNG, damage state, military unit state, asset quantity, map topology, presentation, or card definitions.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
       "focused_test_ids": [
         "v076_private_direct_action_input_owner_test",
         "v076_private_military_direct_action_integration_test",
-        "v076_military_mission_lifecycle_reducer_test"
+        "v076_military_mission_lifecycle_reducer_test",
+        "v075_runtime_facility_bridge_integration_test",
+        "simulation_runtime_authority_migration_test"
       ],
       "golden_scenario_steps": ["STEP10"],
       "reuse_scan": {
@@ -760,7 +811,7 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 9,
+        "reuse_candidate_count": 10,
         "reuse_candidate_ids": [
           "reuse.pr65.authorized_semantic_envelope",
           "reuse.v076.kernel.current",
@@ -770,12 +821,13 @@
           "reuse.current.military_runtime_owner",
           "reuse.v075.military_mission_core",
           "reuse.v076.military_unit_profile_authority.current",
-          "reuse.v076.military_physical_eta.current"
+          "reuse.v076.military_physical_eta.current",
+          "reuse.v075.combat_candidate"
         ],
         "selected_reuse_disposition": "ADOPT_AS_OWNER",
-        "why_existing_owner_cannot_be_extended": "PR65 is an authorization Consumer pattern and cannot execute; the Kernel cannot own private hand membership; the partition, catalog, asset, and military Owners cannot absorb cross-domain input authorization without violating their single-owner boundaries.",
-        "why_adapter_is_insufficient": "A stateless Adapter can translate an accepted command but cannot own the exact-once submission ledger or reject same-source payload collisions authoritatively.",
-        "why_new_owner_is_required": "The previously pending private Direct Action domain needs exactly one authority for private source authorization and root-command submission identity while every reused dependency remains the sole Owner of its own state."
+        "why_existing_owner_cannot_be_extended": "PR65 is an authorization Consumer pattern and cannot execute; the Kernel cannot own private hand membership; the facility, monster, partition, catalog, asset, and military Owners cannot absorb cross-domain private input identity without violating their single-owner boundaries.",
+        "why_adapter_is_insufficient": "A stateless Adapter can translate an accepted command but cannot own the exact-once submission/damage-settlement ledger or reject same-source payload collisions authoritatively.",
+        "why_new_owner_is_required": "The previously pending private Direct Action domain needs exactly one authority for private source authorization, root-command submission, and settlement identity while every reused damage and quantity dependency remains the sole Owner of its own state."
       }
     },
     {
@@ -1178,7 +1230,8 @@
         "reuse.current.military_runtime_owner",
         "reuse.v075.military_mission_core",
         "reuse.v076.military_unit_profile_authority.current",
-        "reuse.v076.military_physical_eta.current"
+        "reuse.v076.military_physical_eta.current",
+        "reuse.v075.combat_candidate"
       ],
       "reuse_candidates_considered": [
         "reuse.pr65.authorized_semantic_envelope",
@@ -1188,15 +1241,18 @@
         "reuse.current.military_runtime_owner",
         "reuse.v075.military_mission_core",
         "reuse.v076.military_unit_profile_authority.current",
-        "reuse.v076.military_physical_eta.current"
+        "reuse.v076.military_physical_eta.current",
+        "reuse.v075.combat_candidate"
       ],
-      "new_component_justification": "Editable isolated production-wiring Bench that proves STEP10 without changing main.tscn. Its visible PASS is diagnostic evidence only and explicitly leaves production and human green false.",
+      "new_component_justification": "Editable isolated production-wiring Bench that proves STEP10 across the existing V075 facility bridge and RuntimeCommandPipeline monster sink without changing main.tscn. Its visible PASS is diagnostic evidence only and explicitly leaves production and human green false.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "TEST_ORACLE_ONLY",
       "focused_test_ids": [
         "v076_private_military_direct_action_integration_test",
-        "v076_military_mission_lifecycle_reducer_test"
+        "v076_military_mission_lifecycle_reducer_test",
+        "v075_runtime_facility_bridge_integration_test",
+        "simulation_runtime_authority_migration_test"
       ],
       "golden_scenario_steps": ["STEP10"]
     },
