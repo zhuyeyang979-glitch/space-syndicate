@@ -3195,6 +3195,19 @@ print('not-json'); raise SystemExit(2)
                 "extends RefCounted\nclass_name ExistingMapOwner\n",
                 encoding="utf-8",
             )
+            history_registry = _authorities()["historical_reuse"]
+            history_registry["component_inventory"][0][
+                "reuse_candidates_considered"
+            ] = []
+            history_registry_path = correction_root / (
+                "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json"
+            )
+            history_registry_path.parent.mkdir(parents=True, exist_ok=True)
+            history_registry_path.write_text(
+                json.dumps(history_registry, ensure_ascii=False, indent=2, sort_keys=True)
+                + "\n",
+                encoding="utf-8",
+            )
             _git_fixture(correction_root, "add", ".")
             _git_fixture(correction_root, "commit", "-m", "existing owner baseline")
             (correction_root / "subject.txt").write_text(

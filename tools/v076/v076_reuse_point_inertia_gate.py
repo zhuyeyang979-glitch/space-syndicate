@@ -1194,6 +1194,34 @@ def _history_reuse_scan_corrections(
                 transition_head = str(row.get("head_sha", ""))
                 failure_code = str(row.get("failure_code", ""))
                 transition_component = str(row.get("component_id", ""))
+                transition_registry = _git_json_at(
+                    root,
+                    transition_head,
+                    "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+                )
+                transition_component_row = (
+                    _index(
+                        transition_registry.get("component_inventory", [])
+                        if isinstance(transition_registry, dict)
+                        else [],
+                        "component_id",
+                    ).get(transition_component)
+                )
+                transition_scan = (
+                    transition_component_row.get("reuse_scan")
+                    if isinstance(transition_component_row, dict)
+                    else None
+                )
+                transition_candidates = (
+                    transition_scan.get("reuse_candidate_ids", [])
+                    if isinstance(transition_scan, dict)
+                    else []
+                )
+                transition_considered = (
+                    transition_component_row.get("reuse_candidates_considered", [])
+                    if isinstance(transition_component_row, dict)
+                    else []
+                )
                 transition_parents = _git(
                     root,
                     "rev-list",
@@ -1208,6 +1236,8 @@ def _history_reuse_scan_corrections(
                     _is_hex(transition_head, 40)
                     and failure_code in HISTORY_REUSE_SCAN_CORRECTABLE_FAILURES
                     and transition_component in component_ids
+                    and candidate_id in transition_candidates
+                    and candidate_id not in transition_considered
                     and triple not in seen_failures
                     and triple not in staged
                     and subprocess.run(
