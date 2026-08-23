@@ -21,11 +21,11 @@ It is a plan and evidence ledger, not a human-play result.
 | STEP06 | Complete human setup and enter table | `PENDING` | Requires the real production composition. |
 | STEP07 | Inspect globe and select legal target | `PENDING` | Requires human use of the production map and typed target binding. |
 | STEP08 | Acquire and submit one legal card | `PENDING` | Requires one real card instance through acquisition, hand, target, and resolution Owners. |
-| STEP09 | Resolve production Monster move/consequence | `PRODUCTION_GREEN` | Implementation `46f985a2` remains immutable; candidate `e458525f` revalidates it through current production composition `86/86`, with physical crossing, facility damage, movement/trample presentation, replay exact-once, zero V075 movement writes, and zero V076 asset-quantity writes. Human execution remains false. |
+| STEP09 | Resolve production Monster move/consequence | `PRODUCTION_GREEN` | Implementation `46f985a2` remains immutable; STEP13-readiness candidate `174cbded` revalidates it through current production composition `86/86`, with physical crossing, facility damage, movement/trample presentation, replay exact-once, zero V075 movement writes, and zero V076 asset-quantity writes. Human execution remains false. |
 | STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | The cumulative cutover receipt binds implementation `f9963d6a`, the unchanged exact `main.tscn` SHA, and the prior immutable `ad12cfa8` military receipt. Human-Golden observation readiness passes `35/35` through the one reused V073 telemetry Owner and permanently reports `human_executed=false`, `human_confirmed=false`, and `observer_attestation_required=true`. Production military composition remains `55/55`, V075 composition remains `111/111`, and scripted evidence keeps production/human green false. |
-| STEP11 | Observe economy/route/asset consequence | `PRODUCTION_GREEN` | Exact implementation `1488399c` remains immutable; candidate `e458525f` revalidates production composition `86/86` against the unchanged real V075 GameScreen, retaining one asset debit/projection and one assault/withdrawal presentation per mission with no replay duplicate. Human execution remains false. |
-| STEP12 | Observe AI action and privacy | `PRODUCTION_GREEN` | Candidate `e458525f` passes `57/57` in the real V075 composition: one AI naturally acquires, queues, and locks legal actions while two unauthorized viewer projections, public facts/history, and the real GameScreen expose zero rival cards, plans, exact cash, or private bindings. No product or Owner byte was added. |
-| STEP13 | Reach victory qualification/final audit | `PENDING` | Requires a full human run without fixture state injection. |
+| STEP11 | Observe economy/route/asset consequence | `PRODUCTION_GREEN` | Exact implementation `1488399c` remains immutable; candidate `174cbded` revalidates production composition `86/86` against the unchanged real V075 GameScreen, retaining one asset debit/projection and one assault/withdrawal presentation per mission with no replay duplicate. Human execution remains false. |
+| STEP12 | Observe AI action and privacy | `PRODUCTION_GREEN` | Candidate `174cbded` revalidates `57/57` in the real V075 composition: one AI naturally acquires, queues, and locks legal actions while two unauthorized viewer projections, public facts/history, and the real GameScreen expose zero rival cards, plans, exact cash, or private bindings. No product or Owner byte was added. |
+| STEP13 | Reach victory qualification/final audit | `PENDING` | Production binding readiness is `24/24` without fixture state injection, but the required full human run, confirmation, and observer attestation have not occurred. |
 | STEP14 | Present FinalSettlement exactly once | `PENDING` | Requires authoritative winner/log/presentation agreement. |
 | STEP15 | Record feedback and cleanly stop | `PENDING` | Requires human feedback, terminal quiescence, and process/port cleanup. |
 
@@ -114,6 +114,19 @@ assertions; STEP12 changes none of its dependencies. Real `main.tscn` starts and
 stops cleanly with no external changed-file notification, STEP12 warning, hard
 error, UID change, or scoped residual process. No AI, projection, privacy, RNG,
 or presentation Owner was created. This promotes STEP12 only.
+
+Current readiness candidate `174cbded` / tree `868bdded` adds one test and no
+product, scene, Owner, rule, or balance byte. The exact current candidate
+revalidates STEP09 and STEP11 production composition `86/86` and STEP12
+AI/privacy `57/57`, with zero diagnostics, script errors, and residual
+processes. The STEP13 readiness proof instantiates real `main.tscn`, starts
+through public new-game intent, advances naturally from below the target, and
+reaches the existing `V075RuntimeOwner` / reused `V07SolarVictoryCore`
+qualification, boundary revalidation, one final settlement/log/presentation,
+terminal replay idempotence, and combat quiescence. It passes `24/24` with zero
+card, asset, or target injection and zero new Victory Owner. This is production
+binding readiness only: `STEP13_STATUS=PENDING`, `PASS_CLAIMED=false`,
+`HUMAN_EXECUTED=false`, and `HUMAN_CONFIRMED=false`.
 
 STEP01, STEP06-STEP08, and STEP13-STEP15 remain pending. Full-product
 production green, every human Golden claim, and observer attestation still

@@ -1,0 +1,139 @@
+{
+  "schema_version": "space_syndicate.v076.production_cutover_receipt.v1",
+  "receipt_id": "v076-victory-audit-readiness-production-binding-20260824",
+  "status": "PASS",
+  "candidate_head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
+  "candidate_tree_sha": "868bddedd7a3f85b4c3594ef3d8579b6ea379523",
+  "change_class": "TEST_ORACLE_ONLY",
+  "atomic_cutover": true,
+  "cutover_kind": "CURRENT_PRODUCTION_BINDING_READINESS_REVALIDATION",
+  "product_byte_change_count": 0,
+  "production_scene_path": "scenes/main.tscn",
+  "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+  "production_composition_path": "scenes/runtime/V075RuntimeComposition.tscn",
+  "production_composition_sha256": "d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9",
+  "production_screen_path": "scenes/ui/v075/V075SampleGameScreen.tscn",
+  "production_screen_sha256": "f26411c764be999ef0fb8133b49a8bf90728f5548016ef253096fd6a24a91892",
+  "test_path": "tests/v076_production_victory_audit_readiness_test.gd",
+  "test_sha256": "6c5c768e5914fa888bfce813c8a09d7acccad2b1e334ea69b0336e4ba018f8c1",
+  "authority": {
+    "production_victory_owner": "V075RuntimeOwner",
+    "production_victory_owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+    "production_victory_owner_sha256": "ce58e65b5000f7aeb7ee9f62ef90ee4813cba89f8d57896c0756e7bc15808a4f",
+    "reused_victory_reducer": "V07SolarVictoryCore",
+    "reused_victory_reducer_path": "scripts/v07_semantic/v07_solar_victory_core.gd",
+    "reused_victory_reducer_sha256": "af8efe725f702ea4fc25bc25624fd10acb7fd060aaaa14cc3e06e9539cde4b52",
+    "production_victory_owner_count": 1,
+    "new_victory_owner_count": 0,
+    "v06_victory_owner_production_reachable_count": 0,
+    "dual_write_count": 0,
+    "fallback_count": 0
+  },
+  "focused_execution": {
+    "runner": "tools/invoke_godot_test.ps1",
+    "runner_run_id": "20260823-161503-688-v076_production_victory_audit_readiness_test-d2253613",
+    "checks": "24/24",
+    "stdout_sha256": "5d272c7632248421174ada8eb738f2903b1bb26864a67fd8866776dfa03149d0",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "diagnostic_count": 0,
+    "script_error_count": 0,
+    "remaining_project_runtime_process_count": 0
+  },
+  "readiness_assertions": {
+    "production_main_instantiated": true,
+    "public_new_game_intent_accepted": true,
+    "public_progress_started_below_target": true,
+    "victory_qualification_reached": true,
+    "authoritative_boundary_revalidation_reached": true,
+    "solar_victory_state_valid": true,
+    "final_settlement_count": 1,
+    "final_settlement_public_log_count": 1,
+    "final_settlement_presentation_count": 1,
+    "game_screen_settlement_presented_count": 1,
+    "duplicate_settlement_count": 0,
+    "terminal_replay_state_delta_count": 0,
+    "private_queue_count": 0,
+    "private_skill_resolving_count": 0,
+    "private_skill_atomic_inflight_count": 0,
+    "unresolved_military_lock_count": 0,
+    "card_injection_count": 0,
+    "asset_injection_count": 0,
+    "target_injection_count": 0,
+    "runtime_error_count": 0,
+    "invalid_action_count": 0,
+    "hidden_info_violation_count": 0
+  },
+  "direct_regressions": [
+    {
+      "test": "v075_runtime_owner_integration_test",
+      "runner_run_id": "20260823-161655-083-v075_runtime_owner_integration_test-31090c6a",
+      "checks": "20/20"
+    },
+    {
+      "test": "v07_solar_victory_core_test",
+      "runner_run_id": "20260823-161753-745-v07_solar_victory_core_test-a5b2c726",
+      "checks": "190/190"
+    },
+    {
+      "test": "v075_final_settlement_presentation_exact_once_regression_test",
+      "runner_run_id": "20260823-161754-636-v075_final_settlement_presentation_exact_once_regression_test-ddcd89a6",
+      "checks": "4/4"
+    },
+    {
+      "test": "v075_terminal_combat_quiescence_test",
+      "runner_run_id": "20260823-161803-455-v075_terminal_combat_quiescence_test-185fdd02",
+      "checks": "12/12"
+    },
+    {
+      "test": "v075_application_composition_test",
+      "runner_run_id": "20260823-161806-816-v075_application_composition_test-2830b1e0",
+      "checks": "111/111"
+    },
+    {
+      "test": "v076_human_golden_observation_readiness_test",
+      "runner_run_id": "20260823-161813-169-v076_human_golden_observation_readiness_test-8906fff8",
+      "checks": "35/35",
+      "human_executed": false,
+      "human_green": false
+    }
+  ],
+  "godot_mcp": {
+    "scene": "res://scenes/main.tscn",
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "renderer": "Vulkan Forward+",
+    "device": "NVIDIA GeForce RTX 4080 SUPER",
+    "external_changed_file_notification_count": 0,
+    "task_introduced_gdscript_warning_count": 0,
+    "repository_preexisting_gdscript_warnings_present": true,
+    "hard_runtime_error_count": 0,
+    "untracked_uid_count": 0,
+    "remaining_project_runtime_process_count": 0,
+    "stop_result": "Godot project stopped"
+  },
+  "golden_boundary": {
+    "step13_readiness": true,
+    "step13_status": "PENDING",
+    "golden_pass_claimed": false,
+    "human_executed": false,
+    "human_confirmed": false,
+    "observer_attestation_required": true,
+    "production_green": false,
+    "human_green": false,
+    "golden_isolated_green_count": 5,
+    "golden_production_green_count": 3,
+    "golden_human_green_count": 0
+  },
+  "previous_receipt_path": "reports/reuse/v076_ai_privacy_production_cutover_receipt.json",
+  "previous_receipt_sha256": "3d604f8fba5c21a80385814b7ff1ed3c1019a9a0e96f6e54acc537443bb02d09",
+  "not_claimed": [
+    "golden_step13_pass",
+    "human_execution",
+    "human_confirmation",
+    "observer_attestation",
+    "full_product_production_green",
+    "golden_step14_pass",
+    "golden_step15_pass",
+    "alpha07_per_card_certification",
+    "full_world_reproof"
+  ]
+}

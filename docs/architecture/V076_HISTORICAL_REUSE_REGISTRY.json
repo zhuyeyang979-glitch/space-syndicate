@@ -2,8 +2,8 @@
   "schema_version": "space_syndicate.v076.historical_reuse_registry.v2",
   "registry_id": "v076-historical-reuse-registry-20260821",
   "recorded_on": "2026-08-24",
-  "candidate_head_sha": "e458525fe579b7d552daeb64129b3d002ed3fa35",
-  "candidate_tree_sha": "dddd7834240c296c84578ef2cccdb5627b9a3fd5",
+  "candidate_head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
+  "candidate_tree_sha": "868bddedd7a3f85b4c3594ef3d8579b6ea379523",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "historical_reuse": "ACTIVE",
   "point_inertia": "ACTIVE",
@@ -723,16 +723,18 @@
         "reuse.v075.combat_candidate",
         "reuse.v075.production_military_direct_action.current",
         "reuse.v075.production_monster_movement_consumer.current",
-        "reuse.v075.production_ai_privacy.current"
+        "reuse.v075.production_ai_privacy.current",
+        "reuse.v075.production_victory_audit.current"
       ],
       "reuse_candidates_considered": [
         "reuse.v075.combat_candidate",
         "reuse.v075.monster_private_skill.current",
         "reuse.v075.production_military_direct_action.current",
         "reuse.v075.production_monster_movement_consumer.current",
-        "reuse.v075.production_ai_privacy.current"
+        "reuse.v075.production_ai_privacy.current",
+        "reuse.v075.production_victory_audit.current"
       ],
-      "new_component_justification": "Existing unique V075 production combat candidate Owner, extended with narrow V076 military and Monster-movement consumer bridges. It no longer produces production Monster movement/trample receipts; it retains target planning, Monster HP/lifecycle, facility-damage application, the one six-color asset state, production AI submission, actor-scoped observation, viewer projection, exact-once consequence consumer and presentation journals without a parallel route, trample, asset, movement, AI, projection, privacy, or presentation ledger.",
+      "new_component_justification": "Existing unique V075 production combat candidate Owner, extended with narrow V076 military and Monster-movement consumer bridges. It no longer produces production Monster movement/trample receipts; it retains target planning, Monster HP/lifecycle, facility-damage application, the one six-color asset state, production AI submission, actor-scoped observation, viewer projection, Victory qualification/audit/final-settlement orchestration, exact-once consequence consumer and presentation journals without a parallel route, trample, asset, movement, AI, projection, privacy, Victory, settlement, audit, or presentation ledger.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
@@ -745,9 +747,10 @@
         "v076_simultaneous_private_action_test",
         "v076_production_military_composition_test",
         "v076_production_ai_privacy_test",
+        "v076_production_victory_audit_readiness_test",
         "v07_asset_batch_core_test"
       ],
-      "golden_scenario_steps": ["STEP09", "STEP10", "STEP11", "STEP12"],
+      "golden_scenario_steps": ["STEP09", "STEP10", "STEP11", "STEP12", "STEP13"],
       "reuse_scan": {
         "reuse_registry_search": true,
         "class_name_search": true,
@@ -758,13 +761,14 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 5,
+        "reuse_candidate_count": 6,
         "reuse_candidate_ids": [
           "reuse.v075.combat_candidate",
           "reuse.v075.monster_private_skill.current",
           "reuse.v075.production_military_direct_action.current",
           "reuse.v075.production_monster_movement_consumer.current",
-          "reuse.v075.production_ai_privacy.current"
+          "reuse.v075.production_ai_privacy.current",
+          "reuse.v075.production_victory_audit.current"
         ],
         "selected_reuse_disposition": "ADOPT_AS_OWNER",
         "why_existing_owner_cannot_be_extended": "NOT_APPLICABLE_EXTENDED_EXISTING_OWNER",
@@ -2182,6 +2186,20 @@
       },
       "adapted_scope": "Existing V075 production submission invokes actor-scoped AI observation, natural acquisition, legal action selection, queue and lock. Existing viewer projections expose only the authorized viewer's private facts plus public facts and fail closed on private-card identity in public history. The STEP12 proof consumes these boundaries without changing product bytes.",
       "forbidden_scope": "No second AI, policy, projection, privacy, cash, hand, plan, RNG, gameplay, or presentation Owner; PR63 remains passive patterns only and cannot become production AI authority."
+    },
+    {
+      "reuse_id": "reuse.v075.production_victory_audit.current",
+      "domain_id": "current.v075_production_combat_candidate",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "runtime_owner": "scripts/v075_runtime/v075_runtime_owner.gd",
+        "victory_reducer": "scripts/v07_semantic/v07_solar_victory_core.gd",
+        "runtime_composition": "scenes/runtime/V075RuntimeComposition.tscn",
+        "production_scene": "scenes/main.tscn",
+        "production_screen": "scenes/ui/v075/V075SampleGameScreen.tscn"
+      },
+      "adapted_scope": "The existing V075RuntimeOwner remains the sole production Victory qualification, audit-boundary, FinalSettlement orchestration, public-log, and presentation authority while reusing V07SolarVictoryCore for the deterministic qualification and audit state. STEP13 readiness consumes these unchanged boundaries through real main.tscn and natural progression; it creates no production or human Golden claim.",
+      "forbidden_scope": "No second Victory, audit, settlement, winner, presentation, telemetry, RNG, tick, asset, card, target, or gameplay Owner; V06 VictoryControlRuntimeController remains production-unreachable, and scripted readiness may not assert STEP13 human execution, confirmation, observer attestation, or full-product green."
     },
     {
       "reuse_id": "reuse.v073.human_playtest_instrumentation",

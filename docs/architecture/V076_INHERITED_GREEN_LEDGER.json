@@ -4,8 +4,8 @@
   "recorded_on": "2026-08-24",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "e458525fe579b7d552daeb64129b3d002ed3fa35",
-    "tree_sha": "dddd7834240c296c84578ef2cccdb5627b9a3fd5",
+    "head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
+    "tree_sha": "868bddedd7a3f85b4c3594ef3d8579b6ea379523",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
@@ -14,7 +14,7 @@
     "historical_reuse": "ACTIVE",
     "change_class": "CROSS_DOMAIN_INTEGRATION",
     "full_reproof_performed": false,
-    "godot_execution_count": 72,
+    "godot_execution_count": 82,
     "production_composition_changed": true
   },
   "status_vocabulary": [
@@ -1194,6 +1194,139 @@
         "alpha07_per_card_certification",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT_READINESS",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
+      "tree_sha": "868bddedd7a3f85b4c3594ef3d8579b6ea379523",
+      "change_class": "TEST_ORACLE_ONLY",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Revalidates the current production Victory/audit/final-settlement binding through the one existing V075RuntimeOwner and reused V07SolarVictoryCore. It adds one focused proof test and append-only receipts, changes zero product bytes, and prepares the required real-human STEP13-STEP15 execution without asserting STEP13 pass, human confirmation, observer attestation, or full-product production green.",
+      "golden_step_ids": ["STEP13"],
+      "current_owner": "V075RuntimeOwner",
+      "reused_victory_reducer": "V07SolarVictoryCore",
+      "evidence": [
+        {
+          "evidence_id": "alpha07-step13-victory-audit-production-binding-readiness",
+          "result": "PASS",
+          "test": "v076_production_victory_audit_readiness_test",
+          "runner_run_id": "20260823-161503-688-v076_production_victory_audit_readiness_test-d2253613",
+          "checks": "24/24",
+          "production_main_instantiated": true,
+          "public_new_game_intent_accepted": true,
+          "natural_production_progression": true,
+          "victory_qualification_reached": true,
+          "authoritative_boundary_revalidation_reached": true,
+          "solar_victory_state_valid": true,
+          "final_settlement_count": 1,
+          "final_settlement_public_log_count": 1,
+          "final_settlement_presentation_count": 1,
+          "game_screen_settlement_presented_count": 1,
+          "duplicate_settlement_count": 0,
+          "terminal_replay_state_delta_count": 0,
+          "private_queue_count": 0,
+          "private_skill_resolving_count": 0,
+          "private_skill_atomic_inflight_count": 0,
+          "unresolved_military_lock_count": 0,
+          "card_injection_count": 0,
+          "asset_injection_count": 0,
+          "target_injection_count": 0,
+          "hidden_info_violation_count": 0,
+          "new_victory_owner_count": 0,
+          "v06_victory_owner_production_reachable_count": 0,
+          "script_error_count": 0,
+          "diagnostic_count": 0,
+          "remaining_project_runtime_process_count": 0,
+          "step13_readiness": true,
+          "step13_golden": false,
+          "human_executed": false,
+          "human_confirmed": false
+        },
+        {
+          "evidence_id": "alpha07-step13-direct-regressions",
+          "result": "PASS",
+          "v075_runtime_owner_integration_checks": "20/20",
+          "v075_runtime_owner_integration_run_id": "20260823-161655-083-v075_runtime_owner_integration_test-31090c6a",
+          "v07_solar_victory_core_checks": "190/190",
+          "v07_solar_victory_core_run_id": "20260823-161753-745-v07_solar_victory_core_test-a5b2c726",
+          "final_settlement_exact_once_checks": "4/4",
+          "final_settlement_exact_once_run_id": "20260823-161754-636-v075_final_settlement_presentation_exact_once_regression_test-ddcd89a6",
+          "terminal_combat_quiescence_checks": "12/12",
+          "terminal_combat_quiescence_run_id": "20260823-161803-455-v075_terminal_combat_quiescence_test-185fdd02",
+          "v075_application_composition_checks": "111/111",
+          "v075_application_composition_run_id": "20260823-161806-816-v075_application_composition_test-2830b1e0",
+          "human_observation_readiness_checks": "35/35",
+          "human_observation_readiness_run_id": "20260823-161813-169-v076_human_golden_observation_readiness_test-8906fff8",
+          "human_executed": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "alpha07-step09-step13-candidate-revalidation",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step09_step13_candidate_production_revalidation_receipt.json",
+          "receipt_sha256": "1b5b51e30a69fbd0362c0a73f0728f3b518523f40bb75cdddb3049b8b196f208",
+          "focused_checks": "86/86",
+          "runner_run_id": "20260823-162814-928-v076_production_military_composition_test-db2c0cdd",
+          "product_behavior_changed_by_revalidation": false
+        },
+        {
+          "evidence_id": "alpha07-step11-step13-candidate-revalidation",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step11_step13_candidate_production_revalidation_receipt.json",
+          "receipt_sha256": "64fb820e193b233908151e841c4831a7dc87b6f54820df80cfb75c8b2f45d404",
+          "focused_checks": "86/86",
+          "runner_run_id": "20260823-162814-928-v076_production_military_composition_test-db2c0cdd",
+          "product_behavior_changed_by_revalidation": false
+        },
+        {
+          "evidence_id": "alpha07-step12-step13-candidate-revalidation",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step12_step13_candidate_production_revalidation_receipt.json",
+          "receipt_sha256": "868efa96e3070e91b19dd37461f71b4dbe5ee567a12a80cdf4d4f5b7265bec51",
+          "focused_checks": "57/57",
+          "runner_run_id": "20260823-163034-679-v076_production_ai_privacy_test-fc3e6e7f",
+          "product_behavior_changed_by_revalidation": false
+        },
+        {
+          "evidence_id": "alpha07-step13-main-runtime",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "renderer": "Vulkan Forward+",
+          "device": "NVIDIA GeForce RTX 4080 SUPER",
+          "changed_file_warning_count": 0,
+          "repository_preexisting_gdscript_warnings_present": true,
+          "task_introduced_gdscript_warning_count": 0,
+          "hard_runtime_error_count": 0,
+          "untracked_uid_count": 0,
+          "remaining_project_runtime_process_count": 0,
+          "stop_result": "Godot project stopped"
+        },
+        {
+          "evidence_id": "alpha07-step13-victory-audit-readiness-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_victory_audit_readiness_production_binding_receipt.json",
+          "receipt_sha256": "43197224112f7739cf8f1bfff2abc42f1da9f37309802909d94aedbb51d38d7c",
+          "previous_receipt_path": "reports/reuse/v076_ai_privacy_production_cutover_receipt.json",
+          "previous_receipt_sha256": "3d604f8fba5c21a80385814b7ff1ed3c1019a9a0e96f6e54acc537443bb02d09",
+          "production_scene_path": "scenes/main.tscn",
+          "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+          "atomic_cutover": true,
+          "product_byte_change_count": 0
+        }
+      ],
+      "not_claimed": [
+        "step13_golden_pass",
+        "human_playtest_pass",
+        "human_confirmation",
+        "observer_attestation",
+        "full_alpha07_production_green",
+        "step14_final_settlement_human_pass",
+        "step15_feedback_clean_stop_human_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
@@ -1201,7 +1334,7 @@
     "test_bytes_changed_after_stage3": true,
     "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "STEP09, STEP11, and STEP12 are distinct Golden step-level PRODUCTION_GREEN results. STEP12 reuses the existing V075 production submission, AI observation, viewer projection, and GameScreen paths without changing product or Owner bytes: one AI naturally acquires, queues, and locks legal actions while unauthorized viewers receive no private hand, plan, exact cash, or card binding. Full-product production green, human execution/confirmation, observer attestation, STEP13+, per-card certification, and full-world reproof remain false or pending."
+    "current_claim": "STEP09, STEP11, and STEP12 remain distinct Golden step-level PRODUCTION_GREEN results and are revalidated at current candidate 174cbded. STEP13 production binding readiness is 24/24 through the existing V075RuntimeOwner and reused V07SolarVictoryCore with no product byte change, injection, duplicate settlement, replay delta, new Victory Owner, or residual process. STEP13 itself remains PENDING because human execution/confirmation and observer attestation have not occurred. Full-product production green, STEP13-STEP15 human passes, per-card certification, and full-world reproof remain false or pending."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -1218,9 +1351,9 @@
     "golden_production_green_count": 3,
     "golden_human_green_count": 0,
     "production_cutover_status": true,
-    "latest_completed_stage": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP12_AI_PRIVACY_CUTOVER",
-    "latest_completed_stage_head_sha": "e458525fe579b7d552daeb64129b3d002ed3fa35",
-    "next_stage": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT",
+    "latest_completed_stage": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT_READINESS",
+    "latest_completed_stage_head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
+    "next_stage": "V076_ALPHA07_HUMAN_GOLDEN_STEP13_TO_STEP15_EXECUTION",
     "v075_pr90_dependency_boundary": "CURRENT_V075_OWNER_REUSED_NO_OWNER_SUPERSESSION"
   },
   "canonical_change_scope": {
@@ -1288,6 +1421,11 @@
       "v07_asset_batch_core_test",
       "v076_production_military_composition_test",
       "v076_production_ai_privacy_test",
+      "v076_production_victory_audit_readiness_test",
+      "v075_runtime_owner_integration_test",
+      "v07_solar_victory_core_test",
+      "v075_final_settlement_presentation_exact_once_regression_test",
+      "v075_terminal_combat_quiescence_test",
       "v076_human_golden_observation_readiness_test",
       "simulation_runtime_authority_migration_test",
       "v076_deterministic_kernel_test",
@@ -1313,19 +1451,20 @@
       "V075_PRIVATE_SKILL_CONTRACT",
       "V075_MONSTER_AUTONOMY_TRAMPLE_CONTRACT",
       "V075_AI_VIEWER_PRIVACY_CONTRACT",
+      "V075_VICTORY_FINAL_SETTLEMENT_CONTRACT",
       "V073_PLAYTEST_INSTRUMENTATION_PRIVACY",
       "REUSE_POINT_INERTIA_GATE"
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "The STEP12 delta adds one test and append-only evidence; no product or Owner byte changes. Production AI/privacy 57/57 instantiates the existing V075RuntimeComposition and real V075SampleGameScreen, starts one human plus three AI actors, advances the real submission phase, proves a natural legal AI queue/lock, and recursively checks two unauthorized viewers plus public facts/history for rival hand, plan, exact cash, and private-binding disclosure. V075 AI 77/77, runtime policy 28/28, natural acquisition 56/56, public/private projection 69/69, V075 composition 111/111, prior production composition 86/86, and real main.tscn start/read/clean-stop cover every touched dependency. The stale V06 player-facing oracle is disclosed and not claimed green. No new AI, policy, projection, privacy, RNG, gameplay, presentation, human-attestation, or full-world Owner/proof is introduced."
+    "why_focused_tests_are_sufficient": "The STEP13-readiness delta adds one proof test and append-only evidence; no product, scene, Owner, rule, balance, card, asset, target, or presentation byte changes. Readiness 24/24 instantiates real main.tscn, enters through public new-game intent, advances naturally from below the target, reaches the existing V075RuntimeOwner/V07SolarVictoryCore qualification and authoritative boundary revalidation, emits one settlement/log/presentation, and proves terminal replay idempotence plus combat quiescence. Direct Victory/settlement/quiescence/application/readiness sentinels pass 20/20, 190/190, 4/4, 12/12, 111/111, and 35/35; exact-candidate STEP09/11 production composition revalidates 86/86 and STEP12 AI/privacy revalidates 57/57. Real main.tscn starts and stops cleanly. This covers every touched proof dependency while STEP13 stays PENDING and human execution/confirmation, observer attestation, full-product production green, and full-world reproof remain unclaimed."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
   "point_inertia_gate_queued": true,
   "current_task_interrupted_by_gate": false,
   "current_task_result_preserved": true,
-  "product_development_resume_target": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT",
+  "product_development_resume_target": "V076_ALPHA07_HUMAN_GOLDEN_STEP13_TO_STEP15_EXECUTION",
   "production_composition_authorization_boundary": {
     "status": "CONSUMED",
     "required_authorization": "PRODUCTION_CUTOVER_AUTHORIZED=true",
@@ -1366,9 +1505,9 @@
   },
   "production_cutover_receipt": {
     "status": "PASS",
-    "path": "reports/reuse/v076_ai_privacy_production_cutover_receipt.json",
-    "sha256": "3d604f8fba5c21a80385814b7ff1ed3c1019a9a0e96f6e54acc537443bb02d09",
-    "candidate_head_sha": "e458525fe579b7d552daeb64129b3d002ed3fa35",
+    "path": "reports/reuse/v076_victory_audit_readiness_production_binding_receipt.json",
+    "sha256": "43197224112f7739cf8f1bfff2abc42f1da9f37309802909d94aedbb51d38d7c",
+    "candidate_head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
     "production_scene_path": "scenes/main.tscn",
     "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
     "atomic_cutover": true,

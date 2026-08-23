@@ -9903,3 +9903,39 @@ deleted. Evidence and the remaining action inventory are recorded in
   Full-product production green, every human claim, observer attestation,
   per-card certification, and full-world reproof remain false or pending. The
   next boundary is `V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT`.
+
+## 2026-08-24 — V076 Alpha 0.7 STEP13 Victory/audit production-binding readiness
+
+- Added one focused proof test at committed candidate
+  `174cbded0df3ef57fa7861276987f8e3a6e6f785`, tree
+  `868bddedd7a3f85b4c3594ef3d8579b6ea379523`; changed no product script,
+  scene, Owner, rule, balance, card, asset, target, or presentation byte. The
+  existing `V075RuntimeOwner` remains the sole production Victory/audit and
+  FinalSettlement authority and continues to reuse `V07SolarVictoryCore`.
+  V06 `VictoryControlRuntimeController` remains production-unreachable.
+- Production Victory/audit readiness passes `24/24` through real
+  `res://scenes/main.tscn`: public new-game intent, natural progression from
+  below the target, qualification, authoritative audit-boundary revalidation,
+  one FinalSettlement, one public log, one existing presentation, GameScreen
+  consumption, terminal replay idempotence, and combat quiescence. Card, asset,
+  and target injection, duplicate settlement, replay state delta, hidden-info
+  violation, new Victory Owner, script error, diagnostic, and residual process
+  counts are zero.
+- Direct sentinels pass: V075 Runtime Owner `20/20`, V07 Solar Victory Core
+  `190/190`, FinalSettlement exact-once `4/4`, terminal combat quiescence
+  `12/12`, V075 application composition `111/111`, and Human observation
+  readiness `35/35`. Godot MCP ran and cleanly stopped the real main scene under
+  Godot `4.7.stable.official.5b4e0cb0f`, Vulkan, and RTX 4080 SUPER with zero
+  task warnings, hard errors, UID changes, or residual processes; existing
+  unrelated repository warnings remain disclosed.
+- Revalidated every existing production-green step at the exact current
+  evidence subject: STEP09/STEP11 production composition `86/86` and STEP12
+  AI/privacy `57/57`, each with zero diagnostics, script errors, and residual
+  processes. Added append-only current-candidate receipts and chained the new
+  Victory-readiness production-binding receipt to the immutable STEP12 cutover
+  receipt.
+- STEP13 remains `PENDING`, `pass_claimed=false`, `human_executed=false`, and
+  `human_confirmed=false`; Golden counts remain `5/3/0`. Full-product production
+  green, human green, observer attestation, STEP14/STEP15, per-card
+  certification, and full-world reproof remain false or pending. The next
+  boundary is `V076_ALPHA07_HUMAN_GOLDEN_STEP13_TO_STEP15_EXECUTION`.
