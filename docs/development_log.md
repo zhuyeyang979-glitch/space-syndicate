@@ -9700,3 +9700,17 @@ deleted. Evidence and the remaining action inventory are recorded in
   `PRODUCTION_CUTOVER_AUTHORIZED=true` decision, and keeps production/human
   green false. `main.tscn`, production Owners, and runtime behavior remain
   unchanged.
+
+## 2026-08-23 — Recoverable PR status false-green wording repair
+
+- The first Gate run after the authorization-boundary status sync recorded one
+  and only one failure: `PR93_DESCRIPTION_FALSE_GREEN:production_cutover`.
+  Local reproduction confirmed `PR93_BODY_STATUS_MATCH=true`, all Owner,
+  history, point-inertia, and Golden counters clean, and no product-tree drift;
+  the failure was an ambiguous prose sentence, not a product or Registry fault.
+- The PR body was restored with preserved Markdown newlines and the sentence
+  was replaced by an explicit `no cutover is authorized` statement. The local
+  validator then returned `STATUS=PASS`, failure count `0`, and
+  `PR93_DESCRIPTION_FALSE_GREEN_COUNT=0`; the repaired cloud Gate and bounded
+  acceptance both passed. No product bytes, `main.tscn`, Golden status, or
+  production/human claim changed.
