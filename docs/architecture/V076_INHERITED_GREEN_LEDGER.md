@@ -34,6 +34,24 @@ No row claims a production composition cutover, human playtest pass, or
 repository-wide reproof. A future change to an Owner byte or a bound dependency
 must replace inheritance with a scoped sentinel or a new proof.
 
+## Read-only production composition precheck
+
+The authorized `V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_PRECHECK` was
+executed without changing `main.tscn` or any production runtime state. The
+dedicated Godot test `tests/v076_production_composition_precheck_test.gd`
+passed `64/64` under Godot `4.7.stable.official.5b4e0cb0f`. Static composition
+checks found one V075 bootstrap, one V075 runtime composition, and one V075
+screen entry. Instantiating `res://scenes/main.tscn` reached 578 nodes, zero
+`scripts/v076/` Owner scripts, one `V075RuntimeOwner`, and one
+`V075CombatRuntimeOwner`; duplicate V076 Owner nodes and retired runtime
+fallback paths were both zero. Runner diagnostics and script errors were zero,
+and the project stopped cleanly.
+
+This is a boundary precheck only. It confirms that V076 Owners are not
+accidentally reachable from the current V075 production entry; it does not
+authorize wiring, production cutover, human execution, or any Golden status
+change. Golden counts remain isolated `5`, production `0`, human `0`.
+
 ## Canonical PR status and merge ratchet
 
 The JSON ledger is the sole machine source for the PR #93 status block. It
