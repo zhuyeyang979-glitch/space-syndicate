@@ -1,21 +1,22 @@
 {
   "schema_version": "space_syndicate.v076.supersession_map.v2",
   "map_id": "v076-supersession-map-20260821",
-  "candidate_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+  "candidate_head_sha": "f9963d6a615934d68d80a63a7c69a9ade710215d",
   "change_class": "PRODUCTION_COMPOSITION",
   "production_cutover": true,
   "production_cutover_evidence": {
-    "candidate_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+    "candidate_head_sha": "f9963d6a615934d68d80a63a7c69a9ade710215d",
     "atomic_cutover": true,
     "production_scene_path": "scenes/main.tscn",
     "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
-    "receipt_path": "reports/reuse/v076_production_cutover_receipt.json",
-    "receipt_sha256": "88d738bef0aad5a8acf2e21fd9f22f24742ee66f6639aa3e73f709f3e471d012",
+    "receipt_path": "reports/reuse/v076_human_golden_observation_production_cutover_receipt.json",
+    "receipt_sha256": "d0a5db5c4adb9c401269691612ded4e1307fe1d8684a050636eac4be7f88277d",
     "affected_owners": [
       "component.v076.kernel",
       "component.v076.military_physical_eta",
       "component.v076.private_direct_action_input",
-      "component.current.v075_runtime_owner"
+      "component.current.v075_runtime_owner",
+      "component.current.v073_playtest_telemetry"
     ],
     "owner_replacement_count": 0,
     "dual_write_count": 0,

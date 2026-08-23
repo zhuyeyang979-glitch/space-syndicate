@@ -5,7 +5,7 @@ schema_version: space_syndicate.v076.owner_reuse_map.v1
 registry_id: V076_OWNER_REUSE_MAP
 
 This map enforces one Owner per domain at candidate head
-`ad12cfa8c9fd877a1f69283d04f1d671796bbf74`. Consumers may adapt data or
+`f9963d6a615934d68d80a63a7c69a9ade710215d`. Consumers may adapt data or
 contracts, but they may not inherit authority by association.
 
 | Domain | Unique Owner | Reused source | Disposition | Consumer boundary |
@@ -36,7 +36,7 @@ contracts, but they may not inherit authority by association.
 | Canonical adapter patterns | V076 adapter tests | PR #80 | `REUSE_AS_TEST` | No PR80 Save/RNG connection; V076 remains new-game-only. |
 | Historical uninterrupted card batch | None | PR #70 closed/unmerged head | `RETIRED` | Never revive, rebuild, or whole-branch merge. |
 | V075 combat source lineage | Existing `V075RuntimeOwner` PR #90 product lineage | PR #90 exact base | `ADAPT_AS_CONSUMER` | The same active V075 Owner is reused for production hand, asset, facility/monster damage, card lifecycle, privacy, and presentation. It is not superseded, copied, or dual-written; the V076 adapter is stateless. |
-| Human playtest instrumentation | Unassigned future observation-only Owner | PR #87 | `REFERENCE_ONLY` | Current Owner count is 0; patterns do not establish a V076 human pass. |
+| Human Golden observation evidence | `V073PlaytestTelemetryService` | Existing PR #87 instrumentation + existing V075 bootstrap + economy/combat/military Profile identities | `ADOPT_AS_OWNER` | The existing telemetry service is extended in place as the sole observation-package Owner. `V076Alpha07HumanGoldenCandidateProfile` and `V075ApplicationBootstrap` are stateless Adapters. The Owner writes only local observation artifacts and permanently reports `human_executed=false`, `human_confirmed=false`, `production_green=false`, and `human_green=false` until an independent human attestation exists. It owns no gameplay, Save, RNG, Tick, presentation, or balance values. |
 | Full-run settlement acceptance | Unassigned future V076 end-to-end test Owner | PR #68 | `REUSE_AS_TEST` | Current Owner count is 0; V06 result is an oracle pattern, not V076 evidence. |
 | PR90 release Probe Tooling | External sealed Tooling source | `70ccb5c0...` | `REFERENCE_ONLY` | Zero `tools/pr90*` files exist here; no copy, rewrite, replay, or Owner migration. |
 | Future V077 Save/resume recovery | Unassigned pending new authorized implementation | Alpha 0.4-C representative `744b5418...` | `REFERENCE_ONLY_BLOCKED_UNVERIFIED` | `FORMAL_FULL_RUN=false`; official eligibility blocked. V076 is new-game-only with zero Save schema/delete/overwrite/migration changes; do not import coordinator/registry/barrier/flow or mix attempts. Tests may be reused only for V077. |
@@ -80,3 +80,14 @@ count 0 over a 1,000-seed canonical probe matrix. No second channel, queue,
 skill Owner, asset Owner, damage sink, Bench, or production composition is
 introduced. This ordering proof remains inherited by the cut-over composition;
 production and human green remain false.
+
+Alpha 0.7 Human Golden observation readiness reuses the single production-
+reachable `V073PlaytestTelemetryService` instead of creating another telemetry
+or evidence Owner. One immutable profile Adapter fingerprints the existing
+economy, V075 combat, and V076 military authorities; the existing V075
+bootstrap configures it exactly once and fails closed on invalid identity.
+Readiness passes `35/35`, V075 composition remains `111/111`, military
+production composition remains `55/55`, and the real `main.tscn` MCP run stops
+cleanly. The generated package is observation-only and cannot self-assert a
+human or production pass. STEP09 Monster production cutover and a real human
+observer attestation remain the next unproved boundaries.

@@ -2,9 +2,9 @@
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
-  "candidate_tree_sha": "ef76a8132a39fdbfdedf3965e2f358f4f1dc76a1",
-  "change_class": "PRODUCTION_COMPOSITION",
+  "candidate_head_sha": "f9963d6a615934d68d80a63a7c69a9ade710215d",
+  "candidate_tree_sha": "154f9a98c20e940dc0896672fcb9174e07ec5d9e",
+  "change_class": "CROSS_DOMAIN_INTEGRATION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
     "scripts/v076/simulation",
@@ -12,6 +12,9 @@
     "scripts/v076/monster",
     "scripts/v076/direct_action",
     "scripts/v076/military",
+    "scripts/playtest/v073_playtest_telemetry_service.gd",
+    "scripts/playtest/v076_alpha07_human_golden_candidate_profile.gd",
+    "scripts/v075_runtime/v075_application_bootstrap.gd",
     "data/v076/v076_military_unit_profiles_v1.json",
     "data/diagnostics/v076_military_card_crosswalk_v1.json",
     "scripts/tools/v076",
@@ -25,7 +28,7 @@
     "frozen Alpha 0.4-C Save/resume lineage"
   ],
   "static_counts": {
-    "v076_class_name_count": 22,
+    "v076_class_name_count": 24,
     "duplicate_v076_class_name_count": 0,
     "product_repo_pr90_tool_file_count": 0,
     "authoritative_domain_duplicate_owner_count": 0,
@@ -121,6 +124,19 @@
       "sha256": "394df72343341739622fb2c7899d30b0c0f12cd8d2acd52b91e0fecae7d50323",
       "owns_execution": false,
       "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "future.v076_human_playtest_evidence",
+      "owner_count": 1,
+      "unique_owner": "V073PlaytestTelemetryService",
+      "path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+      "adapter_count": 2,
+      "candidate_profile_adapter": "V076Alpha07HumanGoldenCandidateProfile",
+      "composition_adapter": "V075ApplicationBootstrap",
+      "new_gameplay_owner_count": 0,
+      "parallel_observation_owner_count": 0,
+      "human_attestation_owner_count": 0,
+      "duplicate_status": "NONE"
     }
   ],
   "intentional_parallel_scopes": [
@@ -195,6 +211,11 @@
       "result": "One stateless production Adapter connects the already-registered Kernel, ETA, and private-input Owners to the existing V075 hand, asset, damage, card-lifecycle, privacy, and presentation paths. No GameRuntimeCoordinator, second asset ledger, military Owner, damage Owner, or fallback queue is instantiated."
     },
     {
+      "source": "V073PlaytestTelemetryService + V075ApplicationBootstrap + existing economy/combat/military Profile authorities",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "The one existing production-reachable telemetry Owner is extended in place and receives one immutable V076 candidate identity through the existing bootstrap. It writes only observation artifacts; no second telemetry Owner, copied balance values, gameplay mutation, Save/RNG/Tick authority, network dependency, or human attestation is created."
+    },
+    {
       "source": "PR64/PR80",
       "disposition": "REUSE_AS_TEST",
       "result": "Test patterns only; no registry execution, Save adapter, RNG adapter, Kernel, or dispatcher imported."
@@ -237,6 +258,7 @@
     "second military mission lifecycle Owner, phase ledger, or non-Kernel tick continuation",
     "second facility or monster damage sink, HP ledger, mutation authority, or damage presentation receipt owner",
     "second monster private-skill queue, receive sequence, safe-boundary, skill state, cooldown, reservation, result, or presentation Owner",
+    "second Human Golden telemetry, event-sequence, evidence-package, export-finalization, observation identity, or attestation Owner",
     "root submission of execute or withdraw commands reserved for Kernel derivation",
     "revived PR70 card batch",
     "PR64 metadata registry promoted to executor",
@@ -261,6 +283,13 @@
       "record_count": 28,
       "exact_mapped_count": 28,
       "reauthor_required_count": 0,
+      "status": "UNVERIFIED"
+    },
+    {
+      "boundary": "Alpha 0.7 STEP09 Monster production cutover and real human observer attestation",
+      "human_executed": false,
+      "human_confirmed": false,
+      "observer_attestation_required": true,
       "status": "UNVERIFIED"
     },
     {
@@ -343,6 +372,21 @@
       "focused_checks": "55/55",
       "status": "ISOLATED_GREEN",
       "production_cutover": true,
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "Alpha 0.7 Human Golden observation identity readiness",
+      "observation_owner_count": 1,
+      "adapter_count": 2,
+      "parallel_observation_owner_count": 0,
+      "readiness_checks": "35/35",
+      "evidence_source_type": "OBSERVATION_ONLY",
+      "human_executed": false,
+      "human_confirmed": false,
+      "human_evidence_claim_allowed": false,
+      "observer_attestation_required": true,
+      "status": "ISOLATED_GREEN",
       "production_green": false,
       "human_green": false
     }

@@ -1,0 +1,121 @@
+{
+  "schema_version": "space_syndicate.v076.production_cutover_receipt.v1",
+  "receipt_id": "v076-alpha07-human-golden-observation-production-cutover-20260823",
+  "recorded_on": "2026-08-23",
+  "status": "PASS",
+  "candidate_head_sha": "f9963d6a615934d68d80a63a7c69a9ade710215d",
+  "candidate_tree_sha": "154f9a98c20e940dc0896672fcb9174e07ec5d9e",
+  "atomic_cutover": true,
+  "cumulative_cutover_receipt": true,
+  "previous_cutover_receipt": {
+    "path": "reports/reuse/v076_production_cutover_receipt.json",
+    "sha256": "88d738bef0aad5a8acf2e21fd9f22f24742ee66f6639aa3e73f709f3e471d012",
+    "candidate_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+    "status": "PASS"
+  },
+  "production_scene_path": "scenes/main.tscn",
+  "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+  "runtime_composition_path": "scenes/runtime/V075RuntimeComposition.tscn",
+  "runtime_composition_sha256": "d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9",
+  "observation_bindings": {
+    "application_bootstrap_path": "scripts/v075_runtime/v075_application_bootstrap.gd",
+    "application_bootstrap_sha256": "53489e56d3e8f8f8b3bc9297012076ad149faa62545e3d40d6505ce33242cd19",
+    "telemetry_owner_path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+    "telemetry_owner_sha256": "8cdc2cd0c44edb87dc398753c118c64b600faac563080d53e7814e05ff5f5ec1",
+    "candidate_profile_path": "scripts/playtest/v076_alpha07_human_golden_candidate_profile.gd",
+    "candidate_profile_sha256": "82026c146bcb41d22b7c4051fb91a5390fbbf920c36fd1e78800c96eac4b67af",
+    "readiness_test_path": "tests/v076_human_golden_observation_readiness_test.gd",
+    "readiness_test_sha256": "5f8c50e91d93e172df2b9239e9111bf0e7a6d2cd7ba73582b4fd0e6811718dfc"
+  },
+  "affected_owners": [
+    "component.v076.kernel",
+    "component.v076.military_physical_eta",
+    "component.v076.private_direct_action_input",
+    "component.current.v075_runtime_owner",
+    "component.current.v073_playtest_telemetry"
+  ],
+  "composition_counts": {
+    "v076_kernel_owner_count": 1,
+    "v076_military_eta_owner_count": 1,
+    "v076_private_direct_action_owner_count": 1,
+    "v075_runtime_owner_count": 1,
+    "v073_observation_owner_count": 1,
+    "human_golden_candidate_profile_adapter_count": 1,
+    "application_bootstrap_adapter_count": 1,
+    "parallel_production_owner_count": 0,
+    "new_gameplay_owner_count": 0,
+    "dual_write_count": 0,
+    "fallback_count": 0
+  },
+  "human_golden_observation_readiness_gate": {
+    "test": "tests/v076_human_golden_observation_readiness_test.gd",
+    "runner": "tools/invoke_godot_test.ps1",
+    "runner_run_id": "20260823-121905-494-v076_human_golden_observation_readiness_test-5b731c5a",
+    "status": "PASS",
+    "checks": "35/35",
+    "stdout_sha256": "33a70da1f7b1235e56ea6cabc413c2d20f618596436024fd9ca8419dbac1eacc",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "script_error_count": 0,
+    "diagnostic_count": 0,
+    "remaining_project_runtime_process_count": 0,
+    "evidence_source_type": "OBSERVATION_ONLY",
+    "human_executed": false,
+    "human_confirmed": false,
+    "human_evidence_claim_allowed": false,
+    "observer_attestation_required": true
+  },
+  "focused_production_gate": {
+    "test": "tests/v076_production_military_composition_test.gd",
+    "runner": "tools/invoke_godot_test.ps1",
+    "runner_run_id": "20260823-122050-111-v076_production_military_composition_test-9300f315",
+    "status": "PASS",
+    "checks": "55/55",
+    "stdout_sha256": "c3a0ec7d5f64647e9d7f9de87ed3d36f74eae2068c65c30044937623a4d461db",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "script_error_count": 0,
+    "diagnostic_count": 0,
+    "remaining_project_runtime_process_count": 0,
+    "mission_kinds": ["ASSAULT_REGION", "ASSAULT_MONSTER"],
+    "public_batch_entry_count": 0,
+    "shared_sushi_track_resolution_count": 0
+  },
+  "direct_regressions": [
+    {
+      "test": "v075_application_composition_test",
+      "status": "PASS",
+      "checks": "111/111",
+      "runner_run_id": "20260823-122038-993-v075_application_composition_test-cffbec12",
+      "stdout_sha256": "981d1e67d330bc702eb144eb3d7e6a67588946d45777c477b4482426ca720271"
+    },
+    {
+      "test": "v076_production_military_composition_test",
+      "status": "PASS",
+      "checks": "55/55",
+      "runner_run_id": "20260823-122050-111-v076_production_military_composition_test-9300f315"
+    }
+  ],
+  "godot_mcp_main_runtime": {
+    "scene": "res://scenes/main.tscn",
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "renderer": "Vulkan Forward+",
+    "device": "NVIDIA GeForce RTX 4080 SUPER",
+    "changed_file_warning_count": 0,
+    "hard_runtime_error_count": 0,
+    "untracked_uid_count": 0,
+    "remaining_project_runtime_process_count": 0,
+    "stop_result": "Godot project stopped"
+  },
+  "claim_limits": {
+    "golden_step_10_status": "ISOLATED_GREEN",
+    "golden_isolated_green_count": 5,
+    "golden_production_green_count": 0,
+    "golden_human_green_count": 0,
+    "production_green": false,
+    "human_green": false,
+    "human_executed": false,
+    "human_confirmed": false,
+    "alpha07_certified_card_count": 0,
+    "full_world_reproof_performed": false,
+    "next_stage": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP09_MONSTER_CUTOVER"
+  }
+}

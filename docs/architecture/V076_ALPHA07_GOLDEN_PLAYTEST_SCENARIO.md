@@ -22,7 +22,7 @@ It is a plan and evidence ledger, not a human-play result.
 | STEP07 | Inspect globe and select legal target | `PENDING` | Requires human use of the production map and typed target binding. |
 | STEP08 | Acquire and submit one legal card | `PENDING` | Requires one real card instance through acquisition, hand, target, and resolution Owners. |
 | STEP09 | Resolve production Monster move/consequence | `PENDING` | Current Stage 3 Bench cannot satisfy this step. |
-| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | Atomic production cutover receipt binds implementation `ad12cfa8` and exact `main.tscn` SHA. The production composition gate passes `55/55` across `ASSAULT_REGION` and `ASSAULT_MONSTER`: two Kernel roots, two typed damage settlements, exact asset debits, card consumption, withdrawal, active-session restart rejection, private redaction, and zero public batch/sushi leakage. V075 composition `111/111`, receipt privacy `5/5`, Input Owner `7/7`, asset reducer `285/285`, and inherited sentinels remain green. Scripted fixture evidence keeps production/human green false. |
+| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | The cumulative cutover receipt binds implementation `f9963d6a`, the unchanged exact `main.tscn` SHA, and the prior immutable `ad12cfa8` military receipt. Human-Golden observation readiness passes `35/35` through the one reused V073 telemetry Owner and permanently reports `human_executed=false`, `human_confirmed=false`, and `observer_attestation_required=true`. Production military composition remains `55/55`, V075 composition remains `111/111`, and scripted evidence keeps production/human green false. |
 | STEP11 | Observe economy/route/asset consequence | `PENDING` | Requires one atomic asset Owner and exact-once presentation. |
 | STEP12 | Observe AI action and privacy | `PENDING` | Requires production AI with viewer-scoped hidden-information proof. |
 | STEP13 | Reach victory qualification/final audit | `PENDING` | Requires a full human run without fixture state injection. |
@@ -58,6 +58,15 @@ cross-kind order; V075 remains the sole owner of skill source revalidation,
 asset reservation, safe-boundary execution, damage, cooldown/Fizzle, and
 allowlisted public aftermath. The mixed-action result remains isolated evidence
 inside the cut-over composition; production green and human green remain false.
+
+The Human Golden observation-readiness slice extends the one existing
+production-reachable `V073PlaytestTelemetryService`; it does not create a
+second evidence Owner. An immutable V076 profile Adapter fingerprints the
+existing economy, combat, and military authorities, and the existing V075
+bootstrap configures it once with fail-closed validation. The generated
+manifest and summary are observation-only and cannot self-assert a human or
+production pass. The real next product gap is STEP09 Monster production
+cutover; independent human observer attestation remains required after that.
 
 STEP01, STEP06-STEP09, and STEP11-STEP15 remain pending. Any production or
 human Golden claim must come from the exact future production candidate and a

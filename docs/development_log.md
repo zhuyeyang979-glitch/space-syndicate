@@ -9744,3 +9744,44 @@ deleted. Evidence and the remaining action inventory are recorded in
   Golden STEP10 remains `ISOLATED_GREEN`; production green, human green,
   Alpha 0.7 certified cards, and full-world reproof remain zero or false. The
   next boundary is `V076_ALPHA07_HUMAN_GOLDEN_EXECUTION`.
+
+## 2026-08-23 — V076 Alpha 0.7 Human Golden observation readiness
+
+- Reused and extended the one existing production-reachable
+  `V073PlaytestTelemetryService` as the unique Human Golden observation-package
+  Owner. No second telemetry, evidence, gameplay, Save, RNG, Tick,
+  presentation, balance, or human-attestation Owner was created.
+- Added one immutable `V076Alpha07HumanGoldenCandidateProfile` Adapter. It
+  fingerprints the existing V072 economy, V075 combat, and V076 military
+  Profile authorities without copying their values. The existing V075
+  bootstrap configures that identity exactly once and rejects malformed,
+  mismatched, path-escaping, or self-promoting profiles.
+- Manifest and summary exports permanently declare
+  `evidence_source_type=OBSERVATION_ONLY`, `human_executed=false`,
+  `human_confirmed=false`, `human_evidence_claim_allowed=false`,
+  `production_green=false`, `human_green=false`, and
+  `observer_attestation_required=true`. A scripted run cannot promote itself to
+  Human Golden evidence.
+- Focused verification on implementation commit
+  `f9963d6a615934d68d80a63a7c69a9ade710215d`, tree
+  `154f9a98c20e940dc0896672fcb9174e07ec5d9e`, passed observation readiness
+  `35/35`, V075 application composition `111/111`, and military production
+  composition `55/55`. Script errors, diagnostics, untracked UIDs, and scoped
+  residual processes were zero.
+- Godot MCP ran the real `res://scenes/main.tscn` under Godot 4.7/Vulkan,
+  reported no hard runtime error or warning from the changed files, and stopped
+  cleanly. Existing unrelated repository warnings remain inherited and were not
+  relabeled as this delta.
+- Added a new cumulative cutover receipt that references the immutable prior
+  `ad12cfa8` military receipt and binds the current bootstrap, telemetry Owner,
+  candidate Adapter, readiness test, unchanged `main.tscn`, and current
+  implementation identity. Golden remains `5/0/0`; STEP10 remains
+  `ISOLATED_GREEN`; production/human green and Alpha 0.7 per-card certification
+  remain false or zero. The next product task is
+  `V076_ALPHA07_PRODUCTION_GOLDEN_STEP09_MONSTER_CUTOVER`, before any real human
+  execution claim.
+- The formal Reuse/Point-Inertia Gate passed against `HEAD_PLUS_WORKTREE` with
+  self-test `119/119`, 26 committed-history transitions, history failures `0`,
+  new/changed component coverage `100_PERCENT`, and zero new-owner reuse-scan,
+  parallel-owner, unclassified-component, Golden false-green, card-reset,
+  full-world-reproof, stale-PR-status, or false-green prose failures.
