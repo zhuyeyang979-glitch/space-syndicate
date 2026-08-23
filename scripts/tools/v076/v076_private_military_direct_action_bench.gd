@@ -364,13 +364,24 @@ func _run_bench() -> void:
 		"the military unit cannot resolve or withdraw before physical ETA"
 	)
 	var pre_arrival := kernel.advance_ticks(dispatch_delay_ticks - 1)
+	var ordered_intake := direct_action_owner.settle_ready_private_actions()
+	var pre_arrival_state: Dictionary = kernel.domain_state(
+		V076PrivateDirectActionInputOwnerV1.DOMAIN_ID
+	)
+	var pre_arrival_ledger := pre_arrival_state.get(
+		"submission_ledger", {}
+	) as Dictionary
+	var pre_arrival_entry := pre_arrival_ledger.get(
+		SUBMISSION_ID, {}
+	) as Dictionary
 	_expect(
 		bool(pre_arrival.get("accepted", false))
+			and bool(ordered_intake.get("accepted", false))
+			and int(ordered_intake.get("settled_count", -1)) == 2
 			and military.roster_snapshot(true).size() == 2
-			and (kernel.domain_state(
-				V076PrivateDirectActionInputOwnerV1.DOMAIN_ID
-			).get("submission_ledger", {}) as Dictionary).is_empty(),
-		"no teleport or early mission effect occurs along the geodesic route"
+			and str(pre_arrival_entry.get("phase", ""))
+				== DirectActionReducer.PHASE_DISPATCHED,
+		"same-tick intake is ordered while no teleport or early mission effect occurs"
 	)
 	var arrival := kernel.advance_ticks(1)
 	var arrival_state := kernel.domain_state(
@@ -387,7 +398,7 @@ func _run_bench() -> void:
 			and str(arrival_entry.get("phase", ""))
 				== DirectActionReducer.PHASE_ARRIVED
 			and int(arrival_entry.get("arrival_tick", -1))
-				== int(submitted.get("scheduled_tick", -2))
+				== int(submitted.get("arrival_tick", -2))
 			and (arrival_entry.get("mission_receipt", {}) as Dictionary).is_empty()
 			and not bool(arrival_settlement.get("accepted", true))
 			and military.roster_snapshot(true).size() == 2,
@@ -412,7 +423,7 @@ func _run_bench() -> void:
 				== DirectActionReducer.PHASE_EXECUTED_ONCE
 			and int(execution_entry.get("execution_count", 0)) == 1
 			and int(execution_entry.get("execution_tick", -1))
-				== int(submitted.get("scheduled_tick", -2)) + 1
+				== int(submitted.get("arrival_tick", -2)) + 1
 			and not bool(execution_settlement.get("accepted", true))
 			and military.roster_snapshot(true).size() == 2,
 		"the next Kernel tick executes exactly one locked assault and cannot settle early"
@@ -580,7 +591,7 @@ func _run_bench() -> void:
 	_expect(
 		bool(idle_advance.get("accepted", false))
 			and lifecycle_after_idle == lifecycle_before_idle
-			and kernel.execution_log().size() == 6,
+			and kernel.execution_log().size() == 8,
 		"no attack, retarget, repeat, or second withdrawal occurs after withdrawal"
 	)
 	var replay_envelope := kernel.build_replay_recipe()
@@ -592,7 +603,7 @@ func _run_bench() -> void:
 	_expect(
 		str(replay.get("status", "")) == "PASS"
 			and int(replay.get("root_command_count", -1)) == 2
-			and int(replay.get("derived_command_count", -1)) == 4,
+			and int(replay.get("derived_command_count", -1)) == 6,
 		"root-only replay regenerates the exact execute and withdrawal lineage"
 	)
 	var monster_slice := _run_monster_sink_slice(
@@ -609,6 +620,7 @@ func _run_bench() -> void:
 		int(final_debug.get("submission_count", 0)) == 2
 			and int(final_debug.get("settlement_count", 0)) == 2
 			and int(final_debug.get("damage_settlement_count", 0)) == 2
+			and int(final_debug.get("intake_settlement_count", 0)) == 2
 			and int(final_debug.get("collision_count", 0)) == 1
 			and int(final_debug.get("public_batch_entry_count", -1)) == 0,
 		"private exact-once ledger remains bounded to one isolated submission"
@@ -772,7 +784,7 @@ func _run_monster_sink_slice(
 	_expect(
 		str(replay.get("status", "")) == "PASS"
 			and int(replay.get("root_command_count", -1)) == 2
-			and int(replay.get("derived_command_count", -1)) == 4,
+			and int(replay.get("derived_command_count", -1)) == 6,
 		"both typed sink missions retain root-only Kernel replay parity: %s"
 			% JSON.stringify(replay)
 	)

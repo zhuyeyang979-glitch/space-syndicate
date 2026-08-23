@@ -496,6 +496,69 @@
         "alpha07_per_card_certification",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_STAGE4_SIMULTANEOUS_PRIVATE_ACTION_ORDERING",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "adee42218fa63e12285903d46e93c72a3db7ec6b",
+      "tree_sha": "PENDING_AT_IMPLEMENTATION_COMMIT",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Extends the registered private Direct Action Owner and reducer with one common next-tick intake root for military and source-bound V075 monster-skill actions. Kernel Authority Sequence is the only cross-kind ordering authority; no second channel, skill queue, Owner, Bench, production composition, or Golden step is introduced.",
+      "golden_step_ids": ["STEP10"],
+      "current_owner": "V076PrivateDirectActionInputOwnerV1",
+      "current_reducer": "V076PrivateDirectActionReducerV1",
+      "reused_v075_owner": "V075RuntimeOwner",
+      "evidence": [
+        {
+          "evidence_id": "stage5-simultaneous-private-action",
+          "result": "PASS",
+          "test": "v076_simultaneous_private_action_test",
+          "checks": "9/9",
+          "action_kinds": ["MILITARY", "MONSTER_SKILL"],
+          "root_intake_count": 2,
+          "root_authority_sequence_count": 2,
+          "derived_military_command_count": 2,
+          "same_tick_order_mismatch_count": 0,
+          "replay_state_hash_mismatch_count": 0,
+          "collision_rejection_count": 1,
+          "duplicate_effect_count": 0,
+          "hidden_info_violation_count": 0,
+          "private_action_wait_for_public_batch_count": 0,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0,
+          "seed_probe_count": 1000,
+          "deterministic_replay_count": 2000
+        },
+        {
+          "evidence_id": "stage5-v075-private-skill-contracts",
+          "result": "PASS",
+          "request_telemetry_checks": "4/4",
+          "privacy_and_failure_checks": "9/9",
+          "safe_boundary_owner": "V075RuntimeOwner/V075CombatRuntimeOwner/V075MonsterPrivateSkillCore",
+          "production_composition_cutover": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "stage5-inherited-sentinels",
+          "result": "PASS",
+          "private_input_owner_checks": "7/7",
+          "military_lifecycle_checks": "29/29",
+          "military_bench_checks": "41/41",
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "v075_military_contract_test_count": 4,
+          "full_world_reproof": false
+        }
+      ],
+      "not_claimed": [
+        "production_composition_cutover",
+        "main_tscn_wiring",
+        "human_playtest_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
@@ -503,7 +566,7 @@
     "test_bytes_changed_after_stage3": true,
     "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "Only the Stage 4 typed facility/monster damage-intent settlement delta, its exact existing-Owner classification correction, and declared inherited sentinels were revalidated; no production composition or full-world reproof was run or implied."
+    "current_claim": "Only the Stage 4 typed facility/monster damage-intent settlement delta, the Stage 5 simultaneous private-action intake ordering slice, their exact existing-Owner reuse classifications, and declared inherited sentinels were revalidated; no production composition or full-world reproof was run or implied."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -520,8 +583,8 @@
     "golden_production_green_count": 0,
     "golden_human_green_count": 0,
     "production_cutover_status": false,
-    "latest_completed_stage": "V076_STAGE4_MILITARY_TYPED_DAMAGE_INTENT_SINK_INTEGRATION",
-    "latest_completed_stage_head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
+    "latest_completed_stage": "V076_STAGE4_SIMULTANEOUS_PRIVATE_ACTION_ORDERING",
+    "latest_completed_stage_head_sha": "adee42218fa63e12285903d46e93c72a3db7ec6b",
     "next_stage": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_PRECHECK",
     "v075_pr90_dependency_boundary": "REFERENCE_ONLY_EXACT_BASE_NO_V076_CUTOVER"
   },
@@ -570,7 +633,11 @@
       "v076_military_unit_profile_authoring_v1_test",
       "v076_military_card_crosswalk_v1_test",
       "v076_military_physical_eta_owner_test",
-      "v076_private_military_direct_action_integration_test",
+    "v076_private_military_direct_action_integration_test",
+    "v076_simultaneous_private_action_test",
+    "v075_private_skill_request_telemetry_integration_test",
+    "v075_private_skill_failure_privacy_test",
+    "v076_private_monster_skill_bundle_contract_test",
       "v075_runtime_facility_bridge_integration_test",
       "simulation_runtime_authority_migration_test",
       "v076_deterministic_kernel_test",
@@ -587,12 +654,13 @@
     "inherited_sentinels": [
       "V076_KERNEL",
       "V076_HALF_EDGE_SPHERE",
-      "PR65_AUTHORIZATION_PATTERN",
-      "REUSE_POINT_INERTIA_GATE"
+    "PR65_AUTHORIZATION_PATTERN",
+    "V075_PRIVATE_SKILL_CONTRACT",
+    "REUSE_POINT_INERTIA_GATE"
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "This Stage 4 delta consumes the sealed typed damage intents already emitted by the registered private Direct Action lifecycle. Facility intents enter the existing V075RuntimeOwner bridge and exact-once journals; monster intents enter the existing RuntimeCommandPipeline and MonsterRuntimeController only under SimulationMutationAuthority. Focused private-input, lifecycle, facility-bridge, mutation-authority, Profile, Crosswalk, ETA, Kernel, half-edge, Monster, V075 mission, and Gate sentinels cover every changed or consumed boundary. The delta does not cut over main.tscn, add a damage or unit Owner, change card/ruleset identity, certify production cards, run a full-world reproof, or claim production/human green."
+    "why_focused_tests_are_sufficient": "This Stage 5 delta consumes one common private intake root for sealed military and source-bound V075 monster-skill bundles. Kernel owns the only cross-kind tick/Authority Sequence/replay ordering; V075RuntimeOwner and V075CombatRuntimeOwner retain source validation, reservation, safe-boundary, skill, damage, privacy, and public aftermath authority. Focused mixed-action, private-input, lifecycle, V075 skill privacy/telemetry, facility-bridge, mutation-authority, Profile, Crosswalk, ETA, Kernel, half-edge, Monster, V075 mission, and Gate sentinels cover every changed or consumed boundary. The delta does not cut over main.tscn, add a channel/skill/damage/unit Owner, change card/ruleset identity, certify production cards, run a full-world reproof, or claim production/human green."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",

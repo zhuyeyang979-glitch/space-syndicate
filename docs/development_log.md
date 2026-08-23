@@ -9644,3 +9644,30 @@ deleted. Evidence and the remaining action inventory are recorded in
   Exact-SHA release proof, natural match, and full-world reproof remain
   unperformed and unclaimed. The next safe task is a read-only production
   composition precheck; cutover still requires separate authority.
+
+## 2026-08-23 — V076 Stage 5 simultaneous private-action intake ordering
+
+- Extended the existing `V076PrivateDirectActionInputOwnerV1` and
+  `V076PrivateDirectActionReducerV1` in place. Both military and source-bound
+  V075 monster-skill submissions now enter one `submission_tick + 1` intake
+  root in `future.private_direct_action_input`; the V076 Kernel alone assigns
+  cross-kind Authority Sequence and replay order.
+- Military intake preserves the existing physical ETA: positive-distance
+  arrival remains at the authored ETA tick, while zero-distance arrival is
+  recorded at the intake tick before the existing execute-once/withdrawal
+  continuations. Monster-skill intake records
+  `PRIVATE_SKILL_SETTLEMENT_READY` only; V075RuntimeOwner continues to own
+  source/generation/skill/target revalidation, reservation, safe-boundary,
+  effect/cooldown/Fizzle, asset, damage, and public privacy contracts.
+- Added narrow V075 typed bundle APIs and stable V076-derived request identity;
+  source-bound skills remain outside own-hand, public batch, and sushi-track
+  rules. No second channel, queue, skill state, asset ledger, damage sink,
+  presentation Owner, Bench, or production composition was created.
+- Existing Stage 4 Bench remains green (`41/41`) after intake migration.
+  `v076_simultaneous_private_action_test` passes the mixed MILITARY +
+  MONSTER_SKILL A/B reverse-submit parity, collision rejection, exact duplicate
+  root, hidden-info, public-batch, sushi-track, and replay checks, plus a
+  1,000-seed / 2,000-probe canonical matrix. V075 private-skill telemetry and
+  failure/privacy sentinels remain green (`4/4`, `9/9`).
+- Production composition, `main.tscn`, production green, human green, per-card
+  production certification, and full-world reproof remain false/unclaimed.

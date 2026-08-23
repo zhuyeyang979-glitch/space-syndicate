@@ -21,23 +21,41 @@ const MissionCore := preload(
 	"res://scripts/v075/military/v075_military_mission_core.gd"
 )
 
-const STATE_SCHEMA_VERSION := 2
-const ROOT_PAYLOAD_SCHEMA_VERSION := 2
-const PHASE_PAYLOAD_SCHEMA_VERSION := 1
+const STATE_SCHEMA_VERSION := 3
+const ROOT_PAYLOAD_SCHEMA_VERSION := 3
+const PHASE_PAYLOAD_SCHEMA_VERSION := 2
 const DOMAIN_ID := "future.private_direct_action_input"
+const ACTION_KIND_MILITARY := "MILITARY"
+const ACTION_KIND_MONSTER_SKILL := "MONSTER_SKILL"
+const ALLOWED_ACTION_KINDS := [ACTION_KIND_MILITARY, ACTION_KIND_MONSTER_SKILL]
+const COMMAND_TYPE_INTAKE := "intake_private_direct_action"
 const COMMAND_TYPE_ARRIVE := "arrive_private_military_direct_action"
 const COMMAND_TYPE_EXECUTE := "execute_private_military_direct_action"
 const COMMAND_TYPE_WITHDRAW := "withdraw_private_military_direct_action"
-const DERIVED_COMMAND_TYPES := [COMMAND_TYPE_EXECUTE, COMMAND_TYPE_WITHDRAW]
+const DERIVED_COMMAND_TYPES := [
+	COMMAND_TYPE_ARRIVE,
+	COMMAND_TYPE_EXECUTE,
+	COMMAND_TYPE_WITHDRAW,
+]
+const PHASE_DISPATCHED := "DISPATCHED"
+const PHASE_PRIVATE_SKILL_SETTLEMENT_READY := "PRIVATE_SKILL_SETTLEMENT_READY"
 const PHASE_ARRIVED := "ARRIVED"
 const PHASE_EXECUTED_ONCE := "EXECUTED_ONCE"
 const PHASE_WITHDRAWAL_READY := "WITHDRAWAL_READY"
 const ROOT_PAYLOAD_FIELDS := [
 	"schema_version",
 	"submission_id",
+	"action_kind",
+	"actor_id",
+	"submission_tick",
+	"dispatch_delay_ticks",
+	"request_fingerprint",
+	"action_payload",
+	"payload_fingerprint",
+]
+const MILITARY_ACTION_PAYLOAD_FIELDS := [
 	"authorization_bundle_fingerprint",
 	"authorized_envelope_fingerprint",
-	"actor_id",
 	"card_id",
 	"card_instance_id",
 	"mission_kind",
@@ -48,11 +66,11 @@ const ROOT_PAYLOAD_FIELDS := [
 	"route",
 	"route_sha256",
 	"eta_receipt",
-	"submission_tick",
-	"dispatch_delay_ticks",
 	"asset_reservation_id",
-	"request_fingerprint",
-	"payload_fingerprint",
+]
+const MONSTER_SKILL_ACTION_PAYLOAD_FIELDS := [
+	"authorized_bundle",
+	"authorization_fingerprint",
 ]
 const PHASE_PAYLOAD_FIELDS := [
 	"schema_version",
@@ -69,6 +87,10 @@ static func initial_state() -> Dictionary:
 		"owner_id": "component.v076.private_direct_action_input",
 		"submission_ledger": {},
 		"submission_order": [],
+		"intake_count": 0,
+		"military_intake_count": 0,
+		"monster_skill_intake_count": 0,
+		"monster_skill_settlement_ready_count": 0,
 		"arrived_count": 0,
 		"executed_once_count": 0,
 		"withdrawal_ready_count": 0,
@@ -96,6 +118,8 @@ func v076_apply_command(
 	if str(command.get("domain_id", "")) != DOMAIN_ID:
 		return _reject(state, "private_direct_action_command_domain_invalid")
 	match str(command.get("command_type", "")):
+		COMMAND_TYPE_INTAKE:
+			return _apply_intake(state, command)
 		COMMAND_TYPE_ARRIVE:
 			return _apply_arrival(state, command)
 		COMMAND_TYPE_EXECUTE:
@@ -106,7 +130,7 @@ func v076_apply_command(
 			return _reject(state, "private_direct_action_command_type_invalid")
 
 
-static func _apply_arrival(state: Dictionary, command: Dictionary) -> Dictionary:
+static func _apply_intake(state: Dictionary, command: Dictionary) -> Dictionary:
 	var payload := command.get("payload", {}) as Dictionary
 	var payload_reason := _root_payload_validation_reason(payload, command)
 	if not payload_reason.is_empty():
@@ -115,64 +139,185 @@ static func _apply_arrival(state: Dictionary, command: Dictionary) -> Dictionary
 	var ledger := state.get("submission_ledger", {}) as Dictionary
 	if ledger.has(submission_id):
 		return _reject(state, "private_direct_action_reducer_submission_collision")
+	var action_kind := str(payload.get("action_kind", ""))
+	var action_payload := payload.get("action_payload", {}) as Dictionary
+	var authority_tick := int(command.get("scheduled_tick", 0))
+	var authority_sequence := int(command.get("authority_sequence", 0))
+	var intake_transition_fingerprint := _transition_fingerprint(
+		submission_id,
+		"INTAKE_ACCEPTED",
+		authority_tick,
+		str(command.get("command_id", "")),
+		"",
+		str(payload.get("payload_fingerprint", ""))
+	)
+	if intake_transition_fingerprint.is_empty() or authority_sequence < 1:
+		return _reject(state, "private_direct_action_intake_identity_empty")
+	var phase := (
+		PHASE_PRIVATE_SKILL_SETTLEMENT_READY
+		if action_kind == ACTION_KIND_MONSTER_SKILL
+		else PHASE_DISPATCHED
+	)
+	var entry := {
+		"submission_id": submission_id,
+		"action_kind": action_kind,
+		"phase": phase,
+		"actor_id": str(payload.get("actor_id", "")),
+		"request_fingerprint": str(payload.get("request_fingerprint", "")),
+		"root_payload_fingerprint": str(payload.get("payload_fingerprint", "")),
+		"root_command_id": str(command.get("command_id", "")),
+		"root_authority_sequence": authority_sequence,
+		"root_payload": payload.duplicate(true),
+		"military_unit_uid": int(action_payload.get("military_unit_uid", 0)),
+		"asset_reservation_id": str(action_payload.get("asset_reservation_id", "")),
+		"route_sha256": str(action_payload.get("route_sha256", "")),
+		"total_distance_mu": int((action_payload.get("route", {}) as Dictionary).get(
+			"total_distance_mu", 0
+		)),
+		"eta_ticks": int((action_payload.get("eta_receipt", {}) as Dictionary).get(
+			"eta_ticks", 0
+		)),
+		"dispatch_delay_ticks": int(payload.get("dispatch_delay_ticks", 0)),
+		"eta_receipt_fingerprint": str((action_payload.get(
+			"eta_receipt", {}
+		) as Dictionary).get("receipt_fingerprint", "")),
+		"profile_id": str((action_payload.get("eta_receipt", {}) as Dictionary).get(
+			"profile_id", ""
+		)),
+		"mission_kind": str(action_payload.get("mission_kind", "")),
+		"mission_receipt": {},
+		"intake_tick": authority_tick,
+		"arrival_tick": -1,
+		"execution_tick": -1,
+		"withdrawal_ready_tick": -1,
+		"execution_count": 0,
+		"withdrawal_intent_count": 0,
+		"transition_order": ["INTAKE_ACCEPTED"],
+		"transition_fingerprints": {
+			"INTAKE_ACCEPTED": intake_transition_fingerprint,
+		},
+		"last_transition_fingerprint": intake_transition_fingerprint,
+	}
+	var derived: Array = []
+	if action_kind == ACTION_KIND_MONSTER_SKILL:
+		state["monster_skill_intake_count"] = int(state.get(
+			"monster_skill_intake_count", 0
+		)) + 1
+		state["monster_skill_settlement_ready_count"] = int(state.get(
+			"monster_skill_settlement_ready_count", 0
+		)) + 1
+	else:
+		state["military_intake_count"] = int(state.get(
+			"military_intake_count", 0
+		)) + 1
+		var dispatch_delay_ticks := int(payload.get("dispatch_delay_ticks", 0))
+		if dispatch_delay_ticks == 1:
+			var arrival_fingerprint := _transition_fingerprint(
+				submission_id,
+				PHASE_ARRIVED,
+				authority_tick,
+				str(command.get("command_id", "")),
+				intake_transition_fingerprint,
+				str(payload.get("payload_fingerprint", ""))
+			)
+			entry["phase"] = PHASE_ARRIVED
+			entry["arrival_tick"] = authority_tick
+			(entry.get("transition_order", []) as Array).append(PHASE_ARRIVED)
+			(entry.get("transition_fingerprints", {}) as Dictionary)[PHASE_ARRIVED] = (
+				arrival_fingerprint
+			)
+			entry["last_transition_fingerprint"] = arrival_fingerprint
+			state["arrived_count"] = int(state.get("arrived_count", 0)) + 1
+			var execute := _build_phase_command(
+				command,
+				COMMAND_TYPE_EXECUTE,
+				PHASE_ARRIVED,
+				arrival_fingerprint,
+				str(payload.get("payload_fingerprint", "")),
+				authority_tick + 1
+			)
+			if execute.is_empty():
+				return _reject(state, "private_direct_action_execute_command_build_failed")
+			derived.append(execute)
+		else:
+			var arrival := _build_phase_command(
+				command,
+				COMMAND_TYPE_ARRIVE,
+				PHASE_DISPATCHED,
+				intake_transition_fingerprint,
+				str(payload.get("payload_fingerprint", "")),
+				int(payload.get("submission_tick", 0)) + dispatch_delay_ticks
+			)
+			if arrival.is_empty():
+				return _reject(state, "private_direct_action_arrival_command_build_failed")
+			derived.append(arrival)
+	ledger[submission_id] = entry
+	state["submission_ledger"] = ledger
+	var order := state.get("submission_order", []) as Array
+	order.append(submission_id)
+	state["submission_order"] = order
+	state["intake_count"] = int(state.get("intake_count", 0)) + 1
+	return _commit(
+		state,
+		{
+			"submission_id": submission_id,
+			"action_kind": action_kind,
+			"phase": str(entry.get("phase", "")),
+			"intake_tick": authority_tick,
+			"root_authority_sequence": authority_sequence,
+			"transition_fingerprint": str(entry.get(
+				"last_transition_fingerprint", ""
+			)),
+		},
+		derived
+	)
+
+
+static func _apply_arrival(state: Dictionary, command: Dictionary) -> Dictionary:
+	var payload := command.get("payload", {}) as Dictionary
+	var phase_reason := _phase_payload_validation_reason(payload, PHASE_DISPATCHED)
+	if not phase_reason.is_empty():
+		return _reject(state, phase_reason)
+	var submission_id := str(payload.get("submission_id", ""))
+	var ledger := state.get("submission_ledger", {}) as Dictionary
+	if not ledger.has(submission_id):
+		return _reject(state, "private_direct_action_arrival_submission_unknown")
+	var entry := ledger[submission_id] as Dictionary
+	if str(entry.get("action_kind", "")) != ACTION_KIND_MILITARY:
+		return _reject(state, "private_direct_action_arrival_action_kind_invalid")
+	var binding_reason := _phase_binding_reason(entry, payload, PHASE_DISPATCHED)
+	if not binding_reason.is_empty():
+		return _reject(state, binding_reason)
 	var authority_tick := int(command.get("scheduled_tick", 0))
 	var arrival_transition_fingerprint := _transition_fingerprint(
 		submission_id,
 		PHASE_ARRIVED,
 		authority_tick,
 		str(command.get("command_id", "")),
-		"",
-		str(payload.get("payload_fingerprint", ""))
+		str(entry.get("last_transition_fingerprint", "")),
+		str(payload.get("root_payload_fingerprint", ""))
 	)
 	if arrival_transition_fingerprint.is_empty():
 		return _reject(state, "private_direct_action_arrival_identity_empty")
-	ledger[submission_id] = {
-		"submission_id": submission_id,
-		"phase": PHASE_ARRIVED,
-		"request_fingerprint": str(payload.get("request_fingerprint", "")),
-		"root_payload_fingerprint": str(payload.get("payload_fingerprint", "")),
-		"root_command_id": str(command.get("command_id", "")),
-		"military_unit_uid": int(payload.get("military_unit_uid", 0)),
-		"asset_reservation_id": str(payload.get("asset_reservation_id", "")),
-		"route_sha256": str(payload.get("route_sha256", "")),
-		"total_distance_mu": int((payload.get("route", {}) as Dictionary).get(
-			"total_distance_mu", 0
-		)),
-		"eta_ticks": int((payload.get("eta_receipt", {}) as Dictionary).get(
-			"eta_ticks", 0
-		)),
-		"dispatch_delay_ticks": int(payload.get("dispatch_delay_ticks", 0)),
-		"eta_receipt_fingerprint": str((payload.get(
-			"eta_receipt", {}
-		) as Dictionary).get("receipt_fingerprint", "")),
-		"profile_id": str((payload.get("eta_receipt", {}) as Dictionary).get(
-			"profile_id", ""
-		)),
-		"mission_kind": str(payload.get("mission_kind", "")),
-		"root_payload": payload.duplicate(true),
-		"mission_receipt": {},
-		"arrival_tick": authority_tick,
-		"execution_tick": -1,
-		"withdrawal_ready_tick": -1,
-		"execution_count": 0,
-		"withdrawal_intent_count": 0,
-		"transition_order": [PHASE_ARRIVED],
-		"transition_fingerprints": {
-			PHASE_ARRIVED: arrival_transition_fingerprint,
-		},
-		"last_transition_fingerprint": arrival_transition_fingerprint,
-	}
+	entry["phase"] = PHASE_ARRIVED
+	entry["arrival_tick"] = authority_tick
+	var transition_order := entry.get("transition_order", []) as Array
+	transition_order.append(PHASE_ARRIVED)
+	entry["transition_order"] = transition_order
+	var transition_fingerprints := entry.get("transition_fingerprints", {}) as Dictionary
+	transition_fingerprints[PHASE_ARRIVED] = arrival_transition_fingerprint
+	entry["transition_fingerprints"] = transition_fingerprints
+	entry["last_transition_fingerprint"] = arrival_transition_fingerprint
+	ledger[submission_id] = entry
 	state["submission_ledger"] = ledger
-	var order := state.get("submission_order", []) as Array
-	order.append(submission_id)
-	state["submission_order"] = order
 	state["arrived_count"] = int(state.get("arrived_count", 0)) + 1
 	var derived := _build_phase_command(
 		command,
 		COMMAND_TYPE_EXECUTE,
 		PHASE_ARRIVED,
 		arrival_transition_fingerprint,
-		str(payload.get("payload_fingerprint", ""))
+		str(entry.get("root_payload_fingerprint", "")),
+		authority_tick + 1
 	)
 	if derived.is_empty():
 		return _reject(state, "private_direct_action_execute_command_build_failed")
@@ -180,6 +325,7 @@ static func _apply_arrival(state: Dictionary, command: Dictionary) -> Dictionary
 		state,
 		{
 			"submission_id": submission_id,
+			"action_kind": ACTION_KIND_MILITARY,
 			"phase": PHASE_ARRIVED,
 			"arrival_tick": authority_tick,
 			"mission_execution_count": 0,
@@ -192,9 +338,7 @@ static func _apply_arrival(state: Dictionary, command: Dictionary) -> Dictionary
 
 static func _apply_execution(state: Dictionary, command: Dictionary) -> Dictionary:
 	var payload := command.get("payload", {}) as Dictionary
-	var phase_reason := _phase_payload_validation_reason(
-		payload, PHASE_ARRIVED
-	)
+	var phase_reason := _phase_payload_validation_reason(payload, PHASE_ARRIVED)
 	if not phase_reason.is_empty():
 		return _reject(state, phase_reason)
 	var submission_id := str(payload.get("submission_id", ""))
@@ -202,11 +346,14 @@ static func _apply_execution(state: Dictionary, command: Dictionary) -> Dictiona
 	if not ledger.has(submission_id):
 		return _reject(state, "private_direct_action_execution_submission_unknown")
 	var entry := ledger[submission_id] as Dictionary
+	if str(entry.get("action_kind", "")) != ACTION_KIND_MILITARY:
+		return _reject(state, "private_direct_action_execution_action_kind_invalid")
 	var binding_reason := _phase_binding_reason(entry, payload, PHASE_ARRIVED)
 	if not binding_reason.is_empty():
 		return _reject(state, binding_reason)
 	var root_payload := entry.get("root_payload", {}) as Dictionary
-	var mission_lock := root_payload.get("mission_lock", {}) as Dictionary
+	var action_payload := root_payload.get("action_payload", {}) as Dictionary
+	var mission_lock := action_payload.get("mission_lock", {}) as Dictionary
 	if not bool(MissionCore.mission_lock_validation_report(
 		mission_lock
 	).get("valid", false)):
@@ -216,12 +363,12 @@ static func _apply_execution(state: Dictionary, command: Dictionary) -> Dictiona
 	if mission_kind == "ASSAULT_REGION":
 		mission_receipt = MissionCore.resolve_region_assault(
 			mission_lock,
-			root_payload.get("current_public_targets", []) as Array
+			action_payload.get("current_public_targets", []) as Array
 		)
 	elif mission_kind == "ASSAULT_MONSTER":
 		mission_receipt = MissionCore.resolve_monster_assault(
 			mission_lock,
-			root_payload.get("current_public_targets", []) as Array
+			action_payload.get("current_public_targets", []) as Array
 		)
 	else:
 		return _reject(state, "private_direct_action_mission_forbidden")
@@ -251,9 +398,7 @@ static func _apply_execution(state: Dictionary, command: Dictionary) -> Dictiona
 	var transition_order := entry.get("transition_order", []) as Array
 	transition_order.append(PHASE_EXECUTED_ONCE)
 	entry["transition_order"] = transition_order
-	var transition_fingerprints := entry.get(
-		"transition_fingerprints", {}
-	) as Dictionary
+	var transition_fingerprints := entry.get("transition_fingerprints", {}) as Dictionary
 	transition_fingerprints[PHASE_EXECUTED_ONCE] = execution_transition_fingerprint
 	entry["transition_fingerprints"] = transition_fingerprints
 	entry["last_transition_fingerprint"] = execution_transition_fingerprint
@@ -265,7 +410,8 @@ static func _apply_execution(state: Dictionary, command: Dictionary) -> Dictiona
 		COMMAND_TYPE_WITHDRAW,
 		PHASE_EXECUTED_ONCE,
 		execution_transition_fingerprint,
-		str(entry.get("root_payload_fingerprint", ""))
+		str(entry.get("root_payload_fingerprint", "")),
+		authority_tick + 1
 	)
 	if derived.is_empty():
 		return _reject(state, "private_direct_action_withdraw_command_build_failed")
@@ -273,6 +419,7 @@ static func _apply_execution(state: Dictionary, command: Dictionary) -> Dictiona
 		state,
 		{
 			"submission_id": submission_id,
+			"action_kind": ACTION_KIND_MILITARY,
 			"phase": PHASE_EXECUTED_ONCE,
 			"execution_tick": authority_tick,
 			"mission_execution_count": int(entry.get("execution_count", 0)),
@@ -287,9 +434,7 @@ static func _apply_execution(state: Dictionary, command: Dictionary) -> Dictiona
 
 static func _apply_withdrawal(state: Dictionary, command: Dictionary) -> Dictionary:
 	var payload := command.get("payload", {}) as Dictionary
-	var phase_reason := _phase_payload_validation_reason(
-		payload, PHASE_EXECUTED_ONCE
-	)
+	var phase_reason := _phase_payload_validation_reason(payload, PHASE_EXECUTED_ONCE)
 	if not phase_reason.is_empty():
 		return _reject(state, phase_reason)
 	var submission_id := str(payload.get("submission_id", ""))
@@ -297,9 +442,7 @@ static func _apply_withdrawal(state: Dictionary, command: Dictionary) -> Diction
 	if not ledger.has(submission_id):
 		return _reject(state, "private_direct_action_withdrawal_submission_unknown")
 	var entry := ledger[submission_id] as Dictionary
-	var binding_reason := _phase_binding_reason(
-		entry, payload, PHASE_EXECUTED_ONCE
-	)
+	var binding_reason := _phase_binding_reason(entry, payload, PHASE_EXECUTED_ONCE)
 	if not binding_reason.is_empty():
 		return _reject(state, binding_reason)
 	var mission_receipt := entry.get("mission_receipt", {}) as Dictionary
@@ -336,12 +479,8 @@ static func _apply_withdrawal(state: Dictionary, command: Dictionary) -> Diction
 	var transition_order := entry.get("transition_order", []) as Array
 	transition_order.append(PHASE_WITHDRAWAL_READY)
 	entry["transition_order"] = transition_order
-	var transition_fingerprints := entry.get(
-		"transition_fingerprints", {}
-	) as Dictionary
-	transition_fingerprints[PHASE_WITHDRAWAL_READY] = (
-		withdrawal_transition_fingerprint
-	)
+	var transition_fingerprints := entry.get("transition_fingerprints", {}) as Dictionary
+	transition_fingerprints[PHASE_WITHDRAWAL_READY] = withdrawal_transition_fingerprint
 	entry["transition_fingerprints"] = transition_fingerprints
 	entry["last_transition_fingerprint"] = withdrawal_transition_fingerprint
 	ledger[submission_id] = entry
@@ -353,6 +492,7 @@ static func _apply_withdrawal(state: Dictionary, command: Dictionary) -> Diction
 		state,
 		{
 			"submission_id": submission_id,
+			"action_kind": ACTION_KIND_MILITARY,
 			"phase": PHASE_WITHDRAWAL_READY,
 			"withdrawal_ready_tick": authority_tick,
 			"mission_execution_count": int(entry.get("execution_count", 0)),
@@ -380,13 +520,58 @@ static func _root_payload_validation_reason(
 	if str(payload.get("payload_fingerprint", "")) \
 			!= StateCodec.fingerprint(payload_without_fingerprint):
 		return "private_direct_action_payload_fingerprint_invalid"
-	var route := payload.get("route", {}) as Dictionary
+	var submission_tick := int(payload.get("submission_tick", -1))
+	if not _stable_id(payload.get("submission_id")) \
+			or not _stable_id(payload.get("actor_id")) \
+			or str(payload.get("request_fingerprint", "")).length() != 64 \
+			or submission_tick < 0 \
+			or int(command.get("scheduled_tick", 0)) != submission_tick + 1:
+		return "private_direct_action_intake_binding_invalid"
+	var action_kind := str(payload.get("action_kind", ""))
+	if action_kind not in ALLOWED_ACTION_KINDS:
+		return "private_direct_action_action_kind_invalid"
+	var action_payload := payload.get("action_payload", {}) as Dictionary
+	if action_kind == ACTION_KIND_MONSTER_SKILL:
+		return _monster_skill_payload_validation_reason(payload, action_payload)
+	return _military_payload_validation_reason(payload, action_payload)
+
+
+static func _monster_skill_payload_validation_reason(
+	root_payload: Dictionary,
+	action_payload: Dictionary
+) -> String:
+	if not _has_exact_fields(action_payload, MONSTER_SKILL_ACTION_PAYLOAD_FIELDS) \
+			or int(root_payload.get("dispatch_delay_ticks", 0)) != 1:
+		return "private_direct_action_monster_skill_payload_shape_invalid"
+	var bundle := action_payload.get("authorized_bundle", {}) as Dictionary
+	var authorization_fingerprint := str(action_payload.get(
+		"authorization_fingerprint", ""
+	))
+	if bundle.is_empty() \
+			or authorization_fingerprint.length() != 64 \
+			or authorization_fingerprint != str(bundle.get(
+				"authorization_fingerprint", ""
+			)) \
+			or str(bundle.get("actor_id", "")) != str(root_payload.get(
+				"actor_id", ""
+			)):
+		return "private_direct_action_monster_skill_authorization_invalid"
+	return ""
+
+
+static func _military_payload_validation_reason(
+	root_payload: Dictionary,
+	action_payload: Dictionary
+) -> String:
+	if not _has_exact_fields(action_payload, MILITARY_ACTION_PAYLOAD_FIELDS):
+		return "private_direct_action_military_payload_shape_invalid"
+	var route := action_payload.get("route", {}) as Dictionary
 	if not bool(GeodesicMetric.validate_route(
 		route,
-		str(payload.get("route_sha256", ""))
+		str(action_payload.get("route_sha256", ""))
 	).get("accepted", false)):
 		return "private_direct_action_route_noncanonical"
-	var eta_receipt := payload.get("eta_receipt", {}) as Dictionary
+	var eta_receipt := action_payload.get("eta_receipt", {}) as Dictionary
 	if not bool(MilitaryEtaOwner.receipt_validation_report(
 		eta_receipt, route
 	).get("valid", false)):
@@ -405,20 +590,15 @@ static func _root_payload_validation_reason(
 				!= int(eta_receipt.get("authored_speed_distance_mu_per_tick", -1)):
 		return "private_direct_action_profile_receipt_binding_invalid"
 	var eta_ticks := int(eta_receipt.get("eta_ticks", -1))
-	var dispatch_delay_ticks := int(payload.get("dispatch_delay_ticks", 0))
-	var submission_tick := int(payload.get("submission_tick", -1))
-	if eta_ticks < 0 \
-			or dispatch_delay_ticks != maxi(1, eta_ticks) \
-			or submission_tick < 0 \
-			or int(command.get("scheduled_tick", 0)) \
-				!= submission_tick + dispatch_delay_ticks:
+	var dispatch_delay_ticks := int(root_payload.get("dispatch_delay_ticks", 0))
+	if eta_ticks < 0 or dispatch_delay_ticks != maxi(1, eta_ticks):
 		return "private_direct_action_eta_invalid"
-	var mission_lock := payload.get("mission_lock", {}) as Dictionary
+	var mission_lock := action_payload.get("mission_lock", {}) as Dictionary
 	if not bool(MissionCore.mission_lock_validation_report(
 		mission_lock
 	).get("valid", false)):
 		return "private_direct_action_mission_lock_invalid"
-	var mission_kind := str(payload.get("mission_kind", ""))
+	var mission_kind := str(action_payload.get("mission_kind", ""))
 	var expected_task_kind := (
 		MissionCore.TASK_ASSAULT_REGION
 		if mission_kind == "ASSAULT_REGION"
@@ -449,12 +629,10 @@ static func _phase_payload_validation_reason(
 	expected_prior_phase: String
 ) -> String:
 	if not _has_exact_fields(payload, PHASE_PAYLOAD_FIELDS) \
-			or int(payload.get("schema_version", 0)) \
-				!= PHASE_PAYLOAD_SCHEMA_VERSION:
+			or int(payload.get("schema_version", 0)) != PHASE_PAYLOAD_SCHEMA_VERSION:
 		return "private_direct_action_phase_payload_shape_invalid"
 	if not _stable_id(payload.get("submission_id")) \
-			or str(payload.get("expected_prior_phase", "")) \
-				!= expected_prior_phase \
+			or str(payload.get("expected_prior_phase", "")) != expected_prior_phase \
 			or str(payload.get("expected_prior_transition_fingerprint", "")).length() \
 				!= 64 \
 			or str(payload.get("root_payload_fingerprint", "")).length() != 64:
@@ -482,7 +660,8 @@ static func _build_phase_command(
 	command_type: String,
 	expected_prior_phase: String,
 	expected_prior_transition_fingerprint: String,
-	root_payload_fingerprint: String
+	root_payload_fingerprint: String,
+	scheduled_tick: int
 ) -> Dictionary:
 	var submission_id := str((source_command.get("payload", {}) as Dictionary).get(
 		"submission_id", ""
@@ -496,15 +675,20 @@ static func _build_phase_command(
 		),
 		"root_payload_fingerprint": root_payload_fingerprint,
 	}
-	var command_suffix := (
-		"execute" if command_type == COMMAND_TYPE_EXECUTE else "withdraw"
-	)
+	var suffix_by_type := {
+		COMMAND_TYPE_ARRIVE: "arrive",
+		COMMAND_TYPE_EXECUTE: "execute",
+		COMMAND_TYPE_WITHDRAW: "withdraw",
+	}
 	var built := AuthorityCommand.build(
-		"v076.private-direct-action.%s.%s" % [submission_id, command_suffix],
+		"v076.private-direct-action.%s.%s" % [
+			submission_id,
+			str(suffix_by_type.get(command_type, "phase")),
+		],
 		DOMAIN_ID,
 		command_type,
 		str(source_command.get("actor_id", "")),
-		int(source_command.get("scheduled_tick", 0)) + 1,
+		scheduled_tick,
 		int(source_command.get("domain_priority", 0)),
 		int(source_command.get("authority_sequence", 0)),
 		payload
@@ -564,10 +748,10 @@ static func _stable_id(value: Variant) -> bool:
 
 static func _reject(state: Dictionary, reason: String) -> Dictionary:
 	return {
-		"accepted": false,
+		"accepted": true,
 		"reason": reason,
-		"outcome": "REJECT",
+		"outcome": "FIZZLE",
 		"state": state,
-		"receipt": {},
+		"receipt": {"reason": reason},
 		"derived_commands": [],
 	}

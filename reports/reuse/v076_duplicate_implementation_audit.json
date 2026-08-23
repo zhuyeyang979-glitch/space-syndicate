@@ -2,8 +2,8 @@
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
-  "candidate_tree_sha": "01636f348711e3c3038468cced7e214c0c071c89",
+  "candidate_head_sha": "adee42218fa63e12285903d46e93c72a3db7ec6b",
+  "candidate_tree_sha": "PENDING_AT_IMPLEMENTATION_COMMIT",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
@@ -89,7 +89,7 @@
       "owner_count": 1,
       "unique_owner": "V075RuntimeOwner",
       "path": "scripts/v075_runtime/v075_runtime_owner.gd",
-      "v076_extension": "consume_v076_military_facility_damage_intents",
+      "v076_extension": "consume_v076_military_facility_damage_intents + consume_v076_private_monster_skill_submission",
       "new_owner_created": false,
       "duplicate_facility_damage_ledger_count": 0,
       "duplicate_status": "NONE"
@@ -183,6 +183,11 @@
       "result": "The existing private-input Owner settles sealed typed intents through the existing unique facility and monster mutation paths. No damage sink, HP ledger, mutation authority, asset Owner, unit Owner, or presentation Owner is duplicated."
     },
     {
+      "source": "V075RuntimeOwner/V075CombatRuntimeOwner/V075MonsterPrivateSkillCore",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "The existing source-bound private-skill owner, reservation, safe-boundary, exact-once, privacy, and public-aftermath contracts are consumed behind the one V076 Kernel intake root in Authority Sequence order. No second private queue, skill state, cooldown, asset ledger, damage sink, or presentation Owner is created."
+    },
+    {
       "source": "PR64/PR80",
       "disposition": "REUSE_AS_TEST",
       "result": "Test patterns only; no registry execution, Save adapter, RNG adapter, Kernel, or dispatcher imported."
@@ -224,6 +229,7 @@
     "military ETA Owner acquiring tick, replay, map, route, unit, asset, card, authorization, attack, or presentation authority",
     "second military mission lifecycle Owner, phase ledger, or non-Kernel tick continuation",
     "second facility or monster damage sink, HP ledger, mutation authority, or damage presentation receipt owner",
+    "second monster private-skill queue, receive sequence, safe-boundary, skill state, cooldown, reservation, result, or presentation Owner",
     "root submission of execute or withdraw commands reserved for Kernel derivation",
     "revived PR70 card batch",
     "PR64 metadata registry promoted to executor",
@@ -296,6 +302,23 @@
       "monster_damage_receipt_count": 1,
       "direct_reducer_mutation_count": 0,
       "duplicate_damage_mutation_count": 0,
+      "status": "ISOLATED_GREEN",
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "simultaneous private military and source-bound monster-skill intake ordering",
+      "action_kind_count": 2,
+      "unique_channel_count": 1,
+      "root_intake_count": 2,
+      "same_tick_order_mismatch_count": 0,
+      "replay_state_hash_mismatch_count": 0,
+      "duplicate_effect_count": 0,
+      "hidden_info_violation_count": 0,
+      "public_batch_entry_count": 0,
+      "shared_sushi_track_resolution_count": 0,
+      "new_owner_count": 0,
+      "new_bench_count": 0,
       "status": "ISOLATED_GREEN",
       "production_green": false,
       "human_green": false

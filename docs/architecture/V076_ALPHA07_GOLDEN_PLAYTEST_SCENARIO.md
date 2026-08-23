@@ -22,7 +22,7 @@ It is a plan and evidence ledger, not a human-play result.
 | STEP07 | Inspect globe and select legal target | `PENDING` | Requires human use of the production map and typed target binding. |
 | STEP08 | Acquire and submit one legal card | `PENDING` | Requires one real card instance through acquisition, hand, target, and resolution Owners. |
 | STEP09 | Resolve production Monster move/consequence | `PENDING` | Current Stage 3 Bench cannot satisfy this step. |
-| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | Typed sink Bench `41/41`, Lifecycle `29/29`, Profile `59/59`, Crosswalk `52/52`, ETA `48/48`, Owner `7/7`, Facility bridge `34/34`, monster mutation path `12/12`; two roots plus four derived commands produce six stable executions, facility/monster receipts `1/1`, monster HP `20 -> 17`, no duplicate/direct reducer damage, no public batch/sushi track, changed-file warnings/hard errors/diagnostics/residual processes 0. |
+| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | Typed sink Bench `41/41`, Lifecycle `29/29`, Profile `59/59`, Crosswalk `52/52`, ETA `48/48`, Owner `7/7`, Facility bridge `34/34`, monster mutation path `12/12`; two military intake roots plus six derived commands produce eight stable executions, facility/monster receipts `1/1`, monster HP `20 -> 17`, no duplicate/direct reducer damage, no public batch/sushi track, changed-file warnings/hard errors/diagnostics/residual processes 0. The same Owner/reducer also accepts one source-bound V075 `MONSTER_SKILL` intake beside one `MILITARY` intake; A/B reverse-submit parity, collision rejection, V075 privacy/safe-boundary sentinels, and a 1,000-seed/2,000-probe mixed-action matrix pass. |
 | STEP11 | Observe economy/route/asset consequence | `PENDING` | Requires one atomic asset Owner and exact-once presentation. |
 | STEP12 | Observe AI action and privacy | `PENDING` | Requires production AI with viewer-scoped hidden-information proof. |
 | STEP13 | Reach victory qualification/final audit | `PENDING` | Requires a full human run without fixture state injection. |
@@ -48,6 +48,15 @@ existing command pipeline and `MonsterRuntimeController` only inside the active
 simulation step. It is not production or human evidence; production
 composition/`main.tscn` execution, per-tick unit position state, and human play
 remain pending.
+
+Stage 5 extends the same isolated domain rather than adding a second channel:
+both military and source-bound monster-skill submissions receive their single
+intake root at the next Kernel tick. Kernel Authority Sequence is the only
+cross-kind order; V075 remains the sole owner of skill source revalidation,
+asset reservation, safe-boundary execution, damage, cooldown/Fizzle, and
+allowlisted public aftermath. The mixed-action result is isolated evidence
+only; production composition, `main.tscn`, production green, and human green
+remain false.
 
 STEP01, STEP06-STEP09, and STEP11-STEP15 remain pending. Any production or
 human Golden claim must come from the exact future production candidate and a

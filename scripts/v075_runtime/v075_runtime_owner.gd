@@ -65,6 +65,20 @@ const FACILITY_EFFECT_WITNESS_FIELDS := [
 ]
 const FACILITY_EFFECT_OUTCOMES := ["committed", "fizzled"]
 const FACILITY_EFFECT_PROCESSED_FIELDS := ["fingerprint", "receipt"]
+const V076_PRIVATE_SKILL_BUNDLE_CONTRACT := (
+	"V076AuthorizedPrivateMonsterSkillBundleV1"
+)
+const V076_PRIVATE_SKILL_BUNDLE_FIELDS := [
+	"schema_version",
+	"contract_id",
+	"actor_id",
+	"source_instance_id",
+	"source_generation",
+	"skill_definition_id",
+	"parameters",
+	"target_request_fingerprint",
+	"authorization_fingerprint",
+]
 
 const V075_MONSTER_UPGRADE_COHORT_MODULUS := 3
 const V075_MONSTER_UPGRADE_COHORT_BUCKET := 0
@@ -2785,43 +2799,157 @@ func queue_selected_military_mission(
 	)
 
 
+func authorize_v076_private_monster_skill_bundle(
+	actor_id: String,
+	parameters: Dictionary
+) -> Dictionary:
+	var validation := _validate_private_monster_skill_parameters(
+		actor_id,
+		parameters
+	)
+	if not bool(validation.get("accepted", false)):
+		return {
+			"accepted": false,
+			"reason_code": str(validation.get(
+				"reason_code", "private_skill_authorization_rejected"
+			)),
+		}
+	var source := validation.get("source", {}) as Dictionary
+	var target_request := validation.get("target_request", {}) as Dictionary
+	var bundle := {
+		"schema_version": 1,
+		"contract_id": V076_PRIVATE_SKILL_BUNDLE_CONTRACT,
+		"actor_id": actor_id,
+		"source_instance_id": str(source.get("source_instance_id", "")),
+		"source_generation": int(source.get("source_generation", 0)),
+		"skill_definition_id": str(parameters.get("skill_definition_id", "")),
+		"parameters": parameters.duplicate(true),
+		"target_request_fingerprint": _v076_private_skill_fingerprint(
+			target_request
+		),
+		"authorization_fingerprint": "",
+	}
+	bundle["authorization_fingerprint"] = _v076_private_skill_fingerprint(
+		_v076_private_skill_without_fingerprint(bundle)
+	)
+	return {
+		"accepted": true,
+		"reason_code": "v076_private_skill_bundle_authorized",
+		"bundle": bundle,
+		"authorization_fingerprint": str(bundle.get(
+			"authorization_fingerprint", ""
+		)),
+	}
+
+
+func validate_v076_private_monster_skill_bundle(bundle: Dictionary) -> Dictionary:
+	if not _v076_private_skill_has_exact_fields(
+		bundle,
+		V076_PRIVATE_SKILL_BUNDLE_FIELDS
+	) or int(bundle.get("schema_version", 0)) != 1 \
+			or str(bundle.get("contract_id", "")) \
+				!= V076_PRIVATE_SKILL_BUNDLE_CONTRACT:
+		return {
+			"accepted": false,
+			"reason_code": "v076_private_skill_bundle_shape_invalid",
+		}
+	var expected_fingerprint := _v076_private_skill_fingerprint(
+		_v076_private_skill_without_fingerprint(bundle)
+	)
+	if expected_fingerprint.is_empty() \
+			or expected_fingerprint != str(bundle.get(
+				"authorization_fingerprint", ""
+			)):
+		return {
+			"accepted": false,
+			"reason_code": "v076_private_skill_bundle_fingerprint_invalid",
+		}
+	var actor_id := str(bundle.get("actor_id", ""))
+	var parameters := bundle.get("parameters", {}) as Dictionary
+	var validation := _validate_private_monster_skill_parameters(
+		actor_id,
+		parameters
+	)
+	if not bool(validation.get("accepted", false)):
+		return validation
+	var source := validation.get("source", {}) as Dictionary
+	var target_request := validation.get("target_request", {}) as Dictionary
+	if str(source.get("source_instance_id", "")) \
+			!= str(bundle.get("source_instance_id", "")) \
+			or int(source.get("source_generation", 0)) \
+				!= int(bundle.get("source_generation", -1)) \
+			or str(parameters.get("skill_definition_id", "")) \
+				!= str(bundle.get("skill_definition_id", "")) \
+			or _v076_private_skill_fingerprint(target_request) \
+				!= str(bundle.get("target_request_fingerprint", "")):
+		return {
+			"accepted": false,
+			"reason_code": "v076_private_skill_bundle_stale",
+		}
+	return {
+		"accepted": true,
+		"reason_code": "v076_private_skill_bundle_current",
+		"bundle": bundle.duplicate(true),
+	}
+
+
+func consume_v076_private_monster_skill_submission(
+	submission_id: String,
+	bundle: Dictionary
+) -> Dictionary:
+	if submission_id.is_empty() \
+			or submission_id != submission_id.strip_edges() \
+			or submission_id.length() > 160:
+		return _reject_action("v076_private_skill_submission_id_invalid")
+	var validation := validate_v076_private_monster_skill_bundle(bundle)
+	if not bool(validation.get("accepted", false)):
+		return _reject_action(str(validation.get(
+			"reason_code", "v076_private_skill_bundle_revalidation_failed"
+		)))
+	return _request_private_monster_skill_with_request_id(
+		str(bundle.get("actor_id", "")),
+		bundle.get("parameters", {}) as Dictionary,
+		"request.skill.v076.%s" % submission_id.sha256_text().substr(0, 32)
+	)
+
+
 func request_private_monster_skill(
 	actor_id: String,
 	parameters: Dictionary
 ) -> Dictionary:
-	_private_skill_submission_entry_count += 1
-	if not _combat_initialized or not _player_ids.has(actor_id):
-		return _reject_action("private_skill_actor_or_runtime_invalid")
-	var source_id := str(parameters.get("source_instance_id", ""))
-	var skill_id := str(parameters.get("skill_definition_id", ""))
-	var source := _public_monster_by_id(source_id)
-	if source.is_empty() or str(source.get("owner_player_id", "")) != actor_id:
-		return _reject_action("private_skill_source_not_owned")
-	if not _positive_int_field(parameters, "source_generation"):
-		return _reject_action("private_skill_source_generation_missing")
-	if (
-		not _positive_int_field(source, "source_generation")
-		or parameters.get("source_generation")
-			!= source.get("source_generation")
-	):
-		return _reject_action("private_skill_source_generation_stale")
-	var skill := _owner_skill_by_id(actor_id, source_id, skill_id)
-	if skill.is_empty():
-		return _reject_action("private_skill_definition_not_available")
-	var target_request := _private_skill_target_request(
+	return _request_private_monster_skill_with_request_id(
 		actor_id,
-		source,
-		skill,
+		parameters,
+		""
+	)
+
+
+func _request_private_monster_skill_with_request_id(
+	actor_id: String,
+	parameters: Dictionary,
+	stable_request_id: String
+) -> Dictionary:
+	_private_skill_submission_entry_count += 1
+	var validation := _validate_private_monster_skill_parameters(
+		actor_id,
 		parameters
 	)
-	if target_request.is_empty():
-		return _reject_action("private_skill_has_no_legal_target")
+	if not bool(validation.get("accepted", false)):
+		return _reject_action(str(validation.get(
+			"reason_code", "private_skill_request_invalid"
+		)))
+	var source := validation.get("source", {}) as Dictionary
+	var target_request := validation.get("target_request", {}) as Dictionary
+	var source_id := str(source.get("source_instance_id", ""))
+	var skill_id := str(parameters.get("skill_definition_id", ""))
 	_combat_request_sequence += 1
 	var request := {
-		"request_id": "request.skill.%s.%06d" % [
-			_batch_id(),
-			_combat_request_sequence,
-		],
+		"request_id": stable_request_id if not stable_request_id.is_empty() else (
+			"request.skill.%s.%06d" % [
+				_batch_id(),
+				_combat_request_sequence,
+			]
+		),
 		"owner_player_id": actor_id,
 		"source_instance_id": source_id,
 		"source_generation": int(source.get("source_generation", 0)),
@@ -2909,6 +3037,85 @@ func request_private_monster_skill(
 		int(source.get("source_generation", 0)),
 		skill_id
 	)
+
+
+func _validate_private_monster_skill_parameters(
+	actor_id: String,
+	parameters: Dictionary
+) -> Dictionary:
+	if not _combat_initialized or not _player_ids.has(actor_id):
+		return {
+			"accepted": false,
+			"reason_code": "private_skill_actor_or_runtime_invalid",
+		}
+	var source_id := str(parameters.get("source_instance_id", ""))
+	var skill_id := str(parameters.get("skill_definition_id", ""))
+	var source := _public_monster_by_id(source_id)
+	if source.is_empty() or str(source.get("owner_player_id", "")) != actor_id:
+		return {
+			"accepted": false,
+			"reason_code": "private_skill_source_not_owned",
+		}
+	if not _positive_int_field(parameters, "source_generation"):
+		return {
+			"accepted": false,
+			"reason_code": "private_skill_source_generation_missing",
+		}
+	if not _positive_int_field(source, "source_generation") \
+			or parameters.get("source_generation") \
+				!= source.get("source_generation"):
+		return {
+			"accepted": false,
+			"reason_code": "private_skill_source_generation_stale",
+		}
+	var skill := _owner_skill_by_id(actor_id, source_id, skill_id)
+	if skill.is_empty():
+		return {
+			"accepted": false,
+			"reason_code": "private_skill_definition_not_available",
+		}
+	var target_request := _private_skill_target_request(
+		actor_id,
+		source,
+		skill,
+		parameters
+	)
+	if target_request.is_empty():
+		return {
+			"accepted": false,
+			"reason_code": "private_skill_has_no_legal_target",
+		}
+	return {
+		"accepted": true,
+		"reason_code": "private_skill_parameters_current",
+		"source": source.duplicate(true),
+		"skill": skill.duplicate(true),
+		"target_request": target_request.duplicate(true),
+	}
+
+
+static func _v076_private_skill_without_fingerprint(
+	bundle: Dictionary
+) -> Dictionary:
+	var result := bundle.duplicate(true)
+	result.erase("authorization_fingerprint")
+	return result
+
+
+static func _v076_private_skill_fingerprint(value: Dictionary) -> String:
+	return JSON.stringify(value).sha256_text()
+
+
+static func _v076_private_skill_has_exact_fields(
+	value: Dictionary,
+	expected_fields: Array
+) -> bool:
+	if value.size() != expected_fields.size():
+		return false
+	for field_variant in expected_fields:
+		if not value.has(str(field_variant)):
+			return false
+	return true
 
 
 func _private_skill_success_application_receipt(

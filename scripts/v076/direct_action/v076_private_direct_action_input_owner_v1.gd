@@ -30,8 +30,10 @@ const DomainReducer := preload(
 const SCHEMA_VERSION := 1
 const DOMAIN_ID := "future.private_direct_action_input"
 const OWNER_ID := "component.v076.private_direct_action_input"
-const COMMAND_TYPE := DomainReducer.COMMAND_TYPE_ARRIVE
+const COMMAND_TYPE := DomainReducer.COMMAND_TYPE_INTAKE
 const DOMAIN_PRIORITY := 40
+const ACTION_KIND_MILITARY := DomainReducer.ACTION_KIND_MILITARY
+const ACTION_KIND_MONSTER_SKILL := DomainReducer.ACTION_KIND_MONSTER_SKILL
 const MISSION_ASSAULT_REGION := "ASSAULT_REGION"
 const MISSION_ASSAULT_MONSTER := "ASSAULT_MONSTER"
 const ALLOWED_MISSIONS := [MISSION_ASSAULT_REGION, MISSION_ASSAULT_MONSTER]
@@ -53,6 +55,12 @@ const REQUEST_FIELDS := [
 	"target_region_revision",
 	"public_targets",
 	"source_effect_id",
+	"producer_sequence",
+]
+const MONSTER_SKILL_REQUEST_FIELDS := [
+	"schema_version",
+	"submission_id",
+	"actor_id",
 	"producer_sequence",
 ]
 
@@ -87,11 +95,15 @@ var _military_eta_owner: Variant
 var _military_crosswalk: Variant
 var _facility_damage_intent_owner: Variant
 var _monster_damage_command_pipeline: Variant
+var _private_monster_skill_owner: Variant
 var _configured := false
 var _submission_fingerprint_by_id: Dictionary = {}
 var _submitted_result_by_id: Dictionary = {}
 var _settlement_fingerprint_by_id: Dictionary = {}
 var _damage_settlement_by_id: Dictionary = {}
+var _intake_settlement_fingerprint_by_id: Dictionary = {}
+var _intake_settlement_result_by_id: Dictionary = {}
+var _intake_settlement_order: Array[String] = []
 var _rejection_count := 0
 var _collision_count := 0
 
@@ -128,6 +140,10 @@ func configure_dependencies(
 		return _reject("private_direct_action_military_eta_dependency_invalid")
 	if not facility_damage_intent_owner.has_method(
 		"consume_v076_military_facility_damage_intents"
+	) or not facility_damage_intent_owner.has_method(
+		"validate_v076_private_monster_skill_bundle"
+	) or not facility_damage_intent_owner.has_method(
+		"consume_v076_private_monster_skill_submission"
 	) or not monster_damage_command_pipeline.has_method(
 		"dispatch_military_monster_damage"
 	):
@@ -157,6 +173,7 @@ func configure_dependencies(
 	_military_eta_owner = military_eta_owner
 	_military_crosswalk = MilitaryCrosswalk.new()
 	_facility_damage_intent_owner = facility_damage_intent_owner
+	_private_monster_skill_owner = facility_damage_intent_owner
 	_monster_damage_command_pipeline = monster_damage_command_pipeline
 	_configured = true
 	return {
@@ -212,6 +229,7 @@ func submit_private_military_direct_action(
 		return _reject(binding_reason)
 	var submission_id: String = str(request.get("submission_id", ""))
 	var request_fingerprint: String = StateCodec.fingerprint({
+		"action_kind": ACTION_KIND_MILITARY,
 		"authorized_bundle_fingerprint": str(revalidated.get(
 			"bundle_fingerprint", ""
 		)),
@@ -366,16 +384,13 @@ func submit_private_military_direct_action(
 		)
 		return _reject("private_direct_action_mission_lock_rejected")
 
-	var payload: Dictionary = {
-		"schema_version": DomainReducer.ROOT_PAYLOAD_SCHEMA_VERSION,
-		"submission_id": submission_id,
+	var action_payload: Dictionary = {
 		"authorization_bundle_fingerprint": str(revalidated.get(
 			"bundle_fingerprint", ""
 		)),
 		"authorized_envelope_fingerprint": str((revalidated.get(
 			"authorized_envelope_ref", {}
 		) as Dictionary).get("envelope_fingerprint", "")),
-		"actor_id": str(request.get("actor_id", "")),
 		"card_id": str((revalidated.get(
 			"instance_decision_state", {}
 		) as Dictionary).get("card_id", "")),
@@ -390,22 +405,29 @@ func submit_private_military_direct_action(
 		"route": route.duplicate(true),
 		"route_sha256": str(route_result.get("route_sha256", "")),
 		"eta_receipt": (eta_result.get("receipt", {}) as Dictionary).duplicate(true),
+		"asset_reservation_id": asset_reservation_id,
+	}
+	var payload: Dictionary = {
+		"schema_version": DomainReducer.ROOT_PAYLOAD_SCHEMA_VERSION,
+		"submission_id": submission_id,
+		"action_kind": ACTION_KIND_MILITARY,
+		"actor_id": str(request.get("actor_id", "")),
 		"submission_tick": submission_tick,
 		"dispatch_delay_ticks": dispatch_delay_ticks,
-		"asset_reservation_id": asset_reservation_id,
 		"request_fingerprint": request_fingerprint,
+		"action_payload": action_payload,
 		"payload_fingerprint": "",
 	}
 	payload["payload_fingerprint"] = StateCodec.fingerprint(
 		_payload_without_fingerprint(payload)
 	)
-	var command_id: String = "v076.private-direct-action.%s.arrive" % submission_id
+	var command_id: String = "v076.private-direct-action.%s.intake" % submission_id
 	var built: Dictionary = AuthorityCommand.build(
 		command_id,
 		DOMAIN_ID,
 		COMMAND_TYPE,
 		str(request.get("actor_id", "")),
-		submission_tick + dispatch_delay_ticks,
+		submission_tick + 1,
 		DOMAIN_PRIORITY,
 		int(request.get("producer_sequence", 0)),
 		payload
@@ -434,7 +456,8 @@ func submit_private_military_direct_action(
 		"submission_id": submission_id,
 		"command_id": command_id,
 		"command_sha256": str(submitted.get("command_sha256", "")),
-		"scheduled_tick": submission_tick + dispatch_delay_ticks,
+		"scheduled_tick": submission_tick + 1,
+		"arrival_tick": submission_tick + dispatch_delay_ticks,
 		"eta_ticks": eta_ticks,
 		"dispatch_delay_ticks": dispatch_delay_ticks,
 		"eta_receipt": (eta_result.get("receipt", {}) as Dictionary).duplicate(true),
@@ -446,10 +469,192 @@ func submit_private_military_direct_action(
 		"total_distance_mu": total_distance_mu,
 		"asset_reservation_id": asset_reservation_id,
 		"mission_kind": str(request.get("mission_kind", "")),
+		"action_kind": ACTION_KIND_MILITARY,
 	}
 	_submission_fingerprint_by_id[submission_id] = request_fingerprint
 	_submitted_result_by_id[submission_id] = result.duplicate(true)
 	return result
+
+
+func submit_private_monster_skill_direct_action(
+	authorized_bundle: Dictionary,
+	request: Dictionary
+) -> Dictionary:
+	if not _configured:
+		return _reject("private_direct_action_owner_not_configured")
+	var request_report := monster_skill_request_validation_report(request)
+	if not bool(request_report.get("valid", false)):
+		return _reject(str(request_report.get(
+			"reason", "private_monster_skill_request_invalid"
+		)))
+	var revalidated: Dictionary = _private_monster_skill_owner.call(
+		"validate_v076_private_monster_skill_bundle",
+		authorized_bundle
+	) as Dictionary
+	if not bool(revalidated.get("accepted", false)):
+		return _reject(str(revalidated.get(
+			"reason_code", "private_monster_skill_revalidation_failed"
+		)))
+	var bundle := revalidated.get("bundle", {}) as Dictionary
+	if str(bundle.get("actor_id", "")) != str(request.get("actor_id", "")):
+		return _reject("private_monster_skill_actor_binding_mismatch")
+	var submission_id := str(request.get("submission_id", ""))
+	var request_fingerprint := StateCodec.fingerprint({
+		"action_kind": ACTION_KIND_MONSTER_SKILL,
+		"authorization_fingerprint": str(bundle.get(
+			"authorization_fingerprint", ""
+		)),
+		"request": request.duplicate(true),
+	})
+	if request_fingerprint.is_empty():
+		return _reject("private_monster_skill_request_fingerprint_empty")
+	if _submission_fingerprint_by_id.has(submission_id):
+		if str(_submission_fingerprint_by_id[submission_id]) \
+				!= request_fingerprint:
+			_collision_count += 1
+			return _reject("private_direct_action_submission_collision")
+		var replay := (_submitted_result_by_id.get(submission_id, {}) \
+			as Dictionary).duplicate(true)
+		replay["duplicate"] = true
+		return replay
+	var submission_tick := int(_kernel.current_tick())
+	var action_payload := {
+		"authorized_bundle": bundle.duplicate(true),
+		"authorization_fingerprint": str(bundle.get(
+			"authorization_fingerprint", ""
+		)),
+	}
+	var payload := {
+		"schema_version": DomainReducer.ROOT_PAYLOAD_SCHEMA_VERSION,
+		"submission_id": submission_id,
+		"action_kind": ACTION_KIND_MONSTER_SKILL,
+		"actor_id": str(request.get("actor_id", "")),
+		"submission_tick": submission_tick,
+		"dispatch_delay_ticks": 1,
+		"request_fingerprint": request_fingerprint,
+		"action_payload": action_payload,
+		"payload_fingerprint": "",
+	}
+	payload["payload_fingerprint"] = StateCodec.fingerprint(
+		_payload_without_fingerprint(payload)
+	)
+	var command_id := "v076.private-direct-action.%s.intake" % submission_id
+	var built := AuthorityCommand.build(
+		command_id,
+		DOMAIN_ID,
+		COMMAND_TYPE,
+		str(request.get("actor_id", "")),
+		submission_tick + 1,
+		DOMAIN_PRIORITY,
+		int(request.get("producer_sequence", 0)),
+		payload
+	)
+	if not bool(built.get("accepted", false)):
+		return _reject(str(built.get(
+			"reason", "private_monster_skill_command_build_rejected"
+		)))
+	var submitted: Dictionary = _kernel.submit_command(
+		built.get("command", {}) as Dictionary
+	)
+	if not bool(submitted.get("accepted", false)):
+		return _reject(str(submitted.get(
+			"reason", "private_monster_skill_kernel_submission_rejected"
+		)))
+	var result := {
+		"accepted": true,
+		"reason": "",
+		"duplicate": bool(submitted.get("duplicate", false)),
+		"submission_id": submission_id,
+		"action_kind": ACTION_KIND_MONSTER_SKILL,
+		"command_id": command_id,
+		"command_sha256": str(submitted.get("command_sha256", "")),
+		"scheduled_tick": submission_tick + 1,
+	}
+	_submission_fingerprint_by_id[submission_id] = request_fingerprint
+	_submitted_result_by_id[submission_id] = result.duplicate(true)
+	return result
+
+
+func settle_ready_private_actions() -> Dictionary:
+	if not _configured:
+		return _reject("private_direct_action_owner_not_configured")
+	var state: Dictionary = _kernel.domain_state(DOMAIN_ID)
+	var ledger := state.get("submission_ledger", {}) as Dictionary
+	var order := state.get("submission_order", []) as Array
+	var settled_receipts: Array = []
+	for submission_variant in order:
+		var submission_id := str(submission_variant)
+		if _intake_settlement_fingerprint_by_id.has(submission_id):
+			continue
+		var entry := ledger.get(submission_id, {}) as Dictionary
+		if entry.is_empty():
+			return _reject("private_direct_action_intake_ledger_gap")
+		var action_kind := str(entry.get("action_kind", ""))
+		var sink_receipt: Dictionary
+		if action_kind == ACTION_KIND_MILITARY:
+			sink_receipt = {
+				"accepted": true,
+				"reason_code": "military_dispatch_ordered",
+				"receipt_scope": "owner_private",
+			}
+		elif action_kind == ACTION_KIND_MONSTER_SKILL:
+			if str(entry.get("phase", "")) \
+					!= DomainReducer.PHASE_PRIVATE_SKILL_SETTLEMENT_READY:
+				return _reject("private_monster_skill_settlement_not_ready")
+			var root_payload := entry.get("root_payload", {}) as Dictionary
+			var action_payload := root_payload.get(
+				"action_payload", {}
+			) as Dictionary
+			sink_receipt = _private_monster_skill_owner.call(
+				"consume_v076_private_monster_skill_submission",
+				submission_id,
+				action_payload.get("authorized_bundle", {}) as Dictionary
+			) as Dictionary
+			if not bool(sink_receipt.get("accepted", false)):
+				return _reject(str(sink_receipt.get(
+					"reason_code", "private_monster_skill_sink_rejected"
+				)))
+		else:
+			return _reject("private_direct_action_action_kind_invalid")
+		var settlement_fingerprint := StateCodec.fingerprint({
+			"submission_id": submission_id,
+			"action_kind": action_kind,
+			"root_authority_sequence": int(entry.get(
+				"root_authority_sequence", 0
+			)),
+			"root_payload_fingerprint": str(entry.get(
+				"root_payload_fingerprint", ""
+			)),
+			"sink_receipt": sink_receipt.duplicate(true),
+		})
+		if settlement_fingerprint.is_empty():
+			return _reject("private_direct_action_intake_settlement_identity_empty")
+		var settlement_result := {
+			"accepted": true,
+			"duplicate": false,
+			"submission_id": submission_id,
+			"action_kind": action_kind,
+			"root_authority_sequence": int(entry.get(
+				"root_authority_sequence", 0
+			)),
+			"settlement_fingerprint": settlement_fingerprint,
+			"sink_receipt": sink_receipt.duplicate(true),
+		}
+		_intake_settlement_fingerprint_by_id[submission_id] = (
+			settlement_fingerprint
+		)
+		_intake_settlement_result_by_id[submission_id] = (
+			settlement_result.duplicate(true)
+		)
+		_intake_settlement_order.append(submission_id)
+		settled_receipts.append(settlement_result)
+	return {
+		"accepted": true,
+		"reason": "",
+		"settled_count": settled_receipts.size(),
+		"settlement_order": _intake_settlement_order.duplicate(),
+		"receipts": settled_receipts,
+	}
 
 
 func settle_completed_submission(submission_id: String) -> Dictionary:
@@ -460,6 +665,10 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 	if not ledger.has(submission_id):
 		return _reject("private_direct_action_mission_not_arrived")
 	var entry: Dictionary = ledger[submission_id] as Dictionary
+	if str(entry.get("action_kind", "")) != ACTION_KIND_MILITARY:
+		return _reject("private_direct_action_completed_settlement_not_military")
+	if not _intake_settlement_fingerprint_by_id.has(submission_id):
+		return _reject("private_direct_action_intake_not_settled")
 	if str(entry.get("phase", "")) != DomainReducer.PHASE_WITHDRAWAL_READY:
 		return _reject("private_direct_action_mission_withdrawal_not_ready")
 	var mission_receipt: Dictionary = entry.get("mission_receipt", {}) as Dictionary
@@ -664,11 +873,12 @@ func _runtime_monster_uid_for_intent(
 	intent: Dictionary
 ) -> int:
 	var root_payload := entry.get("root_payload", {}) as Dictionary
+	var action_payload := root_payload.get("action_payload", {}) as Dictionary
 	var target_id := str(intent.get("target_monster_source_instance_id", ""))
 	var expected_generation := int(intent.get("expected_source_generation", 0))
 	var expected_revision := int(intent.get("observed_source_revision", -1))
 	var matched_uid := 0
-	for target_variant in root_payload.get("current_public_targets", []) as Array:
+	for target_variant in action_payload.get("current_public_targets", []) as Array:
 		if not (target_variant is Dictionary):
 			continue
 		var target := target_variant as Dictionary
@@ -695,6 +905,7 @@ func debug_snapshot() -> Dictionary:
 		"configured": _configured,
 		"authorized_input_envelope_owner": true,
 		"own_hand_membership_revalidation_owner": true,
+		"monster_source_membership_revalidation_owner": false,
 		"exact_once_submission_ledger_owner": true,
 		"source_collision_rejection_owner": true,
 		"root_command_submission_owner": true,
@@ -710,15 +921,22 @@ func debug_snapshot() -> Dictionary:
 		"owns_physical_eta": false,
 		"owns_facility_damage": false,
 		"owns_monster_damage": false,
+		"owns_monster_skill_state": false,
+		"owns_monster_skill_catalog": false,
+		"owns_monster_skill_safe_boundary": false,
 		"military_profile_owner": ProfileCatalog.PROFILE_AUTHORITY_ID,
 		"military_eta_owner": "V076MilitaryPhysicalEtaOwnerV1",
 		"facility_damage_owner": "V075RuntimeOwner",
 		"monster_damage_owner": "MonsterRuntimeController",
+		"monster_skill_owner": "V075RuntimeOwner",
+		"action_kinds": [ACTION_KIND_MILITARY, ACTION_KIND_MONSTER_SKILL],
 		"allowed_missions": ALLOWED_MISSIONS.duplicate(),
 		"forbidden_missions": FORBIDDEN_MISSIONS.duplicate(),
 		"movement_mode": "PHYSICAL_GEODESIC_ETA_NO_TELEPORT",
 		"completion_mode": "EXECUTE_ONE_MISSION_THEN_WITHDRAW",
 		"lifecycle_phases": [
+			DomainReducer.PHASE_DISPATCHED,
+			DomainReducer.PHASE_PRIVATE_SKILL_SETTLEMENT_READY,
 			DomainReducer.PHASE_ARRIVED,
 			DomainReducer.PHASE_EXECUTED_ONCE,
 			DomainReducer.PHASE_WITHDRAWAL_READY,
@@ -726,6 +944,8 @@ func debug_snapshot() -> Dictionary:
 		"submission_count": _submission_fingerprint_by_id.size(),
 		"settlement_count": _settlement_fingerprint_by_id.size(),
 		"damage_settlement_count": _damage_settlement_by_id.size(),
+		"intake_settlement_count": _intake_settlement_fingerprint_by_id.size(),
+		"intake_settlement_order": _intake_settlement_order.duplicate(),
 		"collision_count": _collision_count,
 		"rejection_count": _rejection_count,
 		"public_batch_entry_count": 0,
@@ -771,6 +991,42 @@ static func request_validation_report(request: Dictionary) -> Dictionary:
 			return {"valid": false, "reason": "private_direct_action_region_target_invalid"}
 	elif not region_id.is_empty() or not _stable_id(monster_id):
 		return {"valid": false, "reason": "private_direct_action_monster_target_invalid"}
+	return {"valid": true, "reason": ""}
+
+
+static func monster_skill_request_validation_report(
+	request: Dictionary
+) -> Dictionary:
+	if not _has_exact_fields(request, MONSTER_SKILL_REQUEST_FIELDS):
+		return {
+			"valid": false,
+			"reason": "private_monster_skill_request_shape_invalid",
+		}
+	var validation := StateCodec.validate(request)
+	if not bool(validation.get("valid", false)):
+		return {
+			"valid": false,
+			"reason": str(validation.get(
+				"reason", "private_monster_skill_request_not_closed"
+			)),
+		}
+	if int(request.get("schema_version", 0)) != SCHEMA_VERSION:
+		return {
+			"valid": false,
+			"reason": "private_monster_skill_request_schema_invalid",
+		}
+	for field in ["submission_id", "actor_id"]:
+		if not _stable_id(request.get(field)):
+			return {
+				"valid": false,
+				"reason": "private_monster_skill_%s_invalid" % field,
+			}
+	if typeof(request.get("producer_sequence")) != TYPE_INT \
+			or int(request.get("producer_sequence", -1)) < 0:
+		return {
+			"valid": false,
+			"reason": "private_monster_skill_producer_sequence_invalid",
+		}
 	return {"valid": true, "reason": ""}
 
 

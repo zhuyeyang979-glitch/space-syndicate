@@ -110,6 +110,7 @@ func _test_zero_distance_arrive_execute_withdraw() -> void:
 			and int(withdrawn_entry.get("withdrawal_ready_tick", -1)) == 3
 			and int(withdrawn_entry.get("withdrawal_intent_count", 0)) == 1
 			and withdrawn_entry.get("transition_order") == [
+				"INTAKE_ACCEPTED",
 				Reducer.PHASE_ARRIVED,
 				Reducer.PHASE_EXECUTED_ONCE,
 				Reducer.PHASE_WITHDRAWAL_READY,
@@ -124,7 +125,7 @@ func _test_zero_distance_arrive_execute_withdraw() -> void:
 			and str((execution_log[2] as Dictionary).get("command_source", "")) == "DERIVED"
 			and kernel.root_commands().size() == 1
 			and kernel.derived_commands().size() == 2,
-		"one root owns input while two Kernel-derived commands own phase continuation"
+		"one intake root owns input while two Kernel-derived commands own phase continuation"
 	)
 	var domain_before_idle: Dictionary = kernel.domain_state(Reducer.DOMAIN_ID)
 	var idle: Dictionary = kernel.advance_ticks(4)
@@ -160,9 +161,10 @@ func _test_positive_eta_has_no_early_execution() -> void:
 	var early: Dictionary = kernel.advance_ticks(eta_ticks - 1)
 	_expect(
 		bool(early.get("accepted", false))
-			and _entry(kernel, "positive.distance").is_empty()
-			and kernel.execution_log().is_empty(),
-		"no arrival or attack occurs before the exact ETA tick"
+			and str(_entry(kernel, "positive.distance").get("phase", ""))
+				== Reducer.PHASE_DISPATCHED
+			and kernel.execution_log().size() == 1,
+		"intake is ordered immediately while no arrival or attack occurs before ETA"
 	)
 	kernel.advance_ticks(1)
 	var arrival_entry := _entry(kernel, "positive.distance")
@@ -210,9 +212,11 @@ func _test_tampered_authority_inputs_fail_closed() -> void:
 		"command", {}
 	) as Dictionary
 	var route_payload := (valid.get("payload", {}) as Dictionary).duplicate(true)
-	var route := (route_payload.get("route", {}) as Dictionary).duplicate(true)
+	var route_action := (route_payload.get("action_payload", {}) as Dictionary).duplicate(true)
+	var route := (route_action.get("route", {}) as Dictionary).duplicate(true)
 	route["total_distance_mu"] = int(route.get("total_distance_mu", 0)) + 1
-	route_payload["route"] = route
+	route_action["route"] = route
+	route_payload["action_payload"] = route_action
 	_expect(
 		_rejected_reason(_resign(valid, route_payload))
 			== "private_direct_action_route_noncanonical",
@@ -221,12 +225,14 @@ func _test_tampered_authority_inputs_fail_closed() -> void:
 
 	valid = _build_root("tamper.eta", 0, 0, 1).get("command", {}) as Dictionary
 	var eta_payload := (valid.get("payload", {}) as Dictionary).duplicate(true)
-	var eta_receipt := (eta_payload.get("eta_receipt", {}) as Dictionary).duplicate(true)
+	var eta_action := (eta_payload.get("action_payload", {}) as Dictionary).duplicate(true)
+	var eta_receipt := (eta_action.get("eta_receipt", {}) as Dictionary).duplicate(true)
 	eta_receipt["eta_ticks"] = int(eta_receipt.get("eta_ticks", 0)) + 1
 	eta_receipt["receipt_fingerprint"] = StateCodec.fingerprint(
 		_without_field(eta_receipt, "receipt_fingerprint")
 	)
-	eta_payload["eta_receipt"] = eta_receipt
+	eta_action["eta_receipt"] = eta_receipt
+	eta_payload["action_payload"] = eta_action
 	_expect(
 		_rejected_reason(_resign(valid, eta_payload))
 			== "private_direct_action_eta_receipt_invalid",
@@ -235,13 +241,15 @@ func _test_tampered_authority_inputs_fail_closed() -> void:
 
 	valid = _build_root("tamper.profile", 0, 0, 1).get("command", {}) as Dictionary
 	var profile_payload := (valid.get("payload", {}) as Dictionary).duplicate(true)
-	var profile_receipt := (profile_payload.get("eta_receipt", {}) as Dictionary).duplicate(true)
+	var profile_action := (profile_payload.get("action_payload", {}) as Dictionary).duplicate(true)
+	var profile_receipt := (profile_action.get("eta_receipt", {}) as Dictionary).duplicate(true)
 	profile_receipt["profile_id"] = "forged.profile"
 	profile_receipt["profile_fingerprint_sha256"] = "0".repeat(64)
 	profile_receipt["receipt_fingerprint"] = StateCodec.fingerprint(
 		_without_field(profile_receipt, "receipt_fingerprint")
 	)
-	profile_payload["eta_receipt"] = profile_receipt
+	profile_action["eta_receipt"] = profile_receipt
+	profile_payload["action_payload"] = profile_action
 	_expect(
 		_rejected_reason(_resign(valid, profile_payload))
 			== "private_direct_action_profile_receipt_binding_invalid",
@@ -250,7 +258,9 @@ func _test_tampered_authority_inputs_fail_closed() -> void:
 
 	valid = _build_root("tamper.mission", 0, 0, 1).get("command", {}) as Dictionary
 	var mission_payload := (valid.get("payload", {}) as Dictionary).duplicate(true)
-	mission_payload["mission_kind"] = "GUARD"
+	var mission_action := (mission_payload.get("action_payload", {}) as Dictionary).duplicate(true)
+	mission_action["mission_kind"] = "GUARD"
+	mission_payload["action_payload"] = mission_action
 	_expect(
 		_rejected_reason(_resign(valid, mission_payload))
 			== "private_direct_action_mission_forbidden",
@@ -369,13 +379,20 @@ func _build_root(
 	var payload := {
 		"schema_version": Reducer.ROOT_PAYLOAD_SCHEMA_VERSION,
 		"submission_id": submission_id,
+		"action_kind": Reducer.ACTION_KIND_MILITARY,
+		"actor_id": "player.1",
+		"submission_tick": 0,
+		"dispatch_delay_ticks": dispatch_delay_ticks,
+		"request_fingerprint": StateCodec.fingerprint({
+			"request": submission_id,
+		}),
+		"action_payload": {
 		"authorization_bundle_fingerprint": StateCodec.fingerprint({
 			"bundle": submission_id,
 		}),
 		"authorized_envelope_fingerprint": StateCodec.fingerprint({
 			"envelope": submission_id,
 		}),
-		"actor_id": "player.1",
 		"card_id": "unit.military.air_superiority_fighter.rank_1",
 		"card_instance_id": "card.%s" % submission_id,
 		"mission_kind": "ASSAULT_REGION",
@@ -386,23 +403,19 @@ func _build_root(
 		"route": route.duplicate(true),
 		"route_sha256": str(route_result.get("route_sha256", "")),
 		"eta_receipt": (eta.get("receipt", {}) as Dictionary).duplicate(true),
-		"submission_tick": 0,
-		"dispatch_delay_ticks": dispatch_delay_ticks,
 		"asset_reservation_id": "reservation.%s" % submission_id,
-		"request_fingerprint": StateCodec.fingerprint({
-			"request": submission_id,
-		}),
+		},
 		"payload_fingerprint": "",
 	}
 	payload["payload_fingerprint"] = StateCodec.fingerprint(
 		_without_field(payload, "payload_fingerprint")
 	)
 	var built := AuthorityCommand.build(
-		"v076.private-direct-action.%s.arrive" % submission_id,
+		"v076.private-direct-action.%s.intake" % submission_id,
 		Reducer.DOMAIN_ID,
-		Reducer.COMMAND_TYPE_ARRIVE,
+		Reducer.COMMAND_TYPE_INTAKE,
 		"player.1",
-		dispatch_delay_ticks,
+		1,
 		40,
 		producer_sequence,
 		payload
@@ -444,10 +457,13 @@ func _rejected_reason(command: Dictionary) -> String:
 	if not bool(submitted.get("accepted", false)):
 		kernel.free()
 		return str(submitted.get("reason", ""))
-	var advanced: Dictionary = kernel.advance_ticks(
-		int(command.get("scheduled_tick", 0))
-	)
-	var reason := str(advanced.get("reason", ""))
+	kernel.advance_ticks(int(command.get("scheduled_tick", 0)))
+	var execution_log: Array = kernel.execution_log()
+	var reason := ""
+	if not execution_log.is_empty():
+		reason = str((execution_log.back() as Dictionary).get(
+			"fizzle_reason", ""
+		))
 	kernel.free()
 	return reason
 

@@ -720,13 +720,17 @@
       "reuse_disposition": "ADOPT_AS_OWNER",
       "reuse_source_ids": ["reuse.v075.combat_candidate"],
       "reuse_candidates_considered": ["reuse.v075.combat_candidate"],
-      "new_component_justification": "Existing unique V075 production combat candidate Owner, now extended with one narrow V076 military facility-intent consumer entry. Its existing bridge and exact-once journals remain the only facility HP/revision mutation path; no new Owner or parallel facility ledger is introduced.",
+      "new_component_justification": "Existing unique V075 production combat candidate Owner, now extended with narrow V076 military facility-intent and source-bound monster-skill consumer entries. Its existing bridge, private-skill safe-boundary, asset reservation, exact-once, and privacy journals remain the only combat mutation paths; no new Owner or parallel ledger is introduced.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
       "focused_test_ids": [
         "v075_runtime_facility_bridge_integration_test",
-        "v076_private_military_direct_action_integration_test"
+        "v076_private_military_direct_action_integration_test",
+        "v075_private_skill_request_telemetry_integration_test",
+        "v075_private_skill_failure_privacy_test",
+        "v076_private_monster_skill_bundle_contract_test",
+        "v076_simultaneous_private_action_test"
       ],
       "golden_scenario_steps": ["STEP10"],
       "reuse_scan": {
@@ -739,8 +743,11 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 1,
-        "reuse_candidate_ids": ["reuse.v075.combat_candidate"],
+        "reuse_candidate_count": 2,
+        "reuse_candidate_ids": [
+          "reuse.v075.combat_candidate",
+          "reuse.v075.monster_private_skill.current"
+        ],
         "selected_reuse_disposition": "ADOPT_AS_OWNER",
         "why_existing_owner_cannot_be_extended": "NOT_APPLICABLE_EXTENDED_EXISTING_OWNER",
         "why_adapter_is_insufficient": "A parallel adapter cannot mutate facility HP or reproduce the Owner's bridge, processed-intent, witness, fizzle, and presentation journals without creating a second authority path.",
@@ -789,7 +796,7 @@
         "reuse.v076.military_physical_eta.current",
         "reuse.v075.combat_candidate"
       ],
-      "new_component_justification": "Stage 4 needs one private input authority for authorized envelopes, own-hand revalidation, exact-once submission and damage-settlement identity, source-collision rejection, and Kernel root-command submission. It consumes sealed typed intents only through V075RuntimeOwner and RuntimeCommandPipeline; those existing Owners retain all facility and monster HP mutation. PR65 may authorize but may not execute; the Kernel may order and replay but may not own private hand membership. This Owner may not own tick, Authority Sequence, RNG, damage state, military unit state, asset quantity, map topology, presentation, or card definitions.",
+      "new_component_justification": "Stage 4/5 needs one private input authority for authorized envelopes, own-hand or source-bound revalidation, exact-once submission and settlement identity, source-collision rejection, and Kernel intake-root submission. It consumes sealed military and V075 monster-skill intents; V075, RuntimeCommandPipeline, and existing asset/unit Owners retain all combat mutation. PR65 may authorize but may not execute; the Kernel alone orders and replays; this Owner may not own tick, Authority Sequence, RNG, skill state, damage state, military unit state, asset quantity, map topology, presentation, or card definitions.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
@@ -798,7 +805,11 @@
         "v076_private_military_direct_action_integration_test",
         "v076_military_mission_lifecycle_reducer_test",
         "v075_runtime_facility_bridge_integration_test",
-        "simulation_runtime_authority_migration_test"
+        "simulation_runtime_authority_migration_test",
+        "v075_private_skill_request_telemetry_integration_test",
+        "v075_private_skill_failure_privacy_test",
+        "v076_private_monster_skill_bundle_contract_test",
+        "v076_simultaneous_private_action_test"
       ],
       "golden_scenario_steps": ["STEP10"],
       "reuse_scan": {
@@ -811,7 +822,7 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 10,
+        "reuse_candidate_count": 11,
         "reuse_candidate_ids": [
           "reuse.pr65.authorized_semantic_envelope",
           "reuse.v076.kernel.current",
@@ -822,7 +833,8 @@
           "reuse.v075.military_mission_core",
           "reuse.v076.military_unit_profile_authority.current",
           "reuse.v076.military_physical_eta.current",
-          "reuse.v075.combat_candidate"
+          "reuse.v075.combat_candidate",
+          "reuse.v075.monster_private_skill.current"
         ],
         "selected_reuse_disposition": "ADOPT_AS_OWNER",
         "why_existing_owner_cannot_be_extended": "PR65 is an authorization Consumer pattern and cannot execute; the Kernel cannot own private hand membership; the facility, monster, partition, catalog, asset, and military Owners cannot absorb cross-domain private input identity without violating their single-owner boundaries.",
@@ -862,14 +874,15 @@
         "reuse.v076.military_unit_profile_authority.current",
         "reuse.v076.military_physical_eta.current"
       ],
-      "new_component_justification": "Pure fresh-handler reducer for the private input Owner's Kernel-owned domain state. It validates the canonical half-edge route plus Profile-bound ETA, records ARRIVED at the physical ETA tick, derives exactly one execution on the next tick, and derives exactly one withdrawal-ready intent on the following tick. It owns no tick, RNG, military unit state, assets, topology, catalog, or presentation.",
+      "new_component_justification": "Pure fresh-handler reducer for the private input Owner's Kernel-owned domain state. It accepts one common intake root for military or source-bound V075 monster-skill actions, assigns cross-kind state under Kernel Authority Sequence, records private-skill settlement readiness, and derives the existing military arrival/execute/withdraw lifecycle. It owns no tick, RNG, skill state, military unit state, assets, topology, catalog, or presentation.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
       "focused_test_ids": [
         "v076_private_direct_action_input_owner_test",
         "v076_private_military_direct_action_integration_test",
-        "v076_military_mission_lifecycle_reducer_test"
+        "v076_military_mission_lifecycle_reducer_test",
+        "v076_simultaneous_private_action_test"
       ],
       "golden_scenario_steps": ["STEP10"],
       "reuse_scan": {
@@ -882,13 +895,14 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 5,
+        "reuse_candidate_count": 6,
         "reuse_candidate_ids": [
           "reuse.v076.kernel.current",
           "reuse.v076.map.current",
           "reuse.v075.military_mission_core",
           "reuse.v076.military_unit_profile_authority.current",
-          "reuse.v076.military_physical_eta.current"
+          "reuse.v076.military_physical_eta.current",
+          "reuse.v075.monster_private_skill.current"
         ],
         "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
         "why_existing_owner_cannot_be_extended": "The private Direct Action Owner remains the authority; Kernel owns tick, sequence, derivation, and replay; Profile owns combat and speed; ETA owns only distance-plus-speed-to-ticks; V075 Mission Core owns locked assault semantics. None may absorb the lifecycle ledger without collapsing an existing boundary.",
@@ -1732,6 +1746,19 @@
       },
       "reference_scope": "Exact base product lineage and V075 production combat/card capability history.",
       "forbidden_scope": "V076 isolated owners do not cut over, dual-write, or imply PR90 merge readiness."
+    },
+    {
+      "reuse_id": "reuse.v075.monster_private_skill.current",
+      "domain_id": "current.v075_production_combat_candidate",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "class_name": "V075RuntimeOwner",
+        "path": "scripts/v075_runtime/v075_runtime_owner.gd",
+        "combat_owner": "scripts/v075/runtime/v075_combat_runtime_owner.gd",
+        "skill_core": "scripts/v075/monster/v075_monster_private_skill_core.gd"
+      },
+      "adapted_scope": "Source ownership and generation revalidation, owner-private skill availability, existing V075 request/reservation/safe-boundary/effect ledgers, asset reservation, and allowlisted public aftermath consumed in V076 Kernel Authority Sequence order.",
+      "forbidden_scope": "V076 does not create a second monster-skill queue, receive sequence, safe-boundary, skill state, cooldown, asset ledger, damage sink, or presentation Owner; source-bound skills are not own-hand cards and production composition remains unchanged."
     },
     {
       "reuse_id": "reuse.v073.human_playtest_instrumentation",

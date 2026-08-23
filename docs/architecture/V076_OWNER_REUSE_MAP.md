@@ -5,7 +5,7 @@ schema_version: space_syndicate.v076.owner_reuse_map.v1
 registry_id: V076_OWNER_REUSE_MAP
 
 This map enforces one Owner per domain at candidate head
-`d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7`. Consumers may adapt data or
+`adee42218fa63e12285903d46e93c72a3db7ec6b`. Consumers may adapt data or
 contracts, but they may not inherit authority by association.
 
 | Domain | Unique Owner | Reused source | Disposition | Consumer boundary |
@@ -19,12 +19,13 @@ contracts, but they may not inherit authority by association.
 | V06 semantic card source | `CardRuntimeCatalogV06Resource` | V06 resource + JSON | `ADOPT_AS_OWNER` | Semantic source does not replace V04 gameplay execution. |
 | Semantic transform/cache | `CardSemanticCatalogService` | PR #62 compiler/schema | `ADOPT_AS_OWNER` | Deterministic transform only; not an executor. |
 | Passive AI/PlayerFace projection | Existing PR #63 descendants | PR #63 | `ADAPT_AS_CONSUMER` | Viewer/privacy patterns only; no production AI or gameplay authority. |
-| Private Direct Action input | `V076PrivateDirectActionInputOwnerV1` | PR #65 authorization pattern + V076 Kernel/half-edge + current catalog/assets/military + V075 mission and typed-damage paths | `ADOPT_AS_OWNER` | Owns only the authorized envelope, own-hand revalidation, exact-once submission/settlement ledger, source-collision rejection, and Kernel root-command submission. It consumes sealed typed intents through existing sinks and owns no damage/HP, tick, Authority Sequence, RNG, military unit state, asset quantity, topology, presentation, or card catalog. |
+| Private Direct Action input | `V076PrivateDirectActionInputOwnerV1` | PR #65 authorization pattern + V076 Kernel/half-edge + current catalog/assets/military + V075 mission, typed-damage, and source-bound private-skill paths | `ADOPT_AS_OWNER` | Owns only the authorized envelope, own-hand or source-bound revalidation boundary, exact-once submission/settlement ledger, source-collision rejection, and one common Kernel intake-root submission path for `MILITARY` and `MONSTER_SKILL`. It consumes sealed typed intents through existing sinks and owns no damage/HP, tick, Authority Sequence, RNG, skill state, military unit state, asset quantity, topology, presentation, or card catalog. |
 | Military Profile authoring | `V076MilitaryUnitProfileAuthority` | V06 source identity/cost + twelve frozen V075 combat Profiles + V075 mission contract | `ADOPT_AS_OWNER` | One data authority owns 28 explicit Profiles: twelve inherited combat bindings, twenty-eight new speeds, and sixteen complete reversible V076 playtest Profiles. `V076MilitaryUnitProfileCatalogV1` is its read-only Adapter, not a card catalog. |
 | Military card Crosswalk | `V076PrivateDirectActionInputOwnerV1` (unchanged) | `CardRuntimeCatalogV06Resource` + `V076MilitaryUnitProfileAuthority` + V075 mission contract | `ADAPT_AS_CONSUMER` | `V076MilitaryCardCrosswalkV1` is one read-only Adapter: 28 identities close, 28 exact-map, and 0 remain `REAUTHOR_REQUIRED`. It owns no source definition, numeric authoring, input ledger, movement, unit state, asset quantity, or presentation. |
 | Military physical ETA | `V076MilitaryPhysicalEtaOwnerV1` | Profile-authored speed + canonical `V076SharedHalfEdgePartitionV1` geodesic distance through the existing integer metric adapter | `ADOPT_AS_OWNER` | Owns only integer distance plus speed to ETA ticks and a canonical receipt. It owns no tick, replay, map/topology/path, unit state, asset quantity, card catalog, authorization, attack, or presentation. |
 | Military mission lifecycle phase ledger | `V076PrivateDirectActionInputOwnerV1` through registered `V076PrivateDirectActionReducerV1` | V076 Kernel derived-command ABI + Profile Authority + Physical ETA + V075 locked mission/withdrawal contracts | `ADAPT_AS_CONSUMER` | Records `ARRIVED`, `EXECUTED_ONCE`, and `WITHDRAWAL_READY` under the existing private-input Owner. Kernel alone assigns ticks/sequences and derives execute/withdraw commands; Profile owns combat values; existing unit/asset Owners alone settle quantity. No second lifecycle Owner or per-tick position state exists. |
 | Current V075 facility combat settlement | `V075RuntimeOwner` | Existing V075 Facility bridge, processed ledger, witness ledger, fizzle journal, and presentation receipts | `ADAPT_AS_CONSUMER` | One narrow V076 entry consumes sealed facility intents. The existing Owner alone mutates facility damage/revision and records exact-once/fizzle evidence; no second facility damage Owner or ledger exists. |
+| Current V075 source-bound monster private skill settlement | `V075RuntimeOwner` through existing `V075CombatRuntimeOwner` / `V075MonsterPrivateSkillCore` | Existing source/generation validation, owner-private skill zone, reservation, safe-boundary, effect, cooldown/Fizzle, privacy, and public-aftermath contracts | `ADAPT_AS_CONSUMER` | V076 only carries an authorized opaque bundle through the common Kernel intake root and consumes it in root Authority Sequence order. V075 remains the sole skill/asset/damage/safe-boundary authority; source-bound skills never enter `own_hand`, public batch, or sushi track. |
 | Current monster damage mutation | `MonsterRuntimeController` behind `RuntimeCommandPipeline` and `MilitaryMonsterDamageCommandSink` | Existing `SimulationMutationAuthority` path | `ADAPT_AS_CONSUMER` | Sealed monster intents dispatch only inside the active simulation step. The private-input Owner and reducer never mutate monster HP; replay/duplicate submission cannot damage twice. |
 | Current six-color asset quantity | `PlayerManaRuntimeController` | Current production descendant | `ADAPT_AS_CONSUMER` | Stage 4 may use reservation/settlement APIs only; it may not copy balances or create an asset ledger. |
 | Current military unit state | `MilitaryRuntimeController` | Current production descendant + V075 mission-core contract | `ADAPT_AS_CONSUMER` | Stage 4 delegates `ASSAULT_REGION` or `ASSAULT_MONSTER` once, stays present through arrival/execution, and is removed exactly once only after the reducer emits `WITHDRAWAL_READY`. The reducer owns no unit position or quantity. `GUARD`, `PROTECT`, teleport, retarget, and persistent commands are forbidden. |
@@ -63,3 +64,14 @@ three-phase ledger and two Kernel-derived continuations per mission. Sealed
 facility and monster intents settle through their existing unique mutation
 paths without supersession or a second Kernel/topology/catalog/asset/military/
 damage Owner. Production composition and `main.tscn` execution remain pending.
+
+Stage 5 isolated evidence extends the same STEP10 Owner and reducer with one
+common `submission_tick + 1` intake root for military and source-bound monster
+skill actions. The V076 Kernel assigns the only cross-kind Authority Sequence;
+V075 consumes skill bundles through its existing revalidation, reservation,
+safe-boundary, exact-once, privacy, and public-aftermath contracts. The mixed
+action focus test preserves A/B reverse-submit replay parity, duplicate and
+collision rejection, hidden-info count 0, public-batch count 0, and sushi-track
+count 0 over a 1,000-seed canonical probe matrix. No second channel, queue,
+skill Owner, asset Owner, damage sink, Bench, or production composition is
+introduced; production and human green remain false.
