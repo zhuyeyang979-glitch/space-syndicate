@@ -309,9 +309,13 @@ func _process(delta: float) -> void:
 		return
 	if _playtest_pace_multiplier == 0:
 		return
+	# Deterministic simulation/accelerated settlement already owns its historical
+	# 30x clock. Playtest pacing is a presentation-facing control for the real
+	# non-accelerated production loop and must not compound that simulation scale.
+	var pacing_multiplier := 1 if _accelerated else _playtest_pace_multiplier
 	var scaled_delta := (
 		delta
-		* float(_playtest_pace_multiplier)
+		* float(pacing_multiplier)
 		* (30.0 if _accelerated else 1.0)
 	)
 	_clock_msec += maxi(1, int(round(scaled_delta * 1000.0)))
