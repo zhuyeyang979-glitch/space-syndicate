@@ -1,7 +1,7 @@
 # V0.7.6 inherited green ledger
 
-Candidate: `f9963d6a615934d68d80a63a7c69a9ade710215d` / tree
-`154f9a98c20e940dc0896672fcb9174e07ec5d9e`, Draft PR #93.
+Candidate: `46f985a23686291100cdd8ea10706983d1147514` / tree
+`330a83b92cd1af6382d98590744ee3449328cc5b`, Draft PR #93.
 
 `POINT_INERTIA=ACTIVE`
 
@@ -27,15 +27,16 @@ new full-world proof.
 | Stage 4 simultaneous private-action ordering infrastructure | `CURRENT_DELTA_GREEN` | `V076PrivateDirectActionInputOwnerV1`; reused V075 private-skill path | Mixed-action `9/9`; 1,000 seeds / 2,000 probes; reverse-submit/replay parity; duplicate effects, hidden-info violations, public batch, and sushi track all 0 | `INFRASTRUCTURE` evidence augments STEP10 without a second channel, queue, Owner, or Bench. |
 | Stage 4 military production composition cutover | `CURRENT_DELTA_GREEN` | One each of Kernel, ETA, Input Owner, and reused `V075RuntimeOwner` | Cutover receipt PASS; exact `main.tscn` SHA; production focus `55/55` across region/monster missions; V075 composition `111/111`; private receipt `5/5`; Input Owner `7/7`; V07 asset `285/285`; errors/diagnostics/residual processes 0 | Atomic wiring is complete with no new Owner, dual write, fallback, or `GameRuntimeCoordinator`. STEP10 stays `ISOLATED_GREEN`; production green and human green remain false. |
 | Alpha 0.7 Human Golden observation readiness | `CURRENT_DELTA_GREEN` | Existing `V073PlaytestTelemetryService`; two stateless Adapters | Readiness `35/35`; V075 composition `111/111`; military production composition `55/55`; real `main.tscn` MCP start/read/stop; script errors, diagnostics, changed-file warnings, untracked UIDs, and residual processes 0 | `INFRASTRUCTURE` evidence only. The observation package permanently reports human execution/confirmation and production/human green false; STEP09 Monster cutover and independent human attestation remain pending. |
+| Alpha 0.7 STEP09 Monster production cutover | `CURRENT_DELTA_GREEN` | `V076MonsterL1ReducerV1`; reused V075 target-plan and terminal-consequence consumers | Production composition `74/74`; V075 movement writer `0`, V076 Monster Owner `1`, Kernel Monster root batch `1`; physical crossing/facility consequence/movement presentation/trample presentation `>0/1/1/1`; duplicate and asset-quantity writes `0/0`; Monster `47/47`; 1,000 seeds / 2,000 replays / 0 mismatch; V075 composition `111/111`; four adjacent autonomy/trample sentinels; real `main.tscn` changed-file warnings, hard errors, UIDs, and residual processes all 0 | STEP09 is `PRODUCTION_GREEN` only. Full-product production green, human execution/attestation, STEP11+, per-card certification, and full-world reproof remain false or pending. |
 
 The Stage 2 topology remains bound to
 `5cbd98e4027bc2cfd058c857e1a24a5f7c8c61291f1cb7ae7336bcf6851f6452`.
 The Stage 3 aggregate replay receipt is
 `bc3ebb6c182e5ee49a8aa7437562482447bfd232d9f46fd2fc765f0a4fcabca8`.
 
-The final row claims observation readiness over the inherited atomic production
-composition cutover only. No row claims production-green behavior, a human
-playtest pass, per-card certification, or repository-wide reproof. A future
+The final row promotes only Golden STEP09 to `PRODUCTION_GREEN`; it does not
+claim full-product production green, a human playtest pass, observer
+attestation, per-card certification, or repository-wide reproof. A future
 change to an Owner byte or bound dependency must replace inheritance with a
 scoped sentinel or a new proof.
 
@@ -62,17 +63,17 @@ remain isolated `5`, production `0`, human `0`.
 ## Canonical PR status and merge ratchet
 
 The JSON ledger is the sole machine source for the PR #93 status block. It
-records Stage 1/2/3 as isolated green and Alpha 0.7 Human Golden observation
-readiness as the latest completed infrastructure stage, with Golden counts
-`5/0/0` and production cutover `true`; the next stage is STEP09 Monster
-production cutover.
+records Stage 1/2/3 as isolated green and Alpha 0.7 STEP09 Monster production
+cutover as the latest completed capability stage, with Golden counts `5/1/0`
+and production cutover `true`; the next stage is STEP11 asset consequence
+cutover.
 The required check name is exactly `V076 Reuse and Point-Inertia Gate`.
 
 The gate was queued without interrupting the active task and activated after
 the preserved PR90 Tooling V19 atomic boundary
 `a80ad3e107491d03e8a1ccf5379fcb44c705f951`. Once the current-Head check is
 green, development resumes at
-`V076_ALPHA07_PRODUCTION_GOLDEN_STEP09_MONSTER_CUTOVER`.
+`V076_ALPHA07_PRODUCTION_GOLDEN_STEP11_ASSET_CONSEQUENCE_CUTOVER`.
 
 Ready, merge, release-tag, and any further evidence promotion remain forbidden
 until that exact check succeeds for the current PR Head. Observation readiness

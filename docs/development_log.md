@@ -9785,3 +9785,41 @@ deleted. Evidence and the remaining action inventory are recorded in
   new/changed component coverage `100_PERCENT`, and zero new-owner reuse-scan,
   parallel-owner, unclassified-component, Golden false-green, card-reset,
   full-world-reproof, stale-PR-status, or false-green prose failures.
+
+## 2026-08-23 — V076 Alpha 0.7 STEP09 Monster production cutover
+
+- Extended the existing `V076MonsterL1ReducerV1` instead of creating a second
+  Monster Owner. The production V075 autonomy plan remains the target/detection
+  source, but its historical movement/trample receipt is removed before the old
+  writer can run. One V076 Kernel root batch now owns the physical half-edge
+  movement, region crossings, and trample ledger for all planned Monsters.
+- The existing V075 source, facility HP, exact-once, and presentation journals
+  consume one closed V076 terminal result. Replay returns duplicate without a
+  second source move, facility mutation, or movement/trample presentation.
+  V076 production asset quantity/cooldown ledgers remain absent; public-batch
+  and shared sushi-track counts remain zero.
+- Implementation `46f985a23686291100cdd8ea10706983d1147514`, tree
+  `330a83b92cd1af6382d98590744ee3449328cc5b`, passes production composition
+  `74/74`, Monster L1 `47/47`, V075 application composition `111/111`, Human
+  observation readiness `35/35`, and four adjacent V075 autonomy/trample
+  sentinels. The formal 1,000-seed sentinel completes 2,000 replays with zero
+  mismatch/failure and aggregate receipt
+  `77b70c7f61ed29ffe647ca01f81994baaaeb887badbffde2739e89e395d18c8d`.
+- Godot MCP ran the real `res://scenes/main.tscn`; the one task-introduced
+  parameter-shadow warning was repaired before evidence was sealed. The final
+  run has changed-file warnings `0`, hard errors `0`, UID changes `0`, and
+  scoped residual processes `0`, followed by a clean stop.
+- Added a dedicated STEP09 Golden production-execution receipt and a cumulative
+  Monster production-cutover receipt. The cumulative receipt references both
+  immutable earlier cutover receipts without modifying them. STEP09 becomes
+  `PRODUCTION_GREEN`; the full product remains `production_green=false`, and
+  human execution, confirmation, observer attestation, per-card certification,
+  STEP11+, and full-world reproof remain false or pending.
+- The first formal Gate isolated one committed metadata timing defect: the
+  implementation component row declared the already-executed 1,000-seed test
+  before the canonical focused-test scope listed it. Because published history
+  may not be amended, the Gate gained a narrowly self-tested append-only
+  `FOCUSED_TEST_SCOPE_METADATA_REPAIR` contract. It accepts only an exact
+  existing component/transition whose missing test is currently declared and
+  executed; it cannot waive an absent test, code-before-registry, a new Owner,
+  or any other failure class. Gate self-test is now `120/120`.

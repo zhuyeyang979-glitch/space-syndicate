@@ -2,17 +2,18 @@
   "schema_version": "space_syndicate.v076.alpha07_golden_playtest_scenario.v1",
   "scenario_id": "v076-alpha07-golden-playtest-scenario-01",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "f9963d6a615934d68d80a63a7c69a9ade710215d",
+  "candidate_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "overall_status": "PENDING_HUMAN_PRODUCTION_EXECUTION",
   "human_execution_count": 0,
-  "production_pass_count": 0,
+  "production_pass_count": 1,
   "isolated_green_count": 5,
   "stage3_diagnostic_only": true,
   "stage3_human_golden_step_06_09": false,
   "full_reproof_performed": false,
   "status_vocabulary": [
     "ISOLATED_GREEN",
+    "PRODUCTION_GREEN",
     "PENDING"
   ],
   "steps": [
@@ -103,13 +104,23 @@
     {
       "step_id": "STEP09",
       "name": "Resolve a production Monster directional move and visible consequence",
-      "status": "PENDING",
-      "required_surface": "future production V076 Monster composition",
+      "status": "PRODUCTION_GREEN",
+      "required_surface": "production main composition",
       "human_executed": false,
       "production_composition": true,
-      "pass_claimed": false,
-      "acceptance": "A real player action reaches the unique Monster owner, moves over the bound map, and presents crossings/trample once.",
-      "diagnostic_warning": "The current Stage 3 Bench explicitly records human_golden_step_06_09=false and cannot satisfy this step."
+      "pass_claimed": true,
+      "evidence": "Implementation 46f985a2 cuts production Monster autonomy movement from the historical V075 writer into one V076 Kernel root batch and the unique V076MonsterL1ReducerV1. Production composition passes 74/74: the Monster crosses the physical half-edge sphere, V075 consumes the closed destination/trample result through its existing source/facility/presentation authorities exactly once, replay adds no consequence, and production asset quantity writes remain zero. Monster L1 passes 47/47 and 1,000 seeds x 2 replays with zero mismatch. V075 composition remains 111/111, four adjacent autonomy/trample sentinels pass, Human observation readiness remains 35/35 with human_executed=false, and real main.tscn start/read/stop has zero changed-file warnings, hard errors, UID changes, or residual processes.",
+      "production_evidence": {
+        "evidence_type": "V076_GOLDEN_PRODUCTION_EXECUTION",
+        "candidate_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+        "receipt_path": "reports/reuse/v076_step09_golden_production_execution_receipt.json",
+        "receipt_sha256": "a18a53aa7fa3a70faa0617e172292ebdbe045a2157c7e5c7754fc70a8e14ee94",
+        "production_scene_path": "scenes/main.tscn",
+        "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+        "pass_count": 1
+      },
+      "claim_limit": "This promotes STEP09 only. Full-product production green, human execution/confirmation, observer attestation, STEP11-STEP15, per-card certification, and full-world reproof remain false or pending.",
+      "acceptance": "One production-composition autonomy action reaches the unique V076 Monster owner, moves over the bound physical map, and presents crossing/trample consequences once through existing V075 consumers."
     },
     {
       "step_id": "STEP10",
@@ -204,7 +215,6 @@
       "STEP06",
       "STEP07",
       "STEP08",
-      "STEP09",
       "STEP11",
       "STEP12",
       "STEP13",
@@ -212,6 +222,8 @@
       "STEP15"
     ],
     "human_pass_step_ids": [],
-    "production_pass_step_ids": []
+    "production_pass_step_ids": [
+      "STEP09"
+    ]
   }
 }

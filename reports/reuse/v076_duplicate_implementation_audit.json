@@ -2,8 +2,8 @@
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "f9963d6a615934d68d80a63a7c69a9ade710215d",
-  "candidate_tree_sha": "154f9a98c20e940dc0896672fcb9174e07ec5d9e",
+  "candidate_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+  "candidate_tree_sha": "330a83b92cd1af6382d98590744ee3449328cc5b",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
@@ -92,7 +92,7 @@
       "owner_count": 1,
       "unique_owner": "V075RuntimeOwner",
       "path": "scripts/v075_runtime/v075_runtime_owner.gd",
-      "v076_extension": "production own-hand authorization + typed asset reservation + facility/monster damage settlement + card consumption/withdrawal",
+      "v076_extension": "production own-hand authorization + typed asset reservation + facility/monster damage settlement + card consumption/withdrawal + exact-once consumption of V076 Monster terminal movement/trample results",
       "production_adapter_count": 1,
       "production_adapter_stateful_count": 0,
       "new_owner_created": false,
@@ -258,6 +258,7 @@
     "second military mission lifecycle Owner, phase ledger, or non-Kernel tick continuation",
     "second facility or monster damage sink, HP ledger, mutation authority, or damage presentation receipt owner",
     "second monster private-skill queue, receive sequence, safe-boundary, skill state, cooldown, reservation, result, or presentation Owner",
+    "second production Monster movement writer, route/trample ledger, topology, asset quantity ledger, terminal receipt ledger, or presentation Owner",
     "second Human Golden telemetry, event-sequence, evidence-package, export-finalization, observation identity, or attestation Owner",
     "root submission of execute or withdraw commands reserved for Kernel derivation",
     "revived PR70 card batch",
@@ -286,7 +287,7 @@
       "status": "UNVERIFIED"
     },
     {
-      "boundary": "Alpha 0.7 STEP09 Monster production cutover and real human observer attestation",
+      "boundary": "Alpha 0.7 real human observer attestation",
       "human_executed": false,
       "human_confirmed": false,
       "observer_attestation_required": true,
@@ -388,6 +389,21 @@
       "observer_attestation_required": true,
       "status": "ISOLATED_GREEN",
       "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "Alpha 0.7 STEP09 production Monster physical movement and consequence",
+      "production_scene_path": "scenes/main.tscn",
+      "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+      "v075_production_monster_movement_writer_count": 0,
+      "v076_production_monster_movement_owner_count": 1,
+      "kernel_monster_root_batch_count": 1,
+      "production_asset_quantity_write_count": 0,
+      "duplicate_consequence_count": 0,
+      "new_owner_count": 0,
+      "parallel_production_owner_count": 0,
+      "status": "PRODUCTION_GREEN",
+      "full_product_production_green": false,
       "human_green": false
     }
   ],

@@ -5,7 +5,7 @@ schema_version: space_syndicate.v076.owner_reuse_map.v1
 registry_id: V076_OWNER_REUSE_MAP
 
 This map enforces one Owner per domain at candidate head
-`f9963d6a615934d68d80a63a7c69a9ade710215d`. Consumers may adapt data or
+`46f985a23686291100cdd8ea10706983d1147514`. Consumers may adapt data or
 contracts, but they may not inherit authority by association.
 
 | Domain | Unique Owner | Reused source | Disposition | Consumer boundary |
@@ -14,7 +14,7 @@ contracts, but they may not inherit authority by association.
 | Shared spherical partition authority | `V076SharedHalfEdgePartitionV1` | Stage 2 | `ADOPT_AS_OWNER` | V074 float geometry is presentation-only after exact mapping parity. |
 | Responsive globe interaction presentation | `V076SharedHalfEdgePartitionBench` | PR #88 source `558cc110...`, head `82334b9b...`, merge `05c24150...` | `ADAPT_AS_CONSUMER` | Typed targeting/hit/rotate/zoom/collision/no-mutation patterns and tests only. V073 six-region float Voronoi is retired as authority; no controller copy and no Stage 2 replacement. |
 | Stage 2 reducer ABI | `V076PartitionReducerV1` | Stage 2 reducer adapted at Stage 3 | `ADAPT_AS_CONSUMER` | Generator, topology, validator, and codec remain unchanged; sentinel is `90/90`. |
-| Monster L1 geodesic movement | `V076MonsterL1ReducerV1` | Stage 3 | `ADOPT_AS_OWNER` | Isolated only; no production cutover or asset-ledger dual write. |
+| Monster L1 geodesic movement | `V076MonsterL1ReducerV1` | Stage 3 isolated Owner extended by STEP09 production cutover | `ADOPT_AS_OWNER` | The same Owner now handles the production autonomy root batch and remains the only physical route/crossing/trample ledger. It owns no asset quantity, card catalog, target planning, facility HP, presentation, or second topology. |
 | Current gameplay card definitions | `CardRuntimeCatalogService` | V04 root resource | `ADOPT_AS_OWNER` | Ten packs organize data only and are not Owners. |
 | V06 semantic card source | `CardRuntimeCatalogV06Resource` | V06 resource + JSON | `ADOPT_AS_OWNER` | Semantic source does not replace V04 gameplay execution. |
 | Semantic transform/cache | `CardSemanticCatalogService` | PR #62 compiler/schema | `ADOPT_AS_OWNER` | Deterministic transform only; not an executor. |
@@ -26,10 +26,11 @@ contracts, but they may not inherit authority by association.
 | Military mission lifecycle phase ledger | `V076PrivateDirectActionInputOwnerV1` through registered `V076PrivateDirectActionReducerV1` | V076 Kernel derived-command ABI + Profile Authority + Physical ETA + V075 locked mission/withdrawal contracts | `ADAPT_AS_CONSUMER` | Records `ARRIVED`, `EXECUTED_ONCE`, and `WITHDRAWAL_READY` under the existing private-input Owner. Kernel alone assigns ticks/sequences and derives execute/withdraw commands; Profile owns combat values; existing unit/asset Owners alone settle quantity. No second lifecycle Owner or per-tick position state exists. |
 | Current V075 facility combat settlement | `V075RuntimeOwner` | Existing V075 Facility bridge, processed ledger, witness ledger, fizzle journal, and presentation receipts | `ADAPT_AS_CONSUMER` | One narrow V076 entry consumes sealed facility intents. The existing Owner alone mutates facility damage/revision and records exact-once/fizzle evidence; no second facility damage Owner or ledger exists. |
 | Current V075 source-bound monster private skill settlement | `V075RuntimeOwner` through existing `V075CombatRuntimeOwner` / `V075MonsterPrivateSkillCore` | Existing source/generation validation, owner-private skill zone, reservation, safe-boundary, effect, cooldown/Fizzle, privacy, and public-aftermath contracts | `ADAPT_AS_CONSUMER` | V076 only carries an authorized opaque bundle through the common Kernel intake root and consumes it in root Authority Sequence order. V075 remains the sole skill/asset/damage/safe-boundary authority; source-bound skills never enter `own_hand`, public batch, or sushi track. |
+| Production Monster autonomy target and consequence consumption | Physical movement: `V076MonsterL1ReducerV1`; target plan and terminal consequence: existing `V075RuntimeOwner` lineage | Existing V075 autonomy target/detection plan + V076 Kernel/half-edge metric + existing V075 source/facility/presentation journals | `ADAPT_AS_CONSUMER` | V075 strips its historical production movement/trample receipt before settlement. One Kernel root batch drives V076 physical movement; the existing V075 Owner then consumes one terminal destination/trample result for source projection, facility HP, and presentation. No V075 production movement write, second route/trample/asset ledger, dual write, fallback, or presentation Owner remains reachable. |
 | Current monster damage mutation | `MonsterRuntimeController` behind `RuntimeCommandPipeline` and `MilitaryMonsterDamageCommandSink` | Existing `SimulationMutationAuthority` path | `ADAPT_AS_CONSUMER` | Sealed monster intents dispatch only inside the active simulation step. The private-input Owner and reducer never mutate monster HP; replay/duplicate submission cannot damage twice. |
 | Current V075 production six-color asset quantity | `V075RuntimeOwner` through existing `V07AssetBatchCore` state | Existing V07 balances, reservations, revision, and receipt journal | `ADAPT_AS_CONSUMER` | The production bridge adds a typed private-Direct-Action reservation/settlement contract to the same state. It does not instantiate `PlayerManaRuntimeController`, copy balances, or create a second asset ledger. |
 | Current V075 production military card lifecycle | `V075RuntimeOwner` through the existing player DBG hand/discard state | Existing V075 authored card, hand-membership, and card-play lifecycle | `ADAPT_AS_CONSUMER` | The card instance is claimed while in flight, remains physically routed by ETA, and is consumed exactly once only after `WITHDRAWAL_READY`. The Direct Action Owner owns no card catalog or asset/unit quantity. `GUARD`, `PROTECT`, teleport, retarget, and persistent commands remain forbidden. |
-| Production military composition wiring | Existing four Owners: `V076DeterministicKernel`, `V076MilitaryPhysicalEtaOwnerV1`, `V076PrivateDirectActionInputOwnerV1`, and `V075RuntimeOwner` | Existing `V075RuntimeComposition`, `V075ApplicationFlow`, and one stateless `V076V075ProductionAdapterV1` | `ADAPT_AS_CONSUMER` | `scenes/main.tscn` reaches one instance of each Owner through the V075 composition. No `GameRuntimeCoordinator`, second asset/military/monster Owner, public-batch fallback, or dual write is connected. Cutover receipt is bound to implementation `ad12cfa8` and exact main-scene SHA. |
+| Production composition wiring | Existing Owners: `V076DeterministicKernel`, `V076SharedHalfEdgePartitionV1`, `V076MonsterL1ReducerV1`, `V076MilitaryPhysicalEtaOwnerV1`, `V076PrivateDirectActionInputOwnerV1`, and `V075RuntimeOwner` | Existing `V075RuntimeComposition`, `V075ApplicationFlow`, and one stateless `V076V075ProductionAdapterV1` | `ADAPT_AS_CONSUMER` | `scenes/main.tscn` reaches the existing V075 composition and one instance of each V076 Owner. The adapter stores only bindings/diagnostics. No `GameRuntimeCoordinator`, second asset/military/monster/map Owner, public-batch fallback, or dual write is connected. The cumulative receipt is bound to STEP09 implementation `46f985a2` and the exact unchanged main-scene SHA. |
 | Codex/PlayerFace presentation | `CardCodexPublicSourceService` | PR #66 current descendant | `ADOPT_AS_OWNER` | DTO/presentation aliases cannot become rules. |
 | V07 track/DBG/assets/solar concepts | Their current domain descendants, behind V076 reducers | PR #79 | `ADAPT_AS_CONSUMER` | Requires V076 ABI/replay/RNG proof; no new public batch or second asset Owner. |
 | Pure semantic adversarial patterns | V076 focused tests | PR #64 | `REUSE_AS_TEST` | Metadata registry stays non-executing. |
@@ -86,8 +87,16 @@ reachable `V073PlaytestTelemetryService` instead of creating another telemetry
 or evidence Owner. One immutable profile Adapter fingerprints the existing
 economy, V075 combat, and V076 military authorities; the existing V075
 bootstrap configures it exactly once and fails closed on invalid identity.
-Readiness passes `35/35`, V075 composition remains `111/111`, military
-production composition remains `55/55`, and the real `main.tscn` MCP run stops
-cleanly. The generated package is observation-only and cannot self-assert a
-human or production pass. STEP09 Monster production cutover and a real human
-observer attestation remain the next unproved boundaries.
+Readiness passes `35/35`, V075 composition remains `111/111`, and the real
+`main.tscn` MCP run stops cleanly. The generated package is observation-only
+and cannot self-assert a human pass.
+
+STEP09 binds implementation tree `330a83b9...`: production composition passes
+`74/74`, the V075 production movement writer count is zero, one V076 Monster
+Owner receives one Kernel root batch, physical crossing and trample reach the
+existing facility/presentation consumers once, replay adds no second effect,
+and production asset quantity writes remain zero. Monster L1 remains `47/47`
+and the 1,000-seed/2,000-replay sentinel has zero mismatch. This is STEP09
+`PRODUCTION_GREEN` only; full-product production green, human execution,
+observer attestation, STEP11+, per-card certification, and full-world reproof
+remain false or pending.

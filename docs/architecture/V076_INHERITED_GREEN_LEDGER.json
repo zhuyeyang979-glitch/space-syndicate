@@ -4,8 +4,8 @@
   "recorded_on": "2026-08-23",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "f9963d6a615934d68d80a63a7c69a9ade710215d",
-    "tree_sha": "154f9a98c20e940dc0896672fcb9174e07ec5d9e",
+    "head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+    "tree_sha": "330a83b92cd1af6382d98590744ee3449328cc5b",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
@@ -14,13 +14,14 @@
     "historical_reuse": "ACTIVE",
     "change_class": "CROSS_DOMAIN_INTEGRATION",
     "full_reproof_performed": false,
-    "godot_execution_count": 34,
+    "godot_execution_count": 59,
     "production_composition_changed": true
   },
   "status_vocabulary": [
     "INHERITED_GREEN",
     "CURRENT_DELTA_GREEN",
     "ISOLATED_GREEN",
+    "PRODUCTION_GREEN",
     "PENDING",
     "UNVERIFIED"
   ],
@@ -824,6 +825,129 @@
         "alpha07_per_card_certification",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP09_MONSTER_CUTOVER",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+      "tree_sha": "330a83b92cd1af6382d98590744ee3449328cc5b",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "PLAYABLE_CAPABILITY",
+      "golden_step_ids": [
+        "STEP09"
+      ],
+      "current_owner": "V076MonsterL1ReducerV1",
+      "reused_target_plan_owner": "V075CombatRuntimeOwner",
+      "reused_consequence_owner": "V075RuntimeOwner",
+      "evidence": [
+        {
+          "evidence_id": "alpha07-step09-monster-production-composition",
+          "result": "PASS",
+          "test": "v076_production_military_composition_test",
+          "runner_run_id": "20260823-134657-219-v076_production_military_composition_test-76ffe936",
+          "checks": "74/74",
+          "v075_production_monster_movement_writer_count": 0,
+          "v076_production_monster_movement_owner_count": 1,
+          "kernel_monster_root_batch_count": 1,
+          "physical_region_crossing_minimum": 1,
+          "facility_consequence_consumed_count": 1,
+          "movement_presentation_count": 1,
+          "trample_presentation_count": 1,
+          "duplicate_consequence_count": 0,
+          "production_asset_quantity_write_count": 0,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0,
+          "script_error_count": 0,
+          "diagnostic_count": 0,
+          "remaining_project_runtime_process_count": 0
+        },
+        {
+          "evidence_id": "alpha07-step09-monster-deterministic-replay",
+          "result": "PASS",
+          "focused_checks": "47/47",
+          "distinct_seed_count": 1000,
+          "replay_count": 2000,
+          "replay_state_hash_mismatch_count": 0,
+          "failure_count": 0,
+          "aggregate_receipt_sha256": "77b70c7f61ed29ffe647ca01f81994baaaeb887badbffde2739e89e395d18c8d",
+          "runner_run_id": "20260823-132137-953-v076_monster_l1_directional_geodesic_move_1000_seed_test-f6bd3ace"
+        },
+        {
+          "evidence_id": "alpha07-step09-direct-regressions",
+          "result": "PASS",
+          "v075_application_composition_checks": "111/111",
+          "v075_application_composition_run_id": "20260823-134503-354-v075_application_composition_test-a723dd60",
+          "human_observation_readiness_checks": "35/35",
+          "human_observation_readiness_run_id": "20260823-134514-573-v076_human_golden_observation_readiness_test-945afd87",
+          "v075_autonomy_trample_sentinel_count": 4,
+          "human_executed": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "alpha07-step09-main-runtime",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "changed_file_warning_count": 0,
+          "hard_runtime_error_count": 0,
+          "untracked_uid_count": 0,
+          "remaining_project_runtime_process_count": 0,
+          "stop_result": "Godot project stopped"
+        },
+        {
+          "evidence_id": "alpha07-step09-golden-production-execution-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step09_golden_production_execution_receipt.json",
+          "receipt_sha256": "a18a53aa7fa3a70faa0617e172292ebdbe045a2157c7e5c7754fc70a8e14ee94",
+          "production_scene_path": "scenes/main.tscn",
+          "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+          "pass_count": 1
+        },
+        {
+          "evidence_id": "alpha07-step09-cumulative-cutover-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_monster_production_cutover_receipt.json",
+          "receipt_sha256": "22038a6ae6c1eeb6fec804ca2a6c303d060cafe203a894542b0661aa06a235d8",
+          "previous_receipt_path": "reports/reuse/v076_human_golden_observation_production_cutover_receipt.json",
+          "previous_receipt_sha256": "d0a5db5c4adb9c401269691612ded4e1307fe1d8684a050636eac4be7f88277d",
+          "original_receipt_path": "reports/reuse/v076_production_cutover_receipt.json",
+          "original_receipt_sha256": "88d738bef0aad5a8acf2e21fd9f22f24742ee66f6639aa3e73f709f3e471d012",
+          "atomic_cutover": true
+        },
+        {
+          "evidence_id": "alpha07-step09-focused-test-scope-metadata-repair",
+          "result": "PASS",
+          "correction_kind": "FOCUSED_TEST_SCOPE_METADATA_REPAIR",
+          "repair_subject_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+          "repair_subject_tree_sha": "330a83b92cd1af6382d98590744ee3449328cc5b",
+          "prior_condition": "COMPONENT_TEST_DECLARED_BEFORE_CANONICAL_SCOPE",
+          "corrected_condition": "COMPONENT_TEST_PRESENT_IN_CANONICAL_SCOPE",
+          "affected_component_ids": [
+            "component.v076.monster_l1"
+          ],
+          "added_focused_test_ids": [
+            "v076_monster_l1_directional_geodesic_move_1000_seed_test"
+          ],
+          "affected_failures": [
+            {
+              "head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+              "failure_code": "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING",
+              "component_id": "component.v076.monster_l1"
+            }
+          ],
+          "product_behavior_changed": false,
+          "new_owner_created": false,
+          "rationale": "The existing Monster component atomically declared the 1,000-seed sentinel and implementation bytes, and that exact sentinel passed on the implementation tree. Only the canonical focused-test scope metadata was delayed to this append-only evidence commit; no test is waived and no product behavior or Owner changes."
+        }
+      ],
+      "not_claimed": [
+        "human_playtest_pass",
+        "observer_attestation",
+        "full_alpha07_production_green",
+        "step11_asset_consequence_cutover",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
@@ -831,7 +955,7 @@
     "test_bytes_changed_after_stage3": true,
     "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "The already-green STEP10 military Direct Action remains atomically wired into the existing V075 production composition, and the one existing V073 observation-only telemetry Owner now exports a fail-closed V076 candidate package. Readiness is infrastructure evidence only: human_executed, human_confirmed, production_green, and human_green remain false, and observer attestation plus STEP09 Monster production cutover remain pending."
+    "current_claim": "STEP09 now executes one production-composition Monster autonomy move through the unique V076 Kernel and Monster Owner, consumes one closed terminal consequence through the existing V075 facility/presentation authorities, and replays exact-once. This is one Golden step-level PRODUCTION_GREEN result only; the full product production claim, human execution/confirmation, observer attestation, STEP11+, per-card certification, and full-world reproof remain false or pending."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -845,12 +969,12 @@
     "historical_reuse_status": "ACTIVE",
     "point_inertia_status": "ACTIVE",
     "golden_isolated_green_count": 5,
-    "golden_production_green_count": 0,
+    "golden_production_green_count": 1,
     "golden_human_green_count": 0,
     "production_cutover_status": true,
-    "latest_completed_stage": "V076_ALPHA07_HUMAN_GOLDEN_OBSERVATION_READINESS",
-    "latest_completed_stage_head_sha": "f9963d6a615934d68d80a63a7c69a9ade710215d",
-    "next_stage": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP09_MONSTER_CUTOVER",
+    "latest_completed_stage": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP09_MONSTER_CUTOVER",
+    "latest_completed_stage_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+    "next_stage": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP11_ASSET_CONSEQUENCE_CUTOVER",
     "v075_pr90_dependency_boundary": "CURRENT_V075_OWNER_REUSED_NO_OWNER_SUPERSESSION"
   },
   "canonical_change_scope": {
@@ -919,6 +1043,11 @@
       "v076_deterministic_kernel_test",
       "v076_shared_half_edge_partition_test",
       "v076_monster_l1_directional_geodesic_move_test",
+      "v076_monster_l1_directional_geodesic_move_1000_seed_test",
+      "v075_monster_autonomy_shortest_path_test",
+      "v075_monster_ground_trample_test",
+      "v075_monster_trample_exact_once_test",
+      "v075_monster_flying_no_trample_test",
       "v075_military_two_task_contract_test",
       "v075_military_no_guard_test",
       "v075_military_no_retarget_test",
@@ -932,19 +1061,20 @@
       "V076_HALF_EDGE_SPHERE",
       "PR65_AUTHORIZATION_PATTERN",
       "V075_PRIVATE_SKILL_CONTRACT",
+      "V075_MONSTER_AUTONOMY_TRAMPLE_CONTRACT",
       "V073_PLAYTEST_INSTRUMENTATION_PRIVACY",
       "REUSE_POINT_INERTIA_GATE"
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "The production-composition delta retains the already-green military Direct Action and extends the one existing V073 observation-only telemetry Owner with a V076 candidate identity Adapter. The Human-Golden readiness test starts a real V075 production new game through main.tscn, exports the isolated manifest/summary, verifies reused economy/combat/military fingerprints, privacy, zero gameplay/Save/RNG/Tick ownership, and permanent human_executed=false; V075 composition and military production tests cover the only bootstrap and runtime dependencies. No second telemetry or gameplay Owner, balance copy, network path, human attestation, Guard/Protect, teleport, production/human false-green, or full-world reproof is introduced."
+    "why_focused_tests_are_sufficient": "The delta changes only the already-registered V076 Monster reducer/codec and the existing V075 production consumer boundary. Production composition 74/74 proves the old V075 movement/trample writer is unreachable, one V076 Kernel root batch owns physical movement, existing facility HP and presentation consume the terminal consequence once, replay adds no second effect, and no asset ledger is created. Monster 47/47 plus 1,000 seeds/2,000 replays, V075 composition 111/111, four adjacent autonomy/trample sentinels, Human readiness 35/35, and a real main.tscn start/read/clean-stop cover the touched dependencies. No new Owner, topology, tick/RNG/replay, asset quantity, card catalog, presentation, human attestation, or full-world reproof is introduced."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
   "point_inertia_gate_queued": true,
   "current_task_interrupted_by_gate": false,
   "current_task_result_preserved": true,
-  "product_development_resume_target": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP09_MONSTER_CUTOVER",
+  "product_development_resume_target": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP11_ASSET_CONSEQUENCE_CUTOVER",
   "production_composition_authorization_boundary": {
     "status": "CONSUMED",
     "required_authorization": "PRODUCTION_CUTOVER_AUTHORIZED=true",
@@ -985,9 +1115,9 @@
   },
   "production_cutover_receipt": {
     "status": "PASS",
-    "path": "reports/reuse/v076_human_golden_observation_production_cutover_receipt.json",
-    "sha256": "d0a5db5c4adb9c401269691612ded4e1307fe1d8684a050636eac4be7f88277d",
-    "candidate_head_sha": "f9963d6a615934d68d80a63a7c69a9ade710215d",
+    "path": "reports/reuse/v076_monster_production_cutover_receipt.json",
+    "sha256": "22038a6ae6c1eeb6fec804ca2a6c303d060cafe203a894542b0661aa06a235d8",
+    "candidate_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
     "production_scene_path": "scenes/main.tscn",
     "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
     "atomic_cutover": true,

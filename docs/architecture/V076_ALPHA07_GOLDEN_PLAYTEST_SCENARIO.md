@@ -7,7 +7,7 @@ It is a plan and evidence ledger, not a human-play result.
 
 `HUMAN_EXECUTION_COUNT=0`
 
-`PRODUCTION_PASS_COUNT=0`
+`PRODUCTION_PASS_COUNT=1`
 
 `ISOLATED_GREEN_COUNT=5`
 
@@ -21,7 +21,7 @@ It is a plan and evidence ledger, not a human-play result.
 | STEP06 | Complete human setup and enter table | `PENDING` | Requires the real production composition. |
 | STEP07 | Inspect globe and select legal target | `PENDING` | Requires human use of the production map and typed target binding. |
 | STEP08 | Acquire and submit one legal card | `PENDING` | Requires one real card instance through acquisition, hand, target, and resolution Owners. |
-| STEP09 | Resolve production Monster move/consequence | `PENDING` | Current Stage 3 Bench cannot satisfy this step. |
+| STEP09 | Resolve production Monster move/consequence | `PRODUCTION_GREEN` | Implementation `46f985a2` sends one production autonomy plan through one Kernel root batch and the unique V076 Monster Owner. Production composition is `74/74`; physical crossing, facility damage, movement/trample presentation, and replay exact-once are closed with zero V075 production movement writes and zero V076 asset-quantity writes. Human execution remains false. |
 | STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | The cumulative cutover receipt binds implementation `f9963d6a`, the unchanged exact `main.tscn` SHA, and the prior immutable `ad12cfa8` military receipt. Human-Golden observation readiness passes `35/35` through the one reused V073 telemetry Owner and permanently reports `human_executed=false`, `human_confirmed=false`, and `observer_attestation_required=true`. Production military composition remains `55/55`, V075 composition remains `111/111`, and scripted evidence keeps production/human green false. |
 | STEP11 | Observe economy/route/asset consequence | `PENDING` | Requires one atomic asset Owner and exact-once presentation. |
 | STEP12 | Observe AI action and privacy | `PENDING` | Requires production AI with viewer-scoped hidden-information proof. |
@@ -32,7 +32,7 @@ It is a plan and evidence ledger, not a human-play result.
 The Stage 3 route Bench is explicitly `diagnostic_only=true`,
 `production_composition_cutover=false`, and
 `human_golden_step_06_09=false`. It may support the isolated STEP05 capability;
-it cannot be relabeled as a human or production pass for STEP06-STEP09.
+it cannot be relabeled as a human or production pass for STEP06-STEP08.
 
 The Stage 4 Direct Action evidence began diagnostic-only. It proves the generic
 private authorization, exact-once, geodesic ETA receipt, mission,
@@ -64,10 +64,19 @@ production-reachable `V073PlaytestTelemetryService`; it does not create a
 second evidence Owner. An immutable V076 profile Adapter fingerprints the
 existing economy, combat, and military authorities, and the existing V075
 bootstrap configures it once with fail-closed validation. The generated
-manifest and summary are observation-only and cannot self-assert a human or
-production pass. The real next product gap is STEP09 Monster production
-cutover; independent human observer attestation remains required after that.
+manifest and summary are observation-only and cannot self-assert a human pass.
 
-STEP01, STEP06-STEP09, and STEP11-STEP15 remain pending. Any production or
-human Golden claim must come from the exact future production candidate and a
-real human session.
+STEP09 is now bound to the exact production-composition implementation and two
+append-only receipts. The historical V075 target/detection plan remains the
+consumer input, but its old movement/trample receipt is stripped before the
+historical writer can run. One V076 Kernel root batch drives the physical
+half-edge route; the existing V075 source, facility HP, and presentation
+authorities consume one terminal result. Monster L1 remains `47/47`; its
+1,000-seed/2,000-replay sentinel has zero mismatch; four adjacent V075
+autonomy/trample sentinels and V075 composition `111/111` remain green; real
+`main.tscn` starts and stops with zero changed-file warning, hard error, UID
+change, or residual process. This promotes STEP09 only, not the full product.
+
+STEP01, STEP06-STEP08, and STEP11-STEP15 remain pending. Full-product
+production green, every human Golden claim, and observer attestation still
+require the exact future candidate and a real human session.

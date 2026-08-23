@@ -324,6 +324,12 @@ HISTORY_REUSE_SCAN_CORRECTABLE_FAILURES = {
     "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
     "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
 }
+HISTORY_FOCUSED_TEST_SCOPE_CORRECTION_KIND = (
+    "FOCUSED_TEST_SCOPE_METADATA_REPAIR"
+)
+HISTORY_FOCUSED_TEST_SCOPE_CORRECTABLE_FAILURES = {
+    "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING",
+}
 
 CANONICAL_STAGE_IDS = (
     "V076_STAGE_1_DETERMINISTIC_KERNEL",
@@ -1280,6 +1286,254 @@ def _history_reuse_scan_corrections(
                 (failure_code, transition_component)
             )
             seen_failures.add((transition_head, failure_code, transition_component))
+    return allowed, failures
+
+
+def _history_focused_test_scope_correction_rows(
+    authorities: dict[str, dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], set[str]]:
+    rows: dict[str, dict[str, Any]] = {}
+    duplicates: set[str] = set()
+    for stage in authorities.get("inherited_green", {}).get("stages", []):
+        if not isinstance(stage, dict):
+            continue
+        for evidence in stage.get("evidence", []):
+            if not isinstance(evidence, dict) or evidence.get("correction_kind") != (
+                HISTORY_FOCUSED_TEST_SCOPE_CORRECTION_KIND
+            ):
+                continue
+            evidence_id = str(evidence.get("evidence_id", ""))
+            if evidence_id in rows:
+                duplicates.add(evidence_id)
+            else:
+                rows[evidence_id] = evidence
+    return rows, duplicates
+
+
+def _history_focused_test_scope_corrections(
+    root: Path,
+    head_ref: str,
+    authorities: dict[str, dict[str, Any]],
+) -> tuple[dict[str, set[tuple[str, str]]], list[str]]:
+    """Load exact append-only evidence for one focused-test scope metadata repair.
+
+    This cannot waive a missing test. It only repairs a committed transition
+    where an existing component already declared a focused test, that exact
+    test was actually executed and is now present in the canonical focused
+    scope, but the scope metadata landed in the following evidence commit.
+    """
+    failures: list[str] = []
+    allowed: dict[str, set[tuple[str, str]]] = {}
+    registry = authorities.get("historical_reuse", {})
+    components = _index(registry.get("component_inventory", []), "component_id")
+    current_focused = set(
+        map(
+            str,
+            authorities.get("inherited_green", {})
+            .get("canonical_change_scope", {})
+            .get("focused_tests", []),
+        )
+    )
+    correction_rows, duplicate_evidence_ids = (
+        _history_focused_test_scope_correction_rows(authorities)
+    )
+    failures.extend(
+        f"HISTORY_FOCUSED_TEST_SCOPE_CORRECTION_DUPLICATE:{evidence_id or 'missing'}"
+        for evidence_id in sorted(duplicate_evidence_ids)
+    )
+    seen_evidence_ids: set[str] = set()
+    seen_failures: set[tuple[str, str, str]] = set()
+    for evidence in correction_rows.values():
+        evidence_id = str(evidence.get("evidence_id", ""))
+        subject_head = str(evidence.get("repair_subject_head_sha", ""))
+        subject_tree = str(evidence.get("repair_subject_tree_sha", ""))
+        component_ids = evidence.get("affected_component_ids")
+        added_tests = evidence.get("added_focused_test_ids")
+        affected_failures = evidence.get("affected_failures")
+        rationale = str(evidence.get("rationale", "")).strip()
+        expected_fields = {
+            "evidence_id",
+            "result",
+            "correction_kind",
+            "repair_subject_head_sha",
+            "repair_subject_tree_sha",
+            "prior_condition",
+            "corrected_condition",
+            "affected_component_ids",
+            "added_focused_test_ids",
+            "affected_failures",
+            "product_behavior_changed",
+            "new_owner_created",
+            "rationale",
+        }
+        added_test_set = (
+            set(map(str, added_tests)) if isinstance(added_tests, list) else set()
+        )
+        valid = bool(
+            set(evidence) == expected_fields
+            and evidence_id
+            and evidence_id not in seen_evidence_ids
+            and evidence.get("result") == "PASS"
+            and _is_hex(subject_head, 40)
+            and _is_hex(subject_tree, 40)
+            and evidence.get("prior_condition")
+            == "COMPONENT_TEST_DECLARED_BEFORE_CANONICAL_SCOPE"
+            and evidence.get("corrected_condition")
+            == "COMPONENT_TEST_PRESENT_IN_CANONICAL_SCOPE"
+            and evidence.get("product_behavior_changed") is False
+            and evidence.get("new_owner_created") is False
+            and isinstance(component_ids, list)
+            and bool(component_ids)
+            and len(component_ids) == len(set(map(str, component_ids)))
+            and isinstance(added_tests, list)
+            and bool(added_tests)
+            and len(added_tests) == len(added_test_set)
+            and added_test_set.issubset(current_focused)
+            and isinstance(affected_failures, list)
+            and bool(affected_failures)
+            and rationale
+            and _git(root, "show", "-s", "--format=%T", subject_head, check=False)
+            == subject_tree
+            and subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(root),
+                    "merge-base",
+                    "--is-ancestor",
+                    subject_head,
+                    head_ref,
+                ],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode
+            == 0
+        )
+        if valid:
+            for component_id in map(str, component_ids):
+                component = components.get(component_id)
+                required_tests = (
+                    set(map(str, component.get("focused_test_ids", [])))
+                    if isinstance(component, dict)
+                    else set()
+                )
+                if not (
+                    isinstance(component, dict)
+                    and _component_is_authority(component)
+                    and component.get("production_reachable") is True
+                    and required_tests
+                    and required_tests.issubset(current_focused)
+                    and added_test_set.issubset(required_tests)
+                ):
+                    valid = False
+                    break
+        staged: set[tuple[str, str, str]] = set()
+        if valid:
+            for row in affected_failures:
+                if not isinstance(row, dict) or set(row) != {
+                    "head_sha",
+                    "failure_code",
+                    "component_id",
+                }:
+                    valid = False
+                    continue
+                transition_head = str(row.get("head_sha", ""))
+                failure_code = str(row.get("failure_code", ""))
+                component_id = str(row.get("component_id", ""))
+                transition_registry = _git_json_at(
+                    root,
+                    transition_head,
+                    "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+                )
+                transition_ledger = _git_json_at(
+                    root,
+                    transition_head,
+                    "docs/architecture/V076_INHERITED_GREEN_LEDGER.json",
+                )
+                transition_component = (
+                    _index(
+                        transition_registry.get("component_inventory", [])
+                        if isinstance(transition_registry, dict)
+                        else [],
+                        "component_id",
+                    ).get(component_id)
+                )
+                transition_required = (
+                    set(map(str, transition_component.get("focused_test_ids", [])))
+                    if isinstance(transition_component, dict)
+                    else set()
+                )
+                transition_focused = set(
+                    map(
+                        str,
+                        transition_ledger.get("canonical_change_scope", {}).get(
+                            "focused_tests", []
+                        )
+                        if isinstance(transition_ledger, dict)
+                        else [],
+                    )
+                )
+                missing_tests = transition_required - transition_focused
+                transition_parents = _git(
+                    root,
+                    "rev-list",
+                    "--parents",
+                    "-n",
+                    "1",
+                    transition_head,
+                    check=False,
+                ).split()[1:]
+                triple = (transition_head, failure_code, component_id)
+                if not (
+                    _is_hex(transition_head, 40)
+                    and failure_code in HISTORY_FOCUSED_TEST_SCOPE_CORRECTABLE_FAILURES
+                    and component_id in component_ids
+                    and missing_tests
+                    and missing_tests.issubset(added_test_set)
+                    and triple not in seen_failures
+                    and triple not in staged
+                    and subprocess.run(
+                        [
+                            "git",
+                            "-C",
+                            str(root),
+                            "merge-base",
+                            "--is-ancestor",
+                            transition_head,
+                            subject_head,
+                        ],
+                        check=False,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    ).returncode
+                    == 0
+                    and bool(transition_parents)
+                    and any(
+                        _git_path_exists_at(
+                            root,
+                            parent_ref,
+                            str(components[component_id].get("path", "")),
+                        )
+                        for parent_ref in transition_parents
+                        if component_id in components
+                    )
+                ):
+                    valid = False
+                    continue
+                staged.add(triple)
+        if not valid:
+            failures.append(
+                f"HISTORY_FOCUSED_TEST_SCOPE_CORRECTION_INVALID:"
+                f"{evidence_id or 'missing'}"
+            )
+            continue
+        seen_evidence_ids.add(evidence_id)
+        for transition_head, failure_code, component_id in staged:
+            allowed.setdefault(transition_head, set()).add(
+                (failure_code, component_id)
+            )
+            seen_failures.add((transition_head, failure_code, component_id))
     return allowed, failures
 
 
@@ -2311,6 +2565,30 @@ def _monotonic_transition_failures(
         elif new_correction != old_correction:
             failures.append(
                 f"HISTORY_REUSE_SCAN_CORRECTION_MUTATED:{label}:{evidence_id}"
+            )
+
+    old_focused_corrections, old_focused_duplicates = (
+        _history_focused_test_scope_correction_rows(previous)
+    )
+    new_focused_corrections, new_focused_duplicates = (
+        _history_focused_test_scope_correction_rows(current)
+    )
+    for evidence_id in sorted(old_focused_duplicates | new_focused_duplicates):
+        failures.append(
+            f"HISTORY_FOCUSED_TEST_SCOPE_CORRECTION_DUPLICATE:{label}:"
+            f"{evidence_id or 'missing'}"
+        )
+    for evidence_id, old_correction in old_focused_corrections.items():
+        new_correction = new_focused_corrections.get(evidence_id)
+        if new_correction is None:
+            failures.append(
+                "HISTORY_FOCUSED_TEST_SCOPE_CORRECTION_SILENT_DELETE:"
+                f"{label}:{evidence_id}"
+            )
+        elif new_correction != old_correction:
+            failures.append(
+                "HISTORY_FOCUSED_TEST_SCOPE_CORRECTION_MUTATED:"
+                f"{label}:{evidence_id}"
             )
 
     if transition_changed_paths is not None:
@@ -5176,8 +5454,14 @@ def committed_history_failures(
     )
     for transition_head, exact_codes in reuse_scan_corrections.items():
         corrections.setdefault(transition_head, set()).update(exact_codes)
+    focused_test_corrections, focused_test_correction_failures = (
+        _history_focused_test_scope_corrections(root, head_ref, head_authorities)
+    )
+    for transition_head, exact_codes in focused_test_corrections.items():
+        corrections.setdefault(transition_head, set()).update(exact_codes)
     failures: list[str] = list(correction_failures)
     failures.extend(reuse_scan_correction_failures)
+    failures.extend(focused_test_correction_failures)
     expected_corrections = {
         (transition_head, code, target)
         for transition_head, exact_codes in corrections.items()
@@ -5516,6 +5800,14 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
                 relative = _normalize_evidence_path(evidence.get(path_key))
                 if relative:
                     referenced_artifacts.add(relative)
+    cutover_evidence = authorities.get("supersession", {}).get(
+        "production_cutover_evidence"
+    )
+    if isinstance(cutover_evidence, dict):
+        for path_key in ("production_scene_path", "receipt_path"):
+            relative = _normalize_evidence_path(cutover_evidence.get(path_key))
+            if relative:
+                referenced_artifacts.add(relative)
     for relative in sorted(referenced_artifacts):
         artifact = (root / relative).resolve()
         try:

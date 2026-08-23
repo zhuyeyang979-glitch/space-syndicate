@@ -3176,6 +3176,9 @@ print('not-json'); raise SystemExit(2)
     reuse_scan_correction_failures: list[str] = []
     invalid_reuse_scan_correction_failures: list[str] = []
     mutated_reuse_scan_correction_failures: list[str] = []
+    focused_scope_correction_failures: list[str] = []
+    invalid_focused_scope_correction_failures: list[str] = []
+    mutated_focused_scope_correction_failures: list[str] = []
     try:
         with tempfile.TemporaryDirectory(prefix="v076-history-correction-") as temp_path:
             correction_root = Path(temp_path)
@@ -3373,10 +3376,160 @@ print('not-json'); raise SystemExit(2)
                 mutated_reuse_scan_correction_failures.append(
                     "REUSE_SCAN_CORRECTION_MUTATION_NOT_REJECTED"
                 )
+
+            focused_test_id = "v076.focused.scope.selftest"
+            focused_transition_authorities = _authorities()
+            focused_transition_component = focused_transition_authorities[
+                "historical_reuse"
+            ]["component_inventory"][0]
+            focused_transition_component["focused_test_ids"] = [focused_test_id]
+            focused_transition_authorities["inherited_green"][
+                "canonical_change_scope"
+            ]["focused_tests"] = []
+            history_registry_path.write_text(
+                json.dumps(
+                    focused_transition_authorities["historical_reuse"],
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            focused_ledger_path = correction_root / (
+                "docs/architecture/V076_INHERITED_GREEN_LEDGER.json"
+            )
+            focused_ledger_path.write_text(
+                json.dumps(
+                    focused_transition_authorities["inherited_green"],
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            _git_fixture(correction_root, "add", ".")
+            _git_fixture(
+                correction_root,
+                "commit",
+                "-m",
+                "declare focused test before canonical scope",
+            )
+            focused_transition_head = _git_fixture(
+                correction_root, "rev-parse", "HEAD"
+            )
+            focused_transition_tree = _git_fixture(
+                correction_root, "rev-parse", "HEAD^{tree}"
+            )
+            focused_scope_authorities = copy.deepcopy(
+                focused_transition_authorities
+            )
+            focused_scope_authorities["inherited_green"][
+                "canonical_change_scope"
+            ]["focused_tests"] = [focused_test_id]
+            focused_scope_authorities["inherited_green"]["stages"][0][
+                "evidence"
+            ] = [
+                {
+                    "evidence_id": "selftest-focused-test-scope-repair",
+                    "result": "PASS",
+                    "correction_kind": (
+                        gate.HISTORY_FOCUSED_TEST_SCOPE_CORRECTION_KIND
+                    ),
+                    "repair_subject_head_sha": focused_transition_head,
+                    "repair_subject_tree_sha": focused_transition_tree,
+                    "prior_condition": (
+                        "COMPONENT_TEST_DECLARED_BEFORE_CANONICAL_SCOPE"
+                    ),
+                    "corrected_condition": (
+                        "COMPONENT_TEST_PRESENT_IN_CANONICAL_SCOPE"
+                    ),
+                    "affected_component_ids": [BASE_OWNER_ID],
+                    "added_focused_test_ids": [focused_test_id],
+                    "affected_failures": [
+                        {
+                            "head_sha": focused_transition_head,
+                            "failure_code": (
+                                "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING"
+                            ),
+                            "component_id": BASE_OWNER_ID,
+                        }
+                    ],
+                    "product_behavior_changed": False,
+                    "new_owner_created": False,
+                    "rationale": (
+                        "Exact focused-test scope metadata repair."
+                    ),
+                }
+            ]
+            focused_scope_rows, focused_scope_correction_failures = (
+                gate._history_focused_test_scope_corrections(
+                    correction_root,
+                    focused_transition_head,
+                    focused_scope_authorities,
+                )
+            )
+            expected_focused_scope_rows = {
+                focused_transition_head: {
+                    ("HISTORY_PRODUCT_FOCUSED_TESTS_MISSING", BASE_OWNER_ID)
+                }
+            }
+            if focused_scope_rows != expected_focused_scope_rows:
+                focused_scope_correction_failures.append(
+                    "FOCUSED_SCOPE_CORRECTION_EXACT_SCOPE_MISMATCH:"
+                    f"{focused_scope_rows!r}"
+                )
+            invalid_focused_scope_authorities = copy.deepcopy(
+                focused_scope_authorities
+            )
+            invalid_focused_scope_authorities["inherited_green"]["stages"][0][
+                "evidence"
+            ][0]["added_focused_test_ids"] = ["v076.not.executed"]
+            invalid_focused_rows, invalid_focused_failures = (
+                gate._history_focused_test_scope_corrections(
+                    correction_root,
+                    focused_transition_head,
+                    invalid_focused_scope_authorities,
+                )
+            )
+            if invalid_focused_rows or not any(
+                failure.startswith(
+                    "HISTORY_FOCUSED_TEST_SCOPE_CORRECTION_INVALID:"
+                )
+                for failure in invalid_focused_failures
+            ):
+                invalid_focused_scope_correction_failures.append(
+                    "INVALID_FOCUSED_SCOPE_CORRECTION_WAS_APPLIED"
+                )
+            mutated_focused_scope_authorities = copy.deepcopy(
+                focused_scope_authorities
+            )
+            mutated_focused_scope_authorities["inherited_green"]["stages"][0][
+                "evidence"
+            ][0]["rationale"] = "Silently rewritten focused scope repair."
+            mutated_focused_failures = gate._monotonic_transition_failures(
+                focused_scope_authorities,
+                mutated_focused_scope_authorities,
+                "selftest-focused-scope-correction-mutation",
+                [],
+            )
+            if not any(
+                failure.startswith(
+                    "HISTORY_FOCUSED_TEST_SCOPE_CORRECTION_MUTATED:"
+                )
+                for failure in mutated_focused_failures
+            ):
+                mutated_focused_scope_correction_failures.append(
+                    "FOCUSED_SCOPE_CORRECTION_MUTATION_NOT_REJECTED"
+                )
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         correction_failures.append(f"CORRECTION_FIXTURE_ERROR:{error}")
         invalid_correction_failures.append(f"CORRECTION_FIXTURE_ERROR:{error}")
         mutated_correction_failures.append(f"CORRECTION_FIXTURE_ERROR:{error}")
+        focused_scope_correction_failures.append(
+            f"CORRECTION_FIXTURE_ERROR:{error}"
+        )
     append_direct_case(
         "115",
         "an exact existing-Owner lifecycle correction names every repairable transition and failure",
@@ -3427,6 +3580,21 @@ print('not-json'); raise SystemExit(2)
         "PASS",
         str(pending_cutover_report["status"]),
         [str(value) for value in pending_cutover_report.get("failures", [])],
+    )
+    append_direct_case(
+        "120",
+        "focused-test scope repair is exact, executed, fail-closed, and append-only",
+        "PASS",
+        "PASS"
+        if not (
+            focused_scope_correction_failures
+            or invalid_focused_scope_correction_failures
+            or mutated_focused_scope_correction_failures
+        )
+        else "FAIL",
+        focused_scope_correction_failures
+        + invalid_focused_scope_correction_failures
+        + mutated_focused_scope_correction_failures,
     )
 
     pass_count = sum(result["status"] == "PASS" for result in results)
