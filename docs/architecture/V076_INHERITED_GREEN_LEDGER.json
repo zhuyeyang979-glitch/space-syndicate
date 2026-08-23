@@ -4,8 +4,8 @@
   "recorded_on": "2026-08-23",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
-    "tree_sha": "01636f348711e3c3038468cced7e214c0c071c89",
+    "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+    "tree_sha": "79b6f6dc6f222a3b36d86ab6f75a173154c1b4dc",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
@@ -550,6 +550,86 @@
           "monster_geodesic_checks": "47/47",
           "v075_military_contract_test_count": 4,
           "full_world_reproof": false
+        },
+        {
+          "evidence_id": "stage5-reuse-scan-candidate-consideration-repair",
+          "result": "PASS",
+          "correction_kind": "REUSE_SCAN_CANDIDATE_CONSIDERATION_REPAIR",
+          "repair_subject_head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+          "repair_subject_tree_sha": "d5cb2db6191ca227c227667c214c6e9971698567",
+          "corrected_reuse_candidate_id": "reuse.v075.monster_private_skill.current",
+          "prior_condition": "CANDIDATE_ID_PRESENT_BUT_NOT_DECLARED_CONSIDERED",
+          "corrected_condition": "CANDIDATE_ID_DECLARED_IN_BOTH_SCAN_LISTS",
+          "affected_component_ids": [
+            "component.current.v075_runtime_owner",
+            "component.v076.private_direct_action_input",
+            "component.v076.private_direct_action_reducer"
+          ],
+          "affected_failures": [
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.current.v075_runtime_owner"
+            },
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.current.v075_runtime_owner"
+            },
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_input"
+            },
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_input"
+            },
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_reducer"
+            },
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_reducer"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.current.v075_runtime_owner"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.current.v075_runtime_owner"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_input"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_input"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_reducer"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_reducer"
+            }
+          ],
+          "product_behavior_changed": false,
+          "new_owner_created": false,
+          "rationale": "The Stage 5 implementation added one existing V075 monster-skill reuse candidate to the canonical scan IDs but omitted the same candidate from the considered list in the same three already-registered component rows. This append-only evidence names only the resulting historical scan-contract failures; the current rows now declare the candidate in both lists, with no product behavior or Owner identity change."
         }
       ],
       "not_claimed": [

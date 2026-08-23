@@ -317,6 +317,13 @@ HISTORY_CLASSIFICATION_CORRECTABLE_FAILURES = {
     "HISTORY_PRODUCT_OWNER_BINDING_INVALID",
     "HISTORY_REFERENCE_ONLY_AUTHORITY_WRITE",
 }
+HISTORY_REUSE_SCAN_CORRECTION_KIND = (
+    "REUSE_SCAN_CANDIDATE_CONSIDERATION_REPAIR"
+)
+HISTORY_REUSE_SCAN_CORRECTABLE_FAILURES = {
+    "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+    "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+}
 
 CANONICAL_STAGE_IDS = (
     "V076_STAGE_1_DETERMINISTIC_KERNEL",
@@ -1042,6 +1049,207 @@ def _history_classification_corrections(
                 seen_transition_codes.update(
                     (transition_head, code) for code, _target in exact_codes
                 )
+    return allowed, failures
+
+
+def _history_reuse_scan_correction_rows(
+    authorities: dict[str, dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], set[str]]:
+    rows: dict[str, dict[str, Any]] = {}
+    duplicates: set[str] = set()
+    for stage in authorities.get("inherited_green", {}).get("stages", []):
+        if not isinstance(stage, dict):
+            continue
+        for evidence in stage.get("evidence", []):
+            if not isinstance(evidence, dict) or evidence.get("correction_kind") != (
+                HISTORY_REUSE_SCAN_CORRECTION_KIND
+            ):
+                continue
+            evidence_id = str(evidence.get("evidence_id", ""))
+            if evidence_id in rows:
+                duplicates.add(evidence_id)
+            else:
+                rows[evidence_id] = evidence
+    return rows, duplicates
+
+
+def _history_reuse_scan_corrections(
+    root: Path,
+    head_ref: str,
+    authorities: dict[str, dict[str, Any]],
+) -> tuple[dict[str, set[tuple[str, str]]], list[str]]:
+    """Load exact append-only evidence for a committed reuse-scan metadata repair.
+
+    The correction is deliberately narrower than a general history waiver: it
+    can only repair the two scan-contract failures emitted for an already
+    registered authority when a candidate was added to ``reuse_candidate_ids``
+    but omitted from ``reuse_candidates_considered``. Every affected transition,
+    failure code, and component is named explicitly and unused corrections fail
+    closed in the committed-history orchestrator.
+    """
+    failures: list[str] = []
+    allowed: dict[str, set[tuple[str, str]]] = {}
+    registry = authorities.get("historical_reuse", {})
+    components = _index(registry.get("component_inventory", []), "component_id")
+    reuse_rows = _index(registry.get("reuse_entries", []), "reuse_id")
+    correction_rows, duplicate_evidence_ids = _history_reuse_scan_correction_rows(
+        authorities
+    )
+    failures.extend(
+        f"HISTORY_REUSE_SCAN_CORRECTION_DUPLICATE:{evidence_id or 'missing'}"
+        for evidence_id in sorted(duplicate_evidence_ids)
+    )
+    seen_evidence_ids: set[str] = set()
+    seen_failures: set[tuple[str, str, str]] = set()
+    for evidence in correction_rows.values():
+        evidence_id = str(evidence.get("evidence_id", ""))
+        subject_head = str(evidence.get("repair_subject_head_sha", ""))
+        subject_tree = str(evidence.get("repair_subject_tree_sha", ""))
+        candidate_id = str(evidence.get("corrected_reuse_candidate_id", ""))
+        component_ids = evidence.get("affected_component_ids")
+        affected_failures = evidence.get("affected_failures")
+        rationale = str(evidence.get("rationale", "")).strip()
+        expected_fields = {
+            "evidence_id",
+            "result",
+            "correction_kind",
+            "repair_subject_head_sha",
+            "repair_subject_tree_sha",
+            "corrected_reuse_candidate_id",
+            "prior_condition",
+            "corrected_condition",
+            "affected_component_ids",
+            "affected_failures",
+            "product_behavior_changed",
+            "new_owner_created",
+            "rationale",
+        }
+        valid = bool(
+            set(evidence) == expected_fields
+            and evidence_id
+            and evidence_id not in seen_evidence_ids
+            and evidence.get("result") == "PASS"
+            and _is_hex(subject_head, 40)
+            and _is_hex(subject_tree, 40)
+            and evidence.get("prior_condition")
+            == "CANDIDATE_ID_PRESENT_BUT_NOT_DECLARED_CONSIDERED"
+            and evidence.get("corrected_condition")
+            == "CANDIDATE_ID_DECLARED_IN_BOTH_SCAN_LISTS"
+            and evidence.get("product_behavior_changed") is False
+            and evidence.get("new_owner_created") is False
+            and isinstance(component_ids, list)
+            and bool(component_ids)
+            and len(component_ids) == len(set(map(str, component_ids)))
+            and all(isinstance(value, str) and value.strip() for value in component_ids)
+            and isinstance(affected_failures, list)
+            and bool(affected_failures)
+            and rationale
+            and candidate_id in reuse_rows
+            and _git(root, "show", "-s", "--format=%T", subject_head, check=False)
+            == subject_tree
+            and subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(root),
+                    "merge-base",
+                    "--is-ancestor",
+                    subject_head,
+                    head_ref,
+                ],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode
+            == 0
+        )
+        if valid:
+            for component_id in map(str, component_ids):
+                component = components.get(component_id)
+                scan = component.get("reuse_scan") if isinstance(component, dict) else None
+                candidates = scan.get("reuse_candidate_ids", []) if isinstance(scan, dict) else []
+                considered = component.get("reuse_candidates_considered", []) if isinstance(component, dict) else []
+                if not (
+                    isinstance(component, dict)
+                    and _component_is_authority(component)
+                    and component.get("change_class") != "INHERITED"
+                    and candidate_id in candidates
+                    and candidate_id in considered
+                    and not _reuse_scan_contract_failures(
+                        component, reuse_rows, "reuse-scan-correction", "HISTORY_REUSE_SCAN"
+                    )
+                ):
+                    valid = False
+                    break
+        staged: set[tuple[str, str, str]] = set()
+        if valid:
+            for row in affected_failures:
+                if not isinstance(row, dict) or set(row) != {
+                    "head_sha",
+                    "failure_code",
+                    "component_id",
+                }:
+                    valid = False
+                    continue
+                transition_head = str(row.get("head_sha", ""))
+                failure_code = str(row.get("failure_code", ""))
+                transition_component = str(row.get("component_id", ""))
+                transition_parents = _git(
+                    root,
+                    "rev-list",
+                    "--parents",
+                    "-n",
+                    "1",
+                    transition_head,
+                    check=False,
+                ).split()[1:]
+                triple = (transition_head, failure_code, transition_component)
+                if not (
+                    _is_hex(transition_head, 40)
+                    and failure_code in HISTORY_REUSE_SCAN_CORRECTABLE_FAILURES
+                    and transition_component in component_ids
+                    and triple not in seen_failures
+                    and triple not in staged
+                    and subprocess.run(
+                        [
+                            "git",
+                            "-C",
+                            str(root),
+                            "merge-base",
+                            "--is-ancestor",
+                            transition_head,
+                            subject_head,
+                        ],
+                        check=False,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    ).returncode
+                    == 0
+                    and bool(transition_parents)
+                    and any(
+                        _git_path_exists_at(
+                            root,
+                            parent_ref,
+                            str(components[transition_component].get("path", "")),
+                        )
+                        for parent_ref in transition_parents
+                        if transition_component in components
+                    )
+                ):
+                    valid = False
+                    continue
+                staged.add(triple)
+        if not valid:
+            failures.append(
+                f"HISTORY_REUSE_SCAN_CORRECTION_INVALID:{evidence_id or 'missing'}"
+            )
+            continue
+        seen_evidence_ids.add(evidence_id)
+        for transition_head, failure_code, transition_component in staged:
+            allowed.setdefault(transition_head, set()).add(
+                (failure_code, transition_component)
+            )
+            seen_failures.add((transition_head, failure_code, transition_component))
     return allowed, failures
 
 
@@ -2051,6 +2259,28 @@ def _monotonic_transition_failures(
         elif new_correction != old_correction:
             failures.append(
                 f"HISTORY_CLASSIFICATION_CORRECTION_MUTATED:{label}:{evidence_id}"
+            )
+
+    old_reuse_scan_corrections, old_reuse_scan_duplicates = (
+        _history_reuse_scan_correction_rows(previous)
+    )
+    new_reuse_scan_corrections, new_reuse_scan_duplicates = (
+        _history_reuse_scan_correction_rows(current)
+    )
+    for evidence_id in sorted(old_reuse_scan_duplicates | new_reuse_scan_duplicates):
+        failures.append(
+            f"HISTORY_REUSE_SCAN_CORRECTION_DUPLICATE:{label}:"
+            f"{evidence_id or 'missing'}"
+        )
+    for evidence_id, old_correction in old_reuse_scan_corrections.items():
+        new_correction = new_reuse_scan_corrections.get(evidence_id)
+        if new_correction is None:
+            failures.append(
+                f"HISTORY_REUSE_SCAN_CORRECTION_SILENT_DELETE:{label}:{evidence_id}"
+            )
+        elif new_correction != old_correction:
+            failures.append(
+                f"HISTORY_REUSE_SCAN_CORRECTION_MUTATED:{label}:{evidence_id}"
             )
 
     if transition_changed_paths is not None:
@@ -4911,7 +5141,13 @@ def committed_history_failures(
     corrections, correction_failures = _history_classification_corrections(
         root, head_ref, head_authorities
     )
+    reuse_scan_corrections, reuse_scan_correction_failures = (
+        _history_reuse_scan_corrections(root, head_ref, head_authorities)
+    )
+    for transition_head, exact_codes in reuse_scan_corrections.items():
+        corrections.setdefault(transition_head, set()).update(exact_codes)
     failures: list[str] = list(correction_failures)
+    failures.extend(reuse_scan_correction_failures)
     expected_corrections = {
         (transition_head, code, target)
         for transition_head, exact_codes in corrections.items()

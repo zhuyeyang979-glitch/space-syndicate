@@ -3173,6 +3173,9 @@ print('not-json'); raise SystemExit(2)
     correction_failures: list[str] = []
     invalid_correction_failures: list[str] = []
     mutated_correction_failures: list[str] = []
+    reuse_scan_correction_failures: list[str] = []
+    invalid_reuse_scan_correction_failures: list[str] = []
+    mutated_reuse_scan_correction_failures: list[str] = []
     try:
         with tempfile.TemporaryDirectory(prefix="v076-history-correction-") as temp_path:
             correction_root = Path(temp_path)
@@ -3275,6 +3278,88 @@ print('not-json'); raise SystemExit(2)
                 mutated_correction_failures.append(
                     f"CORRECTION_MUTATION_NOT_REJECTED:{mutation_transition_failures!r}"
                 )
+
+            reuse_scan_authorities = copy.deepcopy(correction_authorities)
+            reuse_scan_authorities["inherited_green"]["stages"][0]["evidence"] = [
+                {
+                    "evidence_id": "selftest-reuse-scan-candidate-repair",
+                    "result": "PASS",
+                    "correction_kind": gate.HISTORY_REUSE_SCAN_CORRECTION_KIND,
+                    "repair_subject_head_sha": correction_head,
+                    "repair_subject_tree_sha": correction_tree,
+                    "corrected_reuse_candidate_id": "reuse.map.existing_owner",
+                    "prior_condition": "CANDIDATE_ID_PRESENT_BUT_NOT_DECLARED_CONSIDERED",
+                    "corrected_condition": "CANDIDATE_ID_DECLARED_IN_BOTH_SCAN_LISTS",
+                    "affected_component_ids": [BASE_OWNER_ID],
+                    "affected_failures": [
+                        {
+                            "head_sha": correction_head,
+                            "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+                            "component_id": BASE_OWNER_ID,
+                        },
+                        {
+                            "head_sha": correction_head,
+                            "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+                            "component_id": BASE_OWNER_ID,
+                        },
+                    ],
+                    "product_behavior_changed": False,
+                    "new_owner_created": False,
+                    "rationale": "Exact reuse-scan metadata repair for an existing Owner.",
+                }
+            ]
+            reuse_scan_rows, reuse_scan_correction_failures = (
+                gate._history_reuse_scan_corrections(
+                    correction_root, correction_head, reuse_scan_authorities
+                )
+            )
+            expected_reuse_scan_rows = {
+                correction_head: {
+                    ("HISTORY_AUTHORITY_REUSE_SCAN_INVALID", BASE_OWNER_ID),
+                    ("HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID", BASE_OWNER_ID),
+                }
+            }
+            if reuse_scan_rows != expected_reuse_scan_rows:
+                reuse_scan_correction_failures.append(
+                    f"REUSE_SCAN_CORRECTION_EXACT_SCOPE_MISMATCH:{reuse_scan_rows!r}"
+                )
+            invalid_reuse_scan_authorities = copy.deepcopy(reuse_scan_authorities)
+            invalid_reuse_scan_authorities["inherited_green"]["stages"][0]["evidence"][0][
+                "affected_failures"
+            ][0]["failure_code"] = "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"
+            invalid_reuse_scan_rows, invalid_reuse_scan_correction_failures = (
+                gate._history_reuse_scan_corrections(
+                    correction_root,
+                    correction_head,
+                    invalid_reuse_scan_authorities,
+                )
+            )
+            if invalid_reuse_scan_rows or not any(
+                failure.startswith("HISTORY_REUSE_SCAN_CORRECTION_INVALID:")
+                for failure in invalid_reuse_scan_correction_failures
+            ):
+                invalid_reuse_scan_correction_failures = [
+                    f"INVALID_REUSE_SCAN_CORRECTION_WAS_APPLIED:{invalid_reuse_scan_rows!r}"
+                ]
+            else:
+                invalid_reuse_scan_correction_failures = []
+            mutated_reuse_scan_authorities = copy.deepcopy(reuse_scan_authorities)
+            mutated_reuse_scan_authorities["inherited_green"]["stages"][0]["evidence"][0][
+                "rationale"
+            ] = "Silently rewritten reuse-scan correction evidence."
+            mutated_reuse_scan_transition_failures = gate._monotonic_transition_failures(
+                reuse_scan_authorities,
+                mutated_reuse_scan_authorities,
+                "selftest-reuse-scan-correction-mutation",
+                [],
+            )
+            if not any(
+                failure.startswith("HISTORY_REUSE_SCAN_CORRECTION_MUTATED:")
+                for failure in mutated_reuse_scan_transition_failures
+            ):
+                mutated_reuse_scan_correction_failures.append(
+                    "REUSE_SCAN_CORRECTION_MUTATION_NOT_REJECTED"
+                )
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         correction_failures.append(f"CORRECTION_FIXTURE_ERROR:{error}")
         invalid_correction_failures.append(f"CORRECTION_FIXTURE_ERROR:{error}")
@@ -3301,6 +3386,21 @@ print('not-json'); raise SystemExit(2)
         mutated_correction_failures
         or ["HISTORY_CLASSIFICATION_CORRECTION_MUTATED"],
     )
+    append_direct_case(
+        "118",
+        "reuse-scan correction is exact, fail-closed, and append-only",
+        "PASS",
+        "PASS"
+        if not (
+            reuse_scan_correction_failures
+            or invalid_reuse_scan_correction_failures
+            or mutated_reuse_scan_correction_failures
+        )
+        else "FAIL",
+        reuse_scan_correction_failures
+        + invalid_reuse_scan_correction_failures
+        + mutated_reuse_scan_correction_failures,
+    )
 
     pending_cutover = _valid_input()
     pending_cutover.pr_body = (
@@ -3309,7 +3409,7 @@ print('not-json'); raise SystemExit(2)
     )
     pending_cutover_report = gate.validate_model(pending_cutover)
     append_direct_case(
-        "118",
+        "119",
         "truthful pending cutover prose is not classified as a positive cutover claim",
         "PASS",
         str(pending_cutover_report["status"]),

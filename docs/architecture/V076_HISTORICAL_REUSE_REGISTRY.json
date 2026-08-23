@@ -719,7 +719,10 @@
       "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
       "reuse_disposition": "ADOPT_AS_OWNER",
       "reuse_source_ids": ["reuse.v075.combat_candidate"],
-      "reuse_candidates_considered": ["reuse.v075.combat_candidate"],
+      "reuse_candidates_considered": [
+        "reuse.v075.combat_candidate",
+        "reuse.v075.monster_private_skill.current"
+      ],
       "new_component_justification": "Existing unique V075 production combat candidate Owner, now extended with narrow V076 military facility-intent and source-bound monster-skill consumer entries. Its existing bridge, private-skill safe-boundary, asset reservation, exact-once, and privacy journals remain the only combat mutation paths; no new Owner or parallel ledger is introduced.",
       "supersedes": [],
       "superseded_by": [],
@@ -780,9 +783,10 @@
         "reuse.current.player_mana_asset_owner",
         "reuse.current.military_runtime_owner",
         "reuse.v075.military_mission_core",
-        "reuse.v076.military_unit_profile_authority.current",
-        "reuse.v076.military_physical_eta.current",
-        "reuse.v075.combat_candidate"
+          "reuse.v076.military_unit_profile_authority.current",
+          "reuse.v076.military_physical_eta.current",
+          "reuse.v075.combat_candidate",
+          "reuse.v075.monster_private_skill.current"
       ],
       "reuse_candidates_considered": [
         "reuse.pr65.authorized_semantic_envelope",
@@ -794,7 +798,8 @@
         "reuse.v075.military_mission_core",
         "reuse.v076.military_unit_profile_authority.current",
         "reuse.v076.military_physical_eta.current",
-        "reuse.v075.combat_candidate"
+        "reuse.v075.combat_candidate",
+        "reuse.v075.monster_private_skill.current"
       ],
       "new_component_justification": "Stage 4/5 needs one private input authority for authorized envelopes, own-hand or source-bound revalidation, exact-once submission and settlement identity, source-collision rejection, and Kernel intake-root submission. It consumes sealed military and V075 monster-skill intents; V075, RuntimeCommandPipeline, and existing asset/unit Owners retain all combat mutation. PR65 may authorize but may not execute; the Kernel alone orders and replays; this Owner may not own tick, Authority Sequence, RNG, skill state, damage state, military unit state, asset quantity, map topology, presentation, or card definitions.",
       "supersedes": [],
@@ -863,16 +868,18 @@
       "reuse_source_ids": [
         "reuse.v076.kernel.current",
         "reuse.v076.map.current",
-        "reuse.v075.military_mission_core",
-        "reuse.v076.military_unit_profile_authority.current",
-        "reuse.v076.military_physical_eta.current"
+          "reuse.v075.military_mission_core",
+          "reuse.v076.military_unit_profile_authority.current",
+          "reuse.v076.military_physical_eta.current",
+          "reuse.v075.monster_private_skill.current"
       ],
       "reuse_candidates_considered": [
         "reuse.v076.kernel.current",
         "reuse.v076.map.current",
         "reuse.v075.military_mission_core",
         "reuse.v076.military_unit_profile_authority.current",
-        "reuse.v076.military_physical_eta.current"
+        "reuse.v076.military_physical_eta.current",
+        "reuse.v075.monster_private_skill.current"
       ],
       "new_component_justification": "Pure fresh-handler reducer for the private input Owner's Kernel-owned domain state. It accepts one common intake root for military or source-bound V075 monster-skill actions, assigns cross-kind state under Kernel Authority Sequence, records private-skill settlement readiness, and derives the existing military arrival/execute/withdraw lifecycle. It owns no tick, RNG, skill state, military unit state, assets, topology, catalog, or presentation.",
       "supersedes": [],
