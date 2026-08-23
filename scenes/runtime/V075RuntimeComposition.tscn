@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/v075_runtime/v075_application_flow.gd" id="1_flow"]
 [ext_resource type="Script" path="res://scripts/v075_runtime/v075_ruleset_runtime_owner.gd" id="2_ruleset"]
@@ -6,6 +6,10 @@
 [ext_resource type="Script" path="res://scripts/v075/runtime/v075_combat_runtime_owner.gd" id="4_combat"]
 [ext_resource type="Script" path="res://scripts/v075/telemetry/v075_combat_telemetry_service.gd" id="5_combat_telemetry"]
 [ext_resource type="PackedScene" path="res://scenes/playtest/V073PlaytestTelemetryService.tscn" id="6_playtest_telemetry"]
+[ext_resource type="Script" path="res://scripts/v076/simulation/v076_deterministic_kernel.gd" id="7_v076_kernel"]
+[ext_resource type="Script" path="res://scripts/v076/military/v076_military_physical_eta_owner_v1.gd" id="8_v076_eta"]
+[ext_resource type="Script" path="res://scripts/v076/direct_action/v076_v075_production_adapter_v1.gd" id="9_v076_adapter"]
+[ext_resource type="Script" path="res://scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd" id="10_v076_direct_action"]
 
 [node name="V075RuntimeComposition" type="Node"]
 unique_name_in_owner = true
@@ -29,3 +33,19 @@ unique_name_in_owner = true
 script = ExtResource("5_combat_telemetry")
 
 [node name="V073PlaytestTelemetryService" parent="." instance=ExtResource("6_playtest_telemetry")]
+
+[node name="V076DeterministicKernel" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("7_v076_kernel")
+
+[node name="V076MilitaryPhysicalEtaOwnerV1" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("8_v076_eta")
+
+[node name="V076V075ProductionAdapterV1" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("9_v076_adapter")
+
+[node name="V076PrivateDirectActionInputOwnerV1" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("10_v076_direct_action")

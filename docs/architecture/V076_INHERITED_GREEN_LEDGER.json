@@ -671,6 +671,7 @@
   "canonical_change_scope": {
     "change_classes": [
       "CROSS_DOMAIN_INTEGRATION",
+      "PRODUCTION_COMPOSITION",
       "DOMAIN_CORE",
       "RULESET_CONSTITUTION",
       "TEST_ORACLE_ONLY",
@@ -713,12 +714,17 @@
       "v076_military_unit_profile_authoring_v1_test",
       "v076_military_card_crosswalk_v1_test",
       "v076_military_physical_eta_owner_test",
-    "v076_private_military_direct_action_integration_test",
-    "v076_simultaneous_private_action_test",
-    "v075_private_skill_request_telemetry_integration_test",
-    "v075_private_skill_failure_privacy_test",
-    "v076_private_monster_skill_bundle_contract_test",
+      "v076_private_military_direct_action_integration_test",
+      "v076_simultaneous_private_action_test",
+      "v075_private_skill_request_telemetry_integration_test",
+      "v075_private_skill_failure_privacy_test",
+      "v076_private_monster_skill_bundle_contract_test",
       "v075_runtime_facility_bridge_integration_test",
+      "v075_application_composition_test",
+      "v075_application_private_skill_receipt_privacy_test",
+      "v075_combat_ai_test",
+      "v07_asset_batch_core_test",
+      "v076_production_military_composition_test",
       "simulation_runtime_authority_migration_test",
       "v076_deterministic_kernel_test",
       "v076_shared_half_edge_partition_test",
@@ -734,13 +740,13 @@
     "inherited_sentinels": [
       "V076_KERNEL",
       "V076_HALF_EDGE_SPHERE",
-    "PR65_AUTHORIZATION_PATTERN",
-    "V075_PRIVATE_SKILL_CONTRACT",
-    "REUSE_POINT_INERTIA_GATE"
+      "PR65_AUTHORIZATION_PATTERN",
+      "V075_PRIVATE_SKILL_CONTRACT",
+      "REUSE_POINT_INERTIA_GATE"
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "This Stage 5 delta consumes one common private intake root for sealed military and source-bound V075 monster-skill bundles. Kernel owns the only cross-kind tick/Authority Sequence/replay ordering; V075RuntimeOwner and V075CombatRuntimeOwner retain source validation, reservation, safe-boundary, skill, damage, privacy, and public aftermath authority. Focused mixed-action, private-input, lifecycle, V075 skill privacy/telemetry, facility-bridge, mutation-authority, Profile, Crosswalk, ETA, Kernel, half-edge, Monster, V075 mission, and Gate sentinels cover every changed or consumed boundary. The delta does not cut over main.tscn, add a channel/skill/damage/unit Owner, change card/ruleset identity, certify production cards, run a full-world reproof, or claim production/human green."
+    "why_focused_tests_are_sufficient": "This production-composition delta connects the already-green private military Direct Action through the existing V075 RuntimeComposition and ApplicationFlow. The focused production test exercises both legal missions through physical ETA, one typed damage mutation, one asset debit, card consumption, withdrawal, private receipt redaction, active-session restart rejection, and zero public-batch/sushi leakage. V075 composition, AI, privacy, asset, private-input, lifecycle, Profile, Crosswalk, ETA, Kernel, half-edge, Monster, mission, and Gate sentinels cover every changed or consumed boundary. No new gameplay Owner, second asset ledger, GameRuntimeCoordinator, Guard/Protect, teleport, production/human false-green, or full-world reproof is introduced."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",

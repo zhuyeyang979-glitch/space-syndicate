@@ -718,12 +718,16 @@
       "owner_component_id": "component.current.v075_runtime_owner",
       "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
       "reuse_disposition": "ADOPT_AS_OWNER",
-      "reuse_source_ids": ["reuse.v075.combat_candidate"],
+      "reuse_source_ids": [
+        "reuse.v075.combat_candidate",
+        "reuse.v075.production_military_direct_action.current"
+      ],
       "reuse_candidates_considered": [
         "reuse.v075.combat_candidate",
-        "reuse.v075.monster_private_skill.current"
+        "reuse.v075.monster_private_skill.current",
+        "reuse.v075.production_military_direct_action.current"
       ],
-      "new_component_justification": "Existing unique V075 production combat candidate Owner, now extended with narrow V076 military facility-intent and source-bound monster-skill consumer entries. Its existing bridge, private-skill safe-boundary, asset reservation, exact-once, and privacy journals remain the only combat mutation paths; no new Owner or parallel ledger is introduced.",
+      "new_component_justification": "Existing unique V075 production combat candidate Owner, now extended with a narrow V076 military production consumer bridge. Its existing hand, asset, facility/monster damage, card lifecycle, private-skill safe-boundary, exact-once, and privacy journals remain the only mutation paths; no new Owner or parallel ledger is introduced.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
@@ -733,7 +737,9 @@
         "v075_private_skill_request_telemetry_integration_test",
         "v075_private_skill_failure_privacy_test",
         "v076_private_monster_skill_bundle_contract_test",
-        "v076_simultaneous_private_action_test"
+        "v076_simultaneous_private_action_test",
+        "v076_production_military_composition_test",
+        "v07_asset_batch_core_test"
       ],
       "golden_scenario_steps": ["STEP10"],
       "reuse_scan": {
@@ -746,14 +752,15 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 2,
+        "reuse_candidate_count": 3,
         "reuse_candidate_ids": [
           "reuse.v075.combat_candidate",
-          "reuse.v075.monster_private_skill.current"
+          "reuse.v075.monster_private_skill.current",
+          "reuse.v075.production_military_direct_action.current"
         ],
         "selected_reuse_disposition": "ADOPT_AS_OWNER",
         "why_existing_owner_cannot_be_extended": "NOT_APPLICABLE_EXTENDED_EXISTING_OWNER",
-        "why_adapter_is_insufficient": "A parallel adapter cannot mutate facility HP or reproduce the Owner's bridge, processed-intent, witness, fizzle, and presentation journals without creating a second authority path.",
+        "why_adapter_is_insufficient": "The stateless production adapter can translate calls but cannot mutate hand, assets, facility/monster HP, or reproduce the Owner's processed-intent, witness, fizzle, and presentation journals without creating a second authority path.",
         "why_new_owner_is_required": "NOT_REQUIRED_EXISTING_V075_RUNTIME_OWNER_EXTENDED"
       }
     },
@@ -786,7 +793,8 @@
           "reuse.v076.military_unit_profile_authority.current",
           "reuse.v076.military_physical_eta.current",
           "reuse.v075.combat_candidate",
-          "reuse.v075.monster_private_skill.current"
+          "reuse.v075.monster_private_skill.current",
+          "reuse.v075.production_military_direct_action.current"
       ],
       "reuse_candidates_considered": [
         "reuse.pr65.authorized_semantic_envelope",
@@ -799,7 +807,8 @@
         "reuse.v076.military_unit_profile_authority.current",
         "reuse.v076.military_physical_eta.current",
         "reuse.v075.combat_candidate",
-        "reuse.v075.monster_private_skill.current"
+        "reuse.v075.monster_private_skill.current",
+        "reuse.v075.production_military_direct_action.current"
       ],
       "new_component_justification": "Stage 4/5 needs one private input authority for authorized envelopes, own-hand or source-bound revalidation, exact-once submission and settlement identity, source-collision rejection, and Kernel intake-root submission. It consumes sealed military and V075 monster-skill intents; V075, RuntimeCommandPipeline, and existing asset/unit Owners retain all combat mutation. PR65 may authorize but may not execute; the Kernel alone orders and replays; this Owner may not own tick, Authority Sequence, RNG, skill state, damage state, military unit state, asset quantity, map topology, presentation, or card definitions.",
       "supersedes": [],
@@ -813,8 +822,9 @@
         "simulation_runtime_authority_migration_test",
         "v075_private_skill_request_telemetry_integration_test",
         "v075_private_skill_failure_privacy_test",
-        "v076_private_monster_skill_bundle_contract_test",
-        "v076_simultaneous_private_action_test"
+      "v076_private_monster_skill_bundle_contract_test",
+      "v076_simultaneous_private_action_test",
+      "v076_production_military_composition_test"
       ],
       "golden_scenario_steps": ["STEP10"],
       "reuse_scan": {
@@ -827,7 +837,7 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 11,
+      "reuse_candidate_count": 12,
         "reuse_candidate_ids": [
           "reuse.pr65.authorized_semantic_envelope",
           "reuse.v076.kernel.current",
@@ -837,9 +847,10 @@
           "reuse.current.military_runtime_owner",
           "reuse.v075.military_mission_core",
           "reuse.v076.military_unit_profile_authority.current",
-          "reuse.v076.military_physical_eta.current",
-          "reuse.v075.combat_candidate",
-          "reuse.v075.monster_private_skill.current"
+        "reuse.v076.military_physical_eta.current",
+        "reuse.v075.combat_candidate",
+        "reuse.v075.monster_private_skill.current",
+        "reuse.v075.production_military_direct_action.current"
         ],
         "selected_reuse_disposition": "ADOPT_AS_OWNER",
         "why_existing_owner_cannot_be_extended": "PR65 is an authorization Consumer pattern and cannot execute; the Kernel cannot own private hand membership; the facility, monster, partition, catalog, asset, and military Owners cannot absorb cross-domain private input identity without violating their single-owner boundaries.",
@@ -1384,6 +1395,176 @@
       "change_class": "INHERITED",
       "focused_test_ids": ["card_codex_playerface_architecture_scan_test"],
       "golden_scenario_steps": []
+    },
+    {
+      "component_id": "component.current.v075_application_flow",
+      "class_name": "V075ApplicationFlow",
+      "path": "scripts/v075_runtime/v075_application_flow.gd",
+      "domain_id": "future.private_direct_action_input",
+      "component_role": "ADAPTER",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.v076.private_direct_action_input",
+      "owner_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.v076.kernel.current",
+        "reuse.v075.production_military_direct_action.current"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v076.kernel.current",
+        "reuse.v075.combat_candidate",
+        "reuse.v075.production_military_direct_action.current"
+      ],
+      "new_component_justification": "Existing production Application Flow is extended in place as the consumer that submits owner-private military intents and advances the unique Kernel by elapsed time. It owns no tick, Authority Sequence, gameplay state, receipt payload, or fallback queue.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "PRODUCTION_COMPOSITION",
+      "focused_test_ids": [
+        "v075_application_composition_test",
+        "v076_production_military_composition_test",
+        "v075_application_private_skill_receipt_privacy_test"
+      ],
+      "golden_scenario_steps": ["STEP10"]
+    },
+    {
+      "component_id": "component.current.v075_runtime_composition",
+      "class_name": "V075RuntimeCompositionScene",
+      "path": "scenes/runtime/V075RuntimeComposition.tscn",
+      "domain_id": "future.private_direct_action_input",
+      "component_role": "ADAPTER",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.v076.private_direct_action_input",
+      "owner_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.v076.kernel.current",
+        "reuse.v076.military_physical_eta.current",
+        "reuse.v075.production_military_direct_action.current"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v076.kernel.current",
+        "reuse.v076.military_physical_eta.current",
+        "reuse.v075.combat_candidate",
+        "reuse.v075.production_military_direct_action.current"
+      ],
+      "new_component_justification": "The existing production composition is extended atomically with one instance each of the already-registered Kernel, ETA Owner, Direct Action Owner, and a stateless V075 adapter; it creates no GameRuntimeCoordinator or parallel gameplay Owner.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "PRODUCTION_COMPOSITION",
+      "focused_test_ids": [
+        "v075_application_composition_test",
+        "v075_combat_ai_test",
+        "v076_production_military_composition_test"
+      ],
+      "golden_scenario_steps": ["STEP01", "STEP10"]
+    },
+    {
+      "component_id": "component.v076.v075_production_adapter",
+      "class_name": "V076V075ProductionAdapterV1",
+      "path": "scripts/v076/direct_action/v076_v075_production_adapter_v1.gd",
+      "domain_id": "current.v075_production_combat_candidate",
+      "component_role": "ADAPTER",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v075_runtime_owner",
+      "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.v075.combat_candidate",
+        "reuse.v075.production_military_direct_action.current"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v075.combat_candidate",
+        "reuse.current.card_runtime_catalog",
+        "reuse.v075.production_military_direct_action.current"
+      ],
+      "new_component_justification": "A stateless narrow adapter exposes the exact dependency surface already owned by V075RuntimeOwner to the existing Direct Action Owner. It stores no queue, ledger, tick, topology, unit, asset, damage, card, or presentation state.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "PRODUCTION_COMPOSITION",
+      "focused_test_ids": ["v076_production_military_composition_test"],
+      "golden_scenario_steps": ["STEP10"]
+    },
+    {
+      "component_id": "component.current.v07_asset_batch_core",
+      "class_name": "V07AssetBatchCore",
+      "path": "scripts/v07_semantic/v07_asset_batch_core.gd",
+      "domain_id": "current.v075_production_combat_candidate",
+      "component_role": "REDUCER",
+      "production_reachable": true,
+      "writes_authority": true,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v075_runtime_owner",
+      "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.pr79.v07_domain_cores",
+        "reuse.v075.production_military_direct_action.current"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.pr79.v07_domain_cores",
+        "reuse.current.player_mana_asset_owner",
+        "reuse.v075.production_military_direct_action.current"
+      ],
+      "new_component_justification": "The existing six-color asset reducer is extended in place with a distinct typed private-Direct-Action reservation contract. It reuses the same player balances, reservations, revision and receipt journal under V075RuntimeOwner instead of instantiating the separate PlayerMana owner.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "PRODUCTION_COMPOSITION",
+      "focused_test_ids": [
+        "v07_asset_batch_core_test",
+        "v076_production_military_composition_test"
+      ],
+      "golden_scenario_steps": ["STEP10", "STEP11"],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 3,
+        "reuse_candidate_ids": [
+          "reuse.pr79.v07_domain_cores",
+          "reuse.current.player_mana_asset_owner",
+          "reuse.v075.production_military_direct_action.current"
+        ],
+        "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
+        "why_existing_owner_cannot_be_extended": "NOT_APPLICABLE_EXTENDED_EXISTING_V07_ASSET_REDUCER",
+        "why_adapter_is_insufficient": "A stateless Adapter cannot reserve or settle the existing V075 player balances, reservation map, revision, and receipt journal without creating a second asset authority path.",
+        "why_new_owner_is_required": "NOT_REQUIRED_EXISTING_V07_ASSET_REDUCER_EXTENDED"
+      }
     }
   ],
   "legacy_debt_grandfather_paths": [
@@ -1766,6 +1947,19 @@
       },
       "adapted_scope": "Source ownership and generation revalidation, owner-private skill availability, existing V075 request/reservation/safe-boundary/effect ledgers, asset reservation, and allowlisted public aftermath consumed in V076 Kernel Authority Sequence order.",
       "forbidden_scope": "V076 does not create a second monster-skill queue, receive sequence, safe-boundary, skill state, cooldown, asset ledger, damage sink, or presentation Owner; source-bound skills are not own-hand cards and production composition remains unchanged."
+    },
+    {
+      "reuse_id": "reuse.v075.production_military_direct_action.current",
+      "domain_id": "current.v075_production_combat_candidate",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "runtime_owner": "scripts/v075_runtime/v075_runtime_owner.gd",
+        "application_flow": "scripts/v075_runtime/v075_application_flow.gd",
+        "runtime_composition": "scenes/runtime/V075RuntimeComposition.tscn",
+        "asset_reducer": "scripts/v07_semantic/v07_asset_batch_core.gd"
+      },
+      "adapted_scope": "V075 own-hand membership, exact card definition and authored cost, its single six-color asset state, military-card lifecycle consumption, existing facility/monster damage sinks, and owner-private receipt signal are adapted into the already-registered V076 Kernel/ETA/Direct-Action path.",
+      "forbidden_scope": "The adapter and Application Flow may not own tick, Authority Sequence, RNG, topology, military state, asset quantity, damage, card definitions, presentation, a public-batch fallback, or a second exact-once ledger."
     },
     {
       "reuse_id": "reuse.v073.human_playtest_instrumentation",

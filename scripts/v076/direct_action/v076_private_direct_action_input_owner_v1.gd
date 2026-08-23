@@ -334,12 +334,36 @@ func submit_private_military_direct_action(
 	var eta_ticks := int(eta_result.get("eta_ticks", -1))
 	var dispatch_delay_ticks := maxi(1, eta_ticks)
 	var submission_tick := int(_kernel.current_tick())
+	var source_claimed := false
+	if _military_unit_state_owner.has_method("claim_submission"):
+		var source_claim := _military_unit_state_owner.call(
+			"claim_submission",
+			military_unit_uid,
+			submission_id,
+			str(request.get("card_instance_id", "")),
+			request_fingerprint
+		) as Dictionary
+		if not bool(source_claim.get("accepted", false)):
+			return _reject(str(source_claim.get(
+				"reason",
+				"private_direct_action_source_claim_rejected"
+			)))
+		source_claimed = true
 
 	var asset_plan: Dictionary = request.get("asset_reservation_plan", {}) as Dictionary
 	var asset_commit: Dictionary = _asset_quantity_owner.commit_reservation(asset_plan)
 	if not bool(asset_commit.get("committed", false)) \
 		or not bool(asset_commit.get("authorized", false)):
-		return _reject("private_direct_action_asset_reservation_rejected")
+		_release_unit_submission_claim(
+			military_unit_uid,
+			submission_id,
+			"private_direct_action_asset_reservation_rejected",
+			source_claimed
+		)
+		return _reject(str(asset_commit.get(
+			"reason",
+			"private_direct_action_asset_reservation_rejected"
+		)))
 	var asset_reservation_id: String = str(asset_commit.get("transaction_id", ""))
 	var mission_request: Dictionary = _build_mission_request(
 		request,
@@ -356,6 +380,12 @@ func submit_private_military_direct_action(
 		_asset_quantity_owner.release_reservation(
 			asset_reservation_id,
 			"private_direct_action_profile_combat_invalid"
+		)
+		_release_unit_submission_claim(
+			military_unit_uid,
+			submission_id,
+			"private_direct_action_profile_combat_invalid",
+			source_claimed
 		)
 		return _reject("private_direct_action_profile_combat_invalid")
 	var card_authority: Dictionary = MissionCore.build_card_authority(
@@ -381,6 +411,12 @@ func submit_private_military_direct_action(
 		_asset_quantity_owner.release_reservation(
 			asset_reservation_id,
 			"private_direct_action_lock_rejected"
+		)
+		_release_unit_submission_claim(
+			military_unit_uid,
+			submission_id,
+			"private_direct_action_lock_rejected",
+			source_claimed
 		)
 		return _reject("private_direct_action_mission_lock_rejected")
 
@@ -437,6 +473,12 @@ func submit_private_military_direct_action(
 			asset_reservation_id,
 			"private_direct_action_command_build_rejected"
 		)
+		_release_unit_submission_claim(
+			military_unit_uid,
+			submission_id,
+			"private_direct_action_command_build_rejected",
+			source_claimed
+		)
 		return _reject(str(built.get(
 			"reason", "private_direct_action_command_build_rejected"
 		)))
@@ -445,6 +487,12 @@ func submit_private_military_direct_action(
 		_asset_quantity_owner.release_reservation(
 			asset_reservation_id,
 			"private_direct_action_kernel_submission_rejected"
+		)
+		_release_unit_submission_claim(
+			military_unit_uid,
+			submission_id,
+			"private_direct_action_kernel_submission_rejected",
+			source_claimed
 		)
 		return _reject(str(submitted.get(
 			"reason", "private_direct_action_kernel_submission_rejected"
@@ -753,7 +801,10 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 		}
 	)
 	if str(asset_receipt.get("outcome", "")) != "consumed":
-		return _reject("private_direct_action_asset_settlement_rejected")
+		return _reject(str(asset_receipt.get(
+			"reason",
+			"private_direct_action_asset_settlement_rejected"
+		)))
 	if not _military_unit_state_owner.remove_unit(
 		unit_index,
 		"完成一次军事任务后撤离。"
@@ -772,6 +823,28 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 		"asset_outcome": str(asset_receipt.get("outcome", "")),
 		"damage_settlement": damage_settlement.duplicate(true),
 	}
+
+
+func withdrawal_ready_submission_ids() -> Array[String]:
+	## Read-only bridge for the Application Flow. The Kernel remains the sole
+	## tick/sequence authority; this Owner only exposes which already-executed
+	## military submissions are ready for their one completion/withdrawal step.
+	if not _configured:
+		return []
+	var state: Dictionary = _kernel.domain_state(DOMAIN_ID)
+	var ledger := state.get("submission_ledger", {}) as Dictionary
+	var order := state.get("submission_order", []) as Array
+	var ready_ids: Array[String] = []
+	for submission_variant in order:
+		var submission_id := str(submission_variant)
+		if _settlement_fingerprint_by_id.has(submission_id):
+			continue
+		var entry := ledger.get(submission_id, {}) as Dictionary
+		if str(entry.get("action_kind", "")) == ACTION_KIND_MILITARY \
+				and str(entry.get("phase", "")) \
+				== DomainReducer.PHASE_WITHDRAWAL_READY:
+			ready_ids.append(submission_id)
+	return ready_ids
 
 
 func _consume_mission_damage_intents(
@@ -891,6 +964,25 @@ func _runtime_monster_uid_for_intent(
 			return 0
 		matched_uid = candidate_uid
 	return matched_uid
+
+
+func _release_unit_submission_claim(
+	unit_uid: int,
+	submission_id: String,
+	reason: String,
+	claim_was_created: bool
+) -> void:
+	if not claim_was_created \
+			or not _military_unit_state_owner.has_method(
+				"release_submission_claim"
+			):
+		return
+	_military_unit_state_owner.call(
+		"release_submission_claim",
+		unit_uid,
+		submission_id,
+		reason
+	)
 
 
 static func _damage_reject(reason: String) -> Dictionary:

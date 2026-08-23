@@ -42,6 +42,12 @@ const CombatPresentationConsumer := preload(
 const PresentationReceiptIdentity := preload(
 	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
 )
+const V076StateCodec := preload(
+	"res://scripts/v076/simulation/v076_authority_state_codec.gd"
+)
+const V076CombatDamageCore := preload(
+	"res://scripts/v075/combat/v075_combat_damage_core.gd"
+)
 
 const V075_RULESET_ID := "v0.7.5"
 const V075_SAMPLE_MODE_ID := "NEW_V075_GAME"
@@ -217,6 +223,8 @@ var _v075_submission_legal_actions_cache: Dictionary = {}
 var _v075_submission_card_cache: Dictionary = {}
 var _v075_track_projection_cache: Dictionary = {}
 var _v075_public_facility_slots_cache: Array = []
+var _v076_production_asset_reservations: Dictionary = {}
+var _v076_production_military_submission_by_uid: Dictionary = {}
 var _new_game_transaction_stage := "idle"
 var _new_game_transaction: Dictionary = {}
 var _new_game_publication_count := 0
@@ -2799,6 +2807,611 @@ func queue_selected_military_mission(
 	)
 
 
+## V0.7.6 production composition bridge.  The V075 runtime remains the
+## authority for hand membership, card identity, assets and combat state; the
+## V076 input Owner only receives this sealed consumer envelope.
+func authorize_v076_production_military_bundle(
+	actor_id: String,
+	parameters: Dictionary
+) -> Dictionary:
+	if not _combat_initialized or _phase != "submission":
+		return _reject_action("v076_production_military_submission_window_closed")
+	if not _player_ids.has(actor_id):
+		return _reject_action("v076_production_military_actor_invalid")
+	var closed_parameters := _v076_closed_military_parameters(parameters)
+	if closed_parameters.is_empty():
+		return _reject_action("v076_production_military_parameters_not_closed")
+	var option := _v076_current_military_option(actor_id, closed_parameters)
+	if option.is_empty():
+		return _reject_action("v076_production_military_option_stale")
+	var card_instance_id := str(option.get("card_instance_id", ""))
+	var card := _card_in_hand(actor_id, card_instance_id)
+	if card.is_empty():
+		return _reject_action("v076_production_military_card_not_in_hand")
+	var binding := _validate_card_action_binding(
+		actor_id,
+		option.get("card_action_binding", {}) as Dictionary
+	)
+	if not bool(binding.get("accepted", false)):
+		return _reject_action(str(binding.get(
+			"reason_code",
+			"v076_production_military_card_binding_invalid"
+		)))
+	var actor_index := _player_ids.find(actor_id)
+	var envelope := (option.get("military_target_envelope", {}) as Dictionary).duplicate(true)
+	if envelope.is_empty():
+		return _reject_action("v076_production_military_target_envelope_missing")
+	var instance_state := {
+		"source_kind": "own_hand",
+		"visibility_scope_id": "actor_private",
+		"viewer_ref": {
+			"actor_ref_id": actor_id,
+			"actor_index": actor_index,
+		},
+		"instance_id": card_instance_id,
+		# The Crosswalk consumes the canonical V06 semantic military identity;
+		# the existing V075 card definition remains separately bound in the
+		# request as catalog_card_id for exact gameplay-definition lookup.
+		"card_id": _v076_military_source_card_id(card),
+		"queued": false,
+		"locked": false,
+		"cooldown_remaining_microseconds": 0,
+		"card_action_binding": (binding.get("binding", {}) as Dictionary).duplicate(true),
+	}
+	var authorized_envelope := {
+		"envelope": envelope.duplicate(true),
+		"envelope_fingerprint": V076StateCodec.fingerprint(envelope),
+		"target_region_id": str(option.get("target_region_id", "")),
+		"target_monster_source_instance_id": str(option.get(
+			"target_monster_source_instance_id", ""
+		)),
+	}
+	var bundle := {
+		"schema_version": 1,
+		"contract_id": "V076AuthorizedProductionMilitaryBundleV1",
+		"actor_id": actor_id,
+		"instance_decision_state": instance_state,
+		"authorized_envelope_ref": authorized_envelope,
+		"parameters": closed_parameters,
+		"option": option.duplicate(true),
+		"authorization_fingerprint": "",
+	}
+	bundle["authorization_fingerprint"] = V076StateCodec.fingerprint(
+		_v076_without_field(bundle, "authorization_fingerprint")
+	)
+	if str(bundle.get("authorization_fingerprint", "")).is_empty():
+		return _reject_action("v076_production_military_bundle_not_closed")
+	return {
+		"accepted": true,
+		"reason_code": "v076_production_military_bundle_authorized",
+		"bundle": bundle,
+	}
+
+
+func validate_v076_production_military_bundle(bundle: Dictionary) -> Dictionary:
+	if bundle.is_empty() or str(bundle.get("contract_id", "")) \
+		!= "V076AuthorizedProductionMilitaryBundleV1":
+		return _reject_action("v076_production_military_bundle_contract_invalid")
+	var expected := V076StateCodec.fingerprint(
+		_v076_without_field(bundle, "authorization_fingerprint")
+	)
+	if expected != str(bundle.get("authorization_fingerprint", "")):
+		return _reject_action("v076_production_military_bundle_fingerprint_invalid")
+	var actor_id := str(bundle.get("actor_id", ""))
+	var parameters := bundle.get("parameters", {}) as Dictionary
+	var fresh := authorize_v076_production_military_bundle(actor_id, parameters)
+	if not bool(fresh.get("accepted", false)):
+		return _reject_action(str(fresh.get(
+			"reason_code", "v076_production_military_bundle_stale"
+		)))
+	var fresh_bundle := fresh.get("bundle", {}) as Dictionary
+	if fresh_bundle != bundle:
+		return _reject_action("v076_production_military_bundle_stale")
+	return {
+		"accepted": true,
+		"reason_code": "v076_production_military_bundle_current",
+		"bundle_fingerprint": str(bundle.get("authorization_fingerprint", "")),
+		"instance_decision_state": (
+			bundle.get("instance_decision_state", {}) as Dictionary
+		).duplicate(true),
+		"authorized_envelope_ref": (
+			bundle.get("authorized_envelope_ref", {}) as Dictionary
+		).duplicate(true),
+	}
+
+
+func build_v076_production_military_request(
+	actor_id: String,
+	submission_id: String,
+	parameters: Dictionary,
+	bundle: Dictionary
+) -> Dictionary:
+	var validation := validate_v076_production_military_bundle(bundle)
+	if not bool(validation.get("accepted", false)):
+		return {"accepted": false, "reason": str(validation.get("reason_code", "bundle_invalid"))}
+	var option := bundle.get("option", {}) as Dictionary
+	var card := _card_in_hand(actor_id, str(option.get("card_instance_id", "")))
+	if card.is_empty():
+		return {"accepted": false, "reason": "v076_production_military_card_missing"}
+	var task_kind := str(option.get("task_kind", ""))
+	var mission_kind := "ASSAULT_REGION" if task_kind == "assault_region" else (
+		"ASSAULT_MONSTER" if task_kind == "assault_monster" else ""
+	)
+	if mission_kind.is_empty():
+		return {"accepted": false, "reason": "v076_production_military_mission_invalid"}
+	var target_region_id := str(option.get("target_region_id", ""))
+	var target_monster_id := str(option.get(
+		"target_monster_source_instance_id", ""
+	))
+	var physical_target_region_id := target_region_id
+	if physical_target_region_id.is_empty():
+		physical_target_region_id = _v076_production_region_for_monster(
+			target_monster_id
+		)
+	var target_face_id := _v076_production_face_for_target(
+		physical_target_region_id
+	)
+	var source_face_id := _v076_production_source_face_for_actor(actor_id)
+	if source_face_id < 0 or target_face_id < 0:
+		return {
+			"accepted": false,
+			"reason": "v076_production_military_physical_face_binding_missing",
+		}
+	var cost := _zero_colors()
+	var color := str(card.get("primary_color", ""))
+	var amount := int(card.get("primary_asset_cost", 0))
+	if color not in COLORS or amount <= 0:
+		return {"accepted": false, "reason": "v076_production_military_asset_cost_invalid"}
+	cost[color] = amount
+	var reservation_id := "reservation.private.direct.action.%s" % submission_id
+	var reservation_request := {
+		"schema_version": 1,
+		"contract_id": "V076PrivateDirectActionAssetReservationRequestV1",
+		"reservation_id": reservation_id,
+		"request_id": "request.%s" % submission_id,
+		"owner_player_id": actor_id,
+		"source_instance_id": str(option.get("card_instance_id", "")),
+		"source_generation": maxi(1, int(option.get("card_generation", 1))),
+		"asset_snapshot_revision": int(_asset_state.get("revision", 0)),
+		"asset_cost_by_color": cost,
+		"purpose": "private_direct_action",
+		"request_fingerprint": str(bundle.get(
+			"authorization_fingerprint", ""
+		)),
+		"reservation_request_fingerprint": "",
+	}
+	reservation_request["reservation_request_fingerprint"] = V076StateCodec.fingerprint(
+		_v076_without_field(
+			reservation_request,
+			"reservation_request_fingerprint"
+		)
+	)
+	var request := {
+		"schema_version": 1,
+		"submission_id": submission_id,
+		"actor_id": actor_id,
+		"mission_kind": mission_kind,
+		"military_unit_uid": v076_military_unit_uid_for_card(
+			str(option.get("card_instance_id", ""))
+		),
+		"catalog_card_id": str(option.get("card_definition_id", "")),
+		"card_instance_id": str(option.get("card_instance_id", "")),
+		"action_slot_id": str(option.get("target_slot_id", "")),
+		"asset_reservation_plan": reservation_request,
+		"source_face_id": source_face_id,
+		"target_face_id": target_face_id,
+		"target_region_id": target_region_id,
+		"target_monster_source_instance_id": target_monster_id,
+		"target_region_revision": int(option.get(
+			"expected_region_revision", _facility_authority_revision()
+		)),
+		"public_targets": _v076_production_public_targets(),
+		"source_effect_id": "effect.%s" % submission_id,
+		"producer_sequence": int(parameters.get("producer_sequence", 0)),
+	}
+	return {"accepted": true, "reason": "", "request": request}
+
+
+func v076_production_face_binding(value: String) -> int:
+	return _v076_production_face_for_target(value)
+
+
+func v076_production_public_targets() -> Array:
+	return _v076_production_public_targets()
+
+
+func _v076_current_military_option(
+	actor_id: String,
+	parameters: Dictionary
+) -> Dictionary:
+	var card_instance_id := str(parameters.get("card_instance_id", ""))
+	var target_slot_id := str(parameters.get("target_slot_id", ""))
+	if card_instance_id.is_empty() or target_slot_id.is_empty():
+		return {}
+	var option := _combat_option_by_identity(
+		actor_id,
+		card_instance_id,
+		target_slot_id,
+		parameters
+	)
+	if option.is_empty():
+		return {}
+	return option
+
+
+func _v076_closed_military_parameters(parameters: Dictionary) -> Dictionary:
+	var result: Dictionary = {}
+	for field_name in [
+		"option_id",
+		"candidate_fingerprint",
+		"owner_player_id",
+		"card_instance_id",
+		"card_action_binding",
+		"target_slot_id",
+		"task_kind",
+		"target_region_id",
+		"target_monster_source_instance_id",
+		"military_target_envelope",
+		"target_binding",
+		"target_source_generation",
+		"producer_sequence",
+	]:
+		if parameters.has(field_name):
+			result[field_name] = parameters.get(field_name)
+	var validation := V076StateCodec.validate(result)
+	return result if bool(validation.get("valid", false)) else {}
+
+
+func _v076_production_public_targets() -> Array:
+	var result: Array = []
+	for row_variant in _public_occupied_facilities():
+		var row := (row_variant as Dictionary).duplicate(true)
+		row["facility_generation"] = int(row.get(
+			"facility_generation", row.get("generation", 1)
+		))
+		row["owner_player_id"] = str(row.get(
+			"owner_player_id", row.get("owner_id", "")
+		))
+		row["status"] = str(row.get("status", "active"))
+		result.append(row)
+	for row_variant in _v075_public_monsters():
+		var row := (row_variant as Dictionary).duplicate(true)
+		row["runtime_monster_uid"] = _v076_monster_uid_for_source(
+			str(row.get("source_instance_id", ""))
+		)
+		row["source_revision"] = int(row.get("source_revision", 0))
+		result.append(row)
+	return result
+
+
+func _v076_production_face_for_target(value: String) -> int:
+	var region_ids := _runtime_region_ids()
+	var region_index := region_ids.find(value)
+	if region_index < 0:
+		return -1
+	# Consumer-only binding into the V076 320-face topology. Multiplication by
+	# 53 is a full permutation modulo 320, so every production region receives
+	# one distinct canonical physical anchor without owning topology or paths.
+	return posmod(region_index * 53 + 17, 320)
+
+
+func _v076_production_source_face_for_actor(actor_id: String) -> int:
+	var source_region_id := _v076_production_source_region_for_actor(actor_id)
+	return _v076_production_face_for_target(source_region_id)
+
+
+func _v076_production_source_region_for_actor(actor_id: String) -> String:
+	var owned_region_ids: Array[String] = []
+	for row_variant in _public_occupied_facilities():
+		var row := row_variant as Dictionary
+		if str(row.get("owner_player_id", row.get("owner_id", ""))) \
+				== actor_id:
+			owned_region_ids.append(str(row.get("region_id", "")))
+	owned_region_ids.sort()
+	if not owned_region_ids.is_empty():
+		return owned_region_ids[0]
+	var region_ids := _runtime_region_ids()
+	var actor_index := _player_ids.find(actor_id)
+	if actor_index < 0 or region_ids.is_empty():
+		return ""
+	# Before the actor owns a facility, its stable seat-index deployment anchor
+	# supplies a physical origin. It is a location binding only, never a second
+	# military-unit or map-topology state.
+	return str(region_ids[actor_index % region_ids.size()])
+
+
+func _v076_production_region_for_monster(source_id: String) -> String:
+	for row_variant in _v075_public_monsters():
+		var row := row_variant as Dictionary
+		if str(row.get("source_instance_id", "")) == source_id:
+			return str(row.get("region_id", ""))
+	return ""
+
+
+func v076_military_unit_uid_for_card(card_instance_id: String) -> int:
+	return absi(card_instance_id.hash()) + 1
+
+
+func _v076_military_source_card_id(card: Dictionary) -> String:
+	var card_type := str(card.get("card_type", ""))
+	var rank := int(card.get("level", 0))
+	if CardDefinitionsV075.card_domain(card_type) != "military" \
+			or rank < 1 or rank > 4:
+		return ""
+	return "unit.military.%s.rank_%d" % [
+		CardDefinitionsV075.military_definition_id_from_card_type(card_type),
+		rank,
+	]
+
+
+func _v076_monster_uid_for_source(source_id: String) -> int:
+	return absi(source_id.hash()) + 1
+
+
+func v076_commit_production_asset_reservation(plan: Dictionary) -> Dictionary:
+	var reservation_id := str(plan.get("reservation_id", ""))
+	if reservation_id.is_empty() or _v076_production_asset_reservations.has(reservation_id):
+		if _v076_production_asset_reservations.has(reservation_id):
+			return (_v076_production_asset_reservations[reservation_id] as Dictionary).duplicate(true)
+		return {"accepted": false, "reason": "v076_production_reservation_id_invalid"}
+	var request := plan.duplicate(true)
+	var prepared := ASSET_BATCH_CORE.prepare_private_direct_action_asset_reservation(
+		_asset_state,
+		request
+	)
+	if not bool(prepared.get("accepted", false)):
+		return {"accepted": false, "reason": str(prepared.get("reason_code", "v076_production_asset_reservation_rejected"))}
+	_asset_state = (prepared.get("state", _asset_state) as Dictionary).duplicate(true)
+	_sync_asset_balances()
+	var receipt := {
+		"accepted": true,
+		"authorized": true,
+		"committed": true,
+		"transaction_id": reservation_id,
+		"revision": int(_asset_state.get("revision", 0)),
+		"reservation_receipt": (prepared.get("reservation_receipt", {}) as Dictionary).duplicate(true),
+		"outcome": "reserved",
+	}
+	_v076_production_asset_reservations[reservation_id] = receipt.duplicate(true)
+	return receipt
+
+
+func v076_release_production_asset_reservation(
+	reservation_id: String,
+	reason: String
+) -> Dictionary:
+	return _v076_settle_production_asset_reservation(
+		reservation_id,
+		"release",
+		{"reason": reason}
+	)
+
+
+func v076_consume_production_asset_reservation(
+	reservation_id: String,
+	settlement: Dictionary
+) -> Dictionary:
+	return _v076_settle_production_asset_reservation(
+		reservation_id,
+		"commit",
+		settlement
+	)
+
+
+func _v076_settle_production_asset_reservation(
+	reservation_id: String,
+	action: String,
+	settlement: Dictionary
+) -> Dictionary:
+	var prior := _v076_production_asset_reservations.get(reservation_id, {}) as Dictionary
+	if prior.is_empty():
+		return {"accepted": false, "reason": "v076_production_reservation_missing"}
+	if str(prior.get("outcome", "")) in ["consumed", "released"]:
+		return prior.duplicate(true)
+	var reservation_receipt := prior.get("reservation_receipt", {}) as Dictionary
+	# V07AssetBatchCore seals the original reservation cost under the
+	# reservation receipt contract's reserved_asset_cost_by_color field.
+	# Keep the production bridge consuming that canonical receipt instead of
+	# reconstructing or owning a second asset-cost representation.
+	var cost := (reservation_receipt.get("reserved_asset_cost_by_color", {}) as Dictionary).duplicate(true)
+	if cost.is_empty():
+		cost = _zero_colors()
+	var intent := {
+		"schema_version": 1,
+		"contract_id": "V076PrivateDirectActionAssetSettlementIntentV1",
+		"settlement_intent_id": "settlement.%s.%s" % [
+			action,
+			reservation_id,
+		],
+		"action": action,
+		"reservation_id": reservation_id,
+		"request_id": str(reservation_receipt.get("request_id", "")),
+		"owner_player_id": str(reservation_receipt.get("owner_player_id", "")),
+		"source_instance_id": str(reservation_receipt.get(
+			"source_instance_id", ""
+		)),
+		"asset_cost_by_color": cost,
+		"full_reservation_release": action == "release",
+		"effect_receipt_id": "effect.receipt.%s" % V076StateCodec.fingerprint(
+			settlement
+		).substr(0, 24),
+		"settlement_fingerprint": "",
+	}
+	intent["settlement_fingerprint"] = V076StateCodec.fingerprint(
+		_v076_without_field(intent, "settlement_fingerprint")
+	)
+	var settled := (
+		ASSET_BATCH_CORE.commit_private_direct_action_asset_reservation(_asset_state, intent)
+		if action == "commit"
+		else ASSET_BATCH_CORE.release_private_direct_action_asset_reservation(_asset_state, intent)
+	)
+	if not bool(settled.get("accepted", false)):
+		return {"accepted": false, "reason": str(settled.get("reason_code", "v076_production_asset_settlement_rejected"))}
+	_asset_state = (settled.get("state", _asset_state) as Dictionary).duplicate(true)
+	_sync_asset_balances()
+	prior["outcome"] = "consumed" if action == "commit" else "released"
+	prior["settlement_receipt"] = (settled.get("receipt", {}) as Dictionary).duplicate(true)
+	prior["revision"] = int(_asset_state.get("revision", 0))
+	_v076_production_asset_reservations[reservation_id] = prior.duplicate(true)
+	return prior.duplicate(true)
+
+
+func v076_military_roster_snapshot(_include_hidden: bool = true) -> Array:
+	var rows: Array = []
+	for actor_id in _player_ids:
+		var facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
+		for card_variant in facts.get("hand", []) as Array:
+			var card := card_variant as Dictionary
+			if CardDefinitionsV075.card_domain(str(card.get("card_type", ""))) != "military":
+				continue
+			rows.append({
+				"uid": v076_military_unit_uid_for_card(str(card.get("instance_id", ""))),
+				"owner": _player_ids.find(actor_id),
+				"actor_id": actor_id,
+				"card_instance_id": str(card.get("instance_id", "")),
+				"status": (
+					"dispatched"
+					if _v076_production_military_submission_by_uid.has(
+						v076_military_unit_uid_for_card(str(card.get("instance_id", "")))
+					)
+					else "available"
+				),
+			})
+	rows.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return int(left.get("uid", 0)) < int(right.get("uid", 0))
+	)
+	return rows
+
+
+func v076_military_unit_index_by_uid(unit_uid: int) -> int:
+	var rows := v076_military_roster_snapshot(true)
+	for index in range(rows.size()):
+		if int((rows[index] as Dictionary).get("uid", 0)) == unit_uid:
+			return index
+	return -1
+
+
+func v076_claim_military_submission(
+	unit_uid: int,
+	submission_id: String,
+	card_instance_id: String,
+	request_fingerprint: String
+) -> Dictionary:
+	if unit_uid <= 0 \
+			or submission_id.is_empty() \
+			or card_instance_id.is_empty() \
+			or request_fingerprint.length() != 64 \
+			or v076_military_unit_uid_for_card(card_instance_id) != unit_uid \
+			or v076_military_unit_index_by_uid(unit_uid) < 0:
+		return {"accepted": false, "reason": "v076_production_military_claim_invalid"}
+	var claim := {
+		"unit_uid": unit_uid,
+		"submission_id": submission_id,
+		"card_instance_id": card_instance_id,
+		"request_fingerprint": request_fingerprint,
+	}
+	if _v076_production_military_submission_by_uid.has(unit_uid):
+		var prior := (
+			_v076_production_military_submission_by_uid.get(unit_uid, {})
+			as Dictionary
+		)
+		if prior != claim:
+			return {
+				"accepted": false,
+				"reason": "v076_production_military_card_already_dispatched",
+			}
+		var replay := prior.duplicate(true)
+		replay["accepted"] = true
+		replay["duplicate"] = true
+		return replay
+	_v076_production_military_submission_by_uid[unit_uid] = claim.duplicate(true)
+	var receipt := claim.duplicate(true)
+	receipt["accepted"] = true
+	receipt["duplicate"] = false
+	return receipt
+
+
+func v076_release_military_submission_claim(
+	unit_uid: int,
+	submission_id: String,
+	_reason: String
+) -> Dictionary:
+	var prior := (
+		_v076_production_military_submission_by_uid.get(unit_uid, {})
+		as Dictionary
+	)
+	if prior.is_empty():
+		return {"accepted": true, "duplicate": true, "released": true}
+	if str(prior.get("submission_id", "")) != submission_id:
+		return {
+			"accepted": false,
+			"reason": "v076_production_military_claim_collision",
+		}
+	_v076_production_military_submission_by_uid.erase(unit_uid)
+	return {"accepted": true, "duplicate": false, "released": true}
+
+
+func v076_remove_military_unit(unit_index: int, _reason: String) -> bool:
+	var rows := v076_military_roster_snapshot(true)
+	if unit_index < 0 or unit_index >= rows.size():
+		return false
+	var row := rows[unit_index] as Dictionary
+	var dbg := _dbg_by_player.get(str(row.get("actor_id", ""))) as RefCounted
+	if not is_instance_valid(dbg):
+		return false
+	var intent := dbg.call(
+		"create_intent",
+		"intent.v076.military.withdraw.%s" % str(row.get("card_instance_id", "")),
+		str(row.get("actor_id", "")),
+		DBG_CORE.ACTION_PLAY_CARD,
+		{"instance_id": str(row.get("card_instance_id", ""))}
+	) as Dictionary
+	var receipt := dbg.call("apply_intent", intent) as Dictionary
+	var removed := bool(receipt.get("success", false))
+	if removed:
+		_v076_production_military_submission_by_uid.erase(int(row.get("uid", 0)))
+		_clear_v075_submission_caches()
+	return removed
+
+
+func v076_dispatch_military_monster_damage(command: Dictionary) -> Dictionary:
+	var target_uid := int(command.get("target_monster_uid", 0))
+	var target_source_id := ""
+	for row_variant in _v075_public_monsters():
+		var row := row_variant as Dictionary
+		if _v076_monster_uid_for_source(str(row.get("source_instance_id", ""))) == target_uid:
+			target_source_id = str(row.get("source_instance_id", ""))
+			break
+	if target_source_id.is_empty() or not is_instance_valid(_combat_owner):
+		return {"handled": false, "reason": "v076_production_monster_target_missing"}
+	var source := _public_monster_by_id(target_source_id)
+	var intent := V076CombatDamageCore.build_monster_damage_intent(
+		"effect.%s" % str(command.get("source_entity_id", "")),
+		target_source_id,
+		int(source.get("source_generation", 0)),
+		int(source.get("damage_revision", 0)),
+		int(command.get("damage", 0)),
+		str(source.get("region_id", "region.00")),
+		str(command.get("source_entity_id", "v076.production.military"))
+	)
+	var result := _combat_owner.call("apply_monster_damage_intent", intent) as Dictionary
+	return {
+		"handled": bool(result.get("accepted", false)),
+		"reason": str(result.get("reason_code", "")),
+		"sink_receipt": {
+			"accepted": bool(result.get("accepted", false)),
+			"reason_code": str(result.get("reason_code", "")),
+			"receipt": (result.get("receipt", {}) as Dictionary).duplicate(true),
+		},
+	}
+
+
+static func _v076_without_field(value: Dictionary, field: String) -> Dictionary:
+	var result := value.duplicate(true)
+	result.erase(field)
+	return result
+
+
 func authorize_v076_private_monster_skill_bundle(
 	actor_id: String,
 	parameters: Dictionary
@@ -3956,6 +4569,8 @@ func _reset_runtime() -> void:
 	_v075_submission_rollback_count = 0
 	_v075_public_card_identity_rejection_count = 0
 	_v075_public_facility_slots_cache = []
+	_v076_production_asset_reservations = {}
+	_v076_production_military_submission_by_uid = {}
 	_clear_v075_submission_caches()
 	_clear_v075_track_projection_cache()
 

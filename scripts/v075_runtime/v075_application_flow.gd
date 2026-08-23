@@ -14,11 +14,28 @@ const SAMPLE_MODE_ID := "NEW_V075_GAME"
 const DEFAULT_SEED := 900626424
 const CUTOVER_DOMAIN_COUNT := 29
 const PRIVATE_SKILL_INTENT_KIND := "combat.monster_private_skill.request"
+const V076_PRODUCTION_MILITARY_INTENT_KIND := "combat.military_mission.select"
+const V076_PRODUCTION_MILITARY_RECEIPT_SCHEMA := (
+	"V076OwnerPrivateMilitaryApplicationReceiptV1"
+)
+const ProfileCatalog := preload(
+	"res://scripts/v076/military/v076_military_unit_profile_catalog_v1.gd"
+)
 
 @onready var _ruleset_owner: Node = %V075RulesetRuntimeOwner
 @onready var _runtime_owner: Node = %V075RuntimeOwner
 @onready var _combat_owner: Node = %V075CombatRuntimeOwner
 @onready var _combat_telemetry: Node = %V075CombatTelemetryService
+@onready var _v076_kernel: Node = get_node_or_null("V076DeterministicKernel")
+@onready var _v076_eta_owner: Node = get_node_or_null(
+	"V076MilitaryPhysicalEtaOwnerV1"
+)
+@onready var _v076_production_adapter: Node = get_node_or_null(
+	"V076V075ProductionAdapterV1"
+)
+@onready var _v076_private_direct_action_owner: Node = get_node_or_null(
+	"V076PrivateDirectActionInputOwnerV1"
+)
 
 var _intent_sequence := 0
 var _session_sequence := 0
@@ -34,9 +51,20 @@ var _new_game_reentry_rejection_count := 0
 var _new_game_publication_count := 0
 var _new_game_rollback_count := 0
 var _last_published_session_id := ""
+var _v076_production_required := false
+var _v076_production_ready := false
+var _v076_production_seed := 0
+var _v076_production_configuration_failure_count := 0
+var _v076_private_military_receipt_count := 0
 
 
 func _ready() -> void:
+	_v076_production_required = (
+		_v076_kernel != null
+		or _v076_eta_owner != null
+		or _v076_production_adapter != null
+		or _v076_private_direct_action_owner != null
+	)
 	var telemetry_binding := _runtime_owner.call(
 		"bind_combat_telemetry_service",
 		_combat_telemetry
@@ -51,6 +79,20 @@ func _ready() -> void:
 	):
 		push_error("V075 runtime composition binding failed")
 		return
+	if _v076_production_required:
+		if _v076_production_adapter == null \
+				or not _v076_production_adapter.has_method("bind_runtime_owner"):
+			_v076_production_configuration_failure_count += 1
+			push_error("V076 production adapter binding surface missing")
+			return
+		var adapter_binding := _v076_production_adapter.call(
+			"bind_runtime_owner",
+			_runtime_owner
+		) as Dictionary
+		if not bool(adapter_binding.get("accepted", false)):
+			_v076_production_configuration_failure_count += 1
+			push_error("V076 production adapter binding failed")
+			return
 	_runtime_owner.state_changed.connect(_on_runtime_state_changed)
 	_runtime_owner.final_settlement_committed.connect(
 		_on_final_settlement_committed
@@ -154,12 +196,11 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 				parameters
 			) as Dictionary
 		"combat.military_mission.select":
-			result = _runtime_owner.call(
-				"queue_selected_military_mission",
+			result = _submit_v076_production_military_action(
+				intent_id,
 				actor_id,
-				str(parameters.get("task_kind", "")),
 				parameters
-			) as Dictionary
+			)
 		"persistence.save":
 			result = _ruleset_owner.call(
 				"request_save",
@@ -186,7 +227,66 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 				result
 			)
 		)
+	if intent_kind == V076_PRODUCTION_MILITARY_INTENT_KIND:
+		return _publish_owner_private_military_receipt(
+			intent_id,
+			actor_id,
+			result
+		)
 	return _publish_receipt(_bind_receipt(intent_id, intent_kind, result))
+
+
+func _submit_v076_production_military_action(
+	intent_id: String,
+	actor_id: String,
+	parameters: Dictionary
+) -> Dictionary:
+	if not _v076_production_required or not _v076_production_ready:
+		return _reject_action_result(
+			"v076_production_military_direct_action_not_ready"
+		)
+	var bundle_result := _runtime_owner.call(
+		"authorize_v076_production_military_bundle",
+		actor_id,
+		parameters
+	) as Dictionary
+	if not bool(bundle_result.get("accepted", false)):
+		return _reject_action_result(str(bundle_result.get(
+			"reason_code",
+			"v076_production_military_authorization_rejected"
+		)))
+	var bundle := bundle_result.get("bundle", {}) as Dictionary
+	var submission_id := "v076.production.military.%s" % intent_id
+	var request_result := _runtime_owner.call(
+		"build_v076_production_military_request",
+		actor_id,
+		submission_id,
+		parameters,
+		bundle
+	) as Dictionary
+	if not bool(request_result.get("accepted", false)):
+		return _reject_action_result(str(request_result.get(
+			"reason",
+			"v076_production_military_request_rejected"
+		)))
+	var submitted := _v076_private_direct_action_owner.call(
+		"submit_private_military_direct_action",
+		bundle,
+		request_result.get("request", {}) as Dictionary
+	) as Dictionary
+	if not bool(submitted.get("accepted", false)):
+		return _reject_action_result(str(submitted.get(
+			"reason",
+			"v076_production_military_submission_rejected"
+		)))
+	var result := submitted.duplicate(true)
+	result["reason_code"] = "v076_production_military_direct_action_submitted"
+	result["submission_id"] = submission_id
+	return result
+
+
+func _reject_action_result(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason_code": reason_code}
 
 
 func issue_intent(intent_kind: String, parameters: Dictionary = {}) -> Dictionary:
@@ -200,6 +300,114 @@ func issue_intent(intent_kind: String, parameters: Dictionary = {}) -> Dictionar
 		"ruleset_id": RULESET_ID,
 		"parameters": parameters.duplicate(true),
 	}
+
+
+func _ensure_v076_production_configuration(seed_value: int) -> Dictionary:
+	if not _v076_production_required:
+		return {"accepted": true, "reason_code": "v076_production_not_present"}
+	if _v076_production_ready:
+		if seed_value != _v076_production_seed:
+			return _reject_action_result(
+				"v076_production_kernel_seed_reconfiguration_forbidden"
+			)
+		return {"accepted": true, "reason_code": "v076_production_ready"}
+	if (
+		_v076_kernel == null
+		or _v076_eta_owner == null
+		or _v076_private_direct_action_owner == null
+		or _v076_production_adapter == null
+	):
+		_v076_production_configuration_failure_count += 1
+		return _reject_action_result("v076_production_dependency_missing")
+	var kernel_config := _v076_kernel.call("configure", seed_value) as Dictionary
+	if not bool(kernel_config.get("accepted", false)):
+		_v076_production_configuration_failure_count += 1
+		return _reject_action_result(str(kernel_config.get(
+			"reason",
+			"v076_production_kernel_configuration_rejected"
+		)))
+	var profile_authority := ProfileCatalog.new()
+	var eta_config := _v076_eta_owner.call(
+		"configure",
+		profile_authority
+	) as Dictionary
+	if not bool(eta_config.get("accepted", false)):
+		_v076_production_configuration_failure_count += 1
+		return _reject_action_result(str(eta_config.get(
+			"reason",
+			"v076_production_eta_configuration_rejected"
+		)))
+	var direct_config := _v076_private_direct_action_owner.call(
+		"configure_dependencies",
+		_v076_kernel,
+		_v076_production_adapter,
+		_v076_production_adapter,
+		_v076_production_adapter,
+		_v076_production_adapter,
+		profile_authority,
+		_v076_eta_owner,
+		_runtime_owner,
+		_v076_production_adapter
+	) as Dictionary
+	if not bool(direct_config.get("accepted", false)):
+		_v076_production_configuration_failure_count += 1
+		return _reject_action_result(str(direct_config.get(
+			"reason",
+			"v076_production_direct_action_configuration_rejected"
+		)))
+	_v076_production_seed = seed_value
+	_v076_production_ready = true
+	return {
+		"accepted": true,
+		"reason_code": "v076_production_configuration_ready",
+		"seed": seed_value,
+		"kernel_owner": "V076DeterministicKernel",
+		"direct_action_owner": "V076PrivateDirectActionInputOwnerV1",
+	}
+
+
+func _process(delta: float) -> void:
+	if not _v076_production_ready:
+		return
+	var elapsed_us := maxi(0, int(round(delta * 1_000_000.0)))
+	if elapsed_us <= 0:
+		return
+	var advanced := _v076_kernel.call(
+		"advance_elapsed_us",
+		elapsed_us
+	) as Dictionary
+	if not bool(advanced.get("accepted", false)):
+		push_error("V076 production kernel advance failed")
+		return
+	if int(advanced.get("advanced_tick_count", 0)) <= 0:
+		return
+	var intake := _v076_private_direct_action_owner.call(
+		"settle_ready_private_actions"
+	) as Dictionary
+	if not bool(intake.get("accepted", false)):
+		push_error("V076 private intake settlement failed")
+		return
+	for receipt_variant in intake.get("receipts", []) as Array:
+		_publish_owner_private_military_receipt(
+			str((receipt_variant as Dictionary).get("submission_id", "")),
+			str(_runtime_owner.call("local_player_id")),
+			receipt_variant as Dictionary
+		)
+	for submission_id in _v076_private_direct_action_owner.call(
+		"withdrawal_ready_submission_ids"
+	) as Array:
+		var settled := _v076_private_direct_action_owner.call(
+			"settle_completed_submission",
+			str(submission_id)
+		) as Dictionary
+		if not bool(settled.get("accepted", false)):
+			push_error("V076 private military completion settlement failed")
+			continue
+		_publish_owner_private_military_receipt(
+			str(submission_id),
+			str(_runtime_owner.call("local_player_id")),
+			settled
+		)
 
 
 func local_snapshot() -> Dictionary:
@@ -285,6 +493,24 @@ func debug_snapshot() -> Dictionary:
 		"combat_dual_write_count": 0,
 		"combat_legacy_fallback_count": 0,
 		"mixed_ruleset_state_count": 0,
+		"v076_production_required": _v076_production_required,
+		"v076_production_ready": _v076_production_ready,
+		"v076_kernel_owner_count": 1 if _v076_kernel != null else 0,
+		"v076_private_direct_action_owner_count": (
+			1 if _v076_private_direct_action_owner != null else 0
+		),
+		"v076_production_adapter_count": (
+			1 if _v076_production_adapter != null else 0
+		),
+		"v076_military_eta_owner_count": 1 if _v076_eta_owner != null else 0,
+		"v076_production_configuration_failure_count": (
+			_v076_production_configuration_failure_count
+		),
+		"v076_private_military_receipt_count": (
+			_v076_private_military_receipt_count
+		),
+		"v076_public_batch_entry_count": 0,
+		"v076_shared_sushi_track_resolution_count": 0,
 		"save_adapter_connected": false,
 		"save_resume_enabled": false,
 		"cutover_domain_count": CUTOVER_DOMAIN_COUNT,
@@ -391,6 +617,10 @@ func _new_game_publication_stage_authorized(required_stage: String) -> bool:
 func _execute_new_game_transaction(parameters: Dictionary) -> Dictionary:
 	var player_count := int(parameters.get("player_count", 4))
 	var seed_value := int(parameters.get("seed", DEFAULT_SEED))
+	var v076_configuration := _ensure_v076_production_configuration(seed_value)
+	if not bool(v076_configuration.get("accepted", false)):
+		_new_game_transaction_stage = "v076_configuration_failed"
+		return v076_configuration
 	var publication_stage_authority := Callable(
 		self,
 		"_new_game_publication_stage_authorized"
@@ -839,6 +1069,47 @@ func _publish_owner_private_receipt(receipt: Dictionary) -> Dictionary:
 	}
 	owner_private_receipt_ready.emit(receipt.duplicate(true))
 	return receipt
+
+
+func _publish_owner_private_military_receipt(
+	receipt_id: String,
+	actor_id: String,
+	result: Dictionary
+) -> Dictionary:
+	## Military acknowledgements share the established owner-private signal but
+	## expose no card, target, route, asset, damage, or mission-lock payload on
+	## the generic/public receipt projection.
+	_v076_private_military_receipt_count += 1
+	var accepted := bool(result.get("accepted", false))
+	var private_receipt := {
+		"schema": V076_PRODUCTION_MILITARY_RECEIPT_SCHEMA,
+		"accepted": accepted,
+		"reason_code": str(result.get(
+			"reason_code",
+			result.get(
+				"reason",
+				"v076_production_military_action_rejected"
+			)
+		)),
+		"event_kind": (
+			"military_direct_action_acknowledged"
+			if accepted
+			else "military_direct_action_rejected"
+		),
+		"receipt_scope": "owner_private",
+		"request_status": "accepted" if accepted else "rejected",
+		"owner_player_id": actor_id,
+		"receipt_id": receipt_id,
+		"ruleset_id": RULESET_ID,
+	}
+	_last_receipt = {
+		"schema": "V075ApplicationReceiptRedactionV1",
+		"accepted": accepted,
+		"receipt_scope": "owner_private_redacted",
+		"ruleset_id": RULESET_ID,
+	}
+	owner_private_receipt_ready.emit(private_receipt.duplicate(true))
+	return private_receipt
 
 
 func _reject(
