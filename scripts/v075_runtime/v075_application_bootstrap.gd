@@ -4,6 +4,9 @@ class_name V075ApplicationBootstrap
 const RuntimeContextQuery := preload(
 	"res://scripts/v075_runtime/game_runtime_context_query.gd"
 )
+const V076HumanGoldenProfile := preload(
+	"res://scripts/playtest/v076_alpha07_human_golden_candidate_profile.gd"
+)
 
 @onready var _application_flow: Node = %V075RuntimeComposition
 @onready var _game_screen: Control = %V075GameScreen
@@ -13,6 +16,12 @@ const RuntimeContextQuery := preload(
 
 
 func _ready() -> void:
+	var telemetry_configured := bool(_playtest_telemetry.call(
+		"configure_candidate_profile",
+		V076HumanGoldenProfile.snapshot()
+	))
+	if not telemetry_configured:
+		push_warning("V076 human-Golden observation profile was not configured")
 	_game_screen.call(
 		"bind_application_flow",
 		_application_flow,

@@ -104,8 +104,8 @@
     },
     {
       "domain_id": "future.v076_human_playtest_evidence",
-      "lifecycle": "PENDING_FUTURE_DOMAIN",
-      "owner_component_id": ""
+      "lifecycle": "ACTIVE_CURRENT_DOMAIN",
+      "owner_component_id": "component.current.v073_playtest_telemetry"
     },
     {
       "domain_id": "future.v077_save_resume_recovery",
@@ -1565,6 +1565,186 @@
         "why_adapter_is_insufficient": "A stateless Adapter cannot reserve or settle the existing V075 player balances, reservation map, revision, and receipt journal without creating a second asset authority path.",
         "why_new_owner_is_required": "NOT_REQUIRED_EXISTING_V07_ASSET_REDUCER_EXTENDED"
       }
+    },
+    {
+      "component_id": "component.current.v073_playtest_telemetry",
+      "class_name": "V073PlaytestTelemetryService",
+      "path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+      "domain_id": "future.v076_human_playtest_evidence",
+      "component_role": "OWNER",
+      "production_reachable": true,
+      "writes_authority": true,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": true,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v073_playtest_telemetry",
+      "owner_path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+      "reuse_disposition": "ADOPT_AS_OWNER",
+      "reuse_source_ids": [
+        "reuse.v073.human_playtest_instrumentation",
+        "reuse.v075.combat_candidate"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v073.human_playtest_instrumentation",
+        "reuse.v075.combat_candidate"
+      ],
+      "new_component_justification": "The already-production-reachable V073 observation service is adopted and extended in place as the one Human Golden evidence-package Owner. It now labels V076 product identity over the reused V075 runtime, writes only local observation artifacts, and permanently self-reports human_executed=false until a separate real human attestation is supplied. No second telemetry service, gameplay mutation, Save, RNG, Tick, presentation, network, or human-pass authority is created.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "focused_test_ids": [
+        "v076_human_golden_observation_readiness_test",
+        "v075_application_composition_test"
+      ],
+      "golden_scenario_steps": [
+        "STEP01", "STEP06", "STEP07", "STEP08", "STEP09", "STEP10",
+        "STEP11", "STEP12", "STEP13", "STEP14", "STEP15"
+      ],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 2,
+        "reuse_candidate_ids": [
+          "reuse.v073.human_playtest_instrumentation",
+          "reuse.v075.combat_candidate"
+        ],
+        "selected_reuse_disposition": "ADOPT_AS_OWNER",
+        "why_existing_owner_cannot_be_extended": "NOT_APPLICABLE_EXTENDED_EXISTING_V073_OBSERVATION_OWNER",
+        "why_adapter_is_insufficient": "A stateless profile Adapter can bind candidate identity but cannot own event sequence, local artifact hashes, export finalization, or evidence-package identity.",
+        "why_new_owner_is_required": "NOT_REQUIRED_EXISTING_V073_OBSERVATION_OWNER_EXTENDED"
+      }
+    },
+    {
+      "component_id": "component.v076.human_golden_candidate_profile",
+      "class_name": "V076Alpha07HumanGoldenCandidateProfile",
+      "path": "scripts/playtest/v076_alpha07_human_golden_candidate_profile.gd",
+      "domain_id": "future.v076_human_playtest_evidence",
+      "component_role": "ADAPTER",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v073_playtest_telemetry",
+      "owner_path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.v073.human_playtest_instrumentation",
+        "reuse.pr79.v07_domain_cores",
+        "reuse.v075.combat_candidate",
+        "reuse.v076.military_unit_profile_authority.current"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v073.human_playtest_instrumentation",
+        "reuse.pr79.v07_domain_cores",
+        "reuse.v075.combat_candidate",
+        "reuse.v076.military_unit_profile_authority.current"
+      ],
+      "new_component_justification": "One immutable Adapter fingerprints the existing economy, V075 combat, and V076 military profile authorities into a V076 candidate observation identity. It copies no balance values and owns no event, receipt, gameplay, Save, RNG, Tick, presentation, or human attestation state.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "focused_test_ids": ["v076_human_golden_observation_readiness_test"],
+      "golden_scenario_steps": [
+        "STEP01", "STEP06", "STEP07", "STEP08", "STEP09", "STEP10",
+        "STEP11", "STEP12", "STEP13", "STEP14", "STEP15"
+      ],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 4,
+        "reuse_candidate_ids": [
+          "reuse.v073.human_playtest_instrumentation",
+          "reuse.pr79.v07_domain_cores",
+          "reuse.v075.combat_candidate",
+          "reuse.v076.military_unit_profile_authority.current"
+        ],
+        "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
+        "why_existing_owner_cannot_be_extended": "The economy, combat, and military Profile Owners must remain authoritative for their own values; none may own cross-domain Human Golden candidate identity.",
+        "why_adapter_is_insufficient": "NOT_APPLICABLE; this component is exactly the stateless identity Adapter.",
+        "why_new_owner_is_required": "NOT_REQUIRED_EXISTING_V073_OBSERVATION_OWNER_REUSED"
+      }
+    },
+    {
+      "component_id": "component.current.v075_application_bootstrap",
+      "class_name": "V075ApplicationBootstrap",
+      "path": "scripts/v075_runtime/v075_application_bootstrap.gd",
+      "domain_id": "future.v076_human_playtest_evidence",
+      "component_role": "ADAPTER",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v073_playtest_telemetry",
+      "owner_path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.v073.human_playtest_instrumentation",
+        "reuse.v075.combat_candidate"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v073.human_playtest_instrumentation",
+        "reuse.v075.combat_candidate"
+      ],
+      "new_component_justification": "The existing V075 bootstrap performs one fail-closed candidate-profile configuration call before binding the existing telemetry service. It stores no evidence, gameplay, Save, RNG, Tick, presentation, or attestation state and cannot replace the observation Owner.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "focused_test_ids": [
+        "v076_human_golden_observation_readiness_test",
+        "v075_application_composition_test"
+      ],
+      "golden_scenario_steps": [
+        "STEP01", "STEP06", "STEP07", "STEP08", "STEP09", "STEP10",
+        "STEP11", "STEP12", "STEP13", "STEP14", "STEP15"
+      ],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 2,
+        "reuse_candidate_ids": [
+          "reuse.v073.human_playtest_instrumentation",
+          "reuse.v075.combat_candidate"
+        ],
+        "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
+        "why_existing_owner_cannot_be_extended": "NOT_APPLICABLE_EXISTING_BOOTSTRAP_IS_THE_COMPOSITION_CONSUMER",
+        "why_adapter_is_insufficient": "NOT_APPLICABLE; this component is exactly the existing stateless bootstrap Adapter.",
+        "why_new_owner_is_required": "NOT_REQUIRED_EXISTING_V073_OBSERVATION_OWNER_REUSED"
+      }
     }
   ],
   "legacy_debt_grandfather_paths": [
@@ -1673,9 +1853,10 @@
     },
     {
       "domain_id": "future.v076_human_playtest_evidence",
-      "unique_owner": "UNASSIGNED_OBSERVATION_ONLY_OWNER",
-      "owner_count": 0,
-      "binding_status": "PENDING"
+      "unique_owner": "V073PlaytestTelemetryService",
+      "owner_path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+      "owner_count": 1,
+      "binding_status": "ACTIVE_V076_OBSERVATION_ONLY"
     },
     {
       "domain_id": "future.v077_save_resume_recovery",

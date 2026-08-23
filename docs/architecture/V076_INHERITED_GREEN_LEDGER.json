@@ -771,7 +771,8 @@
       "current.player_six_color_asset_quantity",
       "current.military_unit_state",
       "v076.military_unit_profile_authority",
-      "v076.military_physical_eta"
+      "v076.military_physical_eta",
+      "future.v076_human_playtest_evidence"
     ],
     "affected_owners": [
       "component.v076.private_direct_action_input",
@@ -788,6 +789,9 @@
       "component.v076.military_unit_profile_catalog_adapter",
       "component.v076.military_physical_eta",
       "component.current.v075_runtime_owner",
+      "component.current.v073_playtest_telemetry",
+      "component.v076.human_golden_candidate_profile",
+      "component.current.v075_application_bootstrap",
       "RuntimeCommandPipeline",
       "MonsterRuntimeController"
     ],
@@ -808,6 +812,7 @@
       "v075_combat_ai_test",
       "v07_asset_batch_core_test",
       "v076_production_military_composition_test",
+      "v076_human_golden_observation_readiness_test",
       "simulation_runtime_authority_migration_test",
       "v076_deterministic_kernel_test",
       "v076_shared_half_edge_partition_test",
@@ -825,11 +830,12 @@
       "V076_HALF_EDGE_SPHERE",
       "PR65_AUTHORIZATION_PATTERN",
       "V075_PRIVATE_SKILL_CONTRACT",
+      "V073_PLAYTEST_INSTRUMENTATION_PRIVACY",
       "REUSE_POINT_INERTIA_GATE"
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "This production-composition delta connects the already-green private military Direct Action through the existing V075 RuntimeComposition and ApplicationFlow. The focused production test exercises both legal missions through physical ETA, one typed damage mutation, one asset debit, card consumption, withdrawal, private receipt redaction, active-session restart rejection, and zero public-batch/sushi leakage. V075 composition, AI, privacy, asset, private-input, lifecycle, Profile, Crosswalk, ETA, Kernel, half-edge, Monster, mission, and Gate sentinels cover every changed or consumed boundary. No new gameplay Owner, second asset ledger, GameRuntimeCoordinator, Guard/Protect, teleport, production/human false-green, or full-world reproof is introduced."
+    "why_focused_tests_are_sufficient": "The production-composition delta retains the already-green military Direct Action and extends the one existing V073 observation-only telemetry Owner with a V076 candidate identity Adapter. The Human-Golden readiness test starts a real V075 production new game through main.tscn, exports the isolated manifest/summary, verifies reused economy/combat/military fingerprints, privacy, zero gameplay/Save/RNG/Tick ownership, and permanent human_executed=false; V075 composition and military production tests cover the only bootstrap and runtime dependencies. No second telemetry or gameplay Owner, balance copy, network path, human attestation, Guard/Protect, teleport, production/human false-green, or full-world reproof is introduced."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
