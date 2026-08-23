@@ -1435,6 +1435,26 @@
           "mcp_stop_status": "STOPPED",
           "hard_runtime_error_count": 0,
           "remaining_project_runtime_process_count": 0
+        },
+        {
+          "evidence_id": "alpha07-responsive-audit-existing-consumer-classification-repair",
+          "result": "PASS",
+          "correction_kind": "UNREGISTERED_EXISTING_CONSUMER_CLASSIFICATION_REPAIR",
+          "component_id": "component.current.v075_responsive_acceptance_audit",
+          "domain_id": "current.v075_production_combat_candidate",
+          "repair_subject_head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
+          "repair_subject_tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
+          "prior_lifecycle": "UNREGISTERED_EXISTING_CONSUMER",
+          "corrected_lifecycle": "REGISTERED_ACTIVE_CONSUMER",
+          "new_owner_created": false,
+          "parallel_owner_count": 0,
+          "affected_transitions": [
+            {
+              "head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
+              "failure_codes": ["HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"]
+            }
+          ],
+          "rationale": "The existing stateless V075ResponsiveAcceptanceAudit implementation was added with the e02e18ac UI audit repair and later registered as a consumer of the existing V075RuntimeOwner domain. This append-only correction binds the exact implementation head/tree, creates no Owner, writes no authority, and repairs only the one historical classification transition."
         }
       ],
       "not_claimed": [

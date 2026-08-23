@@ -313,9 +313,13 @@ LEDGER_STATUS_VALUES = {
 HISTORY_CLASSIFICATION_CORRECTION_KIND = (
     "REFERENCE_ONLY_EXISTING_OWNER_ACTIVATION_REPAIR"
 )
+HISTORY_NON_OWNER_CLASSIFICATION_CORRECTION_KIND = (
+    "UNREGISTERED_EXISTING_CONSUMER_CLASSIFICATION_REPAIR"
+)
 HISTORY_CLASSIFICATION_CORRECTABLE_FAILURES = {
     "HISTORY_PRODUCT_OWNER_BINDING_INVALID",
     "HISTORY_REFERENCE_ONLY_AUTHORITY_WRITE",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
 }
 HISTORY_REUSE_SCAN_CORRECTION_KIND = (
     "REUSE_SCAN_CANDIDATE_CONSIDERATION_REPAIR"
@@ -891,11 +895,12 @@ def _history_classification_corrections(
 ) -> tuple[dict[str, set[tuple[str, str]]], list[str]]:
     """Load exact, append-only repair evidence for an already-committed schema error.
 
-    This cannot excuse code-before-registry, an unknown component, a new Owner,
-    or an arbitrary history failure. It only permits the two named failures
-    produced when an existing, atomically registered Owner was accidentally left
-    in a reference-only domain and a later evidence-only commit activates that
-    same unique Owner.
+    The normal row repairs an existing Owner accidentally left in a reference-only
+    domain. The narrowly separate consumer row repairs one already-existing,
+    stateless production consumer whose implementation commit preceded its
+    registry metadata; it is bound to the exact implementation head/tree, active
+    existing Owner, zero authority writes, and one exact transition failure.
+    Neither row can create an Owner or excuse an unknown path.
     """
     failures: list[str] = []
     allowed: dict[str, set[tuple[str, str]]] = {}
@@ -933,6 +938,10 @@ def _history_classification_corrections(
                 "affected_transitions",
                 "rationale",
             }
+            is_consumer_correction = (
+                evidence.get("correction_kind")
+                == HISTORY_NON_OWNER_CLASSIFICATION_CORRECTION_KIND
+            )
             valid = bool(
                 set(evidence) == expected_fields
                 and evidence_id
@@ -940,8 +949,24 @@ def _history_classification_corrections(
                 and evidence.get("result") == "PASS"
                 and _is_hex(subject_head, 40)
                 and _is_hex(subject_tree, 40)
-                and evidence.get("prior_lifecycle") == "REFERENCE_ONLY_DOMAIN"
-                and evidence.get("corrected_lifecycle") == "ACTIVE_CURRENT_DOMAIN"
+                and (
+                    (
+                        not is_consumer_correction
+                        and evidence.get("correction_kind")
+                        == HISTORY_CLASSIFICATION_CORRECTION_KIND
+                        and evidence.get("prior_lifecycle")
+                        == "REFERENCE_ONLY_DOMAIN"
+                        and evidence.get("corrected_lifecycle")
+                        == "ACTIVE_CURRENT_DOMAIN"
+                    )
+                    or (
+                        is_consumer_correction
+                        and evidence.get("prior_lifecycle")
+                        == "UNREGISTERED_EXISTING_CONSUMER"
+                        and evidence.get("corrected_lifecycle")
+                        == "REGISTERED_ACTIVE_CONSUMER"
+                    )
+                )
                 and evidence.get("new_owner_created") is False
                 and _is_int(evidence.get("parallel_owner_count"))
                 and evidence.get("parallel_owner_count") == 0
@@ -955,13 +980,31 @@ def _history_classification_corrections(
                 valid
                 and isinstance(component, dict)
                 and component.get("domain_id") == domain_id
-                and component.get("component_role") == "OWNER"
-                and component.get("owner_component_id") == component_id
+                and (
+                    (
+                        not is_consumer_correction
+                        and component.get("component_role") == "OWNER"
+                        and component.get("owner_component_id") == component_id
+                    )
+                    or (
+                        is_consumer_correction
+                        and component.get("component_role") == "CONSUMER"
+                        and component.get("owner_component_id")
+                        and component.get("owner_component_id") != component_id
+                        and component.get("writes_authority") is False
+                    )
+                )
                 and component.get("production_reachable") is True
-                and component.get("writes_authority") is True
+                and component.get("writes_authority") is (
+                    False if is_consumer_correction else True
+                )
                 and isinstance(domain, dict)
                 and domain.get("lifecycle") == "ACTIVE_CURRENT_DOMAIN"
-                and domain.get("owner_component_id") == component_id
+                and domain.get("owner_component_id") == (
+                    component_id
+                    if not is_consumer_correction
+                    else component.get("owner_component_id")
+                )
                 and _git(root, "show", "-s", "--format=%T", subject_head, check=False)
                 == subject_tree
                 and subprocess.run(
@@ -1028,8 +1071,16 @@ def _history_classification_corrections(
                 exact_codes = {
                     (
                         code,
-                        component_id
-                        if code == "HISTORY_PRODUCT_OWNER_BINDING_INVALID"
+                        (
+                            str(component.get("path", ""))
+                            if code == "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"
+                            else component_id
+                        )
+                        if code in {
+                            "HISTORY_PRODUCT_OWNER_BINDING_INVALID",
+                            "HISTORY_NON_OWNER_BINDING_INVALID",
+                            "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+                        }
                         else domain_id,
                     )
                     for code in map(str, failure_codes)

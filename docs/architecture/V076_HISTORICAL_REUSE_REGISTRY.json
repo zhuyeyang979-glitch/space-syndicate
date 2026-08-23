@@ -104,7 +104,7 @@
       "owner_component_id": ""
     },
     {
-      "domain_id": "current.v075_production_combat_candidate",
+      "domain_id": "future.v076_human_playtest_evidence",
       "lifecycle": "ACTIVE_CURRENT_DOMAIN",
       "owner_component_id": "component.current.v073_playtest_telemetry"
     },
@@ -1847,7 +1847,7 @@
       "component_id": "component.current.v075_responsive_acceptance_audit",
       "class_name": "V075ResponsiveAcceptanceAudit",
       "path": "scripts/ui/v075/v075_responsive_acceptance_audit.gd",
-      "domain_id": "future.v076_human_playtest_evidence",
+      "domain_id": "current.v075_production_combat_candidate",
       "component_role": "CONSUMER",
       "production_reachable": true,
       "writes_authority": false,
