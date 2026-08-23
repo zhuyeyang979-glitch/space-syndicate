@@ -872,7 +872,7 @@ func _monster_request(asset_plan: Dictionary) -> Dictionary:
 	}
 
 
-func _configure_facility_damage_owner(owner: Object) -> Dictionary:
+func _configure_facility_damage_owner(runtime_owner: Object) -> Dictionary:
 	var facility := FacilityCore.build_occupied_slot(
 		"region.007",
 		14,
@@ -896,13 +896,13 @@ func _configure_facility_damage_owner(owner: Object) -> Dictionary:
 	)
 	if state.is_empty():
 		return {}
-	owner.set("_facility_state", state.duplicate(true))
-	owner.call("_sync_facility_slots")
+	runtime_owner.set("_facility_state", state.duplicate(true))
+	runtime_owner.call("_sync_facility_slots")
 	return {"state": state, "facility": facility}
 
 
-func _facility_by_id(owner: Object, facility_id: String) -> Dictionary:
-	for row_variant in owner.call("_public_occupied_facilities") as Array:
+func _facility_by_id(runtime_owner: Object, facility_id: String) -> Dictionary:
+	for row_variant in runtime_owner.call("_public_occupied_facilities") as Array:
 		if row_variant is Dictionary \
 				and str((row_variant as Dictionary).get("facility_id", "")) == facility_id:
 			return (row_variant as Dictionary).duplicate(true)
