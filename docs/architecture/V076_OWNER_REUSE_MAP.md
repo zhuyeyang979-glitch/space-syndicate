@@ -5,7 +5,7 @@ schema_version: space_syndicate.v076.owner_reuse_map.v1
 registry_id: V076_OWNER_REUSE_MAP
 
 This map enforces one Owner per domain at candidate head
-`adee42218fa63e12285903d46e93c72a3db7ec6b`. Consumers may adapt data or
+`200bcc4dd9447f5ec1f058a9b7c2752558bbfdce`. Consumers may adapt data or
 contracts, but they may not inherit authority by association.
 
 | Domain | Unique Owner | Reused source | Disposition | Consumer boundary |

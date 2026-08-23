@@ -2,8 +2,8 @@
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "adee42218fa63e12285903d46e93c72a3db7ec6b",
-  "candidate_tree_sha": "PENDING_AT_IMPLEMENTATION_COMMIT",
+  "candidate_head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+  "candidate_tree_sha": "79b6f6dc6f222a3b36d86ab6f75a173154c1b4dc",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
