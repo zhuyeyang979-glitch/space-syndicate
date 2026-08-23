@@ -343,6 +343,26 @@ HISTORY_TRANSIENT_DOMAIN_TARGETLESS_FAILURES = {
     "HISTORY_DOMAIN_ROW_INVALID_OR_DUPLICATE",
     "HISTORY_UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH",
 }
+HISTORY_COMPONENT_ID_ALIASES = {
+    "component.current.v073.playtest_coach": (
+        "component.current.v073_playtest_coach"
+    ),
+    "component.current.v073.playtest_coach_scene": (
+        "component.current.v073_playtest_coach_scene"
+    ),
+}
+
+
+def _canonical_history_component_id(value: Any) -> Any:
+    if isinstance(value, str):
+        return HISTORY_COMPONENT_ID_ALIASES.get(value, value)
+    if isinstance(value, list):
+        return [_canonical_history_component_id(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            key: _canonical_history_component_id(item) for key, item in value.items()
+        }
+    return value
 HISTORY_REUSE_SCAN_CORRECTION_KIND = (
     "REUSE_SCAN_CANDIDATE_CONSIDERATION_REPAIR"
 )
@@ -1367,7 +1387,7 @@ def _history_transient_domain_corrections(
                 continue
             transition_head = str(row.get("head_sha", ""))
             failure_code = str(row.get("failure_code", ""))
-            target = str(row.get("target", ""))
+            target = _canonical_history_component_id(str(row.get("target", "")))
             if (
                 transition_head != mistaken_head
                 or failure_code not in HISTORY_TRANSIENT_DOMAIN_CORRECTABLE_FAILURES
@@ -2896,7 +2916,9 @@ def _monotonic_transition_failures(
             failures.append(
                 f"HISTORY_CLASSIFICATION_CORRECTION_SILENT_DELETE:{label}:{evidence_id}"
             )
-        elif new_correction != old_correction:
+        elif _canonical_history_component_id(new_correction) != _canonical_history_component_id(
+            old_correction
+        ):
             failures.append(
                 f"HISTORY_CLASSIFICATION_CORRECTION_MUTATED:{label}:{evidence_id}"
             )
@@ -2921,7 +2943,9 @@ def _monotonic_transition_failures(
                 f"HISTORY_TRANSIENT_DOMAIN_CORRECTION_SILENT_DELETE:{label}:"
                 f"{evidence_id}"
             )
-        elif new_correction != old_correction:
+        elif _canonical_history_component_id(new_correction) != _canonical_history_component_id(
+            old_correction
+        ):
             failures.append(
                 f"HISTORY_TRANSIENT_DOMAIN_CORRECTION_MUTATED:{label}:"
                 f"{evidence_id}"
