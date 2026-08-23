@@ -876,9 +876,10 @@ def _history_classification_correction_rows(
         if not isinstance(stage, dict):
             continue
         for evidence in stage.get("evidence", []):
-            if not isinstance(evidence, dict) or evidence.get("correction_kind") != (
-                HISTORY_CLASSIFICATION_CORRECTION_KIND
-            ):
+            if not isinstance(evidence, dict) or evidence.get("correction_kind") not in {
+                HISTORY_CLASSIFICATION_CORRECTION_KIND,
+                HISTORY_NON_OWNER_CLASSIFICATION_CORRECTION_KIND,
+            }:
                 continue
             evidence_id = str(evidence.get("evidence_id", ""))
             if evidence_id in rows:
