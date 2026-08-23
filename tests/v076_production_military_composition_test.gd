@@ -1,6 +1,7 @@
 extends SceneTree
 
 const COMPOSITION_PATH := "res://scenes/runtime/V075RuntimeComposition.tscn"
+const PRODUCTION_SCREEN_PATH := "res://scenes/ui/v075/V075SampleGameScreen.tscn"
 const AssetBatchCore := preload(
 	"res://scripts/v07_semantic/v07_asset_batch_core.gd"
 )
@@ -38,6 +39,23 @@ func _run() -> void:
 	root.add_child(composition)
 	await process_frame
 	await process_frame
+	var screen_packed := load(PRODUCTION_SCREEN_PATH) as PackedScene
+	_expect(screen_packed != null, "production V075 GameScreen loads")
+	var production_screen := (
+		screen_packed.instantiate() if screen_packed != null else null
+	)
+	if production_screen != null:
+		root.add_child(production_screen)
+		await process_frame
+		production_screen.call(
+			"bind_application_flow",
+			composition,
+			composition.call("identity_snapshot") as Dictionary,
+			composition.call("capability_snapshot") as Dictionary
+		)
+		composition.projection_changed.connect(
+			Callable(production_screen, "apply_snapshot")
+		)
 	var runtime := composition.get_node_or_null("V075RuntimeOwner")
 	var kernel := composition.get_node_or_null("V076DeterministicKernel")
 	var eta := composition.get_node_or_null("V076MilitaryPhysicalEtaOwnerV1")
@@ -98,6 +116,25 @@ func _run() -> void:
 	var private_receipts: Array[Dictionary] = []
 	composition.owner_private_receipt_ready.connect(func(receipt: Dictionary) -> void:
 		private_receipts.append(receipt.duplicate(true))
+	)
+	var production_events: Array[Dictionary] = []
+	composition.public_resolution_ready.connect(func(receipt: Dictionary) -> void:
+		production_events.append(receipt.duplicate(true))
+	)
+	var asset_projection_events: Array[Dictionary] = []
+	composition.projection_changed.connect(func(projected: Dictionary) -> void:
+		asset_projection_events.append(projected.duplicate(true))
+	)
+	if production_screen != null:
+		production_screen.call(
+			"apply_snapshot",
+			composition.call("local_snapshot") as Dictionary
+		)
+	var before_asset_model := _asset_pip_model(production_screen, color)
+	_expect(
+		int(before_asset_model.get("current", -1))
+			== int(before_assets.get(color, -2)),
+		"production AssetRail renders the existing Owner's pre-action quantity"
 	)
 	var intent_id := "intent.v076.production.military.001"
 	var diagnostic_bundle := runtime.call(
@@ -171,6 +208,87 @@ func _run() -> void:
 	_expect((runtime.call("_card_in_hand", actor_id, str(card_setup.get("card_instance_id", ""))) as Dictionary).is_empty(), "card instance is consumed only after withdrawal")
 	var after_assets := _actor_assets(runtime, actor_id)
 	_expect(int(after_assets.get(color, -1)) == int(before_assets.get(color, -1)) - int(card_setup.get("cost", 0)), "existing asset Owner debits the exact authored cost once")
+	_expect(asset_projection_events.size() == 1, "final military asset consequence publishes one production projection")
+	var projected_assets := (
+		(asset_projection_events[0] as Dictionary).get("six_color_assets", {})
+		as Dictionary
+	)
+	_expect(
+		int((projected_assets.get("own_exact_assets", {}) as Dictionary).get(
+			color, -1
+		)) == int(after_assets.get(color, -2)),
+		"published player projection exposes the authoritative post-action quantity"
+	)
+	var after_asset_model := _asset_pip_model(production_screen, color)
+	_expect(
+		int(after_asset_model.get("current", -1))
+			== int(after_assets.get(color, -2))
+			and int(after_asset_model.get("available", -1))
+				== int(after_assets.get(color, -2)),
+		"production AssetRail visibly consumes the one post-action projection"
+	)
+	_expect(
+		_count_presentation_kind(production_events, "military_region_assault") == 1
+			and _count_presentation_kind(production_events, "military_withdrawn") == 1,
+		"region assault and withdrawal are presented once through the existing V075 Owner"
+	)
+	var region_presentation := _first_presentation_kind(
+		production_events, "military_region_assault"
+	)
+	_expect(
+		str(region_presentation.get("route_sha256", "")).length() == 64
+			and int(region_presentation.get("total_distance_mu", 0)) > 0
+			and int(region_presentation.get("eta_ticks", 0)) > 0,
+		"visible military consequence binds the canonical physical route and ETA"
+	)
+	var first_entry := ((kernel.call(
+		"domain_state", "future.private_direct_action_input"
+	) as Dictionary).get("submission_ledger", {}) as Dictionary).get(
+		"v076.production.military.%s" % intent_id, {}
+	) as Dictionary
+	var consequence_replay := runtime.call(
+		"consume_v076_military_consequence",
+		direct.call(
+			"_military_consequence_envelope",
+			first_entry,
+			first_entry.get("mission_receipt", {}) as Dictionary
+		) as Dictionary
+	) as Dictionary
+	_expect(
+		bool(consequence_replay.get("accepted", false))
+			and bool(consequence_replay.get("duplicate", false)),
+		"terminal military consequence replay is acknowledged as duplicate"
+	)
+	_expect(
+		asset_projection_events.size() == 1
+			and _count_presentation_kind(
+				production_events, "military_region_assault"
+			) == 1
+			and _count_presentation_kind(
+				production_events, "military_withdrawn"
+			) == 1,
+		"consequence replay creates no duplicate asset projection or presentation"
+	)
+	var screen_debug := (
+		production_screen.call("combat_debug_snapshot") as Dictionary
+		if production_screen != null
+		else {}
+	)
+	var screen_acceptance := (
+		production_screen.get("acceptance_state") as Dictionary
+		if production_screen != null
+		else {}
+	)
+	_expect(
+		int(screen_debug.get("presentation_gameplay_mutation_count", -1)) == 0
+			and int((screen_debug.get("presentation", {}) as Dictionary).get(
+				"presentation_gameplay_mutation_count", -1
+			)) == 0
+			and int(screen_acceptance.get(
+				"asset_pip_gameplay_mutation_count", -1
+			)) == 0,
+		"existing combat and AssetRail presentation own no gameplay mutation"
+	)
 	_expect((runtime.get("_v076_production_military_submission_by_uid") as Dictionary).is_empty(), "withdrawal clears the in-flight source claim")
 	var monster_setup := _install_enemy_monster(
 		runtime,
@@ -211,6 +329,7 @@ func _run() -> void:
 	)
 	var monster_color := str(monster_card.get("primary_color", ""))
 	var monster_assets_before := _actor_assets(runtime, actor_id)
+	asset_projection_events.clear()
 	var monster_intent_id := "intent.v076.production.military.003"
 	var monster_submitted := composition.call("submit_intent", {
 		"intent_id": monster_intent_id,
@@ -246,6 +365,16 @@ func _run() -> void:
 		"monster assault debits the exact authored asset cost once"
 	)
 	_expect(
+		asset_projection_events.size() == 1
+			and _count_presentation_kind(
+				production_events, "military_monster_assault"
+			) == 1
+			and _count_presentation_kind(
+				production_events, "military_withdrawn"
+			) == 2,
+		"monster assault publishes one asset projection and one attack/withdrawal consequence"
+	)
+	_expect(
 		(runtime.call(
 			"_card_in_hand", actor_id,
 			str(monster_card.get("card_instance_id", ""))
@@ -265,12 +394,11 @@ func _run() -> void:
 		"life"
 	)
 	_expect(bool(autonomy_facility.get("accepted", false)), "fixture installs a live enemy facility in another region for Monster autonomy")
-	var production_events: Array[Dictionary] = []
-	composition.public_resolution_ready.connect(func(receipt: Dictionary) -> void:
-		production_events.append(receipt.duplicate(true))
-	)
 	var monster_before_autonomy := _public_monster(
 		runtime, str(monster_setup.get("source_instance_id", ""))
+	)
+	var facility_damage_event_count_before_autonomy := _count_presentation_kind(
+		production_events, "facility_combat_damaged"
 	)
 	var combat_debug_before := (
 		(runtime.call("debug_snapshot") as Dictionary).get("combat", {}) as Dictionary
@@ -327,7 +455,8 @@ func _run() -> void:
 		"production Monster movement creates no second asset quantity or activation ledger"
 	)
 	_expect(
-		_count_presentation_kind(production_events, "facility_combat_damaged") == 1
+		_count_presentation_kind(production_events, "facility_combat_damaged")
+			== facility_damage_event_count_before_autonomy + 1
 			and _presentation_damage(
 				production_events,
 				"facility_combat_damaged"
@@ -365,6 +494,13 @@ func _run() -> void:
 	_expect(not bool(adapter_debug.get("owns_asset_quantity", true)), "adapter owns no asset quantity")
 	_expect(not bool(adapter_debug.get("owns_military_unit_state", true)), "adapter owns no military state")
 	_expect(not bool(adapter_debug.get("owns_presentation", true)), "adapter owns no presentation")
+	var direct_debug := direct.call("debug_snapshot") as Dictionary
+	_expect(
+		not bool(direct_debug.get("owns_presentation", true))
+			and str(direct_debug.get("military_consequence_owner", ""))
+				== "V075RuntimeOwner",
+		"private input Owner hands consequences to the existing V075 presentation Owner"
+	)
 	var generic_receipt := (composition.call("debug_snapshot") as Dictionary).get("last_receipt", {}) as Dictionary
 	_expect(str(generic_receipt.get("receipt_scope", "")) == "owner_private_redacted", "generic receipt stays redacted")
 	_expect(private_receipts.size() >= 4, "owner-private channel receives both submission and settlement acknowledgements")
@@ -400,6 +536,8 @@ func _run() -> void:
 		"rejected restart preserves the Input Owner exact-once ledgers"
 	)
 	composition.queue_free()
+	if production_screen != null:
+		production_screen.queue_free()
 	await process_frame
 	_finish()
 
@@ -633,12 +771,30 @@ func _actor_assets(runtime: Node, actor_id: String) -> Dictionary:
 	) as Dictionary).duplicate(true)
 
 
+func _asset_pip_model(screen: Node, color_id: String) -> Dictionary:
+	if screen == null:
+		return {}
+	var group := screen.find_child("AssetPips_%s" % color_id, true, false)
+	if group == null:
+		return {}
+	var model: Variant = group.get_meta("asset_pip_model", {})
+	return (model as Dictionary).duplicate(true) if model is Dictionary else {}
+
+
 func _count_presentation_kind(receipts: Array, kind: String) -> int:
 	var count := 0
 	for receipt_variant in receipts:
 		if str((receipt_variant as Dictionary).get("event_kind", "")) == kind:
 			count += 1
 	return count
+
+
+func _first_presentation_kind(receipts: Array, kind: String) -> Dictionary:
+	for receipt_variant in receipts:
+		var receipt := receipt_variant as Dictionary
+		if str(receipt.get("event_kind", "")) == kind:
+			return receipt.duplicate(true)
+	return {}
 
 
 func _presentation_damage(receipts: Array, kind: String) -> int:

@@ -144,6 +144,8 @@ func configure_dependencies(
 		"validate_v076_private_monster_skill_bundle"
 	) or not facility_damage_intent_owner.has_method(
 		"consume_v076_private_monster_skill_submission"
+	) or not facility_damage_intent_owner.has_method(
+		"consume_v076_military_consequence"
 	) or not monster_damage_command_pipeline.has_method(
 		"dispatch_military_monster_damage"
 	):
@@ -810,6 +812,21 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 		"完成一次军事任务后撤离。"
 	):
 		return _reject("private_direct_action_military_withdrawal_rejected")
+	var consequence_envelope := _military_consequence_envelope(
+		entry,
+		mission_receipt
+	)
+	if consequence_envelope.is_empty():
+		return _reject("private_direct_action_consequence_envelope_invalid")
+	var consequence_result := _facility_damage_intent_owner.call(
+		"consume_v076_military_consequence",
+		consequence_envelope
+	) as Dictionary
+	if not bool(consequence_result.get("accepted", false)):
+		return _reject(str(consequence_result.get(
+			"reason_code",
+			"private_direct_action_consequence_consumer_rejected"
+		)))
 	_settlement_fingerprint_by_id[submission_id] = settlement_fingerprint
 	return {
 		"accepted": true,
@@ -821,8 +838,39 @@ func settle_completed_submission(submission_id: String) -> Dictionary:
 			"receipt_fingerprint", ""
 		)),
 		"asset_outcome": str(asset_receipt.get("outcome", "")),
+		"consequence_presented": not bool(consequence_result.get(
+			"duplicate", false
+		)),
 		"damage_settlement": damage_settlement.duplicate(true),
 	}
+
+
+func _military_consequence_envelope(
+	entry: Dictionary,
+	mission_receipt: Dictionary
+) -> Dictionary:
+	var consequence_id := str(mission_receipt.get("combat_receipt_id", ""))
+	var source_fingerprint := str(mission_receipt.get("receipt_fingerprint", ""))
+	if consequence_id.is_empty() or source_fingerprint.length() != 64:
+		return {}
+	var envelope := {
+		"schema_version": 1,
+		"contract_id": "V076MilitaryProductionConsequenceEnvelopeV1",
+		"consequence_id": consequence_id,
+		"source_authority_sequence": int(entry.get(
+			"root_authority_sequence", 0
+		)),
+		"execution_tick": int(entry.get("execution_tick", -1)),
+		"route_sha256": str(entry.get("route_sha256", "")),
+		"total_distance_mu": int(entry.get("total_distance_mu", -1)),
+		"eta_ticks": int(entry.get("eta_ticks", -1)),
+		"mission_receipt": mission_receipt.duplicate(true),
+		"consequence_fingerprint": "",
+	}
+	envelope["consequence_fingerprint"] = StateCodec.fingerprint(
+		_payload_without_fingerprint(envelope, "consequence_fingerprint")
+	)
+	return envelope
 
 
 func withdrawal_ready_submission_ids() -> Array[String]:
@@ -1008,6 +1056,7 @@ func debug_snapshot() -> Dictionary:
 		"owns_asset_quantity": false,
 		"owns_map_topology": false,
 		"owns_presentation": false,
+		"military_consequence_owner": "V075RuntimeOwner",
 		"owns_card_catalog": false,
 		"owns_military_profile": false,
 		"owns_physical_eta": false,

@@ -729,7 +729,7 @@
         "reuse.v075.production_military_direct_action.current",
         "reuse.v075.production_monster_movement_consumer.current"
       ],
-      "new_component_justification": "Existing unique V075 production combat candidate Owner, extended with narrow V076 military and Monster-movement consumer bridges. It no longer produces production Monster movement/trample receipts; it retains target planning, Monster HP/lifecycle, facility-damage application, exact-once consumer and presentation journals without a parallel route, trample, asset or movement ledger.",
+      "new_component_justification": "Existing unique V075 production combat candidate Owner, extended with narrow V076 military and Monster-movement consumer bridges. It no longer produces production Monster movement/trample receipts; it retains target planning, Monster HP/lifecycle, facility-damage application, the one six-color asset state, final owner projection, exact-once consequence consumer and presentation journals without a parallel route, trample, asset, movement, or presentation ledger.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
@@ -743,7 +743,7 @@
         "v076_production_military_composition_test",
         "v07_asset_batch_core_test"
       ],
-      "golden_scenario_steps": ["STEP09", "STEP10"],
+      "golden_scenario_steps": ["STEP09", "STEP10", "STEP11"],
       "reuse_scan": {
         "reuse_registry_search": true,
         "class_name_search": true,
@@ -813,7 +813,7 @@
         "reuse.v075.monster_private_skill.current",
         "reuse.v075.production_military_direct_action.current"
       ],
-      "new_component_justification": "Stage 4/5 needs one private input authority for authorized envelopes, own-hand or source-bound revalidation, exact-once submission and settlement identity, source-collision rejection, and Kernel intake-root submission. It consumes sealed military and V075 monster-skill intents; V075, RuntimeCommandPipeline, and existing asset/unit Owners retain all combat mutation. PR65 may authorize but may not execute; the Kernel alone orders and replays; this Owner may not own tick, Authority Sequence, RNG, skill state, damage state, military unit state, asset quantity, map topology, presentation, or card definitions.",
+      "new_component_justification": "Stage 4/5 needs one private input authority for authorized envelopes, own-hand or source-bound revalidation, exact-once submission and settlement identity, source-collision rejection, and Kernel intake-root submission. It consumes sealed military and V075 monster-skill intents and hands one closed terminal consequence envelope to the existing V075 consumer; V075, RuntimeCommandPipeline, and existing asset/unit Owners retain all combat and presentation mutation. PR65 may authorize but may not execute; the Kernel alone orders and replays; this Owner may not own tick, Authority Sequence, RNG, skill state, damage state, military unit state, asset quantity, map topology, presentation, or card definitions.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
@@ -829,7 +829,7 @@
       "v076_simultaneous_private_action_test",
       "v076_production_military_composition_test"
       ],
-      "golden_scenario_steps": ["STEP10"],
+      "golden_scenario_steps": ["STEP10", "STEP11"],
       "reuse_scan": {
         "reuse_registry_search": true,
         "class_name_search": true,

@@ -51,6 +51,9 @@ const V076StateCodec := preload(
 const V076CombatDamageCore := preload(
 	"res://scripts/v075/combat/v075_combat_damage_core.gd"
 )
+const V075MilitaryMissionCore := preload(
+	"res://scripts/v075/military/v075_military_mission_core.gd"
+)
 
 const V075_RULESET_ID := "v0.7.5"
 const V075_SAMPLE_MODE_ID := "NEW_V075_GAME"
@@ -155,6 +158,9 @@ const PUBLIC_COMBAT_FIELDS := [
 	"target_kind",
 	"ordered_region_path",
 	"distance_milli_arc",
+	"route_sha256",
+	"total_distance_mu",
+	"eta_ticks",
 	"region_damage_budget",
 	"allocated_damage",
 	"unallocated_damage",
@@ -228,6 +234,13 @@ var _v075_track_projection_cache: Dictionary = {}
 var _v075_public_facility_slots_cache: Array = []
 var _v076_production_asset_reservations: Dictionary = {}
 var _v076_production_military_submission_by_uid: Dictionary = {}
+var _v076_military_consequence_fingerprint_by_id: Dictionary = {}
+var _v076_asset_consequence_projection_count := 0
+var _v076_asset_consequence_projection_failure_count := 0
+var _v076_asset_consequence_duplicate_suppression_count := 0
+var _v076_military_consequence_presentation_count := 0
+var _v076_military_consequence_duplicate_count := 0
+var _v076_military_consequence_collision_count := 0
 var _v076_monster_production_adapter: Node
 var _v076_monster_production_receipt_fingerprint_by_id: Dictionary = {}
 var _v076_monster_production_commit_count := 0
@@ -3442,6 +3455,7 @@ func _v076_settle_production_asset_reservation(
 	if prior.is_empty():
 		return {"accepted": false, "reason": "v076_production_reservation_missing"}
 	if str(prior.get("outcome", "")) in ["consumed", "released"]:
+		_v076_asset_consequence_duplicate_suppression_count += 1
 		return prior.duplicate(true)
 	var reservation_receipt := prior.get("reservation_receipt", {}) as Dictionary
 	# V07AssetBatchCore seals the original reservation cost under the
@@ -3489,6 +3503,113 @@ func _v076_settle_production_asset_reservation(
 	prior["revision"] = int(_asset_state.get("revision", 0))
 	_v076_production_asset_reservations[reservation_id] = prior.duplicate(true)
 	return prior.duplicate(true)
+
+
+func _publish_v076_asset_consequence_projection() -> void:
+	var snapshot := player_snapshot(_local_player_id)
+	if snapshot.is_empty():
+		_v076_asset_consequence_projection_failure_count += 1
+		return
+	_v076_asset_consequence_projection_count += 1
+	state_changed.emit(snapshot.duplicate(true))
+
+
+func consume_v076_military_consequence(envelope: Dictionary) -> Dictionary:
+	var consequence_id := str(envelope.get("consequence_id", ""))
+	var supplied_fingerprint := str(envelope.get("consequence_fingerprint", ""))
+	var expected_fingerprint := V076StateCodec.fingerprint(
+		_v076_without_field(envelope, "consequence_fingerprint")
+	)
+	var mission_receipt := envelope.get("mission_receipt", {}) as Dictionary
+	if (
+		str(envelope.get("contract_id", ""))
+			!= "V076MilitaryProductionConsequenceEnvelopeV1"
+		or consequence_id.is_empty()
+		or int(envelope.get("source_authority_sequence", 0)) < 1
+		or int(envelope.get("execution_tick", -1)) < 0
+		or str(envelope.get("route_sha256", "")).length() != 64
+		or int(envelope.get("total_distance_mu", -1)) < 0
+		or int(envelope.get("eta_ticks", -1)) < 0
+		or supplied_fingerprint.is_empty()
+		or supplied_fingerprint != expected_fingerprint
+		or not bool(V075MilitaryMissionCore.receipt_validation_report(
+			mission_receipt
+		).get("valid", false))
+	):
+		return _reject_action("v076_military_consequence_envelope_invalid")
+	if _v076_military_consequence_fingerprint_by_id.has(consequence_id):
+		if str(_v076_military_consequence_fingerprint_by_id[consequence_id]) \
+				!= supplied_fingerprint:
+			_v076_military_consequence_collision_count += 1
+			return _reject_action("v076_military_consequence_collision")
+		_v076_military_consequence_duplicate_count += 1
+		return {
+			"accepted": true,
+			"reason_code": "v076_military_consequence_duplicate",
+			"duplicate": true,
+			"consequence_id": consequence_id,
+		}
+	var task_kind := str(mission_receipt.get("task_kind", ""))
+	var event_kind := (
+		"military_region_assault"
+		if task_kind == V075MilitaryMissionCore.TASK_ASSAULT_REGION
+		else "military_monster_assault"
+	)
+	var target_region_id := str(mission_receipt.get(
+		"public_target_region_id",
+		mission_receipt.get("target_region_id", "")
+	))
+	var public_payload := {
+		"start_region_id": _v076_production_source_region_for_actor(str(
+			mission_receipt.get("owner_player_id", "")
+		)),
+		"target_region_id": target_region_id,
+		"target_monster_source_instance_id": str(mission_receipt.get(
+			"target_monster_source_instance_id", ""
+		)),
+		"target_kind": "region" if event_kind == "military_region_assault" else "monster",
+		"task_kind": task_kind,
+		"outcome": str(mission_receipt.get("outcome", "")),
+		"reason_code": str(mission_receipt.get("reason_code", "")),
+		"damage_amount": int(mission_receipt.get("allocated_damage_total", 0)),
+		"allocated_damage": int(mission_receipt.get("allocated_damage_total", 0)),
+		"route_sha256": str(envelope.get("route_sha256", "")),
+		"total_distance_mu": int(envelope.get("total_distance_mu", 0)),
+		"eta_ticks": int(envelope.get("eta_ticks", 0)),
+		"status": "withdrawn",
+	}
+	var source_receipt_id := str(mission_receipt.get("combat_receipt_id", ""))
+	var source_fingerprint := str(mission_receipt.get("receipt_fingerprint", ""))
+	var source_sequence := int(envelope.get("source_authority_sequence", 0))
+	_publish_combat_event(
+		event_kind,
+		public_payload,
+		source_receipt_id,
+		source_receipt_id,
+		source_fingerprint,
+		source_sequence,
+		0
+	)
+	_publish_combat_event(
+		"military_withdrawn",
+		public_payload,
+		"withdrawal.%s" % source_receipt_id,
+		source_receipt_id,
+		source_fingerprint,
+		source_sequence,
+		1
+	)
+	_v076_military_consequence_fingerprint_by_id[consequence_id] = (
+		supplied_fingerprint
+	)
+	_v076_military_consequence_presentation_count += 1
+	_publish_v076_asset_consequence_projection()
+	return {
+		"accepted": true,
+		"reason_code": "v076_military_consequence_presented",
+		"duplicate": false,
+		"consequence_id": consequence_id,
+	}
 
 
 func v076_military_roster_snapshot(_include_hidden: bool = true) -> Array:
@@ -4570,6 +4691,26 @@ func debug_snapshot() -> Dictionary:
 		1 if is_instance_valid(_v076_monster_production_adapter) else 0
 	)
 	result["v076_production_monster_asset_quantity_count"] = 0
+	result["v076_asset_consequence_projection_count"] = (
+		_v076_asset_consequence_projection_count
+	)
+	result["v076_asset_consequence_projection_failure_count"] = (
+		_v076_asset_consequence_projection_failure_count
+	)
+	result["v076_asset_consequence_duplicate_suppression_count"] = (
+		_v076_asset_consequence_duplicate_suppression_count
+	)
+	result["v076_military_consequence_presentation_count"] = (
+		_v076_military_consequence_presentation_count
+	)
+	result["v076_military_consequence_duplicate_count"] = (
+		_v076_military_consequence_duplicate_count
+	)
+	result["v076_military_consequence_collision_count"] = (
+		_v076_military_consequence_collision_count
+	)
+	result["v076_asset_quantity_owner_count"] = 1
+	result["v076_asset_presentation_owner_count"] = 0
 	result["combat_public_receipt_count"] = _combat_public_receipt_count
 	result["presentation_source_sequence_authority"] = (
 		"UPSTREAM_AUTHORITY_RECEIPT_OR_COMBAT_REVISION"
@@ -4825,6 +4966,13 @@ func _reset_runtime() -> void:
 	_v075_public_facility_slots_cache = []
 	_v076_production_asset_reservations = {}
 	_v076_production_military_submission_by_uid = {}
+	_v076_military_consequence_fingerprint_by_id = {}
+	_v076_asset_consequence_projection_count = 0
+	_v076_asset_consequence_projection_failure_count = 0
+	_v076_asset_consequence_duplicate_suppression_count = 0
+	_v076_military_consequence_presentation_count = 0
+	_v076_military_consequence_duplicate_count = 0
+	_v076_military_consequence_collision_count = 0
 	_v076_monster_production_receipt_fingerprint_by_id = {}
 	_v076_monster_production_commit_count = 0
 	_v076_monster_production_duplicate_count = 0
