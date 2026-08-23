@@ -316,10 +316,32 @@ HISTORY_CLASSIFICATION_CORRECTION_KIND = (
 HISTORY_NON_OWNER_CLASSIFICATION_CORRECTION_KIND = (
     "UNREGISTERED_EXISTING_CONSUMER_CLASSIFICATION_REPAIR"
 )
+HISTORY_NON_OWNER_BINDING_CORRECTION_KIND = (
+    "EXISTING_CONSUMER_DOMAIN_BINDING_REPAIR"
+)
+HISTORY_TRANSIENT_DOMAIN_IDENTITY_CORRECTION_KIND = (
+    "TRANSIENT_DOMAIN_IDENTITY_MISPATCH_REPAIR"
+)
 HISTORY_CLASSIFICATION_CORRECTABLE_FAILURES = {
     "HISTORY_PRODUCT_OWNER_BINDING_INVALID",
     "HISTORY_REFERENCE_ONLY_AUTHORITY_WRITE",
     "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+    "HISTORY_NON_OWNER_BINDING_INVALID",
+    "COMPONENT_IDENTITY_SILENT_REPLACEMENT",
+}
+HISTORY_TRANSIENT_DOMAIN_CORRECTABLE_FAILURES = {
+    "DOMAIN_INVENTORY_SILENT_DELETE",
+    "HISTORY_ACTIVE_DOMAIN_OWNER_BINDING",
+    "HISTORY_COMPONENT_DOMAIN_UNKNOWN",
+    "HISTORY_DOMAIN_ID_NOT_UNIQUE",
+    "HISTORY_DOMAIN_ROW_INVALID_OR_DUPLICATE",
+    "HISTORY_NON_OWNER_BINDING_INVALID",
+    "HISTORY_UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH",
+}
+HISTORY_TRANSIENT_DOMAIN_TARGETLESS_FAILURES = {
+    "HISTORY_DOMAIN_ID_NOT_UNIQUE",
+    "HISTORY_DOMAIN_ROW_INVALID_OR_DUPLICATE",
+    "HISTORY_UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH",
 }
 HISTORY_REUSE_SCAN_CORRECTION_KIND = (
     "REUSE_SCAN_CANDIDATE_CONSIDERATION_REPAIR"
@@ -879,6 +901,7 @@ def _history_classification_correction_rows(
             if not isinstance(evidence, dict) or evidence.get("correction_kind") not in {
                 HISTORY_CLASSIFICATION_CORRECTION_KIND,
                 HISTORY_NON_OWNER_CLASSIFICATION_CORRECTION_KIND,
+                HISTORY_NON_OWNER_BINDING_CORRECTION_KIND,
             }:
                 continue
             evidence_id = str(evidence.get("evidence_id", ""))
@@ -939,9 +962,17 @@ def _history_classification_corrections(
                 "affected_transitions",
                 "rationale",
             }
-            is_consumer_correction = (
+            is_unregistered_consumer_correction = (
                 evidence.get("correction_kind")
                 == HISTORY_NON_OWNER_CLASSIFICATION_CORRECTION_KIND
+            )
+            is_consumer_binding_correction = (
+                evidence.get("correction_kind")
+                == HISTORY_NON_OWNER_BINDING_CORRECTION_KIND
+            )
+            is_consumer_correction = bool(
+                is_unregistered_consumer_correction
+                or is_consumer_binding_correction
             )
             valid = bool(
                 set(evidence) == expected_fields
@@ -961,11 +992,18 @@ def _history_classification_corrections(
                         == "ACTIVE_CURRENT_DOMAIN"
                     )
                     or (
-                        is_consumer_correction
+                        is_unregistered_consumer_correction
                         and evidence.get("prior_lifecycle")
                         == "UNREGISTERED_EXISTING_CONSUMER"
                         and evidence.get("corrected_lifecycle")
                         == "REGISTERED_ACTIVE_CONSUMER"
+                    )
+                    or (
+                        is_consumer_binding_correction
+                        and evidence.get("prior_lifecycle")
+                        == "REGISTERED_WRONG_DOMAIN_CONSUMER"
+                        and evidence.get("corrected_lifecycle")
+                        == "REGISTERED_ACTIVE_DOMAIN_CONSUMER"
                     )
                 )
                 and evidence.get("new_owner_created") is False
@@ -1081,6 +1119,7 @@ def _history_classification_corrections(
                             "HISTORY_PRODUCT_OWNER_BINDING_INVALID",
                             "HISTORY_NON_OWNER_BINDING_INVALID",
                             "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+                            "COMPONENT_IDENTITY_SILENT_REPLACEMENT",
                         }
                         else domain_id,
                     )
@@ -1107,6 +1146,271 @@ def _history_classification_corrections(
                 seen_transition_codes.update(
                     (transition_head, code) for code, _target in exact_codes
                 )
+    return allowed, failures
+
+
+def _history_transient_domain_correction_rows(
+    authorities: dict[str, dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], set[str]]:
+    rows: dict[str, dict[str, Any]] = {}
+    duplicates: set[str] = set()
+    for stage in authorities.get("inherited_green", {}).get("stages", []):
+        if not isinstance(stage, dict):
+            continue
+        for evidence in stage.get("evidence", []):
+            if not isinstance(evidence, dict) or evidence.get("correction_kind") != (
+                HISTORY_TRANSIENT_DOMAIN_IDENTITY_CORRECTION_KIND
+            ):
+                continue
+            evidence_id = str(evidence.get("evidence_id", ""))
+            if evidence_id in rows:
+                duplicates.add(evidence_id)
+            else:
+                rows[evidence_id] = evidence
+    return rows, duplicates
+
+
+def _history_transient_domain_corrections(
+    root: Path,
+    head_ref: str,
+    authorities: dict[str, dict[str, Any]],
+) -> tuple[dict[str, set[tuple[str, str]]], list[str]]:
+    """Accept one exact, append-only repair of a mistaken domain-row identity.
+
+    This is intentionally limited to a registry-only typo that changed one
+    existing domain row's ``domain_id`` for one existing Owner, followed by a
+    later commit restoring the exact prior row. It cannot repair component
+    identity, create an Owner, or waive arbitrary history failures.
+    """
+    failures: list[str] = []
+    allowed: dict[str, set[tuple[str, str]]] = {}
+    registry_path = "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json"
+    correction_rows, duplicate_evidence_ids = (
+        _history_transient_domain_correction_rows(authorities)
+    )
+    failures.extend(
+        f"HISTORY_TRANSIENT_DOMAIN_CORRECTION_DUPLICATE:{evidence_id or 'missing'}"
+        for evidence_id in sorted(duplicate_evidence_ids)
+    )
+    registry = authorities.get("historical_reuse", {})
+    current_components = _index(registry.get("component_inventory", []), "component_id")
+    current_domains = _index(registry.get("domain_inventory", []), "domain_id")
+    seen_evidence_ids: set[str] = set()
+    seen_failure_rows: set[tuple[str, str, str]] = set()
+    for evidence in correction_rows.values():
+        evidence_id = str(evidence.get("evidence_id", ""))
+        owner_component_id = str(evidence.get("owner_component_id", ""))
+        prior_domain_id = str(evidence.get("prior_domain_id", ""))
+        mistaken_domain_id = str(evidence.get("mistaken_domain_id", ""))
+        pre_mistake_head = str(evidence.get("pre_mistake_head_sha", ""))
+        mistaken_head = str(evidence.get("mistaken_head_sha", ""))
+        repair_head = str(evidence.get("repair_head_sha", ""))
+        repair_tree = str(evidence.get("repair_tree_sha", ""))
+        rationale = str(evidence.get("rationale", "")).strip()
+        expected_fields = {
+            "evidence_id",
+            "result",
+            "correction_kind",
+            "registry_path",
+            "owner_component_id",
+            "prior_domain_id",
+            "mistaken_domain_id",
+            "pre_mistake_head_sha",
+            "mistaken_head_sha",
+            "repair_head_sha",
+            "repair_tree_sha",
+            "product_behavior_changed",
+            "new_owner_created",
+            "affected_failures",
+            "rationale",
+        }
+        valid = bool(
+            set(evidence) == expected_fields
+            and evidence_id
+            and evidence_id not in seen_evidence_ids
+            and evidence.get("result") == "PASS"
+            and evidence.get("correction_kind")
+            == HISTORY_TRANSIENT_DOMAIN_IDENTITY_CORRECTION_KIND
+            and evidence.get("registry_path") == registry_path
+            and owner_component_id
+            and prior_domain_id
+            and mistaken_domain_id
+            and prior_domain_id != mistaken_domain_id
+            and _is_hex(pre_mistake_head, 40)
+            and _is_hex(mistaken_head, 40)
+            and _is_hex(repair_head, 40)
+            and _is_hex(repair_tree, 40)
+            and evidence.get("product_behavior_changed") is False
+            and evidence.get("new_owner_created") is False
+            and isinstance(evidence.get("affected_failures"), list)
+            and bool(evidence.get("affected_failures"))
+            and rationale
+        )
+        component = current_components.get(owner_component_id)
+        domain = current_domains.get(prior_domain_id)
+        valid = bool(
+            valid
+            and isinstance(component, dict)
+            and component.get("component_role") == "OWNER"
+            and component.get("owner_component_id") == owner_component_id
+            and component.get("domain_id") == prior_domain_id
+            and isinstance(domain, dict)
+            and domain.get("lifecycle") == "ACTIVE_CURRENT_DOMAIN"
+            and domain.get("owner_component_id") == owner_component_id
+            and _git(root, "show", "-s", "--format=%T", repair_head, check=False)
+            == repair_tree
+            and subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(root),
+                    "merge-base",
+                    "--is-ancestor",
+                    mistaken_head,
+                    head_ref,
+                ],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode
+            == 0
+            and subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(root),
+                    "merge-base",
+                    "--is-ancestor",
+                    repair_head,
+                    head_ref,
+                ],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode
+            == 0
+        )
+        pre_registry = _git_json_at(root, pre_mistake_head, registry_path)
+        mistaken_registry = _git_json_at(root, mistaken_head, registry_path)
+        repair_registry = _git_json_at(root, repair_head, registry_path)
+        if not (
+            isinstance(pre_registry, dict)
+            and isinstance(mistaken_registry, dict)
+            and isinstance(repair_registry, dict)
+        ):
+            valid = False
+        else:
+            pre_domains = pre_registry.get("domain_inventory", [])
+            mistaken_domains = mistaken_registry.get("domain_inventory", [])
+            expected_mistaken = json.loads(json.dumps(pre_registry))
+            matching_rows = [
+                row
+                for row in expected_mistaken.get("domain_inventory", [])
+                if isinstance(row, dict)
+                and row.get("domain_id") == prior_domain_id
+                and row.get("owner_component_id") == owner_component_id
+            ]
+            if len(matching_rows) != 1:
+                valid = False
+            else:
+                matching_rows[0]["domain_id"] = mistaken_domain_id
+                valid = bool(
+                    valid
+                    and mistaken_registry == expected_mistaken
+                    and isinstance(pre_domains, list)
+                    and isinstance(mistaken_domains, list)
+                    and isinstance(repair_registry.get("domain_inventory"), list)
+                    and any(
+                        isinstance(row, dict)
+                        and row.get("domain_id") == prior_domain_id
+                        and row.get("owner_component_id") == owner_component_id
+                        and row.get("lifecycle") == "ACTIVE_CURRENT_DOMAIN"
+                        for row in repair_registry["domain_inventory"]
+                    )
+                    and not any(
+                        isinstance(row, dict)
+                        and row.get("domain_id") == mistaken_domain_id
+                        and row.get("owner_component_id") == owner_component_id
+                        for row in repair_registry["domain_inventory"]
+                    )
+                )
+        parent_heads = _git(
+            root, "rev-list", "--parents", "-n", "1", mistaken_head, check=False
+        ).split()[1:]
+        valid = bool(
+            valid
+            and pre_mistake_head in parent_heads
+            and subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(root),
+                    "merge-base",
+                    "--is-ancestor",
+                    mistaken_head,
+                    repair_head,
+                ],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode
+            == 0
+        )
+        staged_rows: set[tuple[str, str]] = set()
+        for row in evidence.get("affected_failures", []):
+            if not isinstance(row, dict) or set(row) != {
+                "head_sha",
+                "failure_code",
+                "target",
+            }:
+                valid = False
+                continue
+            transition_head = str(row.get("head_sha", ""))
+            failure_code = str(row.get("failure_code", ""))
+            target = str(row.get("target", ""))
+            if (
+                transition_head != mistaken_head
+                or failure_code not in HISTORY_TRANSIENT_DOMAIN_CORRECTABLE_FAILURES
+                or (
+                    failure_code in HISTORY_TRANSIENT_DOMAIN_TARGETLESS_FAILURES
+                    and target
+                )
+                or (
+                    failure_code not in HISTORY_TRANSIENT_DOMAIN_TARGETLESS_FAILURES
+                    and not target
+                )
+                or (transition_head, failure_code, target) in seen_failure_rows
+            ):
+                valid = False
+                continue
+            if failure_code == "DOMAIN_INVENTORY_SILENT_DELETE":
+                valid = bool(valid and target == prior_domain_id)
+            elif failure_code == "HISTORY_ACTIVE_DOMAIN_OWNER_BINDING":
+                valid = bool(valid and target == mistaken_domain_id)
+            elif failure_code in {
+                "HISTORY_COMPONENT_DOMAIN_UNKNOWN",
+                "HISTORY_NON_OWNER_BINDING_INVALID",
+            }:
+                valid = bool(
+                    valid
+                    and target
+                    and isinstance(pre_registry, dict)
+                    and target in {
+                        str(item.get("component_id", ""))
+                        for item in (pre_registry or {}).get("component_inventory", [])
+                        if isinstance(item, dict)
+                        and item.get("domain_id") in {prior_domain_id, mistaken_domain_id}
+                    }
+                )
+            staged_rows.add((failure_code, target))
+            seen_failure_rows.add((transition_head, failure_code, target))
+        if not valid:
+            failures.append(
+                f"HISTORY_TRANSIENT_DOMAIN_CORRECTION_INVALID:{evidence_id or 'missing'}"
+            )
+            continue
+        seen_evidence_ids.add(evidence_id)
+        allowed.setdefault(mistaken_head, set()).update(staged_rows)
     return allowed, failures
 
 
@@ -2595,6 +2899,32 @@ def _monotonic_transition_failures(
         elif new_correction != old_correction:
             failures.append(
                 f"HISTORY_CLASSIFICATION_CORRECTION_MUTATED:{label}:{evidence_id}"
+            )
+
+    old_transient_domain_corrections, old_transient_domain_duplicates = (
+        _history_transient_domain_correction_rows(previous)
+    )
+    new_transient_domain_corrections, new_transient_domain_duplicates = (
+        _history_transient_domain_correction_rows(current)
+    )
+    for evidence_id in sorted(
+        old_transient_domain_duplicates | new_transient_domain_duplicates
+    ):
+        failures.append(
+            f"HISTORY_TRANSIENT_DOMAIN_CORRECTION_DUPLICATE:{label}:"
+            f"{evidence_id or 'missing'}"
+        )
+    for evidence_id, old_correction in old_transient_domain_corrections.items():
+        new_correction = new_transient_domain_corrections.get(evidence_id)
+        if new_correction is None:
+            failures.append(
+                f"HISTORY_TRANSIENT_DOMAIN_CORRECTION_SILENT_DELETE:{label}:"
+                f"{evidence_id}"
+            )
+        elif new_correction != old_correction:
+            failures.append(
+                f"HISTORY_TRANSIENT_DOMAIN_CORRECTION_MUTATED:{label}:"
+                f"{evidence_id}"
             )
 
     old_reuse_scan_corrections, old_reuse_scan_duplicates = (
@@ -5501,6 +5831,11 @@ def committed_history_failures(
     corrections, correction_failures = _history_classification_corrections(
         root, head_ref, head_authorities
     )
+    transient_domain_corrections, transient_domain_correction_failures = (
+        _history_transient_domain_corrections(root, head_ref, head_authorities)
+    )
+    for transition_head, exact_codes in transient_domain_corrections.items():
+        corrections.setdefault(transition_head, set()).update(exact_codes)
     reuse_scan_corrections, reuse_scan_correction_failures = (
         _history_reuse_scan_corrections(root, head_ref, head_authorities)
     )
@@ -5512,6 +5847,7 @@ def committed_history_failures(
     for transition_head, exact_codes in focused_test_corrections.items():
         corrections.setdefault(transition_head, set()).update(exact_codes)
     failures: list[str] = list(correction_failures)
+    failures.extend(transient_domain_correction_failures)
     failures.extend(reuse_scan_correction_failures)
     failures.extend(focused_test_correction_failures)
     expected_corrections = {
@@ -5696,7 +6032,12 @@ def committed_history_failures(
             for failure in transition_failures:
                 corrected = False
                 for code, target in corrections.get(commit, set()):
-                    if failure == f"{code}:{transition_label}:{target}":
+                    expected_failure = (
+                        f"{code}:{transition_label}"
+                        if not target
+                        else f"{code}:{transition_label}:{target}"
+                    )
+                    if failure == expected_failure:
                         used_corrections.add((commit, code, target))
                         corrected = True
                         break
