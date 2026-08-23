@@ -9866,3 +9866,40 @@ deleted. Evidence and the remaining action inventory are recorded in
   Full-product production green, human green/execution, observer attestation,
   per-card certification, and full-world reproof remain false or pending. The
   next boundary is `V076_ALPHA07_PRODUCTION_GOLDEN_STEP12_AI_PRIVACY_CUTOVER`.
+
+## 2026-08-24 — V076 Alpha 0.7 STEP12 production AI/privacy cutover
+
+- Added one production-composition proof test and changed no product script,
+  scene, card, AI policy, projection, privacy, cash, RNG, or presentation Owner.
+  The active authority remains the existing `V075RuntimeOwner` lineage with its
+  `V075CombatAIAdapter` and `V075CombatProjectionAdapter`; PR63 remains a passive
+  viewer/privacy pattern only and did not become production AI authority.
+- The committed candidate `e458525fe579b7d552daeb64129b3d002ed3fa35`, tree
+  `dddd7834240c296c84578ef2cccdb5627b9a3fd5`, instantiates the unchanged
+  `V075RuntimeComposition` and real `V075SampleGameScreen`, starts one human and
+  three AI seats, and advances the real submission phase. One AI naturally
+  acquires, queues, and locks legal actions without hand, cash, target, or result
+  injection. Focused production AI/privacy passes `57/57`.
+- The AI observation contains only the acting actor's private facts plus
+  detached public facts. Local-human and rival-AI viewer projections, public
+  roster/history/combat facts, and GameScreen contain zero rival-hand identity,
+  queued-plan identity, exact AI cash, or private card binding. Hidden-info,
+  invalid-target, hidden-reader, and AI RNG counts are zero.
+- Direct sentinels pass: V075 AI `77/77`, runtime policy `28/28`, natural
+  acquisition `56/56`, public/private projection `69/69`, V075 application
+  composition `111/111`, and existing production military/asset/presentation
+  composition `86/86`. The historical V06
+  `player_facing_privacy_boundary_test` is not claimed green: it still requires
+  the removed `GameSaveRuntimeCoordinator` path and fails before its privacy
+  assertions; STEP12 changes none of its dependencies.
+- Godot MCP ran and cleanly stopped real `res://scenes/main.tscn` under Godot
+  `4.7.stable.official.5b4e0cb0f`, Vulkan, and RTX 4080 SUPER. External
+  changed-file notifications, STEP12 warnings, hard errors, UID changes, and
+  scoped residual processes are zero. Existing unrelated warnings remain
+  disclosed.
+- Added append-only STEP12 execution/cutover receipts and current-candidate
+  STEP09/STEP11 revalidation receipts without modifying historical evidence.
+  STEP12 becomes step-level `PRODUCTION_GREEN`; Golden counts are `5/3/0`.
+  Full-product production green, every human claim, observer attestation,
+  per-card certification, and full-world reproof remain false or pending. The
+  next boundary is `V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT`.
