@@ -104,7 +104,7 @@
       "owner_component_id": ""
     },
     {
-      "domain_id": "future.v076_human_playtest_evidence",
+      "domain_id": "current.v075_production_combat_candidate",
       "lifecycle": "ACTIVE_CURRENT_DOMAIN",
       "owner_component_id": "component.current.v073_playtest_telemetry"
     },
