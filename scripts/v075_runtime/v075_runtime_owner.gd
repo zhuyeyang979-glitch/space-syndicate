@@ -18,6 +18,9 @@ const CapabilityCatalog := preload(
 const MonsterAutonomyCore := preload(
 	"res://scripts/v075/monster/v075_monster_autonomy_core.gd"
 )
+const MonsterSourceCore := preload(
+	"res://scripts/v075/monster/v075_monster_source_core.gd"
+)
 const CombatProjectionAdapter := preload(
 	"res://scripts/v075/player/v075_combat_projection_adapter.gd"
 )
@@ -225,6 +228,11 @@ var _v075_track_projection_cache: Dictionary = {}
 var _v075_public_facility_slots_cache: Array = []
 var _v076_production_asset_reservations: Dictionary = {}
 var _v076_production_military_submission_by_uid: Dictionary = {}
+var _v076_monster_production_adapter: Node
+var _v076_monster_production_receipt_fingerprint_by_id: Dictionary = {}
+var _v076_monster_production_commit_count := 0
+var _v076_monster_production_duplicate_count := 0
+var _v076_monster_production_collision_count := 0
 var _new_game_transaction_stage := "idle"
 var _new_game_transaction: Dictionary = {}
 var _new_game_publication_count := 0
@@ -270,6 +278,28 @@ func bind_combat_telemetry_service(service: Object) -> Dictionary:
 		"combat_telemetry_gameplay_owner_count": 0,
 		"combat_telemetry_rng_owner_count": 0,
 		"combat_telemetry_world_mutation_count": 0,
+	}
+
+
+func bind_v076_monster_production_adapter(adapter: Node) -> Dictionary:
+	if not is_instance_valid(adapter):
+		return _reject_action("v076_monster_production_adapter_missing")
+	if is_instance_valid(_v076_monster_production_adapter):
+		return _reject_action("v076_monster_production_adapter_already_bound")
+	for method_name in [
+		"prepare_monster_autonomy_cutover",
+		"submit_prepared_monster_autonomy",
+		"production_face_for_region",
+	]:
+		if not adapter.has_method(method_name):
+			return _reject_action(
+				"v076_monster_production_adapter_method_missing:%s" % method_name
+			)
+	_v076_monster_production_adapter = adapter
+	return {
+		"accepted": true,
+		"reason_code": "v076_monster_production_adapter_bound",
+		"monster_production_adapter_count": 1,
 	}
 
 
@@ -3085,6 +3115,11 @@ func _v076_production_public_targets() -> Array:
 
 
 func _v076_production_face_for_target(value: String) -> int:
+	if is_instance_valid(_v076_monster_production_adapter):
+		return int(_v076_monster_production_adapter.call(
+			"production_face_for_region",
+			value
+		))
 	var region_ids := _runtime_region_ids()
 	var region_index := region_ids.find(value)
 	if region_index < 0:
@@ -3126,6 +3161,206 @@ func _v076_production_region_for_monster(source_id: String) -> String:
 		if str(row.get("source_instance_id", "")) == source_id:
 			return str(row.get("region_id", ""))
 	return ""
+
+
+func v076_monster_production_consumer_context(source_id: String) -> Dictionary:
+	if not _combat_initialized or not is_instance_valid(_combat_owner):
+		return {
+			"accepted": false,
+			"reason_code": "v076_monster_production_combat_not_ready",
+		}
+	for source_variant in _combat_owner.call("_source_snapshots") as Array:
+		var source := source_variant as Dictionary
+		if str(source.get("source_instance_id", "")) == source_id:
+			return {
+				"accepted": true,
+				"reason_code": "v076_monster_production_context_ready",
+				"source": source.duplicate(true),
+				"facilities": _public_occupied_facilities(),
+			}
+	return {
+		"accepted": false,
+		"reason_code": "v076_monster_production_source_missing",
+	}
+
+
+func v076_monster_production_receipt_status(movement_id: String) -> Dictionary:
+	return {
+		"consumed": _v076_monster_production_receipt_fingerprint_by_id.has(
+			movement_id
+		),
+		"result_fingerprint": str(
+			_v076_monster_production_receipt_fingerprint_by_id.get(
+				movement_id,
+				""
+			)
+		),
+	}
+
+
+func consume_v076_monster_production_result(result: Dictionary) -> Dictionary:
+	if (
+		str(result.get("contract_id", ""))
+			!= "V076MonsterProductionConsumerResultV1"
+		or str(result.get("movement_id", "")).is_empty()
+		or str(result.get("source_instance_id", "")).is_empty()
+		or typeof(result.get("source_generation")) != TYPE_INT
+		or int(result.get("source_generation", 0)) <= 0
+		or not (result.get("movement_payload") is Dictionary)
+		or not (result.get("trample_payloads") is Array)
+		or not (result.get("facility_damage_intents") is Array)
+		or str(result.get("result_fingerprint", "")).is_empty()
+	):
+		return _reject_action("v076_monster_production_result_shape_invalid")
+	var expected_fingerprint := V076StateCodec.fingerprint(
+		_v076_without_field(result, "result_fingerprint")
+	)
+	if expected_fingerprint != str(result.get("result_fingerprint", "")):
+		return _reject_action("v076_monster_production_result_fingerprint_invalid")
+	var movement_id := str(result.get("movement_id", ""))
+	if _v076_monster_production_receipt_fingerprint_by_id.has(movement_id):
+		if str(_v076_monster_production_receipt_fingerprint_by_id[movement_id]) \
+				!= expected_fingerprint:
+			_v076_monster_production_collision_count += 1
+			return _reject_action("v076_monster_production_result_collision")
+		_v076_monster_production_duplicate_count += 1
+		return {
+			"accepted": true,
+			"reason_code": "v076_monster_production_result_exact_once_replay",
+			"duplicate": true,
+			"movement_id": movement_id,
+		}
+	var movement_payload := result.get("movement_payload", {}) as Dictionary
+	if (
+		str(movement_payload.get("movement_id", "")) != movement_id
+		or str(movement_payload.get("source_instance_id", ""))
+			!= str(result.get("source_instance_id", ""))
+		or int(movement_payload.get("source_generation", 0))
+			!= int(result.get("source_generation", 0))
+	):
+		return _reject_action("v076_monster_production_result_cross_binding_invalid")
+	var context := v076_monster_production_consumer_context(
+		str(result.get("source_instance_id", ""))
+	)
+	if not bool(context.get("accepted", false)):
+		return context
+	var source := context.get("source", {}) as Dictionary
+	if int(source.get("source_generation", 0)) != int(result.get(
+		"source_generation", -1
+	)):
+		return _reject_action("v076_monster_production_source_generation_stale")
+	var combat_checkpoint := _combat_owner.call(
+		"capture_checkpoint",
+		"checkpoint.v076.monster.%s" % movement_id
+	) as Dictionary
+	if combat_checkpoint.is_empty():
+		return _reject_action("v076_monster_production_checkpoint_unavailable")
+	var runtime_checkpoint := _capture_combat_transaction_state()
+	var facility_before := _facility_state.duplicate(true)
+	var operation := MonsterSourceCore.build_movement_transition_operation(
+		"operation.%s" % movement_id,
+		str(result.get("source_instance_id", "")),
+		int(result.get("source_generation", 0)),
+		str(movement_payload.get("destination_region_id", ""))
+	)
+	if operation.is_empty():
+		return _reject_action("v076_monster_production_transition_invalid")
+	var moved := _combat_owner.call(
+		"_commit_monster_transition_operation",
+		operation,
+		"monster_transition"
+	) as Dictionary
+	if not bool(moved.get("accepted", false)):
+		return _rollback_v076_monster_production_failure(
+			moved, combat_checkpoint, runtime_checkpoint, facility_before
+		)
+	var synchronized := _combat_owner.call("_synchronize_skill_sources") as Dictionary
+	if not bool(synchronized.get("accepted", false)):
+		return _rollback_v076_monster_production_failure(
+			synchronized, combat_checkpoint, runtime_checkpoint, facility_before
+		)
+	var applied := _apply_facility_damage_intents(
+		facility_before,
+		result.get("facility_damage_intents", []) as Array
+	)
+	if not bool(applied.get("accepted", false)):
+		return _rollback_v076_monster_production_failure(
+			applied, combat_checkpoint, runtime_checkpoint, facility_before
+		)
+	_facility_state = (
+		applied.get("public_batch_state", facility_before) as Dictionary
+	).duplicate(true)
+	_sync_facility_slots()
+	_clear_v075_submission_caches()
+	_clear_v075_track_projection_cache()
+	_v076_monster_production_receipt_fingerprint_by_id[movement_id] = (
+		expected_fingerprint
+	)
+	_v076_monster_production_commit_count += 1
+	_combat_owner.call(
+		"_record_receipt",
+		"monster_moved",
+		moved.get("receipt", {}) as Dictionary,
+		str(operation.get("operation_id", ""))
+	)
+	var authority_sequence := int(result.get("kernel_authority_sequence", -1))
+	_publish_combat_event(
+		"monster_moved",
+		movement_payload,
+		movement_id,
+		movement_id,
+		str(movement_payload.get("movement_receipt_fingerprint", "")),
+		authority_sequence
+	)
+	for trample_variant in result.get("trample_payloads", []) as Array:
+		var trample := trample_variant as Dictionary
+		var trample_id := str(trample.get("trample_region_receipt_id", ""))
+		_publish_combat_event(
+			"monster_trample_resolved",
+			trample,
+			trample_id,
+			trample_id,
+			PresentationReceiptIdentity.source_fingerprint(trample_id, trample),
+			authority_sequence
+		)
+	_emit_facility_damage_events(
+		applied.get("newly_committed_receipts", []) as Array
+	)
+	return {
+		"accepted": true,
+		"reason_code": "v076_monster_production_result_consumed",
+		"duplicate": false,
+		"movement_id": movement_id,
+		"movement_presentation_count": 1,
+		"trample_presentation_count": (
+			result.get("trample_payloads", []) as Array
+		).size(),
+		"facility_damage_receipt_count": (
+			applied.get("newly_committed_receipts", []) as Array
+		).size(),
+	}
+
+
+func _rollback_v076_monster_production_failure(
+	failure: Dictionary,
+	combat_checkpoint: Dictionary,
+	runtime_checkpoint: Dictionary,
+	facility_before: Dictionary
+) -> Dictionary:
+	var rollback := _rollback_combat_authority_transaction(
+		combat_checkpoint,
+		runtime_checkpoint
+	)
+	_facility_state = facility_before.duplicate(true)
+	_sync_facility_slots()
+	return {
+		"accepted": false,
+		"reason_code": str(failure.get(
+			"reason_code",
+			"v076_monster_production_consumer_failed"
+		)),
+		"rollback_accepted": bool(rollback.get("accepted", false)),
+	}
 
 
 func v076_military_unit_uid_for_card(card_instance_id: String) -> int:
@@ -4316,6 +4551,25 @@ func debug_snapshot() -> Dictionary:
 	result["combat_dual_authority_count"] = int(
 		combat_debug.get("combat_dual_authority_count", 0)
 	)
+	result["v076_monster_production_adapter_bound"] = is_instance_valid(
+		_v076_monster_production_adapter
+	)
+	result["v076_monster_production_commit_count"] = (
+		_v076_monster_production_commit_count
+	)
+	result["v076_monster_production_duplicate_count"] = (
+		_v076_monster_production_duplicate_count
+	)
+	result["v076_monster_production_collision_count"] = (
+		_v076_monster_production_collision_count
+	)
+	result["v075_production_monster_movement_writer_count"] = (
+		0 if is_instance_valid(_v076_monster_production_adapter) else 1
+	)
+	result["v076_production_monster_movement_owner_count"] = (
+		1 if is_instance_valid(_v076_monster_production_adapter) else 0
+	)
+	result["v076_production_monster_asset_quantity_count"] = 0
 	result["combat_public_receipt_count"] = _combat_public_receipt_count
 	result["presentation_source_sequence_authority"] = (
 		"UPSTREAM_AUTHORITY_RECEIPT_OR_COMBAT_REVISION"
@@ -4571,6 +4825,10 @@ func _reset_runtime() -> void:
 	_v075_public_facility_slots_cache = []
 	_v076_production_asset_reservations = {}
 	_v076_production_military_submission_by_uid = {}
+	_v076_monster_production_receipt_fingerprint_by_id = {}
+	_v076_monster_production_commit_count = 0
+	_v076_monster_production_duplicate_count = 0
+	_v076_monster_production_collision_count = 0
 	_clear_v075_submission_caches()
 	_clear_v075_track_projection_cache()
 
@@ -5915,6 +6173,27 @@ func _resolve_combat_maintenance() -> Dictionary:
 			checkpoint,
 			transaction_checkpoint
 		)
+	var v076_monster_prepared: Dictionary = {}
+	if is_instance_valid(_v076_monster_production_adapter):
+		v076_monster_prepared = _v076_monster_production_adapter.call(
+			"prepare_monster_autonomy_cutover",
+			planned.get("plan", {}) as Dictionary
+		) as Dictionary
+		if not bool(v076_monster_prepared.get("accepted", false)):
+			return _fail_after_maintenance_rollback(
+				v076_monster_prepared,
+				checkpoint,
+				transaction_checkpoint
+			)
+		# The old V075 movement/trample receipt is removed from the only
+		# production settlement plan before resolve_autonomy can reach its
+		# historical writer. Target detection and basic attacks remain V075.
+		_combat_owner.set(
+			"_last_autonomy_plan",
+			(v076_monster_prepared.get(
+				"settlement_plan", {}
+			) as Dictionary).duplicate(true)
+		)
 	var autonomy := _combat_owner.call("resolve_autonomy", facilities) as Dictionary
 	if not bool(autonomy.get("accepted", false)):
 		return _fail_after_maintenance_rollback(
@@ -5935,6 +6214,22 @@ func _resolve_combat_maintenance() -> Dictionary:
 	next_public_state = (
 		autonomy_damage.get("public_batch_state", next_public_state) as Dictionary
 	).duplicate(true)
+	var v076_monster_submission := {
+		"accepted": true,
+		"reason": "",
+		"submitted_count": 0,
+	}
+	if is_instance_valid(_v076_monster_production_adapter):
+		v076_monster_submission = _v076_monster_production_adapter.call(
+			"submit_prepared_monster_autonomy",
+			v076_monster_prepared
+		) as Dictionary
+		if not bool(v076_monster_submission.get("accepted", false)):
+			return _fail_after_maintenance_rollback(
+				v076_monster_submission,
+				checkpoint,
+				transaction_checkpoint
+			)
 	_facility_state = next_public_state
 	_asset_state = next_asset_state
 	_sync_facility_slots()
@@ -5996,6 +6291,12 @@ func _resolve_combat_maintenance() -> Dictionary:
 		"accepted": true,
 		"reason_code": "v075_combat_maintenance_resolved",
 		"autonomy": autonomy,
+		"v076_monster_cutover_active": is_instance_valid(
+			_v076_monster_production_adapter
+		),
+		"v076_monster_root_submission_count": int(
+			v076_monster_submission.get("submitted_count", 0)
+		),
 	}
 
 
@@ -6949,6 +7250,18 @@ func _capture_combat_transaction_state() -> Dictionary:
 		"presentation_identity_rejection_count": (
 			_presentation_identity_rejection_count
 		),
+		"v076_monster_production_receipt_fingerprint_by_id": (
+			_v076_monster_production_receipt_fingerprint_by_id.duplicate(true)
+		),
+		"v076_monster_production_commit_count": (
+			_v076_monster_production_commit_count
+		),
+		"v076_monster_production_duplicate_count": (
+			_v076_monster_production_duplicate_count
+		),
+		"v076_monster_production_collision_count": (
+			_v076_monster_production_collision_count
+		),
 	}
 
 
@@ -6980,6 +7293,24 @@ func _restore_combat_transaction_state(checkpoint: Dictionary) -> void:
 	_presentation_identity_rejection_count = int(
 		checkpoint.get("presentation_identity_rejection_count", 0)
 	)
+	_v076_monster_production_receipt_fingerprint_by_id = (
+		checkpoint.get(
+			"v076_monster_production_receipt_fingerprint_by_id",
+			{}
+		) as Dictionary
+	).duplicate(true)
+	_v076_monster_production_commit_count = int(checkpoint.get(
+		"v076_monster_production_commit_count",
+		0
+	))
+	_v076_monster_production_duplicate_count = int(checkpoint.get(
+		"v076_monster_production_duplicate_count",
+		0
+	))
+	_v076_monster_production_collision_count = int(checkpoint.get(
+		"v076_monster_production_collision_count",
+		0
+	))
 
 
 func _rollback_combat_transaction(

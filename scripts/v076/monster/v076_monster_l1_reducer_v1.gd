@@ -28,6 +28,8 @@ func v076_apply_command(state: Dictionary, command: Dictionary, _rng: Variant) -
 	match str(command.get("command_type", "")):
 		Codec.START_COMMAND_TYPE:
 			return _start_move(state, command)
+		Codec.START_PRODUCTION_BATCH_COMMAND_TYPE:
+			return _start_production_batch(state, command)
 		Codec.ADVANCE_COMMAND_TYPE:
 			return _advance_move(state, command)
 		_:
@@ -147,6 +149,148 @@ func _start_move(state: Dictionary, command: Dictionary) -> Dictionary:
 	return _commit(state, receipt, [derived_result.get("command", {})])
 
 
+func _start_production_batch(state: Dictionary, command: Dictionary) -> Dictionary:
+	var payload := command.get("payload", {}) as Dictionary
+	var payload_validation := Codec.validate_production_batch_payload(payload)
+	if not bool(payload_validation.get("valid", false)):
+		return _reject(state, str(payload_validation.get(
+			"reason",
+			"v076_monster_production_batch_payload_invalid"
+		)))
+	var staged := state.duplicate(true)
+	var derived_commands: Array = []
+	var accepted_ids: Array[String] = []
+	var fizzled_ids: Array[String] = []
+	for move_variant in payload.get("moves", []) as Array:
+		var move := move_variant as Dictionary
+		var started := _start_production_move(staged, command, move)
+		if not bool(started.get("accepted", false)):
+			return _reject(staged, str(started.get(
+				"reason",
+				"v076_monster_production_move_rejected"
+			)))
+		staged = (started.get("state", staged) as Dictionary).duplicate(true)
+		if str(started.get("outcome", "")) == "FIZZLE":
+			fizzled_ids.append(str(move.get("production_movement_id", "")))
+			continue
+		accepted_ids.append(str(move.get("production_movement_id", "")))
+		derived_commands.append_array(
+			(started.get("derived_commands", []) as Array).duplicate(true)
+		)
+	var receipt := {
+		"kind": "PRODUCTION_BATCH_ACCEPTED",
+		"plan_fingerprint": str(payload.get("plan_fingerprint", "")),
+		"tick": int(command.get("scheduled_tick", 0)),
+		"authority_sequence": int(command.get("authority_sequence", 0)),
+		"accepted_production_movement_ids": accepted_ids,
+		"fizzled_production_movement_ids": fizzled_ids,
+		"production_asset_quantity_write_count": 0,
+	}
+	return _commit(staged, receipt, derived_commands)
+
+
+func _start_production_move(
+	state: Dictionary,
+	command: Dictionary,
+	move: Dictionary
+) -> Dictionary:
+	var monsters := state.get("monsters", {}) as Dictionary
+	var monster_id := str(move.get("monster_id", ""))
+	if not monsters.has(monster_id):
+		var created := Codec.build_production_monster_record(move)
+		if created.is_empty():
+			return _reject(state, "v076_monster_production_record_invalid")
+		monsters[monster_id] = created
+	var monster := (monsters.get(monster_id, {}) as Dictionary).duplicate(true)
+	var movement_id := str(move.get("production_movement_id", ""))
+	if not bool(monster.get("production_cutover", false)):
+		return _production_fizzle(
+			state, command, move,
+			"production_monster_identity_collides_with_isolated_state"
+		)
+	if int(move.get("source_generation", 0)) < int(monster.get("source_generation", 0)):
+		return _production_fizzle(state, command, move, "production_source_generation_stale")
+	if int(move.get("expected_move_revision", -1)) != int(monster.get("move_revision", 0)):
+		return _production_fizzle(state, command, move, "production_move_revision_stale")
+	if str(monster.get("status", "")) == "MOVING":
+		return _production_fizzle(state, command, move, "production_monster_already_moving")
+	if int(monster.get("segment_progress_mu", 0)) != 0:
+		return _production_fizzle(state, command, move, "production_monster_not_at_face_center")
+	if int(monster.get("current_face_id", -1)) != int(move.get("start_face_id", -1)):
+		return _production_fizzle(state, command, move, "production_source_face_stale")
+	var route_result := Metric.build_route(
+		int(move.get("start_face_id", -1)),
+		int(move.get("target_face_id", -1)),
+		move.get("target_point", {}) as Dictionary
+	)
+	if not bool(route_result.get("accepted", false)):
+		return _reject(state, str(route_result.get(
+			"reason",
+			"v076_monster_production_route_build_failed"
+		)))
+	var tick := int(command.get("scheduled_tick", 0))
+	var authority_sequence := int(command.get("authority_sequence", 0))
+	var next_revision := int(monster.get("move_revision", 0)) + 1
+	monster["movement_class"] = str(move.get("movement_class", ""))
+	monster["target_face_id"] = int(move.get("target_face_id", -1))
+	monster["target_point"] = (move.get("target_point", {}) as Dictionary).duplicate(true)
+	monster["route"] = (route_result.get("route", {}) as Dictionary).duplicate(true)
+	monster["route_sha256"] = str(route_result.get("route_sha256", ""))
+	monster["route_segment_index"] = 0
+	monster["segment_progress_mu"] = 0
+	monster["speed_mu_per_tick"] = int(move.get("speed_mu_per_tick", 0))
+	monster["max_geodesic_distance_mu"] = int(move.get("max_geodesic_distance_mu", 0))
+	monster["travelled_distance_mu"] = 0
+	monster["status"] = "MOVING"
+	monster["accepted_tick"] = tick
+	monster["accepted_authority_sequence"] = authority_sequence
+	monster["last_move_tick"] = tick
+	monster["last_move_authority_sequence"] = authority_sequence
+	monster["region_crossing_count"] = 0
+	monster["trample_efficiency_ppm"] = int(move.get("trample_efficiency_ppm", 0))
+	monster["frozen_trample_modifiers_ppm"] = []
+	monster["effective_trample_efficiency_ppm"] = int(
+		move.get("trample_efficiency_ppm", 0)
+	)
+	monster["trample_distance_by_region_mu"] = {}
+	monster["trample_damage_by_region"] = {}
+	monster["total_trample_damage"] = 0
+	monster["move_revision"] = next_revision
+	monster["next_step_index"] = 1
+	monster["active_asset_id"] = "production.autonomy"
+	monster["root_command_id"] = str(command.get("command_id", ""))
+	monster["source_generation"] = int(move.get("source_generation", 0))
+	monster["production_movement_id"] = movement_id
+	monster["source_region_id"] = str(move.get("source_region_id", ""))
+	monster["target_region_id"] = str(move.get("target_region_id", ""))
+	monsters[monster_id] = monster
+	state["monsters"] = monsters
+	var derived_result := _build_advance_command(command, monster, 1)
+	if not bool(derived_result.get("accepted", false)):
+		return _reject(state, str(derived_result.get(
+			"reason",
+			"v076_monster_production_advance_build_failed"
+		)))
+	var receipt := {
+		"kind": "MOVE_ACCEPTED",
+		"monster_id": monster_id,
+		"production_cutover": true,
+		"production_movement_id": movement_id,
+		"source_generation": int(monster.get("source_generation", 0)),
+		"source_region_id": str(monster.get("source_region_id", "")),
+		"target_region_id": str(monster.get("target_region_id", "")),
+		"accepted_tick": tick,
+		"accepted_authority_sequence": authority_sequence,
+		"route_sha256": str(monster.get("route_sha256", "")),
+		"route_distance_mu": int((monster.get("route", {}) as Dictionary).get(
+			"total_distance_mu", 0
+		)),
+		"production_asset_quantity_write_count": 0,
+	}
+	_append_move_receipt(state, receipt)
+	return _commit(state, receipt, [derived_result.get("command", {})])
+
+
 func _advance_move(state: Dictionary, command: Dictionary) -> Dictionary:
 	var payload := command.get("payload", {}) as Dictionary
 	var payload_validation := Codec.validate_advance_payload(payload)
@@ -244,6 +388,11 @@ func _advance_move(state: Dictionary, command: Dictionary) -> Dictionary:
 	var receipt := {
 		"kind": "MOVE_STEP",
 		"monster_id": monster_id,
+		"production_cutover": bool(monster.get("production_cutover", false)),
+		"production_movement_id": str(monster.get("production_movement_id", "")),
+		"source_generation": int(monster.get("source_generation", 0)),
+		"source_region_id": str(monster.get("source_region_id", "")),
+		"target_region_id": str(monster.get("target_region_id", "")),
 		"movement_revision": int(monster.get("move_revision", 0)),
 		"step_index": int(payload.get("step_index", 0)),
 		"tick": int(command.get("scheduled_tick", 0)),
@@ -304,6 +453,36 @@ func _append_move_receipt(state: Dictionary, receipt: Dictionary) -> void:
 	var receipts := state.get("move_receipts", []) as Array
 	receipts.append(receipt)
 	state["move_receipts"] = receipts
+
+
+func _production_fizzle(
+	state: Dictionary,
+	command: Dictionary,
+	move: Dictionary,
+	reason: String
+) -> Dictionary:
+	var receipts := state.get("fizzle_receipts", []) as Array
+	var receipt := {
+		"kind": "FIZZLE",
+		"reason": reason,
+		"command_id": str(command.get("command_id", "")),
+		"monster_id": str(move.get("monster_id", "")),
+		"asset_id": "",
+		"production_cutover": true,
+		"production_movement_id": str(move.get("production_movement_id", "")),
+		"tick": int(command.get("scheduled_tick", 0)),
+		"authority_sequence": int(command.get("authority_sequence", 0)),
+	}
+	receipts.append(receipt)
+	state["fizzle_receipts"] = receipts
+	return {
+		"accepted": true,
+		"reason": reason,
+		"outcome": "FIZZLE",
+		"state": state,
+		"receipt": receipt,
+		"derived_commands": [],
+	}
 
 
 func _fizzle(state: Dictionary, command: Dictionary, reason: String, monster_id: String, asset_id: String) -> Dictionary:

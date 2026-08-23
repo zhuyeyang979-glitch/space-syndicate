@@ -56,6 +56,8 @@ var _v076_production_ready := false
 var _v076_production_seed := 0
 var _v076_production_configuration_failure_count := 0
 var _v076_private_military_receipt_count := 0
+var _v076_monster_production_ready := false
+var _v076_monster_production_drain_failure_count := 0
 
 
 func _ready() -> void:
@@ -92,6 +94,14 @@ func _ready() -> void:
 		if not bool(adapter_binding.get("accepted", false)):
 			_v076_production_configuration_failure_count += 1
 			push_error("V076 production adapter binding failed")
+			return
+		var monster_binding := _runtime_owner.call(
+			"bind_v076_monster_production_adapter",
+			_v076_production_adapter
+		) as Dictionary
+		if not bool(monster_binding.get("accepted", false)):
+			_v076_production_configuration_failure_count += 1
+			push_error("V076 Monster production adapter binding failed")
 			return
 	_runtime_owner.state_changed.connect(_on_runtime_state_changed)
 	_runtime_owner.final_settlement_committed.connect(
@@ -367,7 +377,7 @@ func _ensure_v076_production_configuration(seed_value: int) -> Dictionary:
 
 
 func _process(delta: float) -> void:
-	if not _v076_production_ready:
+	if not _v076_production_ready or not _v076_monster_production_ready:
 		return
 	var elapsed_us := maxi(0, int(round(delta * 1_000_000.0)))
 	if elapsed_us <= 0:
@@ -380,6 +390,17 @@ func _process(delta: float) -> void:
 		push_error("V076 production kernel advance failed")
 		return
 	if int(advanced.get("advanced_tick_count", 0)) <= 0:
+		return
+	var monster_drain := _v076_production_adapter.call(
+		"drain_monster_production_receipts"
+	) as Dictionary
+	if not bool(monster_drain.get("accepted", false)):
+		_v076_monster_production_drain_failure_count += 1
+		push_error(
+			"V076 Monster production receipt settlement failed: %s" % str(
+				monster_drain.get("reason", "unknown")
+			)
+		)
 		return
 	var intake := _v076_private_direct_action_owner.call(
 		"settle_ready_private_actions"
@@ -508,6 +529,10 @@ func debug_snapshot() -> Dictionary:
 		),
 		"v076_private_military_receipt_count": (
 			_v076_private_military_receipt_count
+		),
+		"v076_monster_production_ready": _v076_monster_production_ready,
+		"v076_monster_production_drain_failure_count": (
+			_v076_monster_production_drain_failure_count
 		),
 		"v076_public_batch_entry_count": 0,
 		"v076_shared_sushi_track_resolution_count": 0,
@@ -704,6 +729,29 @@ func _execute_new_game_transaction(parameters: Dictionary) -> Dictionary:
 			previous_session_sequence,
 			runtime_activated
 		)
+	if _v076_production_required:
+		var monster_production := _v076_production_adapter.call(
+			"configure_monster_production",
+			_v076_kernel,
+			seed_value,
+			int(map_request.get("region_count", 0)),
+			str(map_request.get("geography_complexity", ""))
+		) as Dictionary
+		if not bool(monster_production.get("accepted", false)):
+			_v076_production_configuration_failure_count += 1
+			return _rollback_prepared_new_game(
+				runtime_transaction_id,
+				ruleset_transaction_id,
+				previous_session_sequence,
+				{
+					"accepted": false,
+					"reason_code": str(monster_production.get(
+						"reason",
+						"v076_monster_production_configuration_failed"
+					)),
+				}
+			)
+		_v076_monster_production_ready = true
 	_new_game_transaction_stage = "pre_publication"
 	var runtime_sealed := _runtime_owner.call(
 		"seal_prepared_new_game_publication",

@@ -172,7 +172,11 @@ func _run() -> void:
 	var after_assets := _actor_assets(runtime, actor_id)
 	_expect(int(after_assets.get(color, -1)) == int(before_assets.get(color, -1)) - int(card_setup.get("cost", 0)), "existing asset Owner debits the exact authored cost once")
 	_expect((runtime.get("_v076_production_military_submission_by_uid") as Dictionary).is_empty(), "withdrawal clears the in-flight source claim")
-	var monster_setup := _install_enemy_monster(runtime, actor_id)
+	var monster_setup := _install_enemy_monster(
+		runtime,
+		actor_id,
+		str(facility_setup.get("region_id", ""))
+	)
 	_expect(bool(monster_setup.get("accepted", false)), "fixture deploys one target through the existing V075 monster Owner")
 	var monster_card := _install_military_card(runtime, actor_id)
 	_expect(bool(monster_card.get("accepted", false)), "fixture installs a second exact V075 military card")
@@ -230,7 +234,9 @@ func _run() -> void:
 	_expect(int(after_monster_settlement.get("damage_settlement_count", 0)) == 2, "both production typed damage paths settle exactly once")
 	_expect(int(kernel.call("root_commands").size()) == 2, "both production missions share the one Kernel root ledger")
 	_expect(
-		int(monster_after.get("hp", -1)) < int(monster_before.get("hp", -1)),
+		int(monster_after.get("hp", -1)) < int(monster_before.get("hp", -1))
+			or int(monster_after.get("armor", -1))
+				< int(monster_before.get("armor", -1)),
 		"monster assault mutates only the existing V075 monster Owner"
 	)
 	_expect(
@@ -250,6 +256,110 @@ func _run() -> void:
 		(runtime.get("_v076_production_military_submission_by_uid") as Dictionary).is_empty(),
 		"monster withdrawal clears the in-flight source claim"
 	)
+	var autonomy_facility := _install_enemy_facility(
+		runtime,
+		actor_id,
+		str(monster_after.get("region_id", "")),
+		"facility.v076.production.monster.autonomy",
+		actor_id,
+		"life"
+	)
+	_expect(bool(autonomy_facility.get("accepted", false)), "fixture installs a live enemy facility in another region for Monster autonomy")
+	var production_events: Array[Dictionary] = []
+	composition.public_resolution_ready.connect(func(receipt: Dictionary) -> void:
+		production_events.append(receipt.duplicate(true))
+	)
+	var monster_before_autonomy := _public_monster(
+		runtime, str(monster_setup.get("source_instance_id", ""))
+	)
+	var combat_debug_before := (
+		(runtime.call("debug_snapshot") as Dictionary).get("combat", {}) as Dictionary
+	)
+	var roots_before_autonomy := (kernel.call("root_commands") as Array).size()
+	var maintenance: Dictionary = {}
+	for _attempt in range(16):
+		maintenance = runtime.call("_resolve_combat_maintenance") as Dictionary
+		if not bool(maintenance.get("accepted", false)) \
+				or int(maintenance.get("v076_monster_root_submission_count", 0)) == 1:
+			break
+	_expect(bool(maintenance.get("accepted", false)), "production maintenance stages one Monster cutover root")
+	_expect(bool(maintenance.get("v076_monster_cutover_active", false)), "production maintenance declares the V076 Monster cutover active")
+	_expect(int(maintenance.get("v076_monster_root_submission_count", 0)) == 1, "one autonomy plan submits one atomic Monster root batch")
+	var maintenance_autonomy := maintenance.get("autonomy", {}) as Dictionary
+	_expect((maintenance_autonomy.get("movement_receipts", []) as Array).is_empty(), "old V075 autonomy movement receipt never reaches its historical writer")
+	_expect((maintenance_autonomy.get("trample_region_receipts", []) as Array).is_empty(), "old V075 trample resolver never reaches production")
+	var combat_debug_after_plan := (
+		(runtime.call("debug_snapshot") as Dictionary).get("combat", {}) as Dictionary
+	)
+	_expect(
+		int(combat_debug_after_plan.get("monster_movement_count", -1))
+			== int(combat_debug_before.get("monster_movement_count", -2)),
+		"V075 Monster movement writer count remains unchanged at the cutover boundary"
+	)
+	_expect(
+		(kernel.call("root_commands") as Array).size() == roots_before_autonomy + 1,
+		"Monster autonomy shares the existing Kernel root ledger"
+	)
+	composition.call("_process", 40.0)
+	var monster_after_autonomy := _public_monster(
+		runtime, str(monster_setup.get("source_instance_id", ""))
+	)
+	var monster_domain := kernel.call(
+		"domain_state", "monster.l1.move"
+	) as Dictionary
+	var v076_monster := ((monster_domain.get("monsters", {}) as Dictionary).get(
+		str(monster_setup.get("source_instance_id", "")), {}
+	) as Dictionary)
+	_expect(
+		str(monster_after_autonomy.get("region_id", ""))
+			!= str(monster_before_autonomy.get("region_id", "")),
+		"V075 public Monster projection consumes the V076 physical destination"
+	)
+	_expect(
+		bool(v076_monster.get("production_cutover", false))
+			and str(v076_monster.get("status", "")) == "ARRIVED"
+			and int(v076_monster.get("region_crossing_count", 0)) > 0,
+		"unique V076 Monster Owner completes one physical geodesic crossing"
+	)
+	_expect(
+		(monster_domain.get("assets", {}) as Dictionary).is_empty()
+			and (monster_domain.get("asset_activation_log", []) as Array).is_empty(),
+		"production Monster movement creates no second asset quantity or activation ledger"
+	)
+	_expect(
+		_count_presentation_kind(production_events, "facility_combat_damaged") == 1
+			and _presentation_damage(
+				production_events,
+				"facility_combat_damaged"
+			) > 0,
+		"V076 trample damage is consumed once by the existing facility HP Owner"
+	)
+	_expect(
+		_count_presentation_kind(production_events, "monster_moved") == 1,
+		"one V076 terminal movement is presented exactly once"
+	)
+	_expect(
+		_count_presentation_kind(production_events, "monster_trample_resolved") == 1,
+		"one V076 trample consequence is presented exactly once"
+	)
+	var repeated_drain := adapter.call("drain_monster_production_receipts") as Dictionary
+	_expect(
+		bool(repeated_drain.get("accepted", false))
+			and int(repeated_drain.get("committed_count", -1)) == 0
+			and int(repeated_drain.get("duplicate_count", 0)) >= 1,
+		"terminal Monster receipt replay is acknowledged without a second consequence"
+	)
+	_expect(
+		_count_presentation_kind(production_events, "monster_moved") == 1
+			and _count_presentation_kind(
+				production_events, "monster_trample_resolved"
+			) == 1,
+		"receipt replay creates no duplicate movement or trample presentation"
+	)
+	var runtime_after_monster := runtime.call("debug_snapshot") as Dictionary
+	_expect(int(runtime_after_monster.get("v075_production_monster_movement_writer_count", -1)) == 0, "V075 production Monster movement writer is retired")
+	_expect(int(runtime_after_monster.get("v076_production_monster_movement_owner_count", 0)) == 1, "V076 production Monster movement Owner count is exactly one")
+	_expect(int(runtime_after_monster.get("v076_production_monster_asset_quantity_count", -1)) == 0, "V076 production Monster Owner owns no asset quantity")
 	var adapter_debug := adapter.call("debug_snapshot") as Dictionary
 	_expect(not bool(adapter_debug.get("owns_tick", true)), "adapter owns no tick")
 	_expect(not bool(adapter_debug.get("owns_asset_quantity", true)), "adapter owns no asset quantity")
@@ -319,7 +429,14 @@ func _install_assets(runtime: Node) -> Dictionary:
 	return {"accepted": true}
 
 
-func _install_enemy_facility(runtime: Node, actor_id: String) -> Dictionary:
+func _install_enemy_facility(
+	runtime: Node,
+	actor_id: String,
+	excluded_region_id: String = "",
+	facility_id: String = "facility.v076.production.enemy",
+	facility_owner_id: String = "player.ai.2",
+	required_industry_id: String = ""
+) -> Dictionary:
 	var state := (runtime.get("_facility_state") as Dictionary).duplicate(true)
 	var substate := PublicActionBatchCore.facility_substate(state)
 	var slots := substate.get("facility_slots", {}) as Dictionary
@@ -335,7 +452,14 @@ func _install_enemy_facility(runtime: Node, actor_id: String) -> Dictionary:
 	var selected_id := ""
 	for slot_id in slot_ids:
 		var candidate := slots.get(slot_id, {}) as Dictionary
-		if str(candidate.get("region_id", "")) != actor_source_region:
+		if (
+			str(candidate.get("region_id", "")) != actor_source_region
+			and str(candidate.get("region_id", "")) != excluded_region_id
+			and (
+				required_industry_id.is_empty()
+				or str(candidate.get("industry_id", "")) == required_industry_id
+			)
+		):
 			selected_id = slot_id
 			break
 	if selected_id.is_empty():
@@ -347,9 +471,9 @@ func _install_enemy_facility(runtime: Node, actor_id: String) -> Dictionary:
 		str(selected.get("facility_type", "")),
 		str(selected.get("industry_id", "")),
 		int(selected.get("slot_generation", 0)) + 1,
-		"facility.v076.production.enemy",
+		facility_id,
 		1,
-		"player.ai.2",
+		facility_owner_id,
 		1,
 		0,
 		0,
@@ -367,7 +491,11 @@ func _install_enemy_facility(runtime: Node, actor_id: String) -> Dictionary:
 		return {"accepted": false}
 	runtime.set("_facility_state", next_state)
 	runtime.call("_sync_facility_slots")
-	return {"accepted": true, "region_id": str(selected.get("region_id", ""))}
+	return {
+		"accepted": true,
+		"region_id": str(selected.get("region_id", "")),
+		"facility_id": str(occupied.get("facility_id", "")),
+	}
 
 
 func _install_military_card(runtime: Node, actor_id: String) -> Dictionary:
@@ -408,7 +536,11 @@ func _install_military_card(runtime: Node, actor_id: String) -> Dictionary:
 	}
 
 
-func _install_enemy_monster(runtime: Node, actor_id: String) -> Dictionary:
+func _install_enemy_monster(
+	runtime: Node,
+	actor_id: String,
+	excluded_region_id: String = ""
+) -> Dictionary:
 	var combat := runtime.get("_combat_owner") as Node
 	if not is_instance_valid(combat):
 		return {"accepted": false}
@@ -422,13 +554,16 @@ func _install_enemy_monster(runtime: Node, actor_id: String) -> Dictionary:
 	))
 	var target_region := ""
 	for region_variant in runtime.call("_runtime_region_ids") as Array:
-		if str(region_variant) != source_region:
+		if (
+			str(region_variant) != source_region
+			and str(region_variant) != excluded_region_id
+		):
 			target_region = str(region_variant)
 			break
 	if enemy_id.is_empty() or target_region.is_empty():
 		return {"accepted": false}
 	var definition_id := CardDefinitions.standard_definition_id(
-		"monster.spore_tide_emperor", "life", 1
+		"monster.spore_tide_emperor", "life", 4
 	)
 	var bound := combat.call("prebind_monster_card_action", {
 		"request_id": "request.v076.production.monster.fixture",
@@ -496,6 +631,22 @@ func _actor_assets(runtime: Node, actor_id: String) -> Dictionary:
 	return ((players.get(actor_id, {}) as Dictionary).get(
 		"assets", {}
 	) as Dictionary).duplicate(true)
+
+
+func _count_presentation_kind(receipts: Array, kind: String) -> int:
+	var count := 0
+	for receipt_variant in receipts:
+		if str((receipt_variant as Dictionary).get("event_kind", "")) == kind:
+			count += 1
+	return count
+
+
+func _presentation_damage(receipts: Array, kind: String) -> int:
+	for receipt_variant in receipts:
+		var receipt := receipt_variant as Dictionary
+		if str(receipt.get("event_kind", "")) == kind:
+			return int(receipt.get("damage_amount", 0))
+	return 0
 
 
 func _expect(condition: bool, message: String) -> void:

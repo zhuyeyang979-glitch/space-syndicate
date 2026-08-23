@@ -7,9 +7,10 @@ const PartitionCodec := preload("res://scripts/v076/map/v076_partition_authority
 const PartitionValidator := preload("res://scripts/v076/map/v076_partition_validator_v1.gd")
 const Metric := preload("res://scripts/v076/monster/v076_integer_geodesic_metric_v1.gd")
 
-const SCHEMA_VERSION := 2
+const SCHEMA_VERSION := 3
 const DOMAIN_ID := "monster.l1.move"
 const START_COMMAND_TYPE := "start_directional_geodesic_move"
+const START_PRODUCTION_BATCH_COMMAND_TYPE := "start_production_autonomy_geodesic_batch"
 const ADVANCE_COMMAND_TYPE := "advance_directional_geodesic_move"
 const MOVEMENT_CLASSES := ["GROUND", "FLYING", "PHASE"]
 const MOVEMENT_STATUSES := ["IDLE", "MOVING", "ARRIVED", "MAX_DISTANCE"]
@@ -29,7 +30,9 @@ const MONSTER_FIELDS := [
 	"region_crossing_count", "trample_efficiency_ppm", "frozen_trample_modifiers_ppm",
 	"effective_trample_efficiency_ppm", "trample_distance_by_region_mu",
 	"trample_damage_by_region", "total_trample_damage", "move_revision",
-	"next_step_index", "active_asset_id", "root_command_id",
+	"next_step_index", "active_asset_id", "root_command_id", "production_cutover",
+	"source_generation", "production_movement_id", "source_region_id",
+	"target_region_id",
 ]
 const ASSET_FIELDS := [
 	"schema_version", "asset_id", "preferred_color", "total_quantity",
@@ -44,6 +47,13 @@ const START_PAYLOAD_FIELDS := [
 ]
 const ADVANCE_PAYLOAD_FIELDS := [
 	"monster_id", "movement_revision", "step_index", "route_sha256",
+]
+const PRODUCTION_BATCH_PAYLOAD_FIELDS := ["plan_fingerprint", "moves"]
+const PRODUCTION_MOVE_FIELDS := [
+	"production_movement_id", "monster_id", "source_generation",
+	"source_region_id", "target_region_id", "start_face_id", "target_face_id",
+	"target_point", "max_geodesic_distance_mu", "speed_mu_per_tick",
+	"movement_class", "trample_efficiency_ppm", "expected_move_revision",
 ]
 
 
@@ -109,6 +119,11 @@ static func build_initial_state(partition: Dictionary, monster_specs: Array, ass
 			"next_step_index": 0,
 			"active_asset_id": "",
 			"root_command_id": "",
+			"production_cutover": false,
+			"source_generation": 0,
+			"production_movement_id": "",
+			"source_region_id": "",
+			"target_region_id": "",
 		}
 	var assets := {}
 	for spec_variant in asset_specs:
@@ -169,6 +184,48 @@ static func build_initial_state(partition: Dictionary, monster_specs: Array, ass
 		"reason": "",
 		"state": state,
 		"state_sha256": StateCodec.fingerprint(state),
+	}
+
+
+static func build_production_monster_record(move: Dictionary) -> Dictionary:
+	var validation := validate_production_move(move)
+	if not bool(validation.get("valid", false)):
+		return {}
+	return {
+		"schema_version": SCHEMA_VERSION,
+		"monster_id": str(move.get("monster_id", "")),
+		"movement_class": str(move.get("movement_class", "")),
+		"current_face_id": int(move.get("start_face_id", -1)),
+		"target_face_id": int(move.get("start_face_id", -1)),
+		"target_point": {},
+		"route": {},
+		"route_sha256": "",
+		"route_segment_index": 0,
+		"segment_progress_mu": 0,
+		"speed_mu_per_tick": 0,
+		"max_geodesic_distance_mu": 0,
+		"travelled_distance_mu": 0,
+		"status": "IDLE",
+		"accepted_tick": 0,
+		"accepted_authority_sequence": 0,
+		"last_move_tick": 0,
+		"last_move_authority_sequence": 0,
+		"region_crossing_count": 0,
+		"trample_efficiency_ppm": int(move.get("trample_efficiency_ppm", 0)),
+		"frozen_trample_modifiers_ppm": [],
+		"effective_trample_efficiency_ppm": 0,
+		"trample_distance_by_region_mu": {},
+		"trample_damage_by_region": {},
+		"total_trample_damage": 0,
+		"move_revision": 0,
+		"next_step_index": 0,
+		"active_asset_id": "",
+		"root_command_id": "",
+		"production_cutover": true,
+		"source_generation": int(move.get("source_generation", 0)),
+		"production_movement_id": "",
+		"source_region_id": str(move.get("source_region_id", "")),
+		"target_region_id": str(move.get("source_region_id", "")),
 	}
 
 
@@ -268,8 +325,30 @@ static func validate_monster(monster: Dictionary, face_count: int) -> Dictionary
 		or not (monster.get("trample_damage_by_region") is Dictionary)
 		or typeof(monster.get("total_trample_damage")) != TYPE_INT
 		or int(monster.get("total_trample_damage", -1)) < 0
+		or typeof(monster.get("production_cutover")) != TYPE_BOOL
+		or typeof(monster.get("source_generation")) != TYPE_INT
+		or int(monster.get("source_generation", -1)) < 0
 	):
 		return _invalid("v076_monster_record_contract_invalid")
+	var production_cutover := bool(monster.get("production_cutover", false))
+	if production_cutover:
+		if (
+			int(monster.get("source_generation", 0)) <= 0
+			or str(monster.get("source_region_id", "")).is_empty()
+			or str(monster.get("target_region_id", "")).is_empty()
+			or (
+				int(monster.get("move_revision", 0)) > 0
+				and str(monster.get("production_movement_id", "")).is_empty()
+			)
+		):
+			return _invalid("v076_monster_production_binding_invalid")
+	elif (
+		int(monster.get("source_generation", 0)) != 0
+		or not str(monster.get("production_movement_id", "")).is_empty()
+		or not str(monster.get("source_region_id", "")).is_empty()
+		or not str(monster.get("target_region_id", "")).is_empty()
+	):
+		return _invalid("v076_monster_isolated_production_fields_not_empty")
 	var frozen_modifiers := monster.get("frozen_trample_modifiers_ppm", []) as Array
 	if frozen_modifiers.size() > 8:
 		return _invalid("v076_monster_trample_modifier_count_invalid")
@@ -457,6 +536,80 @@ static func validate_advance_payload(payload: Variant) -> Dictionary:
 		or int(value.get("step_index", 0)) <= 0
 	):
 		return _invalid("v076_monster_advance_payload_invalid")
+	return StateCodec.validate(value)
+
+
+static func validate_production_batch_payload(payload: Variant) -> Dictionary:
+	if not (payload is Dictionary) or not _has_exact_fields(
+		payload as Dictionary,
+		PRODUCTION_BATCH_PAYLOAD_FIELDS
+	):
+		return _invalid("v076_monster_production_batch_payload_shape_invalid")
+	var value := payload as Dictionary
+	if (
+		str(value.get("plan_fingerprint", "")).is_empty()
+		or not (value.get("moves") is Array)
+		or (value.get("moves", []) as Array).is_empty()
+		or (value.get("moves", []) as Array).size() > 64
+	):
+		return _invalid("v076_monster_production_batch_payload_invalid")
+	var monster_ids := {}
+	var movement_ids := {}
+	for move_variant in value.get("moves", []) as Array:
+		var move_validation := validate_production_move(move_variant)
+		if not bool(move_validation.get("valid", false)):
+			return move_validation
+		var move := move_variant as Dictionary
+		var monster_id := str(move.get("monster_id", ""))
+		var movement_id := str(move.get("production_movement_id", ""))
+		if monster_ids.has(monster_id) or movement_ids.has(movement_id):
+			return _invalid("v076_monster_production_batch_identity_duplicate")
+		monster_ids[monster_id] = true
+		movement_ids[movement_id] = true
+	return StateCodec.validate(value)
+
+
+static func validate_production_move(move: Variant) -> Dictionary:
+	if not (move is Dictionary) or not _has_exact_fields(
+		move as Dictionary,
+		PRODUCTION_MOVE_FIELDS
+	):
+		return _invalid("v076_monster_production_move_shape_invalid")
+	var value := move as Dictionary
+	if (
+		str(value.get("production_movement_id", "")).is_empty()
+		or str(value.get("monster_id", "")).is_empty()
+		or typeof(value.get("source_generation")) != TYPE_INT
+		or int(value.get("source_generation", 0)) <= 0
+		or str(value.get("source_region_id", "")).is_empty()
+		or str(value.get("target_region_id", "")).is_empty()
+		or typeof(value.get("start_face_id")) != TYPE_INT
+		or int(value.get("start_face_id", -1)) < 0
+		or typeof(value.get("target_face_id")) != TYPE_INT
+		or int(value.get("target_face_id", -1)) < 0
+		or int(value.get("start_face_id", -1)) == int(value.get("target_face_id", -1))
+		or not (value.get("target_point") is Dictionary)
+		or typeof(value.get("max_geodesic_distance_mu")) != TYPE_INT
+		or int(value.get("max_geodesic_distance_mu", 0)) <= 0
+		or typeof(value.get("speed_mu_per_tick")) != TYPE_INT
+		or int(value.get("speed_mu_per_tick", 0)) <= 0
+		or str(value.get("movement_class", "")) not in MOVEMENT_CLASSES
+		or typeof(value.get("trample_efficiency_ppm")) != TYPE_INT
+		or int(value.get("trample_efficiency_ppm", -1)) < 0
+		or int(value.get("trample_efficiency_ppm", 0)) > 1_000_000
+		or typeof(value.get("expected_move_revision")) != TYPE_INT
+		or int(value.get("expected_move_revision", -1)) < 0
+	):
+		return _invalid("v076_monster_production_move_invalid")
+	var target_validation := Metric.validate_target_point(
+		value.get("target_point", {}) as Dictionary,
+		int(value.get("target_face_id", -1))
+	)
+	if not bool(target_validation.get("accepted", false)):
+		return _invalid(str(target_validation.get(
+			"reason",
+			"v076_monster_production_target_point_invalid"
+		)))
 	return StateCodec.validate(value)
 
 

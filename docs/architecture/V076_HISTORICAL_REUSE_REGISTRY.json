@@ -485,14 +485,14 @@
       "owner_component_id": "component.v076.monster_l1",
       "owner_path": "scripts/v076/monster/v076_monster_l1_reducer_v1.gd",
       "reuse_disposition": "ADOPT_AS_OWNER",
-      "reuse_source_ids": ["reuse.v076.monster_l1.current", "reuse.pr79.v07_domain_cores"],
-      "reuse_candidates_considered": ["reuse.pr79.v07_domain_cores", "reuse.v075.combat_candidate"],
-      "new_component_justification": "Stage 3 requires one isolated deterministic Monster L1 movement Owner; V075 remains reference-only production lineage.",
+      "reuse_source_ids": ["reuse.v076.monster_l1.current", "reuse.pr79.v07_domain_cores", "reuse.v075.production_monster_movement_consumer.current"],
+      "reuse_candidates_considered": ["reuse.pr79.v07_domain_cores", "reuse.v075.combat_candidate", "reuse.v075.production_monster_movement_consumer.current"],
+      "new_component_justification": "The existing unique V076 Monster L1 Owner is extended in place for production autonomy movement. Its production command owns physical route progress, crossings and trample ledgers but creates no asset quantity/cooldown ledger; V075 is reduced to target planning plus exact-once location, facility-damage and presentation consumption.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
-      "focused_test_ids": ["v076_monster_l1_directional_geodesic_move_test", "v076_monster_l1_directional_geodesic_move_1000_seed_test"],
-      "golden_scenario_steps": ["STEP05"],
+      "focused_test_ids": ["v076_monster_l1_directional_geodesic_move_test", "v076_monster_l1_directional_geodesic_move_1000_seed_test", "v076_production_military_composition_test"],
+      "golden_scenario_steps": ["STEP05", "STEP09"],
       "reuse_scan": {
         "reuse_registry_search": true,
         "class_name_search": true,
@@ -503,12 +503,12 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 2,
-        "reuse_candidate_ids": ["reuse.pr79.v07_domain_cores", "reuse.v075.combat_candidate"],
+        "reuse_candidate_count": 3,
+        "reuse_candidate_ids": ["reuse.pr79.v07_domain_cores", "reuse.v075.combat_candidate", "reuse.v075.production_monster_movement_consumer.current"],
         "selected_reuse_disposition": "ADOPT_AS_OWNER",
-        "why_existing_owner_cannot_be_extended": "V075 is the current production reference and cannot be dual-written or silently converted into the isolated V076 reducer ABI.",
+        "why_existing_owner_cannot_be_extended": "NOT_APPLICABLE_EXTENDED_EXISTING_V076_MONSTER_OWNER",
         "why_adapter_is_insufficient": "Directional route, cooldown and trample authority require one reducer Owner, while adapters remain read-only consumers.",
-        "why_new_owner_is_required": "Stage 3 introduces a new isolated V076 domain without replacing or reaching the V075 production Owner."
+        "why_new_owner_is_required": "NOT_REQUIRED_EXISTING_V076_MONSTER_OWNER_EXTENDED"
       }
     },
     {
@@ -535,8 +535,8 @@
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
-      "focused_test_ids": ["v076_monster_l1_directional_geodesic_move_test"],
-      "golden_scenario_steps": ["STEP05"]
+      "focused_test_ids": ["v076_monster_l1_directional_geodesic_move_test", "v076_production_military_composition_test"],
+      "golden_scenario_steps": ["STEP05", "STEP09"]
     },
     {
       "component_id": "component.v076.monster_validator",
@@ -562,8 +562,8 @@
       "supersedes": [],
       "superseded_by": [],
       "change_class": "DOMAIN_CORE",
-      "focused_test_ids": ["v076_monster_l1_directional_geodesic_move_test"],
-      "golden_scenario_steps": ["STEP05"]
+      "focused_test_ids": ["v076_monster_l1_directional_geodesic_move_test", "v076_production_military_composition_test"],
+      "golden_scenario_steps": ["STEP05", "STEP09"]
     },
     {
       "component_id": "component.v076.monster_codec",
@@ -589,8 +589,8 @@
       "supersedes": [],
       "superseded_by": [],
       "change_class": "DOMAIN_CORE",
-      "focused_test_ids": ["v076_monster_l1_directional_geodesic_move_test"],
-      "golden_scenario_steps": ["STEP05"]
+      "focused_test_ids": ["v076_monster_l1_directional_geodesic_move_test", "v076_production_military_composition_test"],
+      "golden_scenario_steps": ["STEP05", "STEP09"]
     },
     {
       "component_id": "component.v076.monster_audit",
@@ -720,14 +720,16 @@
       "reuse_disposition": "ADOPT_AS_OWNER",
       "reuse_source_ids": [
         "reuse.v075.combat_candidate",
-        "reuse.v075.production_military_direct_action.current"
+        "reuse.v075.production_military_direct_action.current",
+        "reuse.v075.production_monster_movement_consumer.current"
       ],
       "reuse_candidates_considered": [
         "reuse.v075.combat_candidate",
         "reuse.v075.monster_private_skill.current",
-        "reuse.v075.production_military_direct_action.current"
+        "reuse.v075.production_military_direct_action.current",
+        "reuse.v075.production_monster_movement_consumer.current"
       ],
-      "new_component_justification": "Existing unique V075 production combat candidate Owner, now extended with a narrow V076 military production consumer bridge. Its existing hand, asset, facility/monster damage, card lifecycle, private-skill safe-boundary, exact-once, and privacy journals remain the only mutation paths; no new Owner or parallel ledger is introduced.",
+      "new_component_justification": "Existing unique V075 production combat candidate Owner, extended with narrow V076 military and Monster-movement consumer bridges. It no longer produces production Monster movement/trample receipts; it retains target planning, Monster HP/lifecycle, facility-damage application, exact-once consumer and presentation journals without a parallel route, trample, asset or movement ledger.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "CROSS_DOMAIN_INTEGRATION",
@@ -741,7 +743,7 @@
         "v076_production_military_composition_test",
         "v07_asset_batch_core_test"
       ],
-      "golden_scenario_steps": ["STEP10"],
+      "golden_scenario_steps": ["STEP09", "STEP10"],
       "reuse_scan": {
         "reuse_registry_search": true,
         "class_name_search": true,
@@ -752,11 +754,12 @@
         "save_owner_search": true,
         "replay_owner_search": true,
         "signal_and_receipt_search": true,
-        "reuse_candidate_count": 3,
+        "reuse_candidate_count": 4,
         "reuse_candidate_ids": [
           "reuse.v075.combat_candidate",
           "reuse.v075.monster_private_skill.current",
-          "reuse.v075.production_military_direct_action.current"
+          "reuse.v075.production_military_direct_action.current",
+          "reuse.v075.production_monster_movement_consumer.current"
         ],
         "selected_reuse_disposition": "ADOPT_AS_OWNER",
         "why_existing_owner_cannot_be_extended": "NOT_APPLICABLE_EXTENDED_EXISTING_OWNER",
@@ -1416,14 +1419,16 @@
       "reuse_disposition": "ADAPT_AS_CONSUMER",
       "reuse_source_ids": [
         "reuse.v076.kernel.current",
-        "reuse.v075.production_military_direct_action.current"
+        "reuse.v075.production_military_direct_action.current",
+        "reuse.v075.production_monster_movement_consumer.current"
       ],
       "reuse_candidates_considered": [
         "reuse.v076.kernel.current",
         "reuse.v075.combat_candidate",
-        "reuse.v075.production_military_direct_action.current"
+        "reuse.v075.production_military_direct_action.current",
+        "reuse.v075.production_monster_movement_consumer.current"
       ],
-      "new_component_justification": "Existing production Application Flow is extended in place as the consumer that submits owner-private military intents and advances the unique Kernel by elapsed time. It owns no tick, Authority Sequence, gameplay state, receipt payload, or fallback queue.",
+      "new_component_justification": "Existing production Application Flow configures the Monster domain at tick zero, advances the unique Kernel, and drains the stateless V076-to-V075 consumer adapter. It owns no tick, Authority Sequence, route, trample, asset quantity, gameplay state, receipt payload, or fallback queue.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "PRODUCTION_COMPOSITION",
@@ -1432,7 +1437,7 @@
         "v076_production_military_composition_test",
         "v075_application_private_skill_receipt_privacy_test"
       ],
-      "golden_scenario_steps": ["STEP10"]
+      "golden_scenario_steps": ["STEP09", "STEP10"]
     },
     {
       "component_id": "component.current.v075_runtime_composition",
@@ -1494,19 +1499,21 @@
       "reuse_disposition": "ADAPT_AS_CONSUMER",
       "reuse_source_ids": [
         "reuse.v075.combat_candidate",
-        "reuse.v075.production_military_direct_action.current"
+        "reuse.v075.production_military_direct_action.current",
+        "reuse.v075.production_monster_movement_consumer.current"
       ],
       "reuse_candidates_considered": [
         "reuse.v075.combat_candidate",
         "reuse.current.card_runtime_catalog",
-        "reuse.v075.production_military_direct_action.current"
+        "reuse.v075.production_military_direct_action.current",
+        "reuse.v075.production_monster_movement_consumer.current"
       ],
-      "new_component_justification": "A stateless narrow adapter exposes the exact dependency surface already owned by V075RuntimeOwner to the existing Direct Action Owner. It stores no queue, ledger, tick, topology, unit, asset, damage, card, or presentation state.",
+      "new_component_justification": "The same stateless production adapter now translates both military dependencies and the V075 target-plan/V076 physical-Monster/V075 consequence-consumer boundary. It stores only object bindings and diagnostics: no queue, exact-once ledger, tick, topology, route, Monster state, asset quantity, damage, card, or presentation state.",
       "supersedes": [],
       "superseded_by": [],
       "change_class": "PRODUCTION_COMPOSITION",
       "focused_test_ids": ["v076_production_military_composition_test"],
-      "golden_scenario_steps": ["STEP10"]
+      "golden_scenario_steps": ["STEP09", "STEP10"]
     },
     {
       "component_id": "component.current.v07_asset_batch_core",
@@ -2141,6 +2148,19 @@
       },
       "adapted_scope": "V075 own-hand membership, exact card definition and authored cost, its single six-color asset state, military-card lifecycle consumption, existing facility/monster damage sinks, and owner-private receipt signal are adapted into the already-registered V076 Kernel/ETA/Direct-Action path.",
       "forbidden_scope": "The adapter and Application Flow may not own tick, Authority Sequence, RNG, topology, military state, asset quantity, damage, card definitions, presentation, a public-batch fallback, or a second exact-once ledger."
+    },
+    {
+      "reuse_id": "reuse.v075.production_monster_movement_consumer.current",
+      "domain_id": "v076.monster_l1_directional_geodesic_move",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "source": {
+        "monster_owner": "scripts/v076/monster/v076_monster_l1_reducer_v1.gd",
+        "runtime_owner": "scripts/v075_runtime/v075_runtime_owner.gd",
+        "application_flow": "scripts/v075_runtime/v075_application_flow.gd",
+        "stateless_adapter": "scripts/v076/direct_action/v076_v075_production_adapter_v1.gd"
+      },
+      "adapted_scope": "The existing V075 autonomy target plan is stripped of its historical production movement/trample receipt before settlement. The unique V076 Monster Owner consumes the existing Kernel and half-edge metric for physical route, crossing and trample ledgers; V075 then consumes one closed terminal result for Monster location, existing facility HP journals and presentation.",
+      "forbidden_scope": "No second Monster Owner, topology, tick, RNG, V075 movement write, V075 trample formula, production asset quantity/cooldown ledger, adapter exact-once ledger, dual write, fallback, or presentation Owner is allowed."
     },
     {
       "reuse_id": "reuse.v073.human_playtest_instrumentation",
