@@ -52,19 +52,26 @@ accidentally reachable from the current V075 production entry; it does not
 authorize wiring, production cutover, human execution, or any Golden status
 change. Golden counts remain isolated `5`, production `0`, human `0`.
 
+The precheck is now complete. The next safe boundary is
+`V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_AUTHORIZATION_BOUNDARY`, whose
+status is `PENDING_EXTERNAL_AUTHORITY` and whose only required transition is
+an explicit `PRODUCTION_CUTOVER_AUTHORIZED=true` decision. Until then,
+production and human green remain false.
+
 ## Canonical PR status and merge ratchet
 
 The JSON ledger is the sole machine source for the PR #93 status block. It
 records Stage 1/2/3 as isolated green and the Stage 4 typed military damage
-sink slice as the latest completed stage, with Golden counts `5/0/0` and production
-cutover `false`.
+sink slice as the latest completed stage, with Golden counts `5/0/0` and
+production cutover `false`; the next stage is the explicit production
+composition authorization boundary.
 The required check name is exactly `V076 Reuse and Point-Inertia Gate`.
 
 The gate was queued without interrupting the active task and activated after
 the preserved PR90 Tooling V19 atomic boundary
 `a80ad3e107491d03e8a1ccf5379fcb44c705f951`. Once the current-Head check is
 green, development resumes at
-`V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_PRECHECK`.
+`V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_AUTHORIZATION_BOUNDARY`.
 
 Ready, merge, release-tag, and production-cutover actions are forbidden until
 that exact check succeeds for the current PR Head. This Stage 4 evidence does

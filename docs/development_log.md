@@ -9690,3 +9690,13 @@ deleted. Evidence and the remaining action inventory are recorded in
   complete, but production wiring/cutover and human execution still require
   separate authority. The next atomic task remains the explicit production
   composition authorization boundary.
+
+## 2026-08-23 — V076 production composition authorization boundary registered
+
+- The read-only composition precheck is complete and its status is now
+  advanced monotonically to `V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_AUTHORIZATION_BOUNDARY`.
+- This is a governance boundary, not a product cutover: the Ledger records
+  `PENDING_EXTERNAL_AUTHORITY`, requires an explicit
+  `PRODUCTION_CUTOVER_AUTHORIZED=true` decision, and keeps production/human
+  green false. `main.tscn`, production Owners, and runtime behavior remain
+  unchanged.

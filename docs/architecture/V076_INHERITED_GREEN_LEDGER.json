@@ -665,7 +665,7 @@
     "production_cutover_status": false,
     "latest_completed_stage": "V076_STAGE4_SIMULTANEOUS_PRIVATE_ACTION_ORDERING",
     "latest_completed_stage_head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
-    "next_stage": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_PRECHECK",
+    "next_stage": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_AUTHORIZATION_BOUNDARY",
     "v075_pr90_dependency_boundary": "REFERENCE_ONLY_EXACT_BASE_NO_V076_CUTOVER"
   },
   "canonical_change_scope": {
@@ -747,13 +747,21 @@
   "point_inertia_gate_queued": true,
   "current_task_interrupted_by_gate": false,
   "current_task_result_preserved": true,
-  "product_development_resume_target": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_PRECHECK",
+  "product_development_resume_target": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_AUTHORIZATION_BOUNDARY",
+  "production_composition_authorization_boundary": {
+    "status": "PENDING_EXTERNAL_AUTHORITY",
+    "required_authorization": "PRODUCTION_CUTOVER_AUTHORIZED=true",
+    "precheck_status": "PASS",
+    "precheck_evidence_scope": "READ_ONLY_CURRENT_PRODUCTION_COMPOSITION",
+    "production_green_claim_allowed": false,
+    "human_green_claim_allowed": false
+  },
   "production_composition_precheck": {
     "status": "PASS",
     "evidence_scope": "READ_ONLY_CURRENT_PRODUCTION_COMPOSITION",
     "test": "tests/v076_production_composition_precheck_test.gd",
     "runner": "tools/invoke_godot_test.ps1",
-    "runner_run_id": "20260823-082049-820-v076_production_composition_precheck_test-3568ad95",
+    "runner_run_id": "20260823-084557-856-v076_production_composition_precheck_test-f0f8497f",
     "completion_marker": "V076_PRODUCTION_COMPOSITION_PRECHECK|status=PASS",
     "godot_version": "4.7.stable.official.5b4e0cb0f",
     "checks": "64/64",

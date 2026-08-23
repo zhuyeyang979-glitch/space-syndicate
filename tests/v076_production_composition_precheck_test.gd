@@ -16,6 +16,9 @@ const V075_COMBAT_OWNER_PATH := "res://scripts/v075/runtime/v075_combat_runtime_
 const GOLDEN_PATH := "res://docs/architecture/V076_ALPHA07_GOLDEN_PLAYTEST_SCENARIO.json"
 const LEDGER_PATH := "res://docs/architecture/V076_INHERITED_GREEN_LEDGER.json"
 const V076_SCRIPT_PREFIX := "res://scripts/v076/"
+const NEXT_AUTHORIZATION_BOUNDARY := (
+	"V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_AUTHORIZATION_BOUNDARY"
+)
 
 const V076_OWNER_TOKENS := [
 	"V076PrivateDirectActionInputOwnerV1",
@@ -176,10 +179,10 @@ func _test_golden_and_ledger_boundary() -> void:
 	)
 	_expect(
 		str(ledger.get("product_development_resume_target", ""))
-			== "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_PRECHECK"
+			== NEXT_AUTHORIZATION_BOUNDARY
 			and str(canonical.get("next_stage", ""))
-			== "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_PRECHECK",
-		"Ledger preserves the authorized precheck as the next atomic stage"
+			== NEXT_AUTHORIZATION_BOUNDARY,
+		"Ledger advances from the completed precheck to the explicit authorization boundary"
 	)
 
 
