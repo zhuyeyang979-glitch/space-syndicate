@@ -4,18 +4,18 @@
   "recorded_on": "2026-08-23",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
-    "tree_sha": "79b6f6dc6f222a3b36d86ab6f75a173154c1b4dc",
+    "head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+    "tree_sha": "ef76a8132a39fdbfdedf3965e2f358f4f1dc76a1",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
   "discipline": {
     "point_inertia": "ACTIVE",
     "historical_reuse": "ACTIVE",
-    "change_class": "CROSS_DOMAIN_INTEGRATION",
+    "change_class": "PRODUCTION_COMPOSITION",
     "full_reproof_performed": false,
-    "godot_execution_count": 25,
-    "production_composition_changed": false
+    "godot_execution_count": 30,
+    "production_composition_changed": true
   },
   "status_vocabulary": [
     "INHERITED_GREEN",
@@ -639,6 +639,89 @@
         "alpha07_per_card_certification",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_CUTOVER",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+      "tree_sha": "ef76a8132a39fdbfdedf3965e2f358f4f1dc76a1",
+      "change_class": "PRODUCTION_COMPOSITION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Cuts the already-isolated-green STEP10 military Direct Action into the existing production V075 RuntimeComposition without adding a Golden step or upgrading scripted fixture evidence to production/human green.",
+      "golden_step_ids": ["STEP10"],
+      "current_owner": "V076PrivateDirectActionInputOwnerV1",
+      "reused_v075_owner": "V075RuntimeOwner",
+      "kernel_owner": "V076DeterministicKernel",
+      "eta_owner": "V076MilitaryPhysicalEtaOwnerV1",
+      "production_adapter": "V076V075ProductionAdapterV1",
+      "evidence": [
+        {
+          "evidence_id": "stage4-production-cutover-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_production_cutover_receipt.json",
+          "receipt_sha256": "88d738bef0aad5a8acf2e21fd9f22f24742ee66f6639aa3e73f709f3e471d012",
+          "production_scene_path": "scenes/main.tscn",
+          "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+          "atomic_cutover": true,
+          "affected_owner_count": 4,
+          "new_owner_count": 0,
+          "parallel_production_owner_count": 0,
+          "dual_write_count": 0,
+          "fallback_count": 0
+        },
+        {
+          "evidence_id": "stage4-production-military-composition-focused",
+          "result": "PASS",
+          "test": "v076_production_military_composition_test",
+          "runner_run_id": "20260823-111116-138-v076_production_military_composition_test-c0672b6b",
+          "checks": "55/55",
+          "mission_kinds": ["ASSAULT_REGION", "ASSAULT_MONSTER"],
+          "mission_settlement_count": 2,
+          "typed_damage_settlement_count": 2,
+          "kernel_root_command_count": 2,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0,
+          "active_session_restart_reason": "new_game_requires_idle_runtime",
+          "script_error_count": 0,
+          "diagnostic_count": 0,
+          "remaining_project_runtime_process_count": 0
+        },
+        {
+          "evidence_id": "stage4-production-direct-regressions",
+          "result": "PASS",
+          "v075_application_composition_checks": "111/111",
+          "v075_private_receipt_privacy_checks": "5/5",
+          "v076_private_input_owner_checks": "7/7",
+          "v07_asset_batch_core_checks": "285/285"
+        },
+        {
+          "evidence_id": "stage4-production-inherited-sentinels",
+          "result": "PASS",
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "military_profile_checks": "59/59",
+          "military_crosswalk_checks": "52/52",
+          "military_eta_checks": "48/48",
+          "military_lifecycle_checks": "29/29",
+          "simultaneous_private_action_checks": "9/9",
+          "full_world_reproof": false
+        },
+        {
+          "evidence_id": "stage4-production-main-runtime",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "hard_runtime_error_count": 0,
+          "stop_result": "Godot project stopped"
+        }
+      ],
+      "not_claimed": [
+        "golden_production_green",
+        "human_playtest_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
@@ -646,7 +729,7 @@
     "test_bytes_changed_after_stage3": true,
     "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "Only the Stage 4 typed facility/monster damage-intent settlement delta, the Stage 5 simultaneous private-action intake ordering slice, their exact existing-Owner reuse classifications, and declared inherited sentinels were revalidated; no production composition or full-world reproof was run or implied."
+    "current_claim": "The already-green STEP10 military Direct Action is now atomically wired into the existing V075 production composition and revalidated through both legal missions, exact asset/card/damage/withdrawal settlement, private receipt redaction, and inherited sentinels. This is a production cutover claim, not a production-green, human-green, per-card certification, or full-world reproof claim."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -662,11 +745,11 @@
     "golden_isolated_green_count": 5,
     "golden_production_green_count": 0,
     "golden_human_green_count": 0,
-    "production_cutover_status": false,
-    "latest_completed_stage": "V076_STAGE4_SIMULTANEOUS_PRIVATE_ACTION_ORDERING",
-    "latest_completed_stage_head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
-    "next_stage": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_AUTHORIZATION_BOUNDARY",
-    "v075_pr90_dependency_boundary": "REFERENCE_ONLY_EXACT_BASE_NO_V076_CUTOVER"
+    "production_cutover_status": true,
+    "latest_completed_stage": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_CUTOVER",
+    "latest_completed_stage_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+    "next_stage": "V076_ALPHA07_HUMAN_GOLDEN_EXECUTION",
+    "v075_pr90_dependency_boundary": "CURRENT_V075_OWNER_REUSED_NO_OWNER_SUPERSESSION"
   },
   "canonical_change_scope": {
     "change_classes": [
@@ -753,12 +836,14 @@
   "point_inertia_gate_queued": true,
   "current_task_interrupted_by_gate": false,
   "current_task_result_preserved": true,
-  "product_development_resume_target": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_AUTHORIZATION_BOUNDARY",
+  "product_development_resume_target": "V076_ALPHA07_HUMAN_GOLDEN_EXECUTION",
   "production_composition_authorization_boundary": {
-    "status": "PENDING_EXTERNAL_AUTHORITY",
+    "status": "CONSUMED",
     "required_authorization": "PRODUCTION_CUTOVER_AUTHORIZED=true",
     "precheck_status": "PASS",
     "precheck_evidence_scope": "READ_ONLY_CURRENT_PRODUCTION_COMPOSITION",
+    "production_cutover_authorized": true,
+    "production_cutover_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
     "production_green_claim_allowed": false,
     "human_green_claim_allowed": false
   },
@@ -782,13 +867,24 @@
     "runner_diagnostic_count": 0,
     "runner_script_error_count": 0,
     "stop_result": "Godot project stopped",
-    "production_cutover_authorized": false,
+    "production_cutover_authorized": true,
     "production_green": false,
     "human_green": false,
     "golden_production_pass_count": 0,
     "golden_human_execution_count": 0,
     "stdout_sha256": "3c86610d7650dbaae7229e2eda1e9c35f0e186cae26f42ae9af6b80f6bc27829",
     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "production_cutover_receipt": {
+    "status": "PASS",
+    "path": "reports/reuse/v076_production_cutover_receipt.json",
+    "sha256": "88d738bef0aad5a8acf2e21fd9f22f24742ee66f6639aa3e73f709f3e471d012",
+    "candidate_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+    "production_scene_path": "scenes/main.tscn",
+    "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+    "atomic_cutover": true,
+    "production_green": false,
+    "human_green": false
   },
   "required_check_name": "V076 Reuse and Point-Inertia Gate",
   "agent_merge_requires_reuse_gate": true

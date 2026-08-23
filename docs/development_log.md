@@ -9714,3 +9714,33 @@ deleted. Evidence and the remaining action inventory are recorded in
   `PR93_DESCRIPTION_FALSE_GREEN_COUNT=0`; the repaired cloud Gate and bounded
   acceptance both passed. No product bytes, `main.tscn`, Golden status, or
   production/human claim changed.
+
+## 2026-08-23 — V076 Stage 4 military production composition cutover
+
+- Consumed the explicit `PRODUCTION_CUTOVER_AUTHORIZED=true` boundary and cut
+  the already-isolated-green military Direct Action into the existing
+  `V075RuntimeComposition`. The composition contains exactly one V076 Kernel,
+  one physical ETA Owner, one private Direct Action Input Owner, the existing
+  `V075RuntimeOwner`, and one stateless V075 adapter. It does not instantiate
+  `GameRuntimeCoordinator` or add a second asset, military, monster, map, card,
+  tick, RNG, replay, or presentation Owner.
+- The production bridge reuses V075 hand membership, the existing card catalog,
+  V07 asset balances and reservations, facility/monster mutation paths, card
+  consumption, withdrawal, privacy, and presentation lifecycle. Both legal
+  missions, `ASSAULT_REGION` and `ASSAULT_MONSTER`, use physical geodesic ETA,
+  execute exactly once, and withdraw; `GUARD`, `PROTECT`, teleport, retarget,
+  persistent units, public batch fallback, and sushi-track settlement remain
+  absent.
+- Focused verification on implementation commit
+  `ad12cfa8c9fd877a1f69283d04f1d671796bbf74`, tree
+  `ef76a8132a39fdbfdedf3965e2f358f4f1dc76a1`, passed production composition
+  `55/55`, V075 application composition `111/111`, private receipt privacy
+  `5/5`, Input Owner `7/7`, and V07 asset core `285/285`. Script errors,
+  diagnostics, and remaining project runtime processes were all zero.
+- The append-only cutover receipt binds exact `scenes/main.tscn` SHA-256
+  `1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a`
+  and `V075RuntimeComposition.tscn` SHA-256
+  `d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9`.
+  Golden STEP10 remains `ISOLATED_GREEN`; production green, human green,
+  Alpha 0.7 certified cards, and full-world reproof remain zero or false. The
+  next boundary is `V076_ALPHA07_HUMAN_GOLDEN_EXECUTION`.

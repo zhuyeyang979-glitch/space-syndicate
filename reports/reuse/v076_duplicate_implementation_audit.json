@@ -2,9 +2,9 @@
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
-  "candidate_tree_sha": "79b6f6dc6f222a3b36d86ab6f75a173154c1b4dc",
-  "change_class": "CROSS_DOMAIN_INTEGRATION",
+  "candidate_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+  "candidate_tree_sha": "ef76a8132a39fdbfdedf3965e2f358f4f1dc76a1",
+  "change_class": "PRODUCTION_COMPOSITION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
     "scripts/v076/simulation",
@@ -30,7 +30,7 @@
     "product_repo_pr90_tool_file_count": 0,
     "authoritative_domain_duplicate_owner_count": 0,
     "whole_branch_merge_count": 0,
-    "production_composition_change_count": 0
+    "production_composition_change_count": 1
   },
   "authoritative_domains": [
     {
@@ -89,7 +89,9 @@
       "owner_count": 1,
       "unique_owner": "V075RuntimeOwner",
       "path": "scripts/v075_runtime/v075_runtime_owner.gd",
-      "v076_extension": "consume_v076_military_facility_damage_intents + consume_v076_private_monster_skill_submission",
+      "v076_extension": "production own-hand authorization + typed asset reservation + facility/monster damage settlement + card consumption/withdrawal",
+      "production_adapter_count": 1,
+      "production_adapter_stateful_count": 0,
       "new_owner_created": false,
       "duplicate_facility_damage_ledger_count": 0,
       "duplicate_status": "NONE"
@@ -188,6 +190,11 @@
       "result": "The existing source-bound private-skill owner, reservation, safe-boundary, exact-once, privacy, and public-aftermath contracts are consumed behind the one V076 Kernel intake root in Authority Sequence order. No second private queue, skill state, cooldown, asset ledger, damage sink, or presentation Owner is created."
     },
     {
+      "source": "V075RuntimeComposition/V075ApplicationFlow/V075RuntimeOwner/V07AssetBatchCore",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "One stateless production Adapter connects the already-registered Kernel, ETA, and private-input Owners to the existing V075 hand, asset, damage, card-lifecycle, privacy, and presentation paths. No GameRuntimeCoordinator, second asset ledger, military Owner, damage Owner, or fallback queue is instantiated."
+    },
+    {
       "source": "PR64/PR80",
       "disposition": "REUSE_AS_TEST",
       "result": "Test patterns only; no registry execution, Save adapter, RNG adapter, Kernel, or dispatcher imported."
@@ -250,7 +257,7 @@
       "status": "UNVERIFIED"
     },
     {
-      "boundary": "military production composition/main.tscn execution and human certification after isolated typed-sink settlement",
+      "boundary": "military human execution and per-card production certification after atomic production composition cutover",
       "record_count": 28,
       "exact_mapped_count": 28,
       "reauthor_required_count": 0,
@@ -320,6 +327,22 @@
       "new_owner_count": 0,
       "new_bench_count": 0,
       "status": "ISOLATED_GREEN",
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "military Direct Action atomic production composition cutover",
+      "production_scene_path": "scenes/main.tscn",
+      "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+      "production_adapter_count": 1,
+      "production_adapter_stateful_count": 0,
+      "new_owner_count": 0,
+      "parallel_production_owner_count": 0,
+      "dual_write_count": 0,
+      "fallback_count": 0,
+      "focused_checks": "55/55",
+      "status": "ISOLATED_GREEN",
+      "production_cutover": true,
       "production_green": false,
       "human_green": false
     }

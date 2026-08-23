@@ -5,7 +5,7 @@ schema_version: space_syndicate.v076.owner_reuse_map.v1
 registry_id: V076_OWNER_REUSE_MAP
 
 This map enforces one Owner per domain at candidate head
-`200bcc4dd9447f5ec1f058a9b7c2752558bbfdce`. Consumers may adapt data or
+`ad12cfa8c9fd877a1f69283d04f1d671796bbf74`. Consumers may adapt data or
 contracts, but they may not inherit authority by association.
 
 | Domain | Unique Owner | Reused source | Disposition | Consumer boundary |
@@ -27,14 +27,15 @@ contracts, but they may not inherit authority by association.
 | Current V075 facility combat settlement | `V075RuntimeOwner` | Existing V075 Facility bridge, processed ledger, witness ledger, fizzle journal, and presentation receipts | `ADAPT_AS_CONSUMER` | One narrow V076 entry consumes sealed facility intents. The existing Owner alone mutates facility damage/revision and records exact-once/fizzle evidence; no second facility damage Owner or ledger exists. |
 | Current V075 source-bound monster private skill settlement | `V075RuntimeOwner` through existing `V075CombatRuntimeOwner` / `V075MonsterPrivateSkillCore` | Existing source/generation validation, owner-private skill zone, reservation, safe-boundary, effect, cooldown/Fizzle, privacy, and public-aftermath contracts | `ADAPT_AS_CONSUMER` | V076 only carries an authorized opaque bundle through the common Kernel intake root and consumes it in root Authority Sequence order. V075 remains the sole skill/asset/damage/safe-boundary authority; source-bound skills never enter `own_hand`, public batch, or sushi track. |
 | Current monster damage mutation | `MonsterRuntimeController` behind `RuntimeCommandPipeline` and `MilitaryMonsterDamageCommandSink` | Existing `SimulationMutationAuthority` path | `ADAPT_AS_CONSUMER` | Sealed monster intents dispatch only inside the active simulation step. The private-input Owner and reducer never mutate monster HP; replay/duplicate submission cannot damage twice. |
-| Current six-color asset quantity | `PlayerManaRuntimeController` | Current production descendant | `ADAPT_AS_CONSUMER` | Stage 4 may use reservation/settlement APIs only; it may not copy balances or create an asset ledger. |
-| Current military unit state | `MilitaryRuntimeController` | Current production descendant + V075 mission-core contract | `ADAPT_AS_CONSUMER` | Stage 4 delegates `ASSAULT_REGION` or `ASSAULT_MONSTER` once, stays present through arrival/execution, and is removed exactly once only after the reducer emits `WITHDRAWAL_READY`. The reducer owns no unit position or quantity. `GUARD`, `PROTECT`, teleport, retarget, and persistent commands are forbidden. |
+| Current V075 production six-color asset quantity | `V075RuntimeOwner` through existing `V07AssetBatchCore` state | Existing V07 balances, reservations, revision, and receipt journal | `ADAPT_AS_CONSUMER` | The production bridge adds a typed private-Direct-Action reservation/settlement contract to the same state. It does not instantiate `PlayerManaRuntimeController`, copy balances, or create a second asset ledger. |
+| Current V075 production military card lifecycle | `V075RuntimeOwner` through the existing player DBG hand/discard state | Existing V075 authored card, hand-membership, and card-play lifecycle | `ADAPT_AS_CONSUMER` | The card instance is claimed while in flight, remains physically routed by ETA, and is consumed exactly once only after `WITHDRAWAL_READY`. The Direct Action Owner owns no card catalog or asset/unit quantity. `GUARD`, `PROTECT`, teleport, retarget, and persistent commands remain forbidden. |
+| Production military composition wiring | Existing four Owners: `V076DeterministicKernel`, `V076MilitaryPhysicalEtaOwnerV1`, `V076PrivateDirectActionInputOwnerV1`, and `V075RuntimeOwner` | Existing `V075RuntimeComposition`, `V075ApplicationFlow`, and one stateless `V076V075ProductionAdapterV1` | `ADAPT_AS_CONSUMER` | `scenes/main.tscn` reaches one instance of each Owner through the V075 composition. No `GameRuntimeCoordinator`, second asset/military/monster Owner, public-batch fallback, or dual write is connected. Cutover receipt is bound to implementation `ad12cfa8` and exact main-scene SHA. |
 | Codex/PlayerFace presentation | `CardCodexPublicSourceService` | PR #66 current descendant | `ADOPT_AS_OWNER` | DTO/presentation aliases cannot become rules. |
 | V07 track/DBG/assets/solar concepts | Their current domain descendants, behind V076 reducers | PR #79 | `ADAPT_AS_CONSUMER` | Requires V076 ABI/replay/RNG proof; no new public batch or second asset Owner. |
 | Pure semantic adversarial patterns | V076 focused tests | PR #64 | `REUSE_AS_TEST` | Metadata registry stays non-executing. |
 | Canonical adapter patterns | V076 adapter tests | PR #80 | `REUSE_AS_TEST` | No PR80 Save/RNG connection; V076 remains new-game-only. |
 | Historical uninterrupted card batch | None | PR #70 closed/unmerged head | `RETIRED` | Never revive, rebuild, or whole-branch merge. |
-| V075 combat source lineage | Existing PR #90 product lineage | PR #90 exact base | `REFERENCE_ONLY` | The source lineage remains reference-only, while the already-present `V075RuntimeOwner` is explicitly registered as the one active reused facility-combat Owner for this isolated integration. V076 does not supersede or dual-write production composition. |
+| V075 combat source lineage | Existing `V075RuntimeOwner` PR #90 product lineage | PR #90 exact base | `ADAPT_AS_CONSUMER` | The same active V075 Owner is reused for production hand, asset, facility/monster damage, card lifecycle, privacy, and presentation. It is not superseded, copied, or dual-written; the V076 adapter is stateless. |
 | Human playtest instrumentation | Unassigned future observation-only Owner | PR #87 | `REFERENCE_ONLY` | Current Owner count is 0; patterns do not establish a V076 human pass. |
 | Full-run settlement acceptance | Unassigned future V076 end-to-end test Owner | PR #68 | `REUSE_AS_TEST` | Current Owner count is 0; V06 result is an oracle pattern, not V076 evidence. |
 | PR90 release Probe Tooling | External sealed Tooling source | `70ccb5c0...` | `REFERENCE_ONLY` | Zero `tools/pr90*` files exist here; no copy, rewrite, replay, or Owner migration. |
@@ -55,15 +56,18 @@ contracts, but they may not inherit authority by association.
 The 32 monster cards retain `UNVERIFIED` exact V076 mapping. Military mapping
 is now `ISOLATED_GREEN_28_OF_28`: all 28 source identities, fingerprints,
 Profiles, speed bindings, missions, costs, and lifecycle declarations close.
-This does not certify production composition or human play.
+This does not certify production-green behavior or human play.
 
-Stage 4 evidence is bound to implementation tree
-`01636f348711e3c3038468cced7e214c0c071c89`: the private Direct Action,
+Stage 4 production-cutover evidence is bound to implementation tree
+`ef76a8132a39fdbfdedf3965e2f358f4f1dc76a1`: the private Direct Action,
 Profile, and ETA domains each have one Owner; the registered reducer adds one
 three-phase ledger and two Kernel-derived continuations per mission. Sealed
 facility and monster intents settle through their existing unique mutation
 paths without supersession or a second Kernel/topology/catalog/asset/military/
-damage Owner. Production composition and `main.tscn` execution remain pending.
+damage Owner. The production gate exercises both legal missions `55/55` through
+the cut-over V075 composition with exact asset/card settlement and withdrawal.
+The cutover receipt binds `scenes/main.tscn` SHA-256 `1eaaf3b5...`; scripted
+fixture evidence still leaves production green and human green false.
 
 Stage 5 isolated evidence extends the same STEP10 Owner and reducer with one
 common `submission_tick + 1` intake root for military and source-bound monster
@@ -74,4 +78,5 @@ action focus test preserves A/B reverse-submit replay parity, duplicate and
 collision rejection, hidden-info count 0, public-batch count 0, and sushi-track
 count 0 over a 1,000-seed canonical probe matrix. No second channel, queue,
 skill Owner, asset Owner, damage sink, Bench, or production composition is
-introduced; production and human green remain false.
+introduced. This ordering proof remains inherited by the cut-over composition;
+production and human green remain false.

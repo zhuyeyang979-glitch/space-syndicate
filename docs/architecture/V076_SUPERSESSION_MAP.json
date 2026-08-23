@@ -1,9 +1,28 @@
 {
   "schema_version": "space_syndicate.v076.supersession_map.v2",
   "map_id": "v076-supersession-map-20260821",
-  "candidate_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
-  "change_class": "DOCS_ONLY",
-  "production_cutover": false,
+  "candidate_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+  "change_class": "PRODUCTION_COMPOSITION",
+  "production_cutover": true,
+  "production_cutover_evidence": {
+    "candidate_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+    "atomic_cutover": true,
+    "production_scene_path": "scenes/main.tscn",
+    "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+    "receipt_path": "reports/reuse/v076_production_cutover_receipt.json",
+    "receipt_sha256": "88d738bef0aad5a8acf2e21fd9f22f24742ee66f6639aa3e73f709f3e471d012",
+    "affected_owners": [
+      "component.v076.kernel",
+      "component.v076.military_physical_eta",
+      "component.v076.private_direct_action_input",
+      "component.current.v075_runtime_owner"
+    ],
+    "owner_replacement_count": 0,
+    "dual_write_count": 0,
+    "fallback_count": 0,
+    "production_green": false,
+    "human_green": false
+  },
   "whole_branch_merge_allowed": false,
   "supersession_kinds": [
     "REPLACED_IN_V076_CANDIDATE",
