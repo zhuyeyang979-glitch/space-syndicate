@@ -265,6 +265,32 @@ func _ready() -> void:
 	call_deferred("_resolve_combat_layout")
 
 
+func _process(delta: float) -> void:
+	_runtime_frame_count += 1
+	if str(_snapshot.get("phase", "")) == "submission":
+		# This is presentation interpolation only. The Runtime Owner remains the
+		# sole clock authority; the Screen mirrors its effective pace and is
+		# corrected by every authoritative snapshot.
+		var effective_multiplier := maxi(
+			0,
+			int(_pacing_state.get(
+				"effective_multiplier",
+				_pacing_multiplier
+			))
+		)
+		_submission_remaining = maxf(
+			0.0,
+			_submission_remaining - delta * float(effective_multiplier)
+		)
+		_timer_label.text = "%02d s" % int(ceil(_submission_remaining))
+		_timer_progress.value = _submission_remaining
+	_acceptance_refresh_elapsed += delta
+	_advance_track_presentation(delta)
+	if _acceptance_refresh_elapsed >= ACCEPTANCE_REFRESH_SECONDS:
+		_acceptance_refresh_elapsed = 0.0
+		_update_acceptance_state()
+
+
 func bind_application_flow(
 	flow: Node,
 	identity: Dictionary,
@@ -840,6 +866,11 @@ func combat_debug_snapshot() -> Dictionary:
 			),
 			"action_feedback_p95_ms": _action_feedback_p95_ms(),
 			"pacing_multiplier": _pacing_multiplier,
+			"effective_pacing_multiplier": int(_pacing_state.get(
+				"effective_multiplier",
+				_pacing_multiplier
+			)),
+			"visible_submission_seconds_remaining": _submission_remaining,
 			"pace_control_mode_count": 4,
 			"default_playtest_pace": 2,
 			"mandatory_card_drag_count": 0,
@@ -3101,7 +3132,7 @@ func _on_track_card_activated(payload: Dictionary) -> void:
 	# destination are visible before the authoritative purchase intent is sent.
 	if (
 		str(payload.get("card_kind", "")) == "commodity_card"
-		and bool(payload.get("claimable", false))
+		and _track_acquisition_rejection_reason(payload).is_empty()
 	):
 		_action_submission_pending = true
 		_current_action_confirm_button.disabled = true
@@ -3372,8 +3403,15 @@ func _confirm_current_action() -> void:
 			var current_item := _current_track_item(str(
 				_selected_track_item.get("instance_id", "")
 			))
-			if current_item.is_empty() or not bool(current_item.get("claimable", false)):
-				_current_action_reason.text = "该牌已被取走或购买条件已变化"
+			var rejection_reason := _track_acquisition_rejection_reason(
+				current_item
+			)
+			if not rejection_reason.is_empty():
+				if not current_item.is_empty():
+					_selected_track_item = current_item
+				_current_action_reason.text = _purchase_rejection_text(
+					rejection_reason
+				)
 				_current_action_reason.visible = true
 				_update_current_action_panel()
 				return
@@ -3474,7 +3512,8 @@ func _update_current_action_panel() -> void:
 	match _current_action_mode:
 		"purchase":
 			var item := _selected_track_item
-			var claimable := bool(item.get("claimable", false))
+			var rejection_reason := _track_acquisition_rejection_reason(item)
+			var claimable := rejection_reason.is_empty()
 			var kind := str(item.get("card_kind", "normal_card"))
 			var color_id := str(item.get("primary_color", ""))
 			var cost := int(item.get("primary_asset_cost", 0))
@@ -3492,10 +3531,7 @@ func _update_current_action_panel() -> void:
 			_current_action_reason.text = (
 				"当前合法，可确认取得"
 				if claimable
-				else _purchase_rejection_text(str(item.get(
-					"public_claim_disabled_reason",
-					"当前不可取得"
-				)))
+				else _purchase_rejection_text(rejection_reason)
 			)
 			_current_action_reason.visible = true
 			_current_action_confirm_button.text = (
@@ -3670,7 +3706,7 @@ func _revalidate_current_action() -> void:
 			var current_item := _current_track_item(str(
 				_selected_track_item.get("instance_id", "")
 			))
-			if current_item.is_empty() or not bool(current_item.get("claimable", false)):
+			if current_item.is_empty():
 				_selected_track_item = {}
 				_current_action_mode = "idle"
 				_current_action_source_surface = ""
@@ -3740,6 +3776,21 @@ func _purchase_rejection_text(reason_code: String) -> String:
 		"track_acquisition_outside_submission": "当前阶段不能取得卡牌",
 		"source_not_owned": "该槽位不在你的可取得分段",
 	}.get(reason_code, reason_code.replace("_", " ")) as String
+
+
+func _track_acquisition_rejection_reason(item: Dictionary) -> String:
+	if str(_v075_snapshot.get("phase", _snapshot.get("phase", "idle"))) != (
+		"submission"
+	):
+		return "track_acquisition_outside_submission"
+	if item.is_empty():
+		return "track_item_not_claimable"
+	if bool(item.get("claimable", false)):
+		return ""
+	return str(item.get(
+		"public_claim_disabled_reason",
+		"track_item_not_claimable"
+	))
 
 
 func _render_monster_card_mode_popup(payload: Dictionary) -> void:

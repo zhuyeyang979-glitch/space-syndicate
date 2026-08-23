@@ -25,6 +25,7 @@ func _run() -> void:
 			await _cleanup(context)
 	var functional_context := await _start_from_real_ui(Vector2i(1600, 960))
 	if not functional_context.is_empty():
+		await _assert_pause_freezes_submission_timer(functional_context)
 		await _assert_real_card_and_action_path(functional_context)
 		await _assert_pacing_controls(functional_context)
 		await _assert_coach_step3(functional_context)
@@ -263,6 +264,47 @@ func _assert_real_card_and_action_path(context: Dictionary) -> void:
 	_expect(int(human_debug.get("blank_public_action_count", -1)) == 0, "action feed never emits a blank action")
 	_expect(int(human_debug.get("action_feed_duplicate_entry_count", -1)) == 0, "action feed presents no duplicate public receipt")
 	_expect(elapsed <= 5.0, "2x pace exposes the first resolved action within five wall seconds")
+	var post_lock_snapshot := flow.call("local_snapshot") as Dictionary
+	_expect(str(post_lock_snapshot.get("phase", "")) != "submission", "locked production batch leaves the acquisition phase")
+	var receipt_count_before_phase_reject := _receipt_count("track.acquire", true)
+	var refreshed_track := screen.find_child("TrackRail", true, false) as HBoxContainer
+	var phase_revalidation_card: Control
+	for child in refreshed_track.get_children():
+		if child.has_method("payload") and bool((child.call("payload") as Dictionary).get("claimable", false)):
+			phase_revalidation_card = child as Control
+			break
+	_expect(phase_revalidation_card != null, "post-lock track retains a card for phase revalidation")
+	if phase_revalidation_card != null:
+		_click_card(phase_revalidation_card)
+		await process_frame
+		var phase_confirm := screen.find_child("CurrentActionConfirmButton", true, false) as Button
+		var phase_reason := screen.find_child("CurrentActionReason", true, false) as Label
+		_expect(phase_confirm.disabled, "non-submission track acquisition is visibly disabled")
+		_expect(phase_reason.text == "当前阶段不能取得卡牌", "non-submission track acquisition names the exact phase reason")
+		_expect(_receipt_count("track.acquire", true) == receipt_count_before_phase_reject, "phase revalidation emits no acquisition intent")
+
+
+func _assert_pause_freezes_submission_timer(context: Dictionary) -> void:
+	var screen := context.get("screen") as Control
+	var flow := context.get("flow") as Node
+	var pause := screen.find_child("PauseButton", true, false) as Button
+	var speed_2x := screen.find_child("Speed2xButton", true, false) as Button
+	_expect(pause != null and speed_2x != null, "Pause and 2x controls exist for timer parity")
+	if pause == null or speed_2x == null:
+		return
+	pause.pressed.emit()
+	await process_frame
+	var authority_before := flow.call("local_snapshot") as Dictionary
+	var human_before := (screen.call("debug_snapshot") as Dictionary).get("human_playability", {}) as Dictionary
+	await create_timer(0.12).timeout
+	var authority_after := flow.call("local_snapshot") as Dictionary
+	var human_after := (screen.call("debug_snapshot") as Dictionary).get("human_playability", {}) as Dictionary
+	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("effective_multiplier", -1)) == 0, "Pause sets the shared effective pace to zero")
+	_expect(is_equal_approx(float(authority_before.get("submission_seconds_remaining", -1.0)), float(authority_after.get("submission_seconds_remaining", -2.0))), "Pause freezes authoritative submission time")
+	_expect(is_equal_approx(float(human_before.get("visible_submission_seconds_remaining", -1.0)), float(human_after.get("visible_submission_seconds_remaining", -2.0))), "Pause freezes the visible submission countdown")
+	speed_2x.pressed.emit()
+	await process_frame
+	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("effective_multiplier", -1)) == 2, "timer parity check restores Candidate 2 default 2x")
 
 
 func _assert_pacing_controls(context: Dictionary) -> void:
