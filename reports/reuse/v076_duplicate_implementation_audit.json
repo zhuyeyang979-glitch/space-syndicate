@@ -2,8 +2,8 @@
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
-  "candidate_tree_sha": "330a83b92cd1af6382d98590744ee3449328cc5b",
+  "candidate_head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
+  "candidate_tree_sha": "cd55e424756f12a2b8cf5993fd4f9141f233cbbb",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
@@ -92,11 +92,14 @@
       "owner_count": 1,
       "unique_owner": "V075RuntimeOwner",
       "path": "scripts/v075_runtime/v075_runtime_owner.gd",
-      "v076_extension": "production own-hand authorization + typed asset reservation + facility/monster damage settlement + card consumption/withdrawal + exact-once consumption of V076 Monster terminal movement/trample results",
+      "v076_extension": "production own-hand authorization + typed asset reservation + facility/monster damage settlement + card consumption/withdrawal + exact-once consumption of V076 Monster terminal movement/trample results + exact-once STEP11 military asset projection and assault/withdrawal presentation",
       "production_adapter_count": 1,
       "production_adapter_stateful_count": 0,
       "new_owner_created": false,
       "duplicate_facility_damage_ledger_count": 0,
+      "duplicate_asset_quantity_ledger_count": 0,
+      "duplicate_asset_projection_ledger_count": 0,
+      "duplicate_presentation_owner_count": 0,
       "duplicate_status": "NONE"
     },
     {
@@ -211,6 +214,11 @@
       "result": "One stateless production Adapter connects the already-registered Kernel, ETA, and private-input Owners to the existing V075 hand, asset, damage, card-lifecycle, privacy, and presentation paths. No GameRuntimeCoordinator, second asset ledger, military Owner, damage Owner, or fallback queue is instantiated."
     },
     {
+      "source": "V076PrivateDirectActionInputOwnerV1 + V075RuntimeOwner + V07AssetBatchCore + V075ApplicationFlow/V075SampleGameScreen",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "STEP11 hands one closed terminal military consequence envelope to the existing V075 consumer. The existing six-color state debits once, the existing player projection updates AssetRail once, and the existing V075 Presentation Owner emits one assault plus withdrawal. Replay adds no projection or presentation; no asset, projection, or presentation Owner is created."
+    },
+    {
       "source": "V073PlaytestTelemetryService + V075ApplicationBootstrap + existing economy/combat/military Profile authorities",
       "disposition": "ADAPT_AS_CONSUMER",
       "result": "The one existing production-reachable telemetry Owner is extended in place and receives one immutable V076 candidate identity through the existing bootstrap. It writes only observation artifacts; no second telemetry Owner, copied balance values, gameplay mutation, Save/RNG/Tick authority, network dependency, or human attestation is created."
@@ -259,6 +267,7 @@
     "second facility or monster damage sink, HP ledger, mutation authority, or damage presentation receipt owner",
     "second monster private-skill queue, receive sequence, safe-boundary, skill state, cooldown, reservation, result, or presentation Owner",
     "second production Monster movement writer, route/trample ledger, topology, asset quantity ledger, terminal receipt ledger, or presentation Owner",
+    "second military asset quantity, final projection, consequence fingerprint, or assault/withdrawal presentation Owner",
     "second Human Golden telemetry, event-sequence, evidence-package, export-finalization, observation identity, or attestation Owner",
     "root submission of execute or withdraw commands reserved for Kernel derivation",
     "revived PR70 card batch",
@@ -291,10 +300,6 @@
       "human_executed": false,
       "human_confirmed": false,
       "observer_attestation_required": true,
-      "status": "UNVERIFIED"
-    },
-    {
-      "boundary": "final atomic asset owner cutover",
       "status": "UNVERIFIED"
     },
     {
@@ -401,6 +406,27 @@
       "production_asset_quantity_write_count": 0,
       "duplicate_consequence_count": 0,
       "new_owner_count": 0,
+      "parallel_production_owner_count": 0,
+      "status": "PRODUCTION_GREEN",
+      "full_product_production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "Alpha 0.7 STEP11 production asset consequence and presentation",
+      "production_scene_path": "scenes/main.tscn",
+      "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+      "production_screen_path": "scenes/ui/v075/V075SampleGameScreen.tscn",
+      "asset_quantity_owner_count": 1,
+      "asset_projection_count_per_mission": 1,
+      "asset_debit_exact_once": true,
+      "asset_rail_post_action_parity": true,
+      "assault_presentation_count_per_mission": 1,
+      "withdrawal_presentation_count_per_mission": 1,
+      "duplicate_asset_projection_count": 0,
+      "duplicate_presentation_count": 0,
+      "presentation_gameplay_mutation_count": 0,
+      "new_asset_owner_count": 0,
+      "new_presentation_owner_count": 0,
       "parallel_production_owner_count": 0,
       "status": "PRODUCTION_GREEN",
       "full_product_production_green": false,

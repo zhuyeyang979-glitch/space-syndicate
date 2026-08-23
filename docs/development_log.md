@@ -9823,3 +9823,46 @@ deleted. Evidence and the remaining action inventory are recorded in
   existing component/transition whose missing test is currently declared and
   executed; it cannot waive an absent test, code-before-registry, a new Owner,
   or any other failure class. Gate self-test is now `120/120`.
+
+## 2026-08-23 — V076 Alpha 0.7 STEP11 asset consequence cutover
+
+- Extended the already-registered `V076PrivateDirectActionInputOwnerV1` only at
+  its exact-once terminal boundary. It builds one closed
+  `V076MilitaryProductionConsequenceEnvelopeV1` and hands it to the existing
+  `V075RuntimeOwner`; the Input Owner still owns no tick, Authority Sequence,
+  RNG, map, asset quantity, card catalog, military unit state, or presentation.
+- The existing `V07AssetBatchCore` state remains the only six-color asset
+  quantity reducer. After withdrawal, the existing V075 Runtime Owner publishes
+  one final player projection through `ApplicationFlow -> projection_changed`;
+  the real `V075SampleGameScreen` AssetRail renders the authoritative post-action
+  quantity. No new asset, projection, or presentation Owner was created.
+- The existing V075 Presentation Owner publishes one region/monster assault and
+  one withdrawal per mission. The public consequence includes canonical route
+  SHA-256, integer physical distance, and ETA ticks but no private card-instance
+  field. Replaying the terminal envelope returns duplicate and adds no asset
+  projection or presentation; presentation gameplay mutation remains zero.
+- Implementation `e299defd16859418c9357b1849844eec3d1fe83b` was followed by
+  the non-amending warning repair `1488399c4b3df2694c96c68c2a163d5dfb2e8c1a`,
+  tree `cd55e424756f12a2b8cf5993fd4f9141f233cbbb`. The repair only renamed a
+  local preload alias that collided with a global class name. Production
+  composition then passed `86/86` with stdout SHA-256
+  `a5b296257fb9d53c76eddda93506246fc39a2273bfa8fd9eb15ec9fc1061f7c4`,
+  diagnostics/script errors/residual processes all zero.
+- Direct regressions passed: V075 application composition `111/111`, Human
+  observation readiness `35/35` with `human_executed=false`, V07 asset core
+  `285/285`, presentation binding `38/38`, Input Owner `7/7`, private military
+  integration `41/41`, lifecycle `29/29`, and simultaneous private action
+  `9/9` with 1,000 seeds / 2,000 replays / zero mismatch.
+- Godot MCP ran and cleanly stopped the real `res://scenes/main.tscn` under
+  Godot `4.7.stable.official.5b4e0cb0f` / Vulkan. External changed-file
+  notifications, task-introduced GDScript warnings, hard runtime errors, UID
+  changes, and scoped residual processes were zero. Existing unrelated repository
+  GDScript warnings remain disclosed and were not falsely relabeled as absent.
+- Added append-only STEP11 production-execution, cumulative asset-consequence
+  cutover, and current-candidate STEP09 revalidation receipts. The cumulative
+  and revalidation receipts retain the immutable original STEP09 receipt
+  SHA-256 `22038a6ae6c1eeb6fec804ca2a6c303d060cafe203a894542b0661aa06a235d8`.
+  STEP11 becomes step-level `PRODUCTION_GREEN`; Golden counts are `5/2/0`.
+  Full-product production green, human green/execution, observer attestation,
+  per-card certification, and full-world reproof remain false or pending. The
+  next boundary is `V076_ALPHA07_PRODUCTION_GOLDEN_STEP12_AI_PRIVACY_CUTOVER`.

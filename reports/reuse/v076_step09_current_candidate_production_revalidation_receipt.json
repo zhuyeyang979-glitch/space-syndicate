@@ -1,0 +1,56 @@
+{
+  "schema_version": "space_syndicate.v076.golden_production_execution_receipt.v1",
+  "evidence_type": "V076_GOLDEN_PRODUCTION_EXECUTION",
+  "receipt_id": "v076-alpha07-step09-current-candidate-production-revalidation-20260823",
+  "recorded_on": "2026-08-23",
+  "candidate_head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
+  "candidate_tree_sha": "cd55e424756f12a2b8cf5993fd4f9141f233cbbb",
+  "step_id": "STEP09",
+  "status": "PASS",
+  "execution_mode": "PRODUCTION_COMPOSITION",
+  "diagnostic_only": false,
+  "fixture_only": false,
+  "production_scene_path": "scenes/main.tscn",
+  "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+  "pass_count": 1,
+  "historical_step09_receipt": {
+    "path": "reports/reuse/v076_step09_golden_production_execution_receipt.json",
+    "sha256": "a18a53aa7fa3a70faa0617e172292ebdbe045a2157c7e5c7754fc70a8e14ee94",
+    "candidate_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+    "status": "PASS"
+  },
+  "cumulative_cutover_receipt": {
+    "path": "reports/reuse/v076_asset_consequence_production_cutover_receipt.json",
+    "sha256": "f9b988d487e1f3753c0394328903cac1560467fa03a694ab512c7b7103d0c8de",
+    "status": "PASS"
+  },
+  "focused_execution": {
+    "test": "tests/v076_production_military_composition_test.gd",
+    "runner": "tools/invoke_godot_test.ps1",
+    "runner_run_id": "20260823-144239-522-v076_production_military_composition_test-5f74842b",
+    "status": "PASS",
+    "checks": "86/86",
+    "stdout_sha256": "a5b296257fb9d53c76eddda93506246fc39a2273bfa8fd9eb15ec9fc1061f7c4",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "v075_production_monster_movement_writer_count": 0,
+    "v076_production_monster_movement_owner_count": 1,
+    "kernel_monster_root_batch_count": 1,
+    "physical_region_crossing_minimum": 1,
+    "facility_consequence_consumed_count": 1,
+    "monster_movement_presentation_count": 1,
+    "monster_trample_presentation_count": 1,
+    "duplicate_consequence_count": 0,
+    "production_monster_asset_quantity_write_count": 0,
+    "script_error_count": 0,
+    "diagnostic_count": 0,
+    "remaining_project_runtime_process_count": 0
+  },
+  "claim_limits": {
+    "golden_step_09_status": "PRODUCTION_GREEN",
+    "human_executed": false,
+    "human_confirmed": false,
+    "human_green": false,
+    "full_product_production_green": false,
+    "full_world_reproof_performed": false
+  }
+}

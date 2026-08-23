@@ -7,7 +7,7 @@ It is a plan and evidence ledger, not a human-play result.
 
 `HUMAN_EXECUTION_COUNT=0`
 
-`PRODUCTION_PASS_COUNT=1`
+`PRODUCTION_PASS_COUNT=2`
 
 `ISOLATED_GREEN_COUNT=5`
 
@@ -23,7 +23,7 @@ It is a plan and evidence ledger, not a human-play result.
 | STEP08 | Acquire and submit one legal card | `PENDING` | Requires one real card instance through acquisition, hand, target, and resolution Owners. |
 | STEP09 | Resolve production Monster move/consequence | `PRODUCTION_GREEN` | Implementation `46f985a2` sends one production autonomy plan through one Kernel root batch and the unique V076 Monster Owner. Production composition is `74/74`; physical crossing, facility damage, movement/trample presentation, and replay exact-once are closed with zero V075 production movement writes and zero V076 asset-quantity writes. Human execution remains false. |
 | STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | The cumulative cutover receipt binds implementation `f9963d6a`, the unchanged exact `main.tscn` SHA, and the prior immutable `ad12cfa8` military receipt. Human-Golden observation readiness passes `35/35` through the one reused V073 telemetry Owner and permanently reports `human_executed=false`, `human_confirmed=false`, and `observer_attestation_required=true`. Production military composition remains `55/55`, V075 composition remains `111/111`, and scripted evidence keeps production/human green false. |
-| STEP11 | Observe economy/route/asset consequence | `PENDING` | Requires one atomic asset Owner and exact-once presentation. |
+| STEP11 | Observe economy/route/asset consequence | `PRODUCTION_GREEN` | Exact implementation `1488399c` / tree `cd55e424` passes production composition `86/86` against the real V075 GameScreen: the existing six-color Owner debits once, one final projection updates AssetRail, existing V075 presentation emits one assault and one withdrawal per mission, and consequence replay adds no projection or presentation. Human execution remains false. |
 | STEP12 | Observe AI action and privacy | `PENDING` | Requires production AI with viewer-scoped hidden-information proof. |
 | STEP13 | Reach victory qualification/final audit | `PENDING` | Requires a full human run without fixture state injection. |
 | STEP14 | Present FinalSettlement exactly once | `PENDING` | Requires authoritative winner/log/presentation agreement. |
@@ -77,6 +77,25 @@ autonomy/trample sentinels and V075 composition `111/111` remain green; real
 `main.tscn` starts and stops with zero changed-file warning, hard error, UID
 change, or residual process. This promotes STEP09 only, not the full product.
 
-STEP01, STEP06-STEP08, and STEP11-STEP15 remain pending. Full-product
+STEP11 is bound to implementation `e299defd` plus warning-clean successor
+`1488399c`, tree `cd55e424`, and two new append-only receipts. The private-input
+Owner hands a closed terminal consequence envelope to the existing
+`V075RuntimeOwner`; the existing `V07AssetBatchCore` state remains the only
+six-color asset quantity ledger and the existing V075 Presentation Owner
+publishes the result. Region and monster assaults each debit once, project once,
+and present one assault plus one withdrawal. The real `V075SampleGameScreen`
+consumes the projection through the existing `ApplicationFlow ->
+projection_changed -> AssetRail` path. Canonical route SHA, integer distance,
+and ETA are public; private card-instance identity is absent. Replay produces no
+second projection or presentation, and presentation gameplay mutation remains
+zero. Production composition is `86/86`; direct regressions are V075 composition
+`111/111`, V07 asset core `285/285`, presentation binding `38/38`, Human
+observation readiness `35/35`, and the inherited private-action tests. Godot MCP
+starts and cleanly stops real `main.tscn` with no external changed-file warning,
+task-introduced GDScript warning, hard error, UID change, or scoped residual
+process. Existing unrelated repository GDScript warnings remain visible and are
+not falsely reported as absent. This promotes STEP11 only.
+
+STEP01, STEP06-STEP08, and STEP12-STEP15 remain pending. Full-product
 production green, every human Golden claim, and observer attestation still
 require the exact future candidate and a real human session.

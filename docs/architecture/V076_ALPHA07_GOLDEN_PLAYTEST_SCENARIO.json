@@ -2,11 +2,12 @@
   "schema_version": "space_syndicate.v076.alpha07_golden_playtest_scenario.v1",
   "scenario_id": "v076-alpha07-golden-playtest-scenario-01",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+  "candidate_head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
+  "candidate_tree_sha": "cd55e424756f12a2b8cf5993fd4f9141f233cbbb",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "overall_status": "PENDING_HUMAN_PRODUCTION_EXECUTION",
   "human_execution_count": 0,
-  "production_pass_count": 1,
+  "production_pass_count": 2,
   "isolated_green_count": 5,
   "stage3_diagnostic_only": true,
   "stage3_human_golden_step_06_09": false,
@@ -109,17 +110,20 @@
       "human_executed": false,
       "production_composition": true,
       "pass_claimed": true,
-      "evidence": "Implementation 46f985a2 cuts production Monster autonomy movement from the historical V075 writer into one V076 Kernel root batch and the unique V076MonsterL1ReducerV1. Production composition passes 74/74: the Monster crosses the physical half-edge sphere, V075 consumes the closed destination/trample result through its existing source/facility/presentation authorities exactly once, replay adds no consequence, and production asset quantity writes remain zero. Monster L1 passes 47/47 and 1,000 seeds x 2 replays with zero mismatch. V075 composition remains 111/111, four adjacent autonomy/trample sentinels pass, Human observation readiness remains 35/35 with human_executed=false, and real main.tscn start/read/stop has zero changed-file warnings, hard errors, UID changes, or residual processes.",
+      "evidence": "Implementation 46f985a2 cuts production Monster autonomy movement from the historical V075 writer into one V076 Kernel root batch and the unique V076MonsterL1ReducerV1. Its original 74/74 receipt remains immutable. Current candidate 1488399c revalidates the same STEP09 assertions inside cumulative production composition 86/86 while adding STEP11: the Monster crosses the physical half-edge sphere, V075 consumes the closed destination/trample result through its existing source/facility/presentation authorities exactly once, replay adds no consequence, and production Monster asset quantity writes remain zero. Monster L1 passes 47/47 and 1,000 seeds x 2 replays with zero mismatch. V075 composition remains 111/111, four adjacent autonomy/trample sentinels pass, Human observation readiness remains 35/35 with human_executed=false, and real main.tscn start/read/stop has zero external changed-file warnings, task-introduced warnings, hard errors, UID changes, or residual processes.",
       "production_evidence": {
         "evidence_type": "V076_GOLDEN_PRODUCTION_EXECUTION",
-        "candidate_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
-        "receipt_path": "reports/reuse/v076_step09_golden_production_execution_receipt.json",
-        "receipt_sha256": "a18a53aa7fa3a70faa0617e172292ebdbe045a2157c7e5c7754fc70a8e14ee94",
+        "candidate_head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
+        "candidate_tree_sha": "cd55e424756f12a2b8cf5993fd4f9141f233cbbb",
+        "receipt_path": "reports/reuse/v076_step09_current_candidate_production_revalidation_receipt.json",
+        "receipt_sha256": "92be5ca9d0b168015f05e0fbda61eca54babe7d43b53b038cc2999e128684951",
+        "historical_receipt_path": "reports/reuse/v076_step09_golden_production_execution_receipt.json",
+        "historical_receipt_sha256": "a18a53aa7fa3a70faa0617e172292ebdbe045a2157c7e5c7754fc70a8e14ee94",
         "production_scene_path": "scenes/main.tscn",
         "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
         "pass_count": 1
       },
-      "claim_limit": "This promotes STEP09 only. Full-product production green, human execution/confirmation, observer attestation, STEP11-STEP15, per-card certification, and full-world reproof remain false or pending.",
+      "claim_limit": "This retains STEP09 on the current product tree alongside STEP11. Full-product production green, human execution/confirmation, observer attestation, STEP12-STEP15, per-card certification, and full-world reproof remain false or pending.",
       "acceptance": "One production-composition autonomy action reaches the unique V076 Monster owner, moves over the bound physical map, and presents crossing/trample consequences once through existing V075 consumers."
     },
     {
@@ -153,11 +157,27 @@
     {
       "step_id": "STEP11",
       "name": "Observe economy, route, and asset consequences",
-      "status": "PENDING",
+      "status": "PRODUCTION_GREEN",
       "required_surface": "production economy/route/asset owners and presentation",
       "human_executed": false,
       "production_composition": true,
-      "pass_claimed": false,
+      "pass_claimed": true,
+      "evidence": "Implementation e299defd plus warning-clean successor 1488399c extends only the registered V076 private-input Owner and existing V075 Runtime consumer. Production composition passes 86/86 against the real V075SampleGameScreen: each region/monster mission debits the existing six-color asset Owner once, emits one final player projection consumed by AssetRail, presents one assault and one withdrawal through the existing V075 Presentation Owner, and exposes canonical route SHA, integer distance, and ETA without a private card-instance field. Consequence replay is acknowledged as duplicate and adds zero asset projections or presentation. Presentation gameplay mutation, new asset/presentation Owners, public batch, sushi track, script errors, diagnostics, task-introduced warnings, UID changes, and residual processes are zero. V075 composition remains 111/111, V07 asset ownership 285/285, presentation binding 38/38, Human observation readiness 35/35 with human_executed=false, and private-action sentinels remain green.",
+      "production_evidence": {
+        "evidence_type": "V076_GOLDEN_PRODUCTION_EXECUTION",
+        "candidate_head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
+        "candidate_tree_sha": "cd55e424756f12a2b8cf5993fd4f9141f233cbbb",
+        "receipt_path": "reports/reuse/v076_step11_golden_production_execution_receipt.json",
+        "receipt_sha256": "32f9f12201ae7c4367c7c16a08d3c368f832452beb4b065a87d997a0102e0aa2",
+        "cutover_receipt_path": "reports/reuse/v076_asset_consequence_production_cutover_receipt.json",
+        "cutover_receipt_sha256": "f9b988d487e1f3753c0394328903cac1560467fa03a694ab512c7b7103d0c8de",
+        "production_scene_path": "scenes/main.tscn",
+        "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+        "production_screen_path": "scenes/ui/v075/V075SampleGameScreen.tscn",
+        "production_screen_sha256": "f26411c764be999ef0fb8133b49a8bf90728f5548016ef253096fd6a24a91892",
+        "pass_count": 1
+      },
+      "claim_limit": "This promotes STEP11 only. Full-product production green, human execution/confirmation, observer attestation, STEP12-STEP15, per-card certification, and full-world reproof remain false or pending.",
       "acceptance": "The authoritative consequence is visible exactly once without a duplicate asset ledger or presentation-owned mutation."
     },
     {
@@ -215,7 +235,6 @@
       "STEP06",
       "STEP07",
       "STEP08",
-      "STEP11",
       "STEP12",
       "STEP13",
       "STEP14",
@@ -223,7 +242,8 @@
     ],
     "human_pass_step_ids": [],
     "production_pass_step_ids": [
-      "STEP09"
+      "STEP09",
+      "STEP11"
     ]
   }
 }
