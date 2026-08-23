@@ -434,6 +434,9 @@ NON_PRODUCT_COMPONENT_PREFIXES = (
 
 NON_PRODUCT_COMPONENT_PATHS = {
     "scripts/diagnostics/runtime_authority_audit.gd",
+    # The deterministic simulation runtime driver is a test harness subclass;
+    # it is never loaded by the production main scene or runtime composition.
+    "scripts/v075_simulation/v075_combat_simulation_runtime_driver.gd",
     "addons/funplay_mcp/plugin.gd",
     "addons/funplay_mcp/plugin.cfg",
     "addons/funplay_mcp/icon.svg",
