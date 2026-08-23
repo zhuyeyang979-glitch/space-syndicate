@@ -9939,3 +9939,30 @@ deleted. Evidence and the remaining action inventory are recorded in
   green, human green, observer attestation, STEP14/STEP15, per-card
   certification, and full-world reproof remain false or pending. The next
   boundary is `V076_ALPHA07_HUMAN_GOLDEN_STEP13_TO_STEP15_EXECUTION`.
+
+## 2026-08-24 — V076 Alpha 0.7 Human Playability repair readiness
+
+- Continued the same Draft PR #93 candidate through product commits
+  `fcdc2d6d`, `ef6dbcc2`, and `e02e18ac`; final evidence subject is head
+  `e02e18acdb54508ad166c53384125411a94369aa`, tree
+  `ff82bef2b139f6370eb71cf811c2acb7a40db1f0`. The existing GameScreen,
+  shared track, hand, card catalog, Application Flow, V075 Runtime Owner,
+  V076 Kernel, map partition, and presentation/Coach owners remain the only
+  authorities. No second screen, hand, track, catalog, clock, RNG, map, or
+  receipt owner was introduced.
+- The real `res://scenes/main.tscn` Human Playability Readiness gate passes
+  `169/169` with one Human plus three AI, zero fixture-state injection, zero
+  diagnostics, zero script errors, and zero residual processes. Focused
+  production viewport cases pass at `1366x768`, `1600x960`, and `1920x1080`;
+  the full matrix's four intentionally narrow `480/640/660/900` cases retain
+  their pre-existing narrow-panel overflow boundary and are not part of the
+  three-size Candidate 2 acceptance contract. Pacing is `11/11`, the screen
+  wrapper `30/30`, Coach placement `258/258`, and visual contract is green.
+- Automated headed captures show the single-screen table, ten-slot track,
+  direct acquisition feedback, real hand selection and target confirmation,
+  human/AI Action Feed entries, frozen Pause countdown, and exact maintenance
+  phase rejection. This is `GREEN_AFTER_REPAIR` readiness for a new real-human
+  attempt, not a human pass: `READY_FOR_REAL_HUMAN_RETEST=true`,
+  `human_green=false`, Golden counts remain `5/3/0`, and STEP13 remains
+  `PENDING`. The append-only receipt is
+  `reports/playtest/alpha07_human_candidate_1_blocker/candidate2_readiness_receipt.json`.

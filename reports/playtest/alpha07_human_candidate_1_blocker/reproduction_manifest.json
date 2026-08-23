@@ -1,0 +1,27 @@
+{
+  "schema": "space_syndicate.v076.alpha07_human_candidate_1_reproduction_manifest.v1",
+  "append_only": true,
+  "candidate_head_sha": "04cc8f94de909b2467bef29d74ad83a153d65955",
+  "production_scene": "res://scenes/main.tscn",
+  "player_configuration": {
+    "human_count": 1,
+    "ai_count": 3
+  },
+  "external_identity_evidence": [
+    {
+      "path": "D:/SpaceSyndicateTestRuns/v076/human-golden-run-001/preflight.json",
+      "sha256": "bc7d88ec3c14061a14cd26b70ddd04a144a4580e586dbe674163b0afa8c3bb1a"
+    },
+    {
+      "path": "D:/SpaceSyndicateTestRuns/v076/human-golden-run-001/launch_receipt.json",
+      "sha256": "6d4fd86d06b0e50c364967d836ef86969256c11ed360ebf60ba98893ccd7f7d4"
+    }
+  ],
+  "top_level_source_reports": [
+    "reports/playtest/alpha07_human_candidate_1_blocker.json",
+    "reports/playtest/alpha07_human_candidate_1_blocker.md"
+  ],
+  "root_cause_report": "reports/ui/v076_alpha07_human_playability_root_cause.json",
+  "fixture_state_injection_count": 0,
+  "human_green_claimed": false
+}

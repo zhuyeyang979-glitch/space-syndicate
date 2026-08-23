@@ -2,8 +2,8 @@
   "schema_version": "space_syndicate.v076.historical_reuse_registry.v2",
   "registry_id": "v076-historical-reuse-registry-20260821",
   "recorded_on": "2026-08-24",
-  "candidate_head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
-  "candidate_tree_sha": "868bddedd7a3f85b4c3594ef3d8579b6ea379523",
+  "candidate_head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
+  "candidate_tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "historical_reuse": "ACTIVE",
   "point_inertia": "ACTIVE",
@@ -1842,6 +1842,45 @@
         "v076_alpha07_human_playability_readiness_test"
       ],
       "golden_scenario_steps": ["STEP06", "STEP07", "STEP08"]
+    },
+    {
+      "component_id": "component.current.v075_responsive_acceptance_audit",
+      "class_name": "V075ResponsiveAcceptanceAudit",
+      "path": "scripts/ui/v075/v075_responsive_acceptance_audit.gd",
+      "domain_id": "future.v076_human_playtest_evidence",
+      "component_role": "CONSUMER",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v075_runtime_owner",
+      "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.v075.combat_candidate",
+        "reuse.pr88.responsive_globe_consumer_patterns"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v075.combat_candidate",
+        "reuse.pr88.responsive_globe_consumer_patterns",
+        "reuse.v073.human_playtest_instrumentation"
+      ],
+      "new_component_justification": "This existing stateless RefCounted audit consumer reports geometry, resource binding, and viewport facts for the production CombatSurface. It does not write gameplay, presentation, asset, map, hand, track, card, tick, RNG, or receipt authority and remains owned by the existing V075 screen.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "PRODUCTION_COMPOSITION",
+      "focused_test_ids": [
+        "v075_responsive_viewport_matrix_test",
+        "v075_geometry_asset_false_green_negative_test",
+        "v076_alpha07_human_playability_readiness_test",
+        "visual_snapshot"
+      ],
+      "golden_scenario_steps": ["STEP01", "STEP06", "STEP07", "STEP08"]
     },
     {
       "component_id": "component.current.v073_playtest_coach_scene",

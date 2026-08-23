@@ -4,8 +4,8 @@
   "recorded_on": "2026-08-24",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
-    "tree_sha": "868bddedd7a3f85b4c3594ef3d8579b6ea379523",
+    "head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
+    "tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
@@ -1327,6 +1327,126 @@
         "alpha07_per_card_certification",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR_READINESS",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
+      "tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Binds the existing production GameScreen, track, hand, Application Flow, Runtime Owner, Coach, and DBG receipt consumer after the Human Playability repair. This stage proves automated readiness for a new real-human attempt; it does not rewrite the Victory readiness stage or claim Golden STEP13-15.",
+      "golden_step_ids": ["STEP01", "STEP06", "STEP07", "STEP08", "STEP13"],
+      "current_owner": "V075SampleGameScreen",
+      "reused_owners": [
+        "V075ApplicationFlow",
+        "V075RuntimeOwner",
+        "V076Kernel",
+        "V076SharedHalfEdgePartition",
+        "V07DbgDeckCore",
+        "V073PlaytestCoachMarks"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "alpha07-human-playability-readiness",
+          "result": "PASS",
+          "receipt_path": "reports/playtest/alpha07_human_candidate_1_blocker/candidate2_readiness_receipt.json",
+          "receipt_sha256": "3a09510ed19888f40e1c92cc0357490a04accefc8508a4ebc496b2640a9d9f02",
+          "test": "v076_alpha07_human_playability_readiness_test",
+          "runner_run_id": "20260823-214021-065-v076_alpha07_human_playability_readiness_test-397f755f",
+          "checks": "169/169",
+          "production_scene": "res://scenes/main.tscn",
+          "human_count": 1,
+          "ai_count": 3,
+          "fixture_state_injection_count": 0,
+          "human_green_claimed": false,
+          "result_sha256": "c4db111d50d107b3334a476715b8ed84ba1e1bfc97b0092bdb2387bd0365c451"
+        },
+        {
+          "evidence_id": "alpha07-human-playability-responsive-1366",
+          "result": "PASS",
+          "test": "v075_responsive_viewport_matrix_test",
+          "runner_run_id": "20260823-214709-020-v075_responsive_viewport_matrix_test-60def905",
+          "viewport": "1366x768",
+          "checks": "24/24",
+          "main_table_root_vertical_scroll_count": 0,
+          "main_table_draggable_vertical_splitter_count": 0,
+          "result_sha256": "0efd753522a0fb134278adfc78cccfa1da74a2bd08300d22434139f9f3463dfa"
+        },
+        {
+          "evidence_id": "alpha07-human-playability-responsive-1600",
+          "result": "PASS",
+          "test": "v075_responsive_viewport_matrix_test",
+          "runner_run_id": "20260823-214709-020-v075_responsive_viewport_matrix_test-a65ccc2f",
+          "viewport": "1600x960",
+          "checks": "25/25",
+          "main_table_root_vertical_scroll_count": 0,
+          "main_table_draggable_vertical_splitter_count": 0,
+          "result_sha256": "8dae75d70ddab43fdd303dd16eb762b94dfa9650cdd98a2105b3ef00340ec46f"
+        },
+        {
+          "evidence_id": "alpha07-human-playability-responsive-1920",
+          "result": "PASS",
+          "test": "v075_responsive_viewport_matrix_test",
+          "runner_run_id": "20260823-214709-020-v075_responsive_viewport_matrix_test-d09a78a8",
+          "viewport": "1920x1080",
+          "checks": "24/24",
+          "main_table_root_vertical_scroll_count": 0,
+          "main_table_draggable_vertical_splitter_count": 0,
+          "result_sha256": "2131b3705af37b0f961c5833d63ac78037264f82528403e10305439ef05a8bbc"
+        },
+        {
+          "evidence_id": "alpha07-human-playability-pacing-wrapper-coach-visual",
+          "result": "PASS",
+          "tests": [
+            "v076_alpha07_pacing_determinism_test",
+            "v075_sample_game_screen_wrapper_test",
+            "v073_coach_safe_placement_test",
+            "visual_snapshot"
+          ],
+          "runner_run_ids": [
+            "20260823-214743-956-v076_alpha07_pacing_determinism_test-660c4206",
+            "20260823-214743-956-v075_sample_game_screen_wrapper_test-10f5d095",
+            "20260823-214743-931-v073_coach_safe_placement_test-fee4daf2",
+            "20260823-214743-957-visual_snapshot-7d5718c1"
+          ],
+          "checks": ["11/11", "30/30", "258/258", "PASS"],
+          "result_sha256": [
+            "b48f3df3f5aee355450a82684234245cb288ccc1931e9cd418f332f3c8e44eb7",
+            "46d212784946f7410778dd8a2a2aa7ca054259c47054f39f07f3ef010ac95690",
+            "4e99a6c7996dd55ea4fe9b580766ef628af8b18638aced91f8b899cadce04439",
+            "3293703c1859540486d27abfbab1d9446e326f6644e7c4c5a58a5c601e63457c"
+          ]
+        },
+        {
+          "evidence_id": "alpha07-human-playability-headed-candidate-2",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "headed_receipts": [
+            "reports/playtest/alpha07_human_candidate_1_blocker/headed_receipts/candidate2_1366x768_green.json",
+            "reports/playtest/alpha07_human_candidate_1_blocker/headed_receipts/candidate2_1600x960_green.json",
+            "reports/playtest/alpha07_human_candidate_1_blocker/headed_receipts/candidate2_1920x1080_green.json"
+          ],
+          "screenshots_directory": "reports/playtest/alpha07_human_candidate_1_blocker/screenshots",
+          "human_executed": false,
+          "human_confirmed": false,
+          "production_green": false,
+          "human_green": false,
+          "mcp_stop_status": "STOPPED",
+          "hard_runtime_error_count": 0,
+          "remaining_project_runtime_process_count": 0
+        }
+      ],
+      "not_claimed": [
+        "step13_golden_pass",
+        "human_playtest_pass",
+        "human_confirmation",
+        "observer_attestation",
+        "full_alpha07_production_green",
+        "step14_final_settlement_human_pass",
+        "step15_feedback_clean_stop_human_pass",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
@@ -1334,7 +1454,7 @@
     "test_bytes_changed_after_stage3": true,
     "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "STEP09, STEP11, and STEP12 remain distinct Golden step-level PRODUCTION_GREEN results and are revalidated at current candidate 174cbded. STEP13 production binding readiness is 24/24 through the existing V075RuntimeOwner and reused V07SolarVictoryCore with no product byte change, injection, duplicate settlement, replay delta, new Victory Owner, or residual process. STEP13 itself remains PENDING because human execution/confirmation and observer attestation have not occurred. Full-product production green, STEP13-STEP15 human passes, per-card certification, and full-world reproof remain false or pending."
+    "current_claim": "STEP09, STEP11, and STEP12 remain distinct Golden step-level PRODUCTION_GREEN results. The append-only Human Playability repair readiness stage is bound to candidate e02e18acdb54508ad166c53384125411a94369aa / ff82bef2b139f6370eb71cf811c2acb7a40db1f0 and proves automated readiness only: real main.tscn, one Human plus three AI, 169/169 readiness, three target viewport cases, pacing, wrapper, Coach, visual, and headed production captures. STEP13 remains PENDING because human execution/confirmation and observer attestation have not occurred. Full-product production green, STEP13-STEP15 human passes, per-card certification, and full-world reproof remain false or pending."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -1351,9 +1471,10 @@
     "golden_production_green_count": 3,
     "golden_human_green_count": 0,
     "production_cutover_status": true,
-    "latest_completed_stage": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT_READINESS",
-    "latest_completed_stage_head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
-    "next_stage": "V076_ALPHA07_HUMAN_GOLDEN_STEP13_TO_STEP15_EXECUTION",
+    "latest_completed_stage": "V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR_READINESS",
+    "latest_completed_stage_head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
+    "latest_completed_stage_tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
+    "next_stage": "V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST",
     "v075_pr90_dependency_boundary": "CURRENT_V075_OWNER_REUSED_NO_OWNER_SUPERSESSION"
   },
   "canonical_change_scope": {
@@ -1394,6 +1515,7 @@
       "component.v076.military_unit_profile_catalog_adapter",
       "component.v076.military_physical_eta",
       "component.current.v075_runtime_owner",
+      "component.current.v075_responsive_acceptance_audit",
       "component.current.v073_playtest_telemetry",
       "component.v076.human_golden_candidate_profile",
       "component.current.v075_application_bootstrap",
@@ -1444,6 +1566,7 @@
       "v076_alpha07_pacing_determinism_test",
       "v075_sample_game_screen_wrapper_test",
       "v075_responsive_viewport_matrix_test",
+      "v075_geometry_asset_false_green_negative_test",
       "ui_text_smoke_test",
       "visual_snapshot",
       "v073_coach_safe_placement_test",
@@ -1467,7 +1590,7 @@
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "The Human Playability repair changes only existing production consumers and reducers: the V075 Game Screen scene/script, existing Coach scene/script, existing V075 Application Flow and Runtime Owner pacing input, and the existing V07 DBG receipt consumer. It creates no gameplay, presentation, tutorial, clock, tick, RNG, card-catalog, asset, map, hand, track, or receipt Owner. Human Playability Readiness passes 159/159 on real main.tscn with one Human plus three AI and zero fixture-state injection; pacing determinism passes 11/11; the wrapper passes 30/30; three responsive viewport cases pass at 1366x768, 1600x960, and 1920x1080; Coach placement passes 258/258; DBG passes 325/325; and focused acquisition, card-identity, projection/privacy, Private Direct Action, production military, AI/privacy, application, Runtime Owner, UI-text, and visual sentinels cover every touched dependency with zero diagnostics. The exact prior 2,000-replay, 2,000-map, full 348-card, and full 79-Gate proofs remain inherited because no rule, balance, map, Kernel ordering, RNG algorithm, card definition, or full-world boundary changed. STEP13 stays PENDING and human execution/confirmation, observer attestation, full-product production green, and full-world reproof remain unclaimed."
+    "why_focused_tests_are_sufficient": "The Human Playability repair changes only existing production consumers and reducers: the V075 Game Screen scene/script, existing Coach scene/script, existing V075 Application Flow and Runtime Owner pacing input, and the existing V07 DBG receipt consumer. It creates no gameplay, presentation, tutorial, clock, tick, RNG, card-catalog, asset, map, hand, track, or receipt Owner. Human Playability Readiness passes 169/169 on real main.tscn with one Human plus three AI and zero fixture-state injection; pacing determinism passes 11/11; the wrapper passes 30/30; three responsive viewport cases pass at 1366x768, 1600x960, and 1920x1080; Coach placement passes 258/258; visual, acquisition, card-identity, projection/privacy, Private Direct Action, production military, AI/privacy, application, Runtime Owner, UI-text, and DBG sentinels are either rerun at the final head or remain bound by the existing focused-test union. The exact prior 2,000-replay, 2,000-map, full 348-card, and full 79-Gate proofs remain inherited because no rule, balance, map, Kernel ordering, RNG algorithm, card definition, or full-world boundary changed. STEP13 stays PENDING and human execution/confirmation, observer attestation, full-product production green, and full-world reproof remain unclaimed."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",

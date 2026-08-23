@@ -1,0 +1,35 @@
+{
+  "schema": "space_syndicate.v076.alpha07_human_candidate_1_blocker.append_only.v1",
+  "candidate_head_sha": "04cc8f94de909b2467bef29d74ad83a153d65955",
+  "candidate": "Alpha 0.7 Living Planet - Human Candidate 1",
+  "human_playtest_attempt_count": 1,
+  "human_golden_run_completed": false,
+  "human_golden_step13_started": false,
+  "human_golden_step13_pass_claimed": false,
+  "classification": "PRE_GOLDEN_PRODUCT_USABILITY_BLOCKED",
+  "disposition": "PRE_GOLDEN_HUMAN_PLAYABILITY_BLOCKED",
+  "blocker_count": 6,
+  "blockers": [
+    "MAIN_TABLE_VERTICAL_SPLIT_OR_VERTICAL_DRAG_REQUIRED",
+    "CARD_ACQUISITION_UNAVAILABLE",
+    "CARD_PLAY_UNAVAILABLE",
+    "PUBLIC_ACTION_VISIBILITY_MISSING",
+    "GAMEPLAY_PACING_TOO_SLOW",
+    "COACHMARK_STEP3_POINTER_EVASION_NEXT_UNCLICKABLE"
+  ],
+  "human_feedback_verbatim": [
+    "主画面仍是上下分屏。",
+    "需要上下拖拽／移动才能访问界面。",
+    "无法正常取得卡牌。",
+    "无法正常打出卡牌。",
+    "无法看清谁正在执行什么动作。",
+    "游戏强制等待过长。",
+    "教学第三步窗口在鼠标接近时跳走。",
+    "“下一步”按钮因此无法点击。",
+    "当前版本无法正常完成真人游戏。"
+  ],
+  "human_feedback_preserved_verbatim": true,
+  "previous_production_receipt_mutation_count": 0,
+  "previous_golden_evidence_overwrite_count": 0,
+  "human_green_count": 0
+}

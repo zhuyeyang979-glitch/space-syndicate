@@ -1,7 +1,7 @@
 # V0.7.6 inherited green ledger
 
-Candidate: `174cbded0df3ef57fa7861276987f8e3a6e6f785` / tree
-`868bddedd7a3f85b4c3594ef3d8579b6ea379523`, Draft PR #93.
+Candidate: `e02e18acdb54508ad166c53384125411a94369aa` / tree
+`ff82bef2b139f6370eb71cf811c2acb7a40db1f0`, Draft PR #93.
 
 `POINT_INERTIA=ACTIVE`
 
@@ -11,10 +11,11 @@ Candidate: `174cbded0df3ef57fa7861276987f8e3a6e6f785` / tree
 
 `FULL_REPROOF_PERFORMED=false`
 
-This ledger preserves exact previously recorded evidence and adds only the
-focused STEP13 production Victory/audit readiness proof plus exact-current-head
-STEP09/11/12 revalidations. It does not turn readiness, focused, or inherited
-evidence into a human pass or a new full-world proof.
+This ledger preserves exact previously recorded evidence and adds the focused
+STEP13 production Victory/audit readiness proof, exact-current-head STEP09/11/12
+revalidations, and the independent Human Playability repair readiness stage. It
+does not turn readiness, focused, or inherited evidence into a human pass or a
+new full-world proof.
 
 | Stage | Ledger status | Unique owner | Exact inherited/current evidence | Boundary |
 |---|---|---|---|---|
@@ -32,17 +33,19 @@ evidence into a human pass or a new full-world proof.
 | Alpha 0.7 STEP11 asset-consequence production cutover | `CURRENT_DELTA_GREEN` | Existing `V075RuntimeOwner` and `V07AssetBatchCore`; registered `V076PrivateDirectActionInputOwnerV1` as envelope producer | Production composition `86/86` against real `V075SampleGameScreen`; region/monster asset debit exact-once; one final projection and AssetRail parity per mission; one assault and withdrawal presentation per mission; canonical route/distance/ETA public; private card-instance field, duplicate projection/presentation, presentation gameplay mutation, new asset/presentation Owner, public batch, sushi track, errors, diagnostics, task warnings, UIDs, and residual processes all 0; V075 composition `111/111`; asset core `285/285`; presentation binding `38/38`; Human readiness `35/35`; private-action sentinels green | STEP11 is `PRODUCTION_GREEN` only. Existing unrelated GDScript warnings remain disclosed. Full-product production green, human execution/attestation, STEP12+, per-card certification, and full-world reproof remain false or pending. |
 | Alpha 0.7 STEP12 production AI/privacy cutover | `CURRENT_DELTA_GREEN` | Existing `V075RuntimeOwner`, `V075CombatAIAdapter`, and `V075CombatProjectionAdapter` | Production AI/privacy `57/57`: one human plus three AI seats; natural AI acquisition, legal queue and lock; two unauthorized viewers; rival hand, plan, exact-cash, private-binding, hidden-info, invalid-target, hidden-reader, RNG, hand/cash/target/result injection, new AI/projection/privacy Owner, diagnostics, script errors, task warnings, UIDs, and residual processes all 0. AI/policy/acquisition/projection sentinels `77/77`, `28/28`, `56/56`, `69/69`; V075 and prior production composition `111/111`, `86/86`; real `main.tscn` clean stop | STEP12 is `PRODUCTION_GREEN` only. The stale V06 player-facing oracle is disclosed and not claimed green. Full-product production green, human execution/attestation, STEP13+, per-card certification, and full-world reproof remain false or pending. |
 | Alpha 0.7 STEP13 Victory/audit production-binding readiness | `CURRENT_DELTA_GREEN` | Existing `V075RuntimeOwner`; reused `V07SolarVictoryCore` | Readiness `24/24`: real `main.tscn`, public new-game intent, natural progression from below target, qualification, boundary revalidation, one settlement/log/presentation, GameScreen presentation, terminal replay idempotence, and combat quiescence; card/asset/target injection, duplicate settlement, replay delta, hidden-info violation, V06 Victory reachability, new Victory Owner, diagnostics, script errors, and residual processes all 0. Victory/settlement/quiescence/application/readiness sentinels are `20/20`, `190/190`, `4/4`, `12/12`, `111/111`, `35/35`; exact-current-head STEP09/11/12 revalidations are `86/86`, `86/86`, `57/57`; real `main.tscn` clean stop | `INFRASTRUCTURE` evidence only. STEP13 stays `PENDING`, `pass_claimed=false`, `human_executed=false`, and `human_confirmed=false`. Full-product production green, observer attestation, STEP14/15, per-card certification, and full-world reproof remain false or pending. |
+| Alpha 0.7 Human Playability repair readiness | `CURRENT_DELTA_GREEN` | Existing `V075SampleGameScreen`, `V075ApplicationFlow`, `V075RuntimeOwner`, `V076Kernel`, `V07DbgDeckCore`, and `V073PlaytestCoachMarks` | Readiness `169/169` on real `main.tscn` with one Human plus three AI and fixture injection 0; focused target viewports `1366x768`, `1600x960`, and `1920x1080` all PASS; pacing `11/11`, wrapper `30/30`, Coach `258/258`, visual contract PASS; headed Candidate 2 captures show track, hand, target, Action Feed, Pause, and phase feedback; runner diagnostics, hard errors, and residual processes 0 | `GREEN_AFTER_REPAIR` automated readiness only. `READY_FOR_REAL_HUMAN_RETEST=true`; Golden STEP13 stays `PENDING`, `human_executed=false`, `human_confirmed=false`, `human_green=false`, and full-product production green remains false. |
 
 The Stage 2 topology remains bound to
 `5cbd98e4027bc2cfd058c857e1a24a5f7c8c61291f1cb7ae7336bcf6851f6452`.
 The Stage 3 aggregate replay receipt is
 `bc3ebb6c182e5ee49a8aa7437562482447bfd232d9f46fd2fc765f0a4fcabca8`.
 
-The final row promotes no Golden step. It records STEP13 readiness only while
-STEP09, STEP11, and STEP12 remain the three step-level production greens and
-Golden counts remain `5/3/0`. It does not claim STEP13 pass, full-product
-production green, a human playtest pass, observer attestation, per-card
-certification, or repository-wide reproof. A future
+The final two rows promote no Golden step. They record STEP13 production binding
+readiness and independent Human Playability readiness only while STEP09, STEP11,
+and STEP12 remain the three step-level production greens and Golden counts
+remain `5/3/0`. They do not claim STEP13 pass, full-product production green,
+a human playtest pass, observer attestation, per-card certification, or
+repository-wide reproof. A future
 change to an Owner byte or bound dependency must replace inheritance with a
 scoped sentinel or a new proof.
 
@@ -69,17 +72,18 @@ remain isolated `5`, production `0`, human `0`.
 ## Canonical PR status and merge ratchet
 
 The JSON ledger is the sole machine source for the PR #93 status block. It
-records Stage 1/2/3 as isolated green and Alpha 0.7 STEP13 Victory/audit
+records Stage 1/2/3 as isolated green and Alpha 0.7 Human Playability repair
 readiness as the latest completed infrastructure stage, with Golden counts
-`5/3/0` and production cutover `true`; the next stage is independent real-human
-STEP13-STEP15 execution.
+`5/3/0` and production cutover `true`; the next stage is independent Candidate 2
+real-human retest, followed only after human confirmation by STEP13-STEP15
+execution.
 The required check name is exactly `V076 Reuse and Point-Inertia Gate`.
 
 The gate was queued without interrupting the active task and activated after
 the preserved PR90 Tooling V19 atomic boundary
 `a80ad3e107491d03e8a1ccf5379fcb44c705f951`. Once the current-Head check is
 green, development resumes at
-`V076_ALPHA07_HUMAN_GOLDEN_STEP13_TO_STEP15_EXECUTION`.
+`V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST`.
 
 Ready, merge, release-tag, and any further evidence promotion remain forbidden
 until that exact check succeeds for the current PR Head. Observation readiness

@@ -1,0 +1,72 @@
+{
+  "schema_version": "space_syndicate.v076.alpha07_human_candidate_blocker.v1",
+  "task_id": "V076_ALPHA07_HUMAN_PLAYABILITY_RESCUE_SINGLE_TABLE_CARD_FLOW_ACTION_VISIBILITY_PACING_AND_COACHMARK",
+  "playtest_name": "Alpha 0.7 Living Planet Human Candidate 1",
+  "captured_at_utc": "2026-08-23T19:26:53.9539675Z",
+  "candidate_head_sha": "04cc8f94de909b2467bef29d74ad83a153d65955",
+  "candidate_tree_sha": "5366c8936ea0bc9b074266b7953e3b82862a8cd7",
+  "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+  "pull_request": 93,
+  "production_scene": "res://scenes/main.tscn",
+  "player_configuration_observed": {
+    "local_human_count": 1,
+    "ai_player_count": 3,
+    "roster_labels": ["LOCAL", "AI 1", "AI 2", "AI 3"]
+  },
+  "human_evidence_verbatim": [
+    "主画面仍是上下分屏。",
+    "需要上下拖拽／移动才能访问界面。",
+    "无法正常取得卡牌。",
+    "无法正常打出卡牌。",
+    "无法看清谁正在执行什么动作。",
+    "游戏强制等待过长。",
+    "教学第三步窗口在鼠标接近时跳走。",
+    "“下一步”按钮因此无法点击。",
+    "当前版本无法正常完成真人游戏。"
+  ],
+  "classification": {
+    "human_candidate_1_status": "BLOCKED_BY_UI_AND_INTERACTION_FLOW",
+    "ready_for_human_golden_run": false,
+    "human_executed": true,
+    "human_run_completed": false,
+    "human_feedback_captured": true,
+    "product_usability_blocker_count": 9,
+    "human_accessible_path_green": false,
+    "user_error": false,
+    "product_failure": true
+  },
+  "preserved_automated_evidence": {
+    "step09_production_evidence_preserved": true,
+    "step11_production_evidence_preserved": true,
+    "step12_production_evidence_preserved": true,
+    "step13_readiness_evidence_preserved": true,
+    "automated_production_path_green": true,
+    "automated_paths_proved_human_accessibility": false,
+    "golden_human_green_count": 0
+  },
+  "candidate_identity_evidence": {
+    "preflight_path": "D:/SpaceSyndicateTestRuns/v076/human-golden-run-001/preflight.json",
+    "preflight_sha256": "bc7d88ec3c14061a14cd26b70ddd04a144a4580e586dbe674163b0afa8c3bb1a",
+    "launch_receipt_path": "D:/SpaceSyndicateTestRuns/v076/human-golden-run-001/launch_receipt.json",
+    "launch_receipt_sha256": "6d4fd86d06b0e50c364967d836ef86969256c11ed360ebf60ba98893ccd7f7d4",
+    "telemetry_expected_path": "C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加/playtests/v076_alpha07",
+    "telemetry_export_status": "MISSING_AFTER_INTERRUPTED_HUMAN_RUN",
+    "telemetry_build_sha_claimed": false,
+    "identity_binding_source": "EXTERNAL_PREFLIGHT_AND_LAUNCH_RECEIPT"
+  },
+  "runtime_closeout": {
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "renderer": "Vulkan Forward+",
+    "device": "NVIDIA GeForce RTX 4080 SUPER",
+    "hard_runtime_error_count": 0,
+    "repository_preexisting_gdscript_warnings_present": true,
+    "mcp_stop_status": "STOPPED",
+    "scoped_candidate_process_count_after": 0,
+    "protected_port_listener_count_after": 0,
+    "unrelated_process_termination_count": 0,
+    "agent_ui_action_count": 0,
+    "state_injection_count": 0
+  },
+  "successor_candidate": "Alpha 0.7 Living Planet Human Candidate 2",
+  "successor_requirement": "RESTART_REAL_HUMAN_RETEST_FROM_STEP01"
+}
