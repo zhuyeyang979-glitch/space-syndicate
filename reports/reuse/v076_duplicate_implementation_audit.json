@@ -2,8 +2,8 @@
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
-  "candidate_tree_sha": "07b967e89a3edb362dad1ee06df8a84077dc5e24",
+  "candidate_head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
+  "candidate_tree_sha": "01636f348711e3c3038468cced7e214c0c071c89",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
@@ -82,6 +82,16 @@
       "owns_military_unit_state": false,
       "owns_asset_quantity": false,
       "owns_card_catalog": false,
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "current.v075_production_combat_candidate",
+      "owner_count": 1,
+      "unique_owner": "V075RuntimeOwner",
+      "path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "v076_extension": "consume_v076_military_facility_damage_intents",
+      "new_owner_created": false,
+      "duplicate_facility_damage_ledger_count": 0,
       "duplicate_status": "NONE"
     },
     {
@@ -168,6 +178,11 @@
       "result": "One ETA Owner produces integer ETA ticks and a canonical receipt without a second pathfinder, speed table, tick source, or gameplay-state Owner."
     },
     {
+      "source": "V075RuntimeOwner facility bridge + RuntimeCommandPipeline/MilitaryMonsterDamageCommandSink/MonsterRuntimeController",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "The existing private-input Owner settles sealed typed intents through the existing unique facility and monster mutation paths. No damage sink, HP ledger, mutation authority, asset Owner, unit Owner, or presentation Owner is duplicated."
+    },
+    {
       "source": "PR64/PR80",
       "disposition": "REUSE_AS_TEST",
       "result": "Test patterns only; no registry execution, Save adapter, RNG adapter, Kernel, or dispatcher imported."
@@ -208,6 +223,7 @@
     "second geodesic pathfinder or copied half-edge topology for military ETA",
     "military ETA Owner acquiring tick, replay, map, route, unit, asset, card, authorization, attack, or presentation authority",
     "second military mission lifecycle Owner, phase ledger, or non-Kernel tick continuation",
+    "second facility or monster damage sink, HP ledger, mutation authority, or damage presentation receipt owner",
     "root submission of execute or withdraw commands reserved for Kernel derivation",
     "revived PR70 card batch",
     "PR64 metadata registry promoted to executor",
@@ -228,7 +244,7 @@
       "status": "UNVERIFIED"
     },
     {
-      "boundary": "military typed damage-intent sink production composition and human certification",
+      "boundary": "military production composition/main.tscn execution and human certification after isolated typed-sink settlement",
       "record_count": 28,
       "exact_mapped_count": 28,
       "reauthor_required_count": 0,
@@ -267,6 +283,19 @@
       "withdrawal_intent_count_per_mission": 1,
       "same_tick_order_mismatch_count": 0,
       "replay_mismatch_count": 0,
+      "status": "ISOLATED_GREEN",
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "typed military facility and monster damage-intent settlement through existing sinks",
+      "facility_damage_owner_count": 1,
+      "monster_damage_pipeline_count": 1,
+      "new_damage_owner_count": 0,
+      "facility_damage_receipt_count": 1,
+      "monster_damage_receipt_count": 1,
+      "direct_reducer_mutation_count": 0,
+      "duplicate_damage_mutation_count": 0,
       "status": "ISOLATED_GREEN",
       "production_green": false,
       "human_green": false

@@ -2,7 +2,7 @@
   "schema_version": "space_syndicate.v076.historical_reuse_registry.v2",
   "registry_id": "v076-historical-reuse-registry-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
+  "candidate_head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "historical_reuse": "ACTIVE",
   "point_inertia": "ACTIVE",
@@ -64,8 +64,8 @@
     },
     {
       "domain_id": "current.v075_production_combat_candidate",
-      "lifecycle": "REFERENCE_ONLY_DOMAIN",
-      "owner_component_id": ""
+      "lifecycle": "ACTIVE_CURRENT_DOMAIN",
+      "owner_component_id": "component.current.v075_runtime_owner"
     },
     {
       "domain_id": "external.release_probe_tooling",
@@ -1422,7 +1422,7 @@
       "unique_owner": "V075RuntimeOwner",
       "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
       "owner_count": 1,
-      "binding_status": "REFERENCE_BASE_OWNER"
+      "binding_status": "ACTIVE_STAGE4_REUSED_OWNER"
     },
     {
       "domain_id": "external.release_probe_tooling",

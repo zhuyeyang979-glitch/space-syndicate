@@ -310,6 +310,14 @@ LEDGER_STATUS_VALUES = {
     "REGRESSED_WITH_EVIDENCE",
 }
 
+HISTORY_CLASSIFICATION_CORRECTION_KIND = (
+    "REFERENCE_ONLY_EXISTING_OWNER_ACTIVATION_REPAIR"
+)
+HISTORY_CLASSIFICATION_CORRECTABLE_FAILURES = {
+    "HISTORY_PRODUCT_OWNER_BINDING_INVALID",
+    "HISTORY_REFERENCE_ONLY_AUTHORITY_WRITE",
+}
+
 CANONICAL_STAGE_IDS = (
     "V076_STAGE_1_DETERMINISTIC_KERNEL",
     "V076_STAGE_2_SHARED_HALF_EDGE_SPHERICAL_PARTITION",
@@ -831,6 +839,201 @@ def _same_regression_identity(old: Any, new: Any) -> bool:
         old.get(key) == new.get(key)
         for key in ("failure_evidence", "affected_commit", "affected_owner", "prior_status")
     )
+
+
+def _history_classification_correction_rows(
+    authorities: dict[str, dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], set[str]]:
+    rows: dict[str, dict[str, Any]] = {}
+    duplicates: set[str] = set()
+    for stage in authorities.get("inherited_green", {}).get("stages", []):
+        if not isinstance(stage, dict):
+            continue
+        for evidence in stage.get("evidence", []):
+            if not isinstance(evidence, dict) or evidence.get("correction_kind") != (
+                HISTORY_CLASSIFICATION_CORRECTION_KIND
+            ):
+                continue
+            evidence_id = str(evidence.get("evidence_id", ""))
+            if evidence_id in rows:
+                duplicates.add(evidence_id)
+            else:
+                rows[evidence_id] = evidence
+    return rows, duplicates
+
+
+def _history_classification_corrections(
+    root: Path,
+    head_ref: str,
+    authorities: dict[str, dict[str, Any]],
+) -> tuple[dict[str, set[tuple[str, str]]], list[str]]:
+    """Load exact, append-only repair evidence for an already-committed schema error.
+
+    This cannot excuse code-before-registry, an unknown component, a new Owner,
+    or an arbitrary history failure. It only permits the two named failures
+    produced when an existing, atomically registered Owner was accidentally left
+    in a reference-only domain and a later evidence-only commit activates that
+    same unique Owner.
+    """
+    failures: list[str] = []
+    allowed: dict[str, set[tuple[str, str]]] = {}
+    registry = authorities.get("historical_reuse", {})
+    components = _index(registry.get("component_inventory", []), "component_id")
+    domains = _index(registry.get("domain_inventory", []), "domain_id")
+    seen_evidence_ids: set[str] = set()
+    seen_transition_codes: set[tuple[str, str]] = set()
+    correction_rows, duplicate_evidence_ids = (
+        _history_classification_correction_rows(authorities)
+    )
+    failures.extend(
+        f"HISTORY_CLASSIFICATION_CORRECTION_DUPLICATE:{evidence_id or 'missing'}"
+        for evidence_id in sorted(duplicate_evidence_ids)
+    )
+    for evidence in correction_rows.values():
+            evidence_id = str(evidence.get("evidence_id", ""))
+            component_id = str(evidence.get("component_id", ""))
+            domain_id = str(evidence.get("domain_id", ""))
+            subject_head = str(evidence.get("repair_subject_head_sha", ""))
+            subject_tree = str(evidence.get("repair_subject_tree_sha", ""))
+            rationale = str(evidence.get("rationale", "")).strip()
+            expected_fields = {
+                "evidence_id",
+                "result",
+                "correction_kind",
+                "component_id",
+                "domain_id",
+                "repair_subject_head_sha",
+                "repair_subject_tree_sha",
+                "prior_lifecycle",
+                "corrected_lifecycle",
+                "new_owner_created",
+                "parallel_owner_count",
+                "affected_transitions",
+                "rationale",
+            }
+            valid = bool(
+                set(evidence) == expected_fields
+                and evidence_id
+                and evidence_id not in seen_evidence_ids
+                and evidence.get("result") == "PASS"
+                and _is_hex(subject_head, 40)
+                and _is_hex(subject_tree, 40)
+                and evidence.get("prior_lifecycle") == "REFERENCE_ONLY_DOMAIN"
+                and evidence.get("corrected_lifecycle") == "ACTIVE_CURRENT_DOMAIN"
+                and evidence.get("new_owner_created") is False
+                and _is_int(evidence.get("parallel_owner_count"))
+                and evidence.get("parallel_owner_count") == 0
+                and isinstance(evidence.get("affected_transitions"), list)
+                and bool(evidence.get("affected_transitions"))
+                and rationale
+            )
+            component = components.get(component_id)
+            domain = domains.get(domain_id)
+            valid = bool(
+                valid
+                and isinstance(component, dict)
+                and component.get("domain_id") == domain_id
+                and component.get("component_role") == "OWNER"
+                and component.get("owner_component_id") == component_id
+                and component.get("production_reachable") is True
+                and component.get("writes_authority") is True
+                and isinstance(domain, dict)
+                and domain.get("lifecycle") == "ACTIVE_CURRENT_DOMAIN"
+                and domain.get("owner_component_id") == component_id
+                and _git(root, "show", "-s", "--format=%T", subject_head, check=False)
+                == subject_tree
+                and subprocess.run(
+                    ["git", "-C", str(root), "merge-base", "--is-ancestor", subject_head, head_ref],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                ).returncode
+                == 0
+            )
+            staged_rows: list[tuple[str, set[tuple[str, str]]]] = []
+            staged_transition_codes: set[tuple[str, str]] = set()
+            for transition in evidence.get("affected_transitions", []):
+                if not isinstance(transition, dict) or set(transition) != {
+                    "head_sha",
+                    "failure_codes",
+                }:
+                    valid = False
+                    continue
+                transition_head = str(transition.get("head_sha", ""))
+                failure_codes = transition.get("failure_codes")
+                transition_parents = _git(
+                    root,
+                    "rev-list",
+                    "--parents",
+                    "-n",
+                    "1",
+                    transition_head,
+                    check=False,
+                ).split()[1:]
+                if not (
+                    _is_hex(transition_head, 40)
+                    and isinstance(failure_codes, list)
+                    and bool(failure_codes)
+                    and len(failure_codes) == len(set(map(str, failure_codes)))
+                    and set(map(str, failure_codes)).issubset(
+                        HISTORY_CLASSIFICATION_CORRECTABLE_FAILURES
+                    )
+                    and subprocess.run(
+                        [
+                            "git",
+                            "-C",
+                            str(root),
+                            "merge-base",
+                            "--is-ancestor",
+                            transition_head,
+                            subject_head,
+                        ],
+                        check=False,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    ).returncode
+                    == 0
+                    and bool(transition_parents)
+                    and any(
+                        _git_path_exists_at(
+                            root, parent_ref, str(component.get("path", ""))
+                        )
+                        for parent_ref in transition_parents
+                    )
+                ):
+                    valid = False
+                    continue
+                exact_codes = {
+                    (
+                        code,
+                        component_id
+                        if code == "HISTORY_PRODUCT_OWNER_BINDING_INVALID"
+                        else domain_id,
+                    )
+                    for code in map(str, failure_codes)
+                }
+                if any(
+                    (transition_head, code) in seen_transition_codes
+                    or (transition_head, code) in staged_transition_codes
+                    for code in failure_codes
+                ):
+                    valid = False
+                staged_rows.append((transition_head, exact_codes))
+                staged_transition_codes.update(
+                    (transition_head, code) for code in map(str, failure_codes)
+                )
+            if not valid:
+                failures.append(
+                    f"HISTORY_CLASSIFICATION_CORRECTION_INVALID:{evidence_id or 'missing'}"
+                )
+                continue
+            seen_evidence_ids.add(evidence_id)
+            for transition_head, exact_codes in staged_rows:
+                allowed.setdefault(transition_head, set()).update(exact_codes)
+                seen_transition_codes.update(
+                    (transition_head, code) for code, _target in exact_codes
+                )
+    return allowed, failures
 
 
 def _domain_retirement_evidence_complete(row: Any) -> bool:
@@ -1819,6 +2022,27 @@ def _monotonic_transition_failures(
     new_registry = current["historical_reuse"]
     old_supersession = previous["supersession"]
     new_supersession = current["supersession"]
+    old_corrections, old_correction_duplicates = (
+        _history_classification_correction_rows(previous)
+    )
+    new_corrections, new_correction_duplicates = (
+        _history_classification_correction_rows(current)
+    )
+    for evidence_id in sorted(old_correction_duplicates | new_correction_duplicates):
+        failures.append(
+            f"HISTORY_CLASSIFICATION_CORRECTION_DUPLICATE:{label}:"
+            f"{evidence_id or 'missing'}"
+        )
+    for evidence_id, old_correction in old_corrections.items():
+        new_correction = new_corrections.get(evidence_id)
+        if new_correction is None:
+            failures.append(
+                f"HISTORY_CLASSIFICATION_CORRECTION_SILENT_DELETE:{label}:{evidence_id}"
+            )
+        elif new_correction != old_correction:
+            failures.append(
+                f"HISTORY_CLASSIFICATION_CORRECTION_MUTATED:{label}:{evidence_id}"
+            )
 
     if transition_changed_paths is not None:
         failures.extend(
@@ -4674,7 +4898,17 @@ def committed_history_failures(
     implementation_paths: dict[str, list[str]],
 ) -> tuple[list[str], int]:
     """Validate every adjacent committed transition from activation through Head."""
-    failures: list[str] = []
+    head_authorities = load_baseline_authorities(root, head_ref, implementation_paths)
+    corrections, correction_failures = _history_classification_corrections(
+        root, head_ref, head_authorities
+    )
+    failures: list[str] = list(correction_failures)
+    expected_corrections = {
+        (transition_head, code, target)
+        for transition_head, exact_codes in corrections.items()
+        for code, target in exact_codes
+    }
+    used_corrections: set[tuple[str, str, str]] = set()
     commits = _git(
         root,
         "rev-list",
@@ -4841,15 +5075,30 @@ def committed_history_failures(
                             f"{parent_ref[:12]}->{commit[:12]}:"
                             f"{prior_stage.get('stage_id', '')}->{next_stage.get('stage_id', '')}"
                         )
-            failures.extend(
-                _monotonic_transition_failures(
-                    parent_authorities,
-                    current_authorities,
-                    f"{parent_ref[:12]}->{commit[:12]}",
-                    transition_changed_paths,
-                )
+            transition_label = f"{parent_ref[:12]}->{commit[:12]}"
+            transition_failures = _monotonic_transition_failures(
+                parent_authorities,
+                current_authorities,
+                transition_label,
+                transition_changed_paths,
             )
+            for failure in transition_failures:
+                corrected = False
+                for code, target in corrections.get(commit, set()):
+                    if failure == f"{code}:{transition_label}:{target}":
+                        used_corrections.add((commit, code, target))
+                        corrected = True
+                        break
+                if not corrected:
+                    failures.append(failure)
             transition_count += 1
+    for transition_head, code, target in sorted(
+        expected_corrections - used_corrections
+    ):
+        failures.append(
+            "HISTORY_CLASSIFICATION_CORRECTION_UNUSED:"
+            f"{transition_head[:12]}:{code}:{target}"
+        )
     return failures, transition_count
 
 
@@ -5165,6 +5414,9 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
             evidence_subject_product_tree_matches_head = False
     pr_changed = changed_paths(root, args.pr_base_ref, args.head_ref, args.include_worktree)
     gate_changed = changed_paths(root, args.gate_base_ref, args.head_ref, args.include_worktree)
+    retired_scanner_delta_set = {
+        row.get("path", "") for row in gate_changed if row.get("status") != "D"
+    }
     registered_production_paths = {
         str(component.get("path", ""))
         for component in authorities.get("historical_reuse", {}).get(
@@ -5188,10 +5440,7 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
         args.include_worktree,
         gate_changed,
     )
-    gate_delta_set = {
-        row.get("path", "") for row in gate_changed if row.get("status") != "D"
-    }
-    status, retired_report = run_retired_scanner(root, gate_delta_set)
+    status, retired_report = run_retired_scanner(root, retired_scanner_delta_set)
     selftest_status, selftest_report = run_gate_selftest(root)
     pr_body = Path(args.pr_body_file).read_text(encoding="utf-8-sig")
     current_stage_rows = [

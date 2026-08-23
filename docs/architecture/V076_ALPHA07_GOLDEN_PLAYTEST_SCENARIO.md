@@ -22,7 +22,7 @@ It is a plan and evidence ledger, not a human-play result.
 | STEP07 | Inspect globe and select legal target | `PENDING` | Requires human use of the production map and typed target binding. |
 | STEP08 | Acquire and submit one legal card | `PENDING` | Requires one real card instance through acquisition, hand, target, and resolution Owners. |
 | STEP09 | Resolve production Monster move/consequence | `PENDING` | Current Stage 3 Bench cannot satisfy this step. |
-| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | Lifecycle `29/29`, Profile `59/59`, Crosswalk `52/52`, ETA `48/48`, Owner `7/7`, Bench `30/30`; one root plus two derived commands produce exact ticks `5/6/7`, one attack, one withdrawal-ready intent, replay/tamper/order mismatch 0, no public batch/sushi track, changed-file warnings 0, hard errors 0, clean MCP stop. |
+| STEP10 | Resolve one military Direct Action | `ISOLATED_GREEN` | Typed sink Bench `41/41`, Lifecycle `29/29`, Profile `59/59`, Crosswalk `52/52`, ETA `48/48`, Owner `7/7`, Facility bridge `34/34`, monster mutation path `12/12`; two roots plus four derived commands produce six stable executions, facility/monster receipts `1/1`, monster HP `20 -> 17`, no duplicate/direct reducer damage, no public batch/sushi track, changed-file warnings/hard errors/diagnostics/residual processes 0. |
 | STEP11 | Observe economy/route/asset consequence | `PENDING` | Requires one atomic asset Owner and exact-once presentation. |
 | STEP12 | Observe AI action and privacy | `PENDING` | Requires production AI with viewer-scoped hidden-information proof. |
 | STEP13 | Reach victory qualification/final audit | `PENDING` | Requires a full human run without fixture state injection. |
@@ -42,8 +42,12 @@ exact-map, with twelve inherited combat Profiles, twenty-eight new speeds, and
 sixteen complete reversible V076 playtest Profiles. The registered reducer now
 records `ARRIVED`, derives `EXECUTED_ONCE`, and derives `WITHDRAWAL_READY` on
 consecutive Kernel ticks, while existing asset/unit Owners settle quantity once.
-It is not production or human evidence; production typed damage-intent sinks,
-per-tick unit position state, and human play remain pending.
+Sealed facility intents now settle exactly once through the existing
+`V075RuntimeOwner`; sealed monster intents settle exactly once through the
+existing command pipeline and `MonsterRuntimeController` only inside the active
+simulation step. It is not production or human evidence; production
+composition/`main.tscn` execution, per-tick unit position state, and human play
+remain pending.
 
 STEP01, STEP06-STEP09, and STEP11-STEP15 remain pending. Any production or
 human Golden claim must come from the exact future production candidate and a

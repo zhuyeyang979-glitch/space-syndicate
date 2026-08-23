@@ -1,7 +1,7 @@
 # V0.7.6 card certification matrix
 
-This matrix is bound to the focused Profile/Crosswalk/ETA/lifecycle
-implementation at `9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6`.
+This matrix is bound to the focused Profile/Crosswalk/ETA/lifecycle/typed-sink
+implementation at `d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7`.
 `CHANGE_CLASS=CROSS_DOMAIN_INTEGRATION`; the scoped Crosswalk and inherited
 sentinels ran, while unrelated full-catalog production certification did not.
 
@@ -28,7 +28,7 @@ sentinels ran, while unrelated full-catalog production certification did not.
 | Supply/demand | 8 / 2 | Active compile readiness | Isolated owner/batch test evidence | `UNVERIFIED` | Not claimed |
 | Interaction/counter | 12 / 3 | Projection-only | No inherited execution certification | `UNVERIFIED` | Not claimed |
 | Monster | 32 / 8 | Projection-only | V0.7.5 group capability evidence only | `UNVERIFIED` — exact directional-move mappings verified: 0 | Not claimed |
-| Military | 28 / 7 | Projection-only | V0.7.6 Stage 4 isolated Profile/Crosswalk/ETA/arrive-execute-withdraw lifecycle | `ISOLATED_GREEN_28_OF_28` — 0 `REAUTHOR_REQUIRED` | Not claimed |
+| Military | 28 / 7 | Projection-only | V0.7.6 Stage 4 isolated Profile/Crosswalk/ETA/arrive-execute-withdraw plus existing typed facility/monster sinks | `ISOLATED_GREEN_28_OF_28` — 0 `REAUTHOR_REQUIRED` | Not claimed |
 | Organization | 20 / 5 | Projection-only | Owner metadata remains pending | `UNVERIFIED` | Not claimed |
 
 The three active cohorts total 256; the four projection-only cohorts total 92.
@@ -45,10 +45,13 @@ all 28 speeds and the sixteen Profiles for four former-gap families are explicit
 reversible V0.7.6 playtest authority. No legacy protection, terrain, cooldown,
 or persistent-unit value was guessed into an assault rule. Physical ETA is
 isolated green with 1,000 seeds, 2,000 replays, 0 mismatch, and 0 teleport. The
-registered lifecycle reducer is `29/29`; the same STEP10 Bench is `30/30` and
-records one arrival root, two Kernel-derived continuations, one Profile-authored
-attack, and one withdrawal-ready intent with zero replay/order mismatch. This
-still does not certify production typed damage sinks or human play.
+registered lifecycle reducer is `29/29`; the same STEP10 Bench is `41/41` and
+records two arrival roots, four Kernel-derived continuations, two
+Profile-authored one-shot attacks, facility/monster receipts `1/1`, monster HP
+`20 -> 17`, and zero replay/order/direct-reducer/duplicate damage mismatch.
+Facility damage reuses `V075RuntimeOwner`; monster damage reuses the existing
+active-step mutation pipeline. This still does not certify production
+composition, `main.tscn`, or human play.
 
 ## Monotonic certification axes
 

@@ -2,7 +2,7 @@
   "schema_version": "space_syndicate.v076.alpha07_golden_playtest_scenario.v1",
   "scenario_id": "v076-alpha07-golden-playtest-scenario-01",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
+  "candidate_head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "overall_status": "PENDING_HUMAN_PRODUCTION_EXECUTION",
   "human_execution_count": 0,
@@ -119,9 +119,9 @@
       "human_executed": false,
       "production_composition": false,
       "pass_claimed": true,
-      "evidence": "Lifecycle Reducer 29/29, Profile Authoring 59/59, Crosswalk 52/52, ETA 48/48 with 1,000 seeds and 2,000 replays, Owner 7/7, and isolated Bench 30/30. One root arrives at tick 5, one derived execution occurs at tick 6, and one derived withdrawal-ready intent occurs at tick 7; all 28 cards exact-map, replay/tamper/order mismatch counts are 0, and MCP reports changed-file warnings 0, hard errors 0, clean stop.",
-      "claim_limit": "Diagnostic isolated evidence only. Production and human green remain false; production damage-intent sink composition, per-tick unit position state, and per-card certification remain pending.",
-      "acceptance": "The authorized card binds through the one Crosswalk to the one Profile Authority and the one physical ETA receipt Owner before the existing private input Owner submits one arrival root. Kernel-derived commands execute one Profile-authored assault and emit one withdrawal-ready intent on consecutive ticks. There is no public-batch leakage, Guard/Protect, retargeting, teleport, persistent unit, caller-authored speed, forged derived root, or second map/tick/asset/unit/card Owner."
+      "evidence": "Typed sink Bench 41/41, Lifecycle Reducer 29/29, Profile Authoring 59/59, Crosswalk 52/52, ETA 48/48 with 1,000 seeds and 2,000 replays, Owner 7/7, V075 facility bridge 34/34, and existing monster mutation path 12/12. Two roots deterministically produce four derived commands and six executions; facility and monster receipts are each exactly one, monster HP changes 20 to 17, duplicate settlement changes nothing, and MCP/Runner report changed-file warnings 0, hard errors 0, diagnostics 0, and clean stop.",
+      "claim_limit": "Diagnostic isolated evidence only. Production and human green remain false; production composition/main.tscn wiring, per-tick unit position state, and per-card certification remain pending.",
+      "acceptance": "Each authorized card binds through the one Crosswalk to the one Profile Authority and the one physical ETA receipt Owner before the existing private input Owner submits its arrival root. Kernel-derived commands execute one Profile-authored assault and emit one withdrawal-ready intent on consecutive ticks. Sealed facility intents settle only through V075RuntimeOwner; sealed monster intents settle only through RuntimeCommandPipeline and MonsterRuntimeController inside SimulationMutationAuthority. There is no direct reducer mutation, public-batch leakage, Guard/Protect, retargeting, teleport, persistent unit, caller-authored speed, forged derived root, or second damage/map/tick/asset/unit/card Owner."
     },
     {
       "step_id": "STEP11",

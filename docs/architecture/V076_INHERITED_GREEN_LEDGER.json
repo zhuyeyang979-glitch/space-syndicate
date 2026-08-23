@@ -4,8 +4,8 @@
   "recorded_on": "2026-08-23",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
-    "tree_sha": "07b967e89a3edb362dad1ee06df8a84077dc5e24",
+    "head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
+    "tree_sha": "01636f348711e3c3038468cced7e214c0c071c89",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
@@ -392,6 +392,110 @@
         "alpha07_per_card_certification",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_STAGE4_MILITARY_TYPED_DAMAGE_INTENT_SINK_INTEGRATION",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
+      "tree_sha": "01636f348711e3c3038468cced7e214c0c071c89",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Completes the already-green STEP10 isolated typed-damage settlement path by consuming sealed V075 facility and monster intents through their existing unique Owners. It adds no Golden step, new damage Owner, production composition cutover, or human evidence.",
+      "golden_step_ids": [
+        "STEP10"
+      ],
+      "current_owner": "V076PrivateDirectActionInputOwnerV1",
+      "reused_facility_owner": "V075RuntimeOwner",
+      "reused_monster_path": "RuntimeCommandPipeline -> MilitaryMonsterDamageCommandSink -> MonsterRuntimeController",
+      "evidence": [
+        {
+          "evidence_id": "stage4-military-typed-damage-intent-sink-integration",
+          "result": "PASS",
+          "owner_checks": "7/7",
+          "lifecycle_checks": "29/29",
+          "bench_checks": "41/41",
+          "facility_bridge_checks": "34/34",
+          "monster_mutation_path_checks": "12/12",
+          "facility_damage_receipt_count": 1,
+          "monster_damage_receipt_count": 1,
+          "monster_hp_before": 20,
+          "monster_hp_after": 17,
+          "kernel_root_command_count": 2,
+          "kernel_derived_command_count": 4,
+          "kernel_execution_count": 6,
+          "direct_reducer_mutation_count": 0,
+          "duplicate_damage_mutation_count": 0,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0
+        },
+        {
+          "evidence_id": "stage4-typed-damage-inherited-sentinels",
+          "result": "PASS",
+          "profile_checks": "59/59",
+          "crosswalk_checks": "52/52",
+          "eta_checks": "48/48",
+          "eta_seed_count": 1000,
+          "eta_replay_count": 2000,
+          "eta_mismatch_count": 0,
+          "eta_teleport_count": 0,
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "v075_military_contract_test_count": 4,
+          "gate_selftest_checks": "117/117"
+        },
+        {
+          "evidence_id": "stage4-typed-damage-godot-mcp-isolated-bench",
+          "result": "PASS",
+          "scene": "res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn",
+          "evidence_scope": "isolated_diagnostic_only",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "changed_file_warning_count": 0,
+          "hard_error_count": 0,
+          "runner_diagnostic_count": 0,
+          "runner_script_error_count": 0,
+          "stop_result": "Godot project stopped",
+          "scoped_godot_process_count_after_stop": 0,
+          "production_green": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "stage4-v075-owner-reference-lifecycle-classification-correction",
+          "result": "PASS",
+          "correction_kind": "REFERENCE_ONLY_EXISTING_OWNER_ACTIVATION_REPAIR",
+          "component_id": "component.current.v075_runtime_owner",
+          "domain_id": "current.v075_production_combat_candidate",
+          "repair_subject_head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
+          "repair_subject_tree_sha": "01636f348711e3c3038468cced7e214c0c071c89",
+          "prior_lifecycle": "REFERENCE_ONLY_DOMAIN",
+          "corrected_lifecycle": "ACTIVE_CURRENT_DOMAIN",
+          "new_owner_created": false,
+          "parallel_owner_count": 0,
+          "affected_transitions": [
+            {
+              "head_sha": "a5bf41d5d0d26bd2ebd248e16ff0c95b6e178c7d",
+              "failure_codes": [
+                "HISTORY_PRODUCT_OWNER_BINDING_INVALID",
+                "HISTORY_REFERENCE_ONLY_AUTHORITY_WRITE"
+              ]
+            },
+            {
+              "head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
+              "failure_codes": [
+                "HISTORY_REFERENCE_ONLY_AUTHORITY_WRITE"
+              ]
+            }
+          ],
+          "rationale": "The existing V075RuntimeOwner was registered atomically with its V076 extension at a5bf41d5, but its pre-existing PR90 source domain row was accidentally left REFERENCE_ONLY. This evidence activates that same unique Owner without creating, renaming, superseding, or dual-writing any authority and excuses only the exact recorded lifecycle-classification failures."
+        }
+      ],
+      "not_claimed": [
+        "production_composition_cutover",
+        "main_tscn_wiring",
+        "human_playtest_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
@@ -399,7 +503,7 @@
     "test_bytes_changed_after_stage3": true,
     "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "Only the Stage 4 tick-driven mission lifecycle reducer delta and its declared inherited sentinels were revalidated; no full-world reproof was run or implied."
+    "current_claim": "Only the Stage 4 typed facility/monster damage-intent settlement delta, its exact existing-Owner classification correction, and declared inherited sentinels were revalidated; no production composition or full-world reproof was run or implied."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -416,9 +520,9 @@
     "golden_production_green_count": 0,
     "golden_human_green_count": 0,
     "production_cutover_status": false,
-    "latest_completed_stage": "V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW",
-    "latest_completed_stage_head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
-    "next_stage": "V076_STAGE4_MILITARY_TYPED_DAMAGE_INTENT_SINK_INTEGRATION",
+    "latest_completed_stage": "V076_STAGE4_MILITARY_TYPED_DAMAGE_INTENT_SINK_INTEGRATION",
+    "latest_completed_stage_head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
+    "next_stage": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_PRECHECK",
     "v075_pr90_dependency_boundary": "REFERENCE_ONLY_EXACT_BASE_NO_V076_CUTOVER"
   },
   "canonical_change_scope": {
@@ -495,7 +599,7 @@
   "point_inertia_gate_queued": true,
   "current_task_interrupted_by_gate": false,
   "current_task_result_preserved": true,
-  "product_development_resume_target": "V076_STAGE4_MILITARY_TYPED_DAMAGE_INTENT_SINK_INTEGRATION",
+  "product_development_resume_target": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_PRECHECK",
   "required_check_name": "V076 Reuse and Point-Inertia Gate",
   "agent_merge_requires_reuse_gate": true
 }

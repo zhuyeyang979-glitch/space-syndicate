@@ -3170,6 +3170,138 @@ print('not-json'); raise SystemExit(2)
         ],
     )
 
+    correction_failures: list[str] = []
+    invalid_correction_failures: list[str] = []
+    mutated_correction_failures: list[str] = []
+    try:
+        with tempfile.TemporaryDirectory(prefix="v076-history-correction-") as temp_path:
+            correction_root = Path(temp_path)
+            _git_fixture(correction_root, "init", "-b", "main")
+            _git_fixture(
+                correction_root, "config", "user.name", "V076 Gate Selftest"
+            )
+            _git_fixture(
+                correction_root,
+                "config",
+                "user.email",
+                "v076-gate@example.invalid",
+            )
+            correction_owner_path = correction_root / BASE_OWNER_PATH
+            correction_owner_path.parent.mkdir(parents=True, exist_ok=True)
+            correction_owner_path.write_text(
+                "extends RefCounted\nclass_name ExistingMapOwner\n",
+                encoding="utf-8",
+            )
+            _git_fixture(correction_root, "add", ".")
+            _git_fixture(correction_root, "commit", "-m", "existing owner baseline")
+            (correction_root / "subject.txt").write_text(
+                "existing owner repair subject\n", encoding="utf-8"
+            )
+            _git_fixture(correction_root, "add", ".")
+            _git_fixture(correction_root, "commit", "-m", "repair subject")
+            correction_head = _git_fixture(correction_root, "rev-parse", "HEAD")
+            correction_tree = _git_fixture(
+                correction_root, "rev-parse", "HEAD^{tree}"
+            )
+            correction_authorities = _authorities()
+            correction_authorities["inherited_green"]["stages"][0][
+                "evidence"
+            ] = [
+                {
+                    "evidence_id": "selftest-history-classification-correction",
+                    "result": "PASS",
+                    "correction_kind": gate.HISTORY_CLASSIFICATION_CORRECTION_KIND,
+                    "component_id": BASE_OWNER_ID,
+                    "domain_id": BASE_DOMAIN_ID,
+                    "repair_subject_head_sha": correction_head,
+                    "repair_subject_tree_sha": correction_tree,
+                    "prior_lifecycle": "REFERENCE_ONLY_DOMAIN",
+                    "corrected_lifecycle": "ACTIVE_CURRENT_DOMAIN",
+                    "new_owner_created": False,
+                    "parallel_owner_count": 0,
+                    "affected_transitions": [
+                        {
+                            "head_sha": correction_head,
+                            "failure_codes": [
+                                "HISTORY_PRODUCT_OWNER_BINDING_INVALID",
+                                "HISTORY_REFERENCE_ONLY_AUTHORITY_WRITE",
+                            ],
+                        }
+                    ],
+                    "rationale": "Exact repair evidence for an existing unique Owner.",
+                }
+            ]
+            correction_rows, correction_failures = (
+                gate._history_classification_corrections(
+                    correction_root, correction_head, correction_authorities
+                )
+            )
+            if correction_rows != {
+                correction_head: {
+                    ("HISTORY_PRODUCT_OWNER_BINDING_INVALID", BASE_OWNER_ID),
+                    ("HISTORY_REFERENCE_ONLY_AUTHORITY_WRITE", BASE_DOMAIN_ID),
+                }
+            }:
+                correction_failures.append(
+                    f"CORRECTION_EXACT_SCOPE_MISMATCH:{correction_rows!r}"
+                )
+            invalid_authorities = copy.deepcopy(correction_authorities)
+            invalid_authorities["inherited_green"]["stages"][0]["evidence"][0][
+                "affected_transitions"
+            ][0]["failure_codes"] = ["HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"]
+            invalid_rows, invalid_correction_failures = (
+                gate._history_classification_corrections(
+                    correction_root, correction_head, invalid_authorities
+                )
+            )
+            if invalid_rows:
+                invalid_correction_failures.append(
+                    f"INVALID_CORRECTION_WAS_APPLIED:{invalid_rows!r}"
+                )
+            mutated_authorities = copy.deepcopy(correction_authorities)
+            mutated_authorities["inherited_green"]["stages"][0]["evidence"][0][
+                "rationale"
+            ] = "Silently rewritten correction evidence."
+            mutation_transition_failures = gate._monotonic_transition_failures(
+                correction_authorities,
+                mutated_authorities,
+                "selftest-correction-mutation",
+                [],
+            )
+            if not any(
+                failure.startswith("HISTORY_CLASSIFICATION_CORRECTION_MUTATED:")
+                for failure in mutation_transition_failures
+            ):
+                mutated_correction_failures.append(
+                    f"CORRECTION_MUTATION_NOT_REJECTED:{mutation_transition_failures!r}"
+                )
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        correction_failures.append(f"CORRECTION_FIXTURE_ERROR:{error}")
+        invalid_correction_failures.append(f"CORRECTION_FIXTURE_ERROR:{error}")
+        mutated_correction_failures.append(f"CORRECTION_FIXTURE_ERROR:{error}")
+    append_direct_case(
+        "115",
+        "an exact existing-Owner lifecycle correction names every repairable transition and failure",
+        "PASS",
+        "PASS" if not correction_failures else "FAIL",
+        correction_failures,
+    )
+    append_direct_case(
+        "116",
+        "history correction evidence cannot excuse code-before-registry or another failure class",
+        "FAIL",
+        "FAIL" if invalid_correction_failures else "PASS",
+        invalid_correction_failures,
+    )
+    append_direct_case(
+        "117",
+        "accepted history classification correction evidence is append-only and immutable",
+        "FAIL",
+        "FAIL" if not mutated_correction_failures else "PASS",
+        mutated_correction_failures
+        or ["HISTORY_CLASSIFICATION_CORRECTION_MUTATED"],
+    )
+
     pass_count = sum(result["status"] == "PASS" for result in results)
     case_count = len(results)
     status = (

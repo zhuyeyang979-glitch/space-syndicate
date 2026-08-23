@@ -9596,3 +9596,51 @@ deleted. Evidence and the remaining action inventory are recorded in
   public batch, shared sushi-track resolution, `main.tscn` changes, and
   full-world reproof remain zero/false. Production typed damage-intent sink
   integration remains the next atomic boundary.
+
+## 2026-08-23 — V0.7.6 Stage 4 military typed damage-intent sinks
+
+- Extended the already-registered `V076PrivateDirectActionInputOwnerV1`
+  settlement ledger without creating a new Owner, Service, Controller, Reducer,
+  sink, or parallel Bench. The pure Kernel reducer still performs zero external
+  mutation. It exposes sealed V075 typed intents only after mission-receipt
+  revalidation and marks settlement complete only after damage, asset, and unit
+  outcomes succeed exactly once.
+- Facility intents enter one new narrow method on the existing
+  `V075RuntimeOwner`, reusing its Facility bridge, processed/witness ledgers,
+  fizzle journal, and presentation receipts. Monster intents traverse the
+  existing `RuntimeCommandPipeline -> MilitaryMonsterDamageCommandSink ->
+  MonsterRuntimeController` path and are rejected outside the active
+  `SimulationMutationAuthority` step. Kernel execution ticks convert to command
+  time with the existing integer `TICK_DURATION_US` constant.
+- The same STEP10 Bench passed `41/41`: two roots, four derived commands, six
+  executions, facility/monster receipts `1/1`, monster HP `20 -> 17`, zero
+  direct reducer mutation, exact missing-target fizzle replay, tamper rejection
+  before all sinks/quantity mutation, and duplicate settlement with no repeated
+  damage, asset consumption, or withdrawal. `GUARD`, `PROTECT`, retarget,
+  repeat, persistent units, teleport, public batch, and shared sushi-track
+  resolution remain absent or rejected.
+- Focused verification on implementation/fix subject
+  `d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7`, tree
+  `01636f348711e3c3038468cced7e214c0c071c89`, passed: Owner `7/7`, lifecycle
+  `29/29`, Bench `41/41`, V075 Facility bridge `34/34`, existing monster
+  mutation path `12/12`, Profile `59/59`, Crosswalk `52/52`, ETA `48/48` with
+  1,000 seeds / 2,000 replays / 0 mismatch / 0 teleport, Kernel `74/74`,
+  half-edge `90/90`, Monster `47/47`, and four V075 military contracts.
+- Godot MCP and the repository blocking Runner both executed
+  `res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn` to PASS.
+  Changed-file warnings, hard errors, runner diagnostics, script errors, and
+  scoped residual processes were all zero; the MCP project stopped cleanly.
+- The formal Reuse Gate correctly exposed a lifecycle-classification omission:
+  the atomically registered, already-existing `V075RuntimeOwner` was still
+  attached to a source-only `REFERENCE_ONLY_DOMAIN`. The one existing registry
+  now activates that same unique Owner and records an exact correction for only
+  the affected `a5bf41d5`/`d1675d80` transition errors. The Gate self-test grows
+  to `117/117`; code-before-registry, correction mutation/deletion, and unrelated history failures remain
+  blocking. Its retired-mechanic reuse scanner now checks actual changed paths,
+  so production dependency closure cannot turn unchanged Kernel bytes into a
+  false Delta hit.
+- Golden STEP10 remains the same fifth isolated-green step. Production
+  composition/`main.tscn`, human play, Alpha 0.7 certified cards, full 79 Gate,
+  Exact-SHA release proof, natural match, and full-world reproof remain
+  unperformed and unclaimed. The next safe task is a read-only production
+  composition precheck; cutover still requires separate authority.
