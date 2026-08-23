@@ -2,7 +2,7 @@
   "schema_version": "space_syndicate.v076.card_certification_matrix.v2",
   "matrix_id": "v076-card-certification-matrix-20260821",
   "recorded_on": "2026-08-21",
-  "candidate_head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
+  "candidate_head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "point_inertia": "ACTIVE",
   "historical_reuse": "ACTIVE",
@@ -244,7 +244,7 @@
       "catalog_runtime_owner_label": "military_runtime_controller",
       "semantic_readiness": "PROJECTION_ONLY",
       "identity_and_shape": "INHERITED_GREEN",
-      "runtime_route_certification": "V076_STAGE4_PROFILE_CROSSWALK_ETA_ISOLATED_ONLY",
+      "runtime_route_certification": "V076_STAGE4_PROFILE_CROSSWALK_ETA_LIFECYCLE_ISOLATED_ONLY",
       "effect_review_pending_count": 0,
       "v076_exact_mapping": "ISOLATED_GREEN_28_OF_28",
       "direct_action_exact_mapping_claim_count": 28,
@@ -261,6 +261,13 @@
       "military_eta_replay_count": 2000,
       "military_eta_mismatch_count": 0,
       "eta_teleport_count": 0,
+      "military_mission_lifecycle_status": "PASS_29_OF_29",
+      "military_mission_lifecycle_bench_status": "PASS_30_OF_30",
+      "military_lifecycle_root_command_count": 1,
+      "military_lifecycle_derived_command_count": 2,
+      "military_mission_execution_count": 1,
+      "military_withdrawal_intent_count": 1,
+      "military_lifecycle_replay_mismatch_count": 0,
       "production_human_play": "UNVERIFIED",
       "certification": {
         "CATALOG_VALID": true,
@@ -277,7 +284,7 @@
         "ALPHA07_CERTIFIED": false
       },
       "per_card_green_claimed": false,
-      "honesty_note": "All twenty-eight records have exact isolated Profile and ETA binding evidence. Twelve combat profiles remain inherited from V075, twenty-eight speeds and sixteen complete Profiles are explicit reversible V076 playtest authoring; no production or human pass is claimed."
+      "honesty_note": "All twenty-eight records have exact isolated Profile, ETA, and tick-driven arrive-execute-once-withdraw lifecycle evidence. Twelve combat profiles remain inherited from V075, twenty-eight speeds and sixteen complete Profiles are explicit reversible V076 playtest authoring; typed damage-intent production sinks and human play remain unverified."
     },
     {
       "category_id": "organization",
@@ -319,13 +326,13 @@
   },
   "hard_blocks": [
     "32 monster records require exact V076 mapping evidence",
-    "28 exact-mapped military records still require tick-driven mission lifecycle, production composition, and human certification",
+    "28 exact-mapped military records still require typed damage-intent sink production composition and human certification",
     "132 records retain effect-review-pending status",
     "all 348 records retain catalog_ready_runtime_wiring_pending metadata",
     "final public/private per-card classification is not proven",
     "final atomic asset owner migration is not proven",
     "the focused current-head Crosswalk suite ran, but unrelated full-catalog production certification was intentionally not run"
   ],
-  "result": "GO_FOR_ISOLATED_MILITARY_PROFILE_CROSSWALK_ETA_ONLY",
+  "result": "GO_FOR_ISOLATED_MILITARY_PROFILE_CROSSWALK_ETA_LIFECYCLE_ONLY",
   "production_card_certification_complete": false
 }

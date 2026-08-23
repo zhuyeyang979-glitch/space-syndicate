@@ -5,7 +5,7 @@ schema_version: space_syndicate.v076.owner_reuse_map.v1
 registry_id: V076_OWNER_REUSE_MAP
 
 This map enforces one Owner per domain at candidate head
-`d134d8ab933d829c42f3a5d57b44f852b8c1d2c9`. Consumers may adapt data or
+`9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6`. Consumers may adapt data or
 contracts, but they may not inherit authority by association.
 
 | Domain | Unique Owner | Reused source | Disposition | Consumer boundary |
@@ -23,8 +23,9 @@ contracts, but they may not inherit authority by association.
 | Military Profile authoring | `V076MilitaryUnitProfileAuthority` | V06 source identity/cost + twelve frozen V075 combat Profiles + V075 mission contract | `ADOPT_AS_OWNER` | One data authority owns 28 explicit Profiles: twelve inherited combat bindings, twenty-eight new speeds, and sixteen complete reversible V076 playtest Profiles. `V076MilitaryUnitProfileCatalogV1` is its read-only Adapter, not a card catalog. |
 | Military card Crosswalk | `V076PrivateDirectActionInputOwnerV1` (unchanged) | `CardRuntimeCatalogV06Resource` + `V076MilitaryUnitProfileAuthority` + V075 mission contract | `ADAPT_AS_CONSUMER` | `V076MilitaryCardCrosswalkV1` is one read-only Adapter: 28 identities close, 28 exact-map, and 0 remain `REAUTHOR_REQUIRED`. It owns no source definition, numeric authoring, input ledger, movement, unit state, asset quantity, or presentation. |
 | Military physical ETA | `V076MilitaryPhysicalEtaOwnerV1` | Profile-authored speed + canonical `V076SharedHalfEdgePartitionV1` geodesic distance through the existing integer metric adapter | `ADOPT_AS_OWNER` | Owns only integer distance plus speed to ETA ticks and a canonical receipt. It owns no tick, replay, map/topology/path, unit state, asset quantity, card catalog, authorization, attack, or presentation. |
+| Military mission lifecycle phase ledger | `V076PrivateDirectActionInputOwnerV1` through registered `V076PrivateDirectActionReducerV1` | V076 Kernel derived-command ABI + Profile Authority + Physical ETA + V075 locked mission/withdrawal contracts | `ADAPT_AS_CONSUMER` | Records `ARRIVED`, `EXECUTED_ONCE`, and `WITHDRAWAL_READY` under the existing private-input Owner. Kernel alone assigns ticks/sequences and derives execute/withdraw commands; Profile owns combat values; existing unit/asset Owners alone settle quantity. No second lifecycle Owner or per-tick position state exists. |
 | Current six-color asset quantity | `PlayerManaRuntimeController` | Current production descendant | `ADAPT_AS_CONSUMER` | Stage 4 may use reservation/settlement APIs only; it may not copy balances or create an asset ledger. |
-| Current military unit state | `MilitaryRuntimeController` | Current production descendant + V075 mission-core contract | `ADAPT_AS_CONSUMER` | Stage 4 delegates `ASSAULT_REGION` or `ASSAULT_MONSTER` once, follows a physical geodesic ETA, then withdraws. `GUARD`, `PROTECT`, teleport, retarget, and persistent commands are forbidden. |
+| Current military unit state | `MilitaryRuntimeController` | Current production descendant + V075 mission-core contract | `ADAPT_AS_CONSUMER` | Stage 4 delegates `ASSAULT_REGION` or `ASSAULT_MONSTER` once, stays present through arrival/execution, and is removed exactly once only after the reducer emits `WITHDRAWAL_READY`. The reducer owns no unit position or quantity. `GUARD`, `PROTECT`, teleport, retarget, and persistent commands are forbidden. |
 | Codex/PlayerFace presentation | `CardCodexPublicSourceService` | PR #66 current descendant | `ADOPT_AS_OWNER` | DTO/presentation aliases cannot become rules. |
 | V07 track/DBG/assets/solar concepts | Their current domain descendants, behind V076 reducers | PR #79 | `ADAPT_AS_CONSUMER` | Requires V076 ABI/replay/RNG proof; no new public batch or second asset Owner. |
 | Pure semantic adversarial patterns | V076 focused tests | PR #64 | `REUSE_AS_TEST` | Metadata registry stays non-executing. |
@@ -54,7 +55,8 @@ Profiles, speed bindings, missions, costs, and lifecycle declarations close.
 This does not certify production composition or human play.
 
 Stage 4 evidence is bound to implementation tree
-`fd6678421967af06914e2a08e1db84ac213d6294`: the private Direct Action,
-Profile, and ETA domains each have one Owner, no supersession, no second
-Kernel/topology/catalog/asset/military Owner, and no production cutover. The
-tick-driven arrive/execute-once/withdraw lifecycle remains the next task.
+`07b967e89a3edb362dad1ee06df8a84077dc5e24`: the private Direct Action,
+Profile, and ETA domains each have one Owner; the registered reducer adds one
+three-phase ledger and two Kernel-derived continuations without supersession or
+a second Kernel/topology/catalog/asset/military Owner. Production typed damage
+sink composition remains pending.

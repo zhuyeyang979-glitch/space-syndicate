@@ -4,8 +4,8 @@
   "recorded_on": "2026-08-23",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
-    "tree_sha": "fd6678421967af06914e2a08e1db84ac213d6294",
+    "head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
+    "tree_sha": "07b967e89a3edb362dad1ee06df8a84077dc5e24",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
@@ -14,7 +14,7 @@
     "historical_reuse": "ACTIVE",
     "change_class": "CROSS_DOMAIN_INTEGRATION",
     "full_reproof_performed": false,
-    "godot_execution_count": 11,
+    "godot_execution_count": 25,
     "production_composition_changed": false
   },
   "status_vocabulary": [
@@ -301,6 +301,97 @@
         "alpha07_per_card_certification",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
+      "tree_sha": "07b967e89a3edb362dad1ee06df8a84077dc5e24",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Completes the already-green STEP10 isolated mission lifecycle inside the registered private Direct Action reducer without adding a Golden step, a second Owner, production composition, or human evidence.",
+      "golden_step_ids": [
+        "STEP10"
+      ],
+      "current_owner": "V076PrivateDirectActionInputOwnerV1",
+      "current_reducer": "V076PrivateDirectActionReducerV1",
+      "evidence": [
+        {
+          "evidence_id": "stage4-military-mission-lifecycle-reducer",
+          "result": "PASS",
+          "checks": "29/29",
+          "phases": [
+            "ARRIVED",
+            "EXECUTED_ONCE",
+            "WITHDRAWAL_READY"
+          ],
+          "zero_distance_eta_ticks": 0,
+          "zero_distance_dispatch_delay_ticks": 1,
+          "root_command_count": 1,
+          "derived_command_count": 2,
+          "mission_execution_count": 1,
+          "withdrawal_intent_count": 1,
+          "same_tick_order_mismatch_count": 0,
+          "replay_mismatch_count": 0,
+          "tampered_route_eta_profile_acceptance_count": 0,
+          "forged_derived_root_acceptance_count": 0
+        },
+        {
+          "evidence_id": "stage4-lifecycle-private-action-integration",
+          "result": "PASS",
+          "owner_checks": "7/7",
+          "bench_checks": "30/30",
+          "eta_ticks": 5,
+          "arrival_tick": 5,
+          "execution_tick": 6,
+          "withdrawal_ready_tick": 7,
+          "kernel_root_command_count": 1,
+          "kernel_derived_command_count": 2,
+          "kernel_execution_count": 3,
+          "mission_receipt_fingerprint": "65d8703cd8860baecff210f1bbbb4d7dc139ba7f4c0623c813ec8385710fde8f",
+          "asset_consumption_count": 1,
+          "military_unit_withdrawal_count": 1,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0
+        },
+        {
+          "evidence_id": "stage4-lifecycle-inherited-sentinels",
+          "result": "PASS",
+          "profile_checks": "59/59",
+          "crosswalk_checks": "52/52",
+          "eta_checks": "48/48",
+          "eta_seed_count": 1000,
+          "eta_replay_count": 2000,
+          "eta_mismatch_count": 0,
+          "eta_teleport_count": 0,
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "v075_military_contract_test_count": 4,
+          "gate_selftest_checks": "114/114"
+        },
+        {
+          "evidence_id": "stage4-lifecycle-godot-mcp-isolated-bench",
+          "result": "PASS",
+          "scene": "res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn",
+          "evidence_scope": "isolated_diagnostic_only",
+          "changed_file_warning_count": 0,
+          "hard_error_count": 0,
+          "inherited_warning_count_ignored": true,
+          "stop_result": "Godot project stopped",
+          "scoped_godot_process_count_after_stop": 0,
+          "production_green": false,
+          "human_green": false
+        }
+      ],
+      "not_claimed": [
+        "per_tick_unit_position_state",
+        "production_damage_sink_composition",
+        "production_composition_cutover",
+        "human_playtest_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
@@ -308,7 +399,7 @@
     "test_bytes_changed_after_stage3": true,
     "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "Only the Stage 4 cross-domain delta and its declared inherited sentinels were revalidated; no full-world reproof was run or implied."
+    "current_claim": "Only the Stage 4 tick-driven mission lifecycle reducer delta and its declared inherited sentinels were revalidated; no full-world reproof was run or implied."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -325,9 +416,9 @@
     "golden_production_green_count": 0,
     "golden_human_green_count": 0,
     "production_cutover_status": false,
-    "latest_completed_stage": "V076_STAGE4_MILITARY_AUTHORING_GAP_CLOSURE_AND_PHYSICAL_ETA_SLICE",
-    "latest_completed_stage_head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
-    "next_stage": "V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW",
+    "latest_completed_stage": "V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW",
+    "latest_completed_stage_head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
+    "next_stage": "V076_STAGE4_MILITARY_TYPED_DAMAGE_INTENT_SINK_INTEGRATION",
     "v075_pr90_dependency_boundary": "REFERENCE_ONLY_EXACT_BASE_NO_V076_CUTOVER"
   },
   "canonical_change_scope": {
@@ -399,7 +490,7 @@
   "point_inertia_gate_queued": true,
   "current_task_interrupted_by_gate": false,
   "current_task_result_preserved": true,
-  "product_development_resume_target": "V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW",
+  "product_development_resume_target": "V076_STAGE4_MILITARY_TYPED_DAMAGE_INTENT_SINK_INTEGRATION",
   "required_check_name": "V076 Reuse and Point-Inertia Gate",
   "agent_merge_requires_reuse_gate": true
 }

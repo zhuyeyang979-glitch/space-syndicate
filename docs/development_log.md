@@ -9552,3 +9552,47 @@ deleted. Evidence and the remaining action inventory are recorded in
   isolated-green step; production/human green, Alpha 0.7 certified cards,
   `main.tscn` changes, and full-world reproof remain zero/false. The next atomic
   task is `V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW`.
+
+## 2026-08-23 — V0.7.6 Stage 4 military arrive-execute-withdraw lifecycle
+
+- Extended the already-registered `V076PrivateDirectActionReducerV1` under the
+  existing unique private-input Owner; no new Domain or Owner was created. The
+  reducer records `ARRIVED` at the exact physical ETA tick, asks the Kernel to
+  derive one `EXECUTED_ONCE` command for the next tick, and derives one
+  `WITHDRAWAL_READY` command for the following tick. Execute and withdraw command
+  types are derived-only, so a caller cannot submit them as a second root.
+- The Profile Authority now supplies the region and monster combat values used
+  to build the locked V0.7.5 mission; the existing card catalog continues to own
+  card definition/rank and asset cost. The reducer revalidates the canonical
+  route, ETA receipt, Profile identity/fingerprint/speed, mission kind, and
+  Profile combat binding before recording arrival. It resolves the locked V0.7.5
+  assault exactly once and validates its typed withdrawal intent on the third
+  lifecycle tick.
+- Authority boundaries remain split: Kernel owns tick, Authority Sequence,
+  derived lineage, stable same-tick order, and replay; half-edge/geodesic owns
+  route/distance; Profile owns speed/combat; ETA owns only distance plus speed to
+  ticks; `PlayerManaRuntimeController` consumes the reservation once; and
+  `MilitaryRuntimeController` removes the unit once after withdrawal readiness.
+  The reducer owns no per-tick position, unit quantity, asset quantity, target
+  state, card catalog, presentation, RNG, or teleport path.
+- Focused lifecycle verification passed `29/29`, including zero-distance
+  `eta_ticks=0` with one-tick Kernel dispatch, positive-distance no-early-effect,
+  exact phase ticks, same-tick stable ordering, terminal no-repeat behavior,
+  root-only replay, route/ETA/Profile/Guard tamper rejection, and derived-root
+  injection rejection. The existing STEP10 Bench passed `30/30` with ETA 5,
+  arrival 5, execution 6, withdrawal-ready 7, one root, two derived commands,
+  one Profile-authored attack, one asset consumption, and one unit withdrawal.
+- Inherited sentinels passed: Owner `7/7`, Profile `59/59`, Crosswalk `52/52`,
+  ETA `48/48` with 1,000 seeds / 2,000 replays / 0 mismatch / 0 teleport, Kernel
+  `74/74`, half-edge `90/90`, Monster `47/47`, four V0.7.5 military contracts,
+  and Gate self-test `114/114`. Godot MCP ran
+  `res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn` to PASS;
+  changed lifecycle files emitted zero warnings, hard errors were zero, the
+  project stopped cleanly, and scoped Godot processes after stop were zero.
+- Bound product evidence to implementation commit
+  `9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6` and tree
+  `07b967e89a3edb362dad1ee06df8a84077dc5e24`. Golden STEP10 remains the same
+  fifth isolated-green step; production/human green, Alpha 0.7 certified cards,
+  public batch, shared sushi-track resolution, `main.tscn` changes, and
+  full-world reproof remain zero/false. Production typed damage-intent sink
+  integration remains the next atomic boundary.

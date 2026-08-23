@@ -2,8 +2,8 @@
   "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
   "audit_id": "v076-duplicate-implementation-audit-20260821",
   "recorded_on": "2026-08-23",
-  "candidate_head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
-  "candidate_tree_sha": "fd6678421967af06914e2a08e1db84ac213d6294",
+  "candidate_head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
+  "candidate_tree_sha": "07b967e89a3edb362dad1ee06df8a84077dc5e24",
   "change_class": "CROSS_DOMAIN_INTEGRATION",
   "method": "Read-only current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection; no Godot execution and no whole-branch merge.",
   "scan_scope": [
@@ -207,6 +207,8 @@
     "second V076 military Profile authority or authored speed table",
     "second geodesic pathfinder or copied half-edge topology for military ETA",
     "military ETA Owner acquiring tick, replay, map, route, unit, asset, card, authorization, attack, or presentation authority",
+    "second military mission lifecycle Owner, phase ledger, or non-Kernel tick continuation",
+    "root submission of execute or withdraw commands reserved for Kernel derivation",
     "revived PR70 card batch",
     "PR64 metadata registry promoted to executor",
     "PR65 source authorization port promoted to executor",
@@ -226,7 +228,7 @@
       "status": "UNVERIFIED"
     },
     {
-      "boundary": "tick-driven military arrive-execute-once-withdraw lifecycle and production/human certification",
+      "boundary": "military typed damage-intent sink production composition and human certification",
       "record_count": 28,
       "exact_mapped_count": 28,
       "reauthor_required_count": 0,
@@ -252,6 +254,20 @@
       "profile_authority_count": 1,
       "eta_owner_count": 1,
       "status": "ISOLATED_GREEN_28_OF_28",
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "tick-driven military arrive-execute-once-withdraw lifecycle",
+      "record_count": 28,
+      "lifecycle_owner_count": 1,
+      "root_command_count_per_mission": 1,
+      "derived_command_count_per_mission": 2,
+      "mission_execution_count_per_mission": 1,
+      "withdrawal_intent_count_per_mission": 1,
+      "same_tick_order_mismatch_count": 0,
+      "replay_mismatch_count": 0,
+      "status": "ISOLATED_GREEN",
       "production_green": false,
       "human_green": false
     }
