@@ -3302,6 +3302,20 @@ print('not-json'); raise SystemExit(2)
         or ["HISTORY_CLASSIFICATION_CORRECTION_MUTATED"],
     )
 
+    pending_cutover = _valid_input()
+    pending_cutover.pr_body = (
+        _pr_body(pending_cutover)
+        + "\n\nProduction cutover still requires separate authorization."
+    )
+    pending_cutover_report = gate.validate_model(pending_cutover)
+    append_direct_case(
+        "118",
+        "truthful pending cutover prose is not classified as a positive cutover claim",
+        "PASS",
+        str(pending_cutover_report["status"]),
+        [str(value) for value in pending_cutover_report.get("failures", [])],
+    )
+
     pass_count = sum(result["status"] == "PASS" for result in results)
     case_count = len(results)
     status = (

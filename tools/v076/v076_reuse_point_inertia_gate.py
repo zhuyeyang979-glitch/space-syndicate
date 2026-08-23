@@ -792,6 +792,7 @@ def _has_unqualified_positive_claim(text: str, phrase_pattern: str) -> bool:
         for match in re.finditer(phrase_pattern, line, flags=re.IGNORECASE):
             prefix = line[max(0, match.start() - 24) : match.start()]
             matched = match.group(0)
+            suffix = line[match.end() : match.end() + 72]
             if re.search(
                 r"(?:\b0\b|\bno\b|\bnot\b|\bfalse\b|未|无)\s*$",
                 prefix,
@@ -801,6 +802,14 @@ def _has_unqualified_positive_claim(text: str, phrase_pattern: str) -> bool:
             if re.search(
                 r"(?:未|没有|并非|不是)[^，。;；\n]{0,12}(?:通过|完成|绿)",
                 matched,
+            ):
+                continue
+            if re.search(
+                r"^\s*(?:=|:)?\s*(?:false\b|is\s+not\s+(?:complete|completed|green)\b|"
+                r"remains?\s+(?:pending|unauthorized|unclaimed)\b|"
+                r"still\s+requires?\s+(?:separate\s+)?authorization\b)",
+                suffix,
+                flags=re.IGNORECASE,
             ):
                 continue
             return True
