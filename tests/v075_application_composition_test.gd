@@ -24,7 +24,8 @@ const PRIVATE_SKILL_INTENT_KIND := "combat.monster_private_skill.request"
 const PRIVATE_SKILL_SOURCE_ID := "monster.ui.single_submission.01"
 const PRIVATE_SKILL_DEFINITION_ID := "skill.ui.single_submission.l1"
 const COMBAT_SURFACE_NODE_PATH := (
-	"V075GameScreen/RootMargin/Shell/V075CombatStackHost/"
+	"V075GameScreen/RootMargin/Shell/TableArea/V075RightSidebar/"
+	+ "V075CombatStackHost/"
 	+ "V075CombatOverlay/Margin/Rows/SurfaceHost/CombatSurface"
 )
 const SKILL_DOCK_NODE_PATH := (

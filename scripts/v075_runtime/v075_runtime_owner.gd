@@ -97,6 +97,7 @@ const V075_MONSTER_UPGRADE_COHORT_BUCKET := 0
 const V075_TRACK_REFILL_MODE_ID := "shared_scroll_vacancy"
 const V075_TRACK_SLOW_SUSHI_MOTION := true
 const V075_TRACK_IMMEDIATE_REFILL_ON_ACQUISITION := false
+const PLAYTEST_PACE_MULTIPLIERS := [0, 1, 2, 4]
 const CARD_ACTION_LIFECYCLE_ID := (
 	"v075.combat.queue_resolve_personal_discard"
 )
@@ -254,6 +255,73 @@ var _new_game_cleanup_failure_count := 0
 var _new_game_initialization_attempt_sequence := 0
 var _new_game_publication_stage_authority: Callable = Callable()
 var _new_game_publication_stage_authority_required := false
+var _playtest_pace_multiplier := 2
+
+
+func set_playtest_pace_multiplier(multiplier: int) -> Dictionary:
+	if multiplier not in PLAYTEST_PACE_MULTIPLIERS:
+		return {
+			"accepted": false,
+			"reason_code": "playtest_pace_multiplier_invalid",
+		}
+	_playtest_pace_multiplier = multiplier
+	return {
+		"accepted": true,
+		"reason_code": "playtest_pace_multiplier_applied",
+		"multiplier": _playtest_pace_multiplier,
+	}
+
+
+func playtest_pace_multiplier() -> int:
+	return _playtest_pace_multiplier
+
+
+func human_decision_snapshot() -> Dictionary:
+	var match_started := not _match_id.is_empty()
+	var decision_required := false
+	var reason_code := "no_human_decision"
+	if match_started and _phase == "submission":
+		decision_required = not bool(
+			_locked_by_player.get(_local_player_id, false)
+		)
+		if decision_required:
+			reason_code = "local_submission_decision_required"
+	elif match_started and _phase == "maintenance":
+		decision_required = not bool(
+			_maintenance_done.get(_local_player_id, false)
+		)
+		if decision_required:
+			reason_code = "local_maintenance_decision_required"
+	return {
+		"schema": "V076HumanDecisionPacingSnapshotV1",
+		"match_started": match_started,
+		"phase": _phase,
+		"decision_required": decision_required,
+		"reason_code": reason_code,
+		"terminal": _phase in ["settled", "failed"],
+		"reads_local_decision_state_only": true,
+		"writes_authority": false,
+	}
+
+
+func _process(delta: float) -> void:
+	if _phase in ["idle", "settled", "failed"]:
+		return
+	if _playtest_pace_multiplier == 0:
+		return
+	var scaled_delta := (
+		delta
+		* float(_playtest_pace_multiplier)
+		* (30.0 if _accelerated else 1.0)
+	)
+	_clock_msec += maxi(1, int(round(scaled_delta * 1000.0)))
+	match _phase:
+		"submission":
+			_process_submission()
+		"resolving":
+			resolve_next_action()
+		"maintenance":
+			_process_maintenance()
 
 
 func bind_combat_owner(owner: Node) -> Dictionary:
@@ -4661,6 +4729,9 @@ func debug_snapshot() -> Dictionary:
 	result["ruleset_id"] = V075_RULESET_ID
 	result["constitution_id"] = V075_CONSTITUTION_ID
 	result["current_production_runtime_ruleset"] = V075_RULESET_ID
+	result["playtest_pace_multiplier"] = _playtest_pace_multiplier
+	result["playtest_pace_control_mode_count"] = PLAYTEST_PACE_MULTIPLIERS.size()
+	result["playtest_human_decision"] = human_decision_snapshot()
 	result["combat"] = combat_debug
 	result["facility_effect_integrity"] = facility_integrity
 	result["combat_runtime_owner_count"] = int(

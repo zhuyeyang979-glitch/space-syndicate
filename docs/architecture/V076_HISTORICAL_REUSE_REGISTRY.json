@@ -1762,6 +1762,212 @@
         "why_adapter_is_insufficient": "NOT_APPLICABLE; this component is exactly the existing stateless bootstrap Adapter.",
         "why_new_owner_is_required": "NOT_REQUIRED_EXISTING_V073_OBSERVATION_OWNER_REUSED"
       }
+    },
+    {
+      "component_id": "component.current.v075_sample_game_screen_scene",
+      "class_name": "V075SampleGameScreenScene",
+      "path": "scenes/ui/v075/V075SampleGameScreen.tscn",
+      "domain_id": "current.v075_production_combat_candidate",
+      "component_role": "PRESENTATION",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v075_runtime_owner",
+      "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.v075.combat_candidate",
+        "reuse.v075.production_ai_privacy.current",
+        "reuse.v075.production_victory_audit.current"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v075.combat_candidate",
+        "reuse.pr88.responsive_globe_consumer_patterns",
+        "reuse.v073.human_playtest_instrumentation"
+      ],
+      "new_component_justification": "The existing production Game Screen scene is adapted in place as a single-screen consumer. It owns no gameplay, card catalog, asset quantity, tick, RNG, identity, receipt, or presentation authority and adds no parallel Game Screen.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "PRODUCTION_COMPOSITION",
+      "focused_test_ids": [
+        "v075_sample_game_screen_wrapper_test",
+        "v075_responsive_viewport_matrix_test",
+        "v076_alpha07_human_playability_readiness_test",
+        "visual_snapshot"
+      ],
+      "golden_scenario_steps": ["STEP06", "STEP07", "STEP08"]
+    },
+    {
+      "component_id": "component.current.v075_sample_game_screen",
+      "class_name": "V075SampleGameScreen",
+      "path": "scripts/ui/v075/v075_sample_game_screen.gd",
+      "domain_id": "current.v075_production_combat_candidate",
+      "component_role": "PRESENTATION",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v075_runtime_owner",
+      "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.v075.combat_candidate",
+        "reuse.v075.production_ai_privacy.current",
+        "reuse.v075.production_victory_audit.current"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.v075.combat_candidate",
+        "reuse.pr88.responsive_globe_consumer_patterns",
+        "reuse.v073.human_playtest_instrumentation"
+      ],
+      "new_component_justification": "The existing production wrapper consumes current public and owner-private projections, existing typed target binding, existing acquisition/card/direct-action intents, and the existing pace owner. It mutates only presentation selection state and creates no authority or exact-once ledger.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "PRODUCTION_COMPOSITION",
+      "focused_test_ids": [
+        "v075_sample_game_screen_wrapper_test",
+        "v075_application_composition_test",
+        "v075_responsive_viewport_matrix_test",
+        "v076_alpha07_human_playability_readiness_test"
+      ],
+      "golden_scenario_steps": ["STEP06", "STEP07", "STEP08"]
+    },
+    {
+      "component_id": "component.current.v073_playtest_coach_scene",
+      "class_name": "V073PlaytestCoachMarksScene",
+      "path": "scenes/ui/v073/V073PlaytestCoachMarks.tscn",
+      "domain_id": "future.v076_human_playtest_evidence",
+      "component_role": "PRESENTATION",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v073_playtest_telemetry",
+      "owner_path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": ["reuse.v073.human_playtest_instrumentation"],
+      "reuse_candidates_considered": [
+        "reuse.v073.human_playtest_instrumentation",
+        "reuse.v075.combat_candidate"
+      ],
+      "new_component_justification": "The existing Coach scene is extended in place with one close control. It remains an observation and presentation consumer and adds no tutorial Owner or gameplay mutation path.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "PRODUCTION_COMPOSITION",
+      "focused_test_ids": [
+        "v073_coach_safe_placement_test",
+        "v076_alpha07_human_playability_readiness_test"
+      ],
+      "golden_scenario_steps": ["STEP01", "STEP06"]
+    },
+    {
+      "component_id": "component.current.v073_playtest_coach",
+      "class_name": "V073PlaytestCoachMarks",
+      "path": "scripts/ui/v073/v073_playtest_coach_marks.gd",
+      "domain_id": "future.v076_human_playtest_evidence",
+      "component_role": "PRESENTATION",
+      "production_reachable": true,
+      "writes_authority": false,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v073_playtest_telemetry",
+      "owner_path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": ["reuse.v073.human_playtest_instrumentation"],
+      "reuse_candidates_considered": [
+        "reuse.v073.human_playtest_instrumentation",
+        "reuse.v075.combat_candidate"
+      ],
+      "new_component_justification": "The existing Coach script retains one presentation-only placement policy, now keyed only by step, viewport, and real target geometry. Pointer movement never owns placement or gameplay state.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "PRODUCTION_COMPOSITION",
+      "focused_test_ids": [
+        "v073_coach_safe_placement_test",
+        "v076_alpha07_human_playability_readiness_test"
+      ],
+      "golden_scenario_steps": ["STEP01", "STEP06"]
+    },
+    {
+      "component_id": "component.current.v07_dbg_deck_core",
+      "class_name": "V07DbgDeckCore",
+      "path": "scripts/v07_semantic/v07_dbg_deck_core.gd",
+      "domain_id": "current.v075_production_combat_candidate",
+      "component_role": "REDUCER",
+      "production_reachable": true,
+      "writes_authority": true,
+      "reads_authority": true,
+      "owns_rng": false,
+      "owns_tick": false,
+      "owns_save": false,
+      "owns_replay": false,
+      "owns_identity": false,
+      "owns_presentation": false,
+      "owner_component_id": "component.current.v075_runtime_owner",
+      "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "reuse_disposition": "ADAPT_AS_CONSUMER",
+      "reuse_source_ids": [
+        "reuse.pr79.v07_domain_cores",
+        "reuse.v075.combat_candidate"
+      ],
+      "reuse_candidates_considered": [
+        "reuse.pr79.v07_domain_cores",
+        "reuse.v075.combat_candidate",
+        "reuse.current.card_runtime_catalog"
+      ],
+      "new_component_justification": "The existing DBG reducer accepts the already-authoritative shared-scroll-vacancy receipt shape while preserving its exact destination, identity, revision, and receipt fingerprint checks. It adds no deck, hand, supply, card catalog, RNG, or asset Owner.",
+      "supersedes": [],
+      "superseded_by": [],
+      "change_class": "PRODUCTION_COMPOSITION",
+      "focused_test_ids": [
+        "v07_dbg_deck_core_test",
+        "v075_runtime_acquisition_trace_test",
+        "v075_authoritative_card_identity_lifecycle_binding_test",
+        "v076_alpha07_human_playability_readiness_test"
+      ],
+      "golden_scenario_steps": ["STEP06", "STEP07"],
+      "reuse_scan": {
+        "reuse_registry_search": true,
+        "class_name_search": true,
+        "semantic_signature_search": true,
+        "owner_map_search": true,
+        "state_write_surface_search": true,
+        "rng_owner_search": true,
+        "save_owner_search": true,
+        "replay_owner_search": true,
+        "signal_and_receipt_search": true,
+        "reuse_candidate_count": 3,
+        "reuse_candidate_ids": [
+          "reuse.pr79.v07_domain_cores",
+          "reuse.v075.combat_candidate",
+          "reuse.current.card_runtime_catalog"
+        ],
+        "selected_reuse_disposition": "ADAPT_AS_CONSUMER",
+        "why_existing_owner_cannot_be_extended": "NOT_APPLICABLE_EXTENDED_EXISTING_V07_DBG_REDUCER",
+        "why_adapter_is_insufficient": "A stateless Adapter cannot reconcile the existing authoritative draw, hand, discard, revision, and exact-receipt ledger while preserving card-instance lifecycle identity.",
+        "why_new_owner_is_required": "NOT_REQUIRED_EXISTING_V07_DBG_REDUCER_EXTENDED_UNDER_V075_RUNTIME_OWNER"
+      }
     }
   ],
   "legacy_debt_grandfather_paths": [

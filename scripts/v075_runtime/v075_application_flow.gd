@@ -8,6 +8,7 @@ signal final_settlement_presented(settlement: Dictionary)
 signal runtime_fault_presented(receipt: Dictionary)
 signal public_resolution_ready(receipt: Dictionary)
 signal playtest_observation_ready(receipt: Dictionary)
+signal pacing_state_changed(state: Dictionary)
 
 const RULESET_ID := "v0.7.5"
 const SAMPLE_MODE_ID := "NEW_V075_GAME"
@@ -18,6 +19,9 @@ const V076_PRODUCTION_MILITARY_INTENT_KIND := "combat.military_mission.select"
 const V076_PRODUCTION_MILITARY_RECEIPT_SCHEMA := (
 	"V076OwnerPrivateMilitaryApplicationReceiptV1"
 )
+const PLAYTEST_PACE_MULTIPLIERS := [0, 1, 2, 4]
+const DEFAULT_PLAYTEST_PACE_MULTIPLIER := 2
+const FAST_FORWARD_PLAYTEST_PACE_MULTIPLIER := 4
 const ProfileCatalog := preload(
 	"res://scripts/v076/military/v076_military_unit_profile_catalog_v1.gd"
 )
@@ -58,6 +62,13 @@ var _v076_production_configuration_failure_count := 0
 var _v076_private_military_receipt_count := 0
 var _v076_monster_production_ready := false
 var _v076_monster_production_drain_failure_count := 0
+var _playtest_pace_multiplier := DEFAULT_PLAYTEST_PACE_MULTIPLIER
+var _effective_playtest_pace_multiplier := DEFAULT_PLAYTEST_PACE_MULTIPLIER
+var _playtest_pace_change_count := 0
+var _fast_forward_active := false
+var _fast_forward_request_count := 0
+var _fast_forward_decision_stop_count := 0
+var _last_human_decision_signature := ""
 
 
 func _ready() -> void:
@@ -114,6 +125,13 @@ func _ready() -> void:
 	_runtime_owner.playtest_observation_ready.connect(
 		_on_playtest_observation_ready
 	)
+	var pacing_binding := _runtime_owner.call(
+		"set_playtest_pace_multiplier",
+		_effective_playtest_pace_multiplier
+	) as Dictionary
+	if not bool(pacing_binding.get("accepted", false)):
+		push_error("V075 runtime pacing binding failed")
+		return
 	_composition_ready = true
 
 
@@ -193,6 +211,12 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 				"finish_maintenance",
 				actor_id
 			) as Dictionary
+		"ui.pacing.set":
+			result = _set_playtest_pacing(
+				int(parameters.get("multiplier", -1))
+			)
+		"ui.pacing.fast_forward_next_decision":
+			result = _start_fast_forward_to_next_decision(parameters)
 		"sample.accelerate":
 			result = _runtime_owner.call(
 				"run_accelerated_until_settled",
@@ -312,6 +336,163 @@ func issue_intent(intent_kind: String, parameters: Dictionary = {}) -> Dictionar
 	}
 
 
+func pacing_snapshot() -> Dictionary:
+	var human_decision := _human_decision_snapshot()
+	return {
+		"schema": "V076PlaytestPaceStateV1",
+		"multiplier": _playtest_pace_multiplier,
+		"effective_multiplier": _effective_playtest_pace_multiplier,
+		"fast_forward_active": _fast_forward_active,
+		"fast_forward_available": (
+			_composition_ready
+			and bool(human_decision.get("match_started", false))
+			and not bool(human_decision.get("decision_required", false))
+			and not bool(human_decision.get("terminal", false))
+		),
+		"human_decision_required": bool(
+			human_decision.get("decision_required", false)
+		),
+		"human_decision_reason_code": str(
+			human_decision.get("reason_code", "no_human_decision")
+		),
+		"mode_count": PLAYTEST_PACE_MULTIPLIERS.size(),
+		"logical_kernel_tick_hz": 20,
+		"changes_authority_tick_order": false,
+		"changes_rng_order": false,
+		"changes_rule_duration_ticks": false,
+		"injects_authority_state": false,
+		"simulation_clock_owner_count_delta": 0,
+	}
+
+
+func _set_playtest_pacing(multiplier: int) -> Dictionary:
+	if multiplier not in PLAYTEST_PACE_MULTIPLIERS:
+		return _reject_action_result("playtest_pace_multiplier_invalid")
+	_fast_forward_active = false
+	var runtime_result := _runtime_owner.call(
+		"set_playtest_pace_multiplier",
+		multiplier
+	) as Dictionary
+	if not bool(runtime_result.get("accepted", false)):
+		return _reject_action_result(str(runtime_result.get(
+			"reason_code",
+			"runtime_playtest_pace_rejected"
+		)))
+	_playtest_pace_multiplier = multiplier
+	_effective_playtest_pace_multiplier = multiplier
+	_playtest_pace_change_count += 1
+	var state := pacing_snapshot()
+	pacing_state_changed.emit(state.duplicate(true))
+	return {
+		"accepted": true,
+		"reason_code": "playtest_pace_applied",
+		"pacing": state,
+	}
+
+
+func _start_fast_forward_to_next_decision(
+	parameters: Dictionary
+) -> Dictionary:
+	for field_name in [
+		"human_confirmation_open",
+		"purchase_confirmation_open",
+		"target_selection_open",
+		"coach_open",
+		"combat_intervention_open",
+	]:
+		if (
+			not bool(parameters.get("ui_gate_attested", false))
+			or bool(parameters.get(field_name, true))
+		):
+			return _reject_action_result(
+				"fast_forward_human_surface_open"
+			)
+	var human_decision := _human_decision_snapshot()
+	if not bool(human_decision.get("match_started", false)):
+		return _reject_action_result("fast_forward_match_not_started")
+	if bool(human_decision.get("terminal", false)):
+		return _reject_action_result("fast_forward_match_terminal")
+	if bool(human_decision.get("decision_required", false)):
+		return _reject_action_result("fast_forward_human_decision_required")
+	if _fast_forward_active:
+		return {
+			"accepted": true,
+			"reason_code": "fast_forward_already_active",
+			"pacing": pacing_snapshot(),
+		}
+	var runtime_result := _runtime_owner.call(
+		"set_playtest_pace_multiplier",
+		FAST_FORWARD_PLAYTEST_PACE_MULTIPLIER
+	) as Dictionary
+	if not bool(runtime_result.get("accepted", false)):
+		return _reject_action_result(str(runtime_result.get(
+			"reason_code",
+			"runtime_fast_forward_rejected"
+		)))
+	_fast_forward_active = true
+	_effective_playtest_pace_multiplier = FAST_FORWARD_PLAYTEST_PACE_MULTIPLIER
+	_fast_forward_request_count += 1
+	var state := pacing_snapshot()
+	pacing_state_changed.emit(state.duplicate(true))
+	return {
+		"accepted": true,
+		"reason_code": "fast_forward_to_next_decision_started",
+		"pacing": state,
+	}
+
+
+func _human_decision_snapshot() -> Dictionary:
+	if (
+		_runtime_owner == null
+		or not is_instance_valid(_runtime_owner)
+		or not _runtime_owner.has_method("human_decision_snapshot")
+	):
+		return {
+			"match_started": false,
+			"decision_required": false,
+			"terminal": false,
+			"reason_code": "human_decision_source_unavailable",
+		}
+	return _runtime_owner.call("human_decision_snapshot") as Dictionary
+
+
+func _human_decision_signature(snapshot: Dictionary) -> String:
+	return "%s|%s|%s|%s" % [
+		str(snapshot.get("match_started", false)),
+		str(snapshot.get("phase", "idle")),
+		str(snapshot.get("decision_required", false)),
+		str(snapshot.get("terminal", false)),
+	]
+
+
+func _publish_pacing_state_if_decision_changed() -> void:
+	var decision := _human_decision_snapshot()
+	var signature := _human_decision_signature(decision)
+	if signature == _last_human_decision_signature:
+		return
+	_last_human_decision_signature = signature
+	if _fast_forward_active and bool(decision.get("decision_required", false)):
+		_stop_fast_forward_for_human_decision()
+		return
+	pacing_state_changed.emit(pacing_snapshot())
+
+
+func _stop_fast_forward_for_human_decision() -> void:
+	if not _fast_forward_active:
+		return
+	_fast_forward_active = false
+	_effective_playtest_pace_multiplier = _playtest_pace_multiplier
+	var restored := _runtime_owner.call(
+		"set_playtest_pace_multiplier",
+		_playtest_pace_multiplier
+	) as Dictionary
+	if not bool(restored.get("accepted", false)):
+		push_error("V075 runtime pacing restore failed")
+		return
+	_fast_forward_decision_stop_count += 1
+	pacing_state_changed.emit(pacing_snapshot())
+
+
 func _ensure_v076_production_configuration(seed_value: int) -> Dictionary:
 	if not _v076_production_required:
 		return {"accepted": true, "reason_code": "v076_production_not_present"}
@@ -377,9 +558,19 @@ func _ensure_v076_production_configuration(seed_value: int) -> Dictionary:
 
 
 func _process(delta: float) -> void:
+	if (
+		_fast_forward_active
+		and bool(_human_decision_snapshot().get("decision_required", false))
+	):
+		_stop_fast_forward_for_human_decision()
 	if not _v076_production_ready or not _v076_monster_production_ready:
 		return
-	var elapsed_us := maxi(0, int(round(delta * 1_000_000.0)))
+	var elapsed_us := maxi(
+		0,
+		int(round(
+			delta * float(_effective_playtest_pace_multiplier) * 1_000_000.0
+		))
+	)
 	if elapsed_us <= 0:
 		return
 	var advanced := _v076_kernel.call(
@@ -536,6 +727,10 @@ func debug_snapshot() -> Dictionary:
 		),
 		"v076_public_batch_entry_count": 0,
 		"v076_shared_sushi_track_resolution_count": 0,
+		"playtest_pacing": pacing_snapshot(),
+		"playtest_pace_change_count": _playtest_pace_change_count,
+		"fast_forward_request_count": _fast_forward_request_count,
+		"fast_forward_decision_stop_count": _fast_forward_decision_stop_count,
 		"save_adapter_connected": false,
 		"save_resume_enabled": false,
 		"cutover_domain_count": CUTOVER_DOMAIN_COUNT,
@@ -1177,6 +1372,7 @@ func _reject(
 
 func _on_runtime_state_changed(snapshot: Dictionary) -> void:
 	projection_changed.emit(snapshot.duplicate(true))
+	_publish_pacing_state_if_decision_changed()
 
 
 func _on_final_settlement_committed(settlement: Dictionary) -> void:
@@ -1193,3 +1389,8 @@ func _on_public_resolution_presented(receipt: Dictionary) -> void:
 
 func _on_playtest_observation_ready(receipt: Dictionary) -> void:
 	playtest_observation_ready.emit(receipt.duplicate(true))
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(_runtime_owner):
+		_runtime_owner.call("set_playtest_pace_multiplier", 1)

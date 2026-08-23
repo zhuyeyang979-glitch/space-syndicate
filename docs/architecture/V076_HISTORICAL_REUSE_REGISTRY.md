@@ -7,7 +7,7 @@ This registry binds the clean Crosswalk implementation candidate
 run.
 
 Schema v2 keeps this file as the single reuse source and adds one
-`component_inventory`: 20 lifecycle-classified domains and 32 registered
+`component_inventory`: 20 lifecycle-classified domains and 44 registered
 components. Every active domain has exactly one production Owner. Every new or
 changed authority writer binds a completed reuse scan, candidate count,
 candidate IDs, disposition, and the reasons that extension or adaptation is

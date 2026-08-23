@@ -140,7 +140,7 @@ func _run() -> void:
 	var planet_map_source := _source("res://scripts/ui/planet_map_view.gd")
 	var district_node_source := _source("res://scripts/ui/map/planet_district_node.gd")
 	var district_info_source := _source("res://scripts/ui/district_info_panel.gd")
-	_expect(_contains_all(v075_screen_scene_source, ["COMBAT · V0.7.5", "等待战斗投影", "收起战斗投影", 'text = "收起"']), "V075SampleGameScreen gives the production combat overlay readable player-facing defaults")
+	_expect(_contains_all(v075_screen_scene_source, ["DIRECT ACTION", "等待战斗投影", "收起战斗投影", 'text = "收起"', "公开行动 ACTION FEED", "当前行动 · 请选择卡牌", 'text = "PAUSE"']), "V075SampleGameScreen gives the single-screen action, feed, and pacing surfaces readable player-facing defaults")
 	_expect(_contains_all(v075_combat_surface_scene_text, ["怪兽", "本批可用", "公开战斗回执"]), "V075CombatPlayerSurface gives public monster and combat receipt regions readable defaults")
 	_expect(_contains_all(v075_private_skill_scene_text, ["怪兽 · 私密技能", "仅自己可见", "当前没有可显示的怪兽技能"]), "V075 private skill dock states its owner-only privacy and empty state")
 	_expect(_contains_all(v075_military_scene_text, ["军队任务", "攻击后撤离", "地区目标", "怪兽目标", "攻击地区", "攻击怪兽"]), "V075 military mission panel exposes readable target and action copy")

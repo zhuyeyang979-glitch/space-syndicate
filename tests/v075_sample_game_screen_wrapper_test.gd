@@ -175,6 +175,17 @@ func _run() -> void:
 	)
 	(first_mode_row.get_child(1) as Button).pressed.emit()
 	await process_frame
+	var current_action_confirm := screen.find_child(
+		"CurrentActionConfirmButton",
+		true,
+		false
+	) as Button
+	_expect(
+		current_action_confirm != null and not current_action_confirm.disabled,
+		"monster mode selection exposes an enabled fixed confirmation button"
+	)
+	current_action_confirm.pressed.emit()
+	await process_frame
 	var monster_queue_intent: Dictionary = {}
 	if not emitted.is_empty():
 		monster_queue_intent = emitted.back().duplicate(true)
@@ -187,9 +198,10 @@ func _run() -> void:
 		"monster mode uses the normal card queue intent without map resolution"
 	)
 
-	var surface := screen.get_node(
-		"RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/"
-		+ "Margin/Rows/SurfaceHost/CombatSurface"
+	var surface := screen.find_child(
+		"CombatSurface",
+		true,
+		false
 	) as V075CombatPlayerSurface
 	var map_view := screen.get_node(
 		"RootMargin/Shell/TableArea/PlanetBoard/PlanetRows/"
@@ -318,8 +330,8 @@ func _run() -> void:
 			"combat.mission.select":
 				military_intent_count += 1
 				_expect(
-					str(intent.get("combat_channel", "")) == "public_batch",
-					"military intent remains an ordinary batch action"
+					str(intent.get("combat_channel", "")) == "private_direct_action",
+					"military intent uses the V076 private direct-action channel"
 				)
 				_expect(
 					str((intent.get("parameters", {}) as Dictionary).get(

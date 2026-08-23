@@ -377,6 +377,14 @@ const TRACK_ACQUISITION_PUBLIC_FACT_FIELDS := [
 	"replacement_count",
 	"track_revision",
 ]
+const TRACK_SHARED_SCROLL_ACQUISITION_PUBLIC_FACT_FIELDS := [
+	"track_item_removed",
+	"replacement_count",
+	"vacancy_count",
+	"vacated_path_position",
+	"refill_mode_id",
+	"track_revision",
+]
 const BOUND_SOURCE_STATE_FIELDS := [
 	"schema_version",
 	"contract_id",
@@ -2547,10 +2555,26 @@ static func _track_claim_receipt_reason(receipt: Dictionary) -> String:
 			or inventory_commit.get("destination_zone") != "commodity_inventory":
 		return "track_claim_capability_binding_invalid"
 	var public_facts := receipt.get("public_facts", {}) as Dictionary
-	if not _exact_fields(public_facts, TRACK_ACQUISITION_PUBLIC_FACT_FIELDS) \
-			or public_facts.get("track_item_removed") != true \
-			or public_facts.get("replacement_count") != 1 \
-			or not _positive_int(public_facts.get("track_revision")):
+	var legacy_public_facts_valid: bool = (
+		_exact_fields(public_facts, TRACK_ACQUISITION_PUBLIC_FACT_FIELDS)
+		and public_facts.get("track_item_removed") == true
+		and public_facts.get("replacement_count") == 1
+		and _positive_int(public_facts.get("track_revision"))
+	)
+	var shared_scroll_public_facts_valid: bool = (
+		_exact_fields(
+			public_facts,
+			TRACK_SHARED_SCROLL_ACQUISITION_PUBLIC_FACT_FIELDS
+		)
+		and public_facts.get("track_item_removed") == true
+		and public_facts.get("replacement_count") == 0
+		and _positive_int(public_facts.get("vacancy_count"))
+		and _nonnegative_int(public_facts.get("vacated_path_position"))
+		and str(public_facts.get("refill_mode_id", ""))
+			== "shared_scroll_vacancy"
+		and _positive_int(public_facts.get("track_revision"))
+	)
+	if not legacy_public_facts_valid and not shared_scroll_public_facts_valid:
 		return "track_claim_receipt_public_facts_invalid"
 	if not _fingerprint_string(receipt.get("receipt_fingerprint")) \
 			or receipt.get("receipt_fingerprint") \

@@ -1440,6 +1440,16 @@
       "v075_military_no_guard_test",
       "v075_military_no_retarget_test",
       "v075_military_withdraw_to_discard_test",
+      "v076_alpha07_human_playability_readiness_test",
+      "v076_alpha07_pacing_determinism_test",
+      "v075_sample_game_screen_wrapper_test",
+      "v075_responsive_viewport_matrix_test",
+      "ui_text_smoke_test",
+      "visual_snapshot",
+      "v073_coach_safe_placement_test",
+      "v07_dbg_deck_core_test",
+      "v075_runtime_acquisition_trace_test",
+      "v075_authoritative_card_identity_lifecycle_binding_test",
       "v076_reuse_point_inertia_gate_selftest",
       "v076_reuse_point_inertia_gate_validate",
       "check_v06_mechanic_authority_selftest"
@@ -1457,7 +1467,7 @@
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "The STEP13-readiness delta adds one proof test and append-only evidence; no product, scene, Owner, rule, balance, card, asset, target, or presentation byte changes. Readiness 24/24 instantiates real main.tscn, enters through public new-game intent, advances naturally from below the target, reaches the existing V075RuntimeOwner/V07SolarVictoryCore qualification and authoritative boundary revalidation, emits one settlement/log/presentation, and proves terminal replay idempotence plus combat quiescence. Direct Victory/settlement/quiescence/application/readiness sentinels pass 20/20, 190/190, 4/4, 12/12, 111/111, and 35/35; exact-candidate STEP09/11 production composition revalidates 86/86 and STEP12 AI/privacy revalidates 57/57. Real main.tscn starts and stops cleanly. This covers every touched proof dependency while STEP13 stays PENDING and human execution/confirmation, observer attestation, full-product production green, and full-world reproof remain unclaimed."
+    "why_focused_tests_are_sufficient": "The Human Playability repair changes only existing production consumers and reducers: the V075 Game Screen scene/script, existing Coach scene/script, existing V075 Application Flow and Runtime Owner pacing input, and the existing V07 DBG receipt consumer. It creates no gameplay, presentation, tutorial, clock, tick, RNG, card-catalog, asset, map, hand, track, or receipt Owner. Human Playability Readiness passes 159/159 on real main.tscn with one Human plus three AI and zero fixture-state injection; pacing determinism passes 11/11; the wrapper passes 30/30; three responsive viewport cases pass at 1366x768, 1600x960, and 1920x1080; Coach placement passes 258/258; DBG passes 325/325; and focused acquisition, card-identity, projection/privacy, Private Direct Action, production military, AI/privacy, application, Runtime Owner, UI-text, and visual sentinels cover every touched dependency with zero diagnostics. The exact prior 2,000-replay, 2,000-map, full 348-card, and full 79-Gate proofs remain inherited because no rule, balance, map, Kernel ordering, RNG algorithm, card definition, or full-world boundary changed. STEP13 stays PENDING and human execution/confirmation, observer attestation, full-product production green, and full-world reproof remain unclaimed."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",

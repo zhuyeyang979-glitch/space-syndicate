@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/ui/v074/V074SampleGameScreen.tscn" id="1_base"]
 [ext_resource type="Script" path="res://scripts/ui/v075/v075_sample_game_screen.gd" id="2_wrapper"]
@@ -18,48 +18,117 @@ corner_radius_bottom_left = 6
 shadow_color = Color(0, 0, 0, 0.42)
 shadow_size = 14
 
+[sub_resource type="StyleBoxFlat" id="StylePublicFeed"]
+bg_color = Color(0.035, 0.057, 0.09, 0.97)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.34, 0.53, 0.75, 0.8)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleCurrentAction"]
+bg_color = Color(0.04, 0.075, 0.12, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.91, 0.67, 0.27, 0.88)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
 [node name="V075SampleGameScreen" instance=ExtResource("1_base")]
 script = ExtResource("2_wrapper")
 
-[node name="V075CombatStackHost" type="HBoxContainer" parent="RootMargin/Shell" index="2"]
+[node name="V075PacingControls" type="HBoxContainer" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PacingLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow/V075PacingControls"]
+layout_mode = 2
+text = "速度"
+vertical_alignment = 1
+
+[node name="Speed1xButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow/V075PacingControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 28)
+layout_mode = 2
+tooltip_text = "正常速度"
+text = "1×"
+
+[node name="Speed2xButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow/V075PacingControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 28)
+layout_mode = 2
+tooltip_text = "Candidate 2 默认速度"
+text = "2×"
+
+[node name="Speed4xButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow/V075PacingControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 28)
+layout_mode = 2
+tooltip_text = "四倍真人等待速度；权威 Tick 仍为 20 Hz"
+text = "4×"
+
+[node name="PauseButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow/V075PacingControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 28)
+layout_mode = 2
+tooltip_text = "暂停世界有效时间；权威 Tick 频率保持 20 Hz"
+text = "PAUSE"
+
+[node name="V075RightSidebar" type="VBoxContainer" parent="RootMargin/Shell/TableArea"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(312, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="V075CombatStackHost" type="HBoxContainer" parent="RootMargin/Shell/TableArea/V075RightSidebar"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 0
 
-[node name="V075CombatOverlay" type="PanelContainer" parent="RootMargin/Shell/V075CombatStackHost"]
+[node name="V075CombatOverlay" type="PanelContainer" parent="RootMargin/Shell/TableArea/V075RightSidebar/V075CombatStackHost"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 3
 mouse_filter = 0
 theme_override_styles/panel = SubResource("StyleCombatOverlay")
 
-[node name="Margin" type="MarginContainer" parent="RootMargin/Shell/V075CombatStackHost/V075CombatOverlay"]
+[node name="Margin" type="MarginContainer" parent="RootMargin/Shell/TableArea/V075RightSidebar/V075CombatStackHost/V075CombatOverlay"]
 layout_mode = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 6
 
-[node name="Rows" type="VBoxContainer" parent="RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/Margin"]
+[node name="Rows" type="VBoxContainer" parent="RootMargin/Shell/TableArea/V075RightSidebar/V075CombatStackHost/V075CombatOverlay/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 5
 
-[node name="Header" type="HBoxContainer" parent="RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/Margin/Rows"]
+[node name="Header" type="HBoxContainer" parent="RootMargin/Shell/TableArea/V075RightSidebar/V075CombatStackHost/V075CombatOverlay/Margin/Rows"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 32)
 theme_override_constants/separation = 7
 
-[node name="Title" type="Label" parent="RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/Margin/Rows/Header"]
+[node name="Title" type="Label" parent="RootMargin/Shell/TableArea/V075RightSidebar/V075CombatStackHost/V075CombatOverlay/Margin/Rows/Header"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 14
-text = "COMBAT · V0.7.5"
+text = "DIRECT ACTION"
 vertical_alignment = 1
 
-[node name="Status" type="Label" parent="RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/Margin/Rows/Header"]
+[node name="Status" type="Label" parent="RootMargin/Shell/TableArea/V075RightSidebar/V075CombatStackHost/V075CombatOverlay/Margin/Rows/Header"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -70,7 +139,7 @@ text_overrun_behavior = 3
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="CollapseButton" type="Button" parent="RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/Margin/Rows/Header"]
+[node name="CollapseButton" type="Button" parent="RootMargin/Shell/TableArea/V075RightSidebar/V075CombatStackHost/V075CombatOverlay/Margin/Rows/Header"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(58, 30)
 layout_mode = 2
@@ -78,7 +147,7 @@ focus_mode = 2
 tooltip_text = "收起战斗投影"
 text = "收起"
 
-[node name="SurfaceHost" type="ScrollContainer" parent="RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/Margin/Rows"]
+[node name="SurfaceHost" type="ScrollContainer" parent="RootMargin/Shell/TableArea/V075RightSidebar/V075CombatStackHost/V075CombatOverlay/Margin/Rows"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
@@ -88,9 +157,138 @@ horizontal_scroll_mode = 0
 vertical_scroll_mode = 1
 follow_focus = true
 
-[node name="CombatSurface" parent="RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/Margin/Rows/SurfaceHost" instance=ExtResource("3_surface")]
+[node name="CombatSurface" parent="RootMargin/Shell/TableArea/V075RightSidebar/V075CombatStackHost/V075CombatOverlay/Margin/Rows/SurfaceHost" instance=ExtResource("3_surface")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 410)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
+
+[node name="PublicActionFeedPanel" type="PanelContainer" parent="RootMargin/Shell/TableArea/V075RightSidebar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StylePublicFeed")
+
+[node name="FeedMargin" type="MarginContainer" parent="RootMargin/Shell/TableArea/V075RightSidebar/PublicActionFeedPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="FeedRows" type="VBoxContainer" parent="RootMargin/Shell/TableArea/V075RightSidebar/PublicActionFeedPanel/FeedMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="FeedTitle" type="Label" parent="RootMargin/Shell/TableArea/V075RightSidebar/PublicActionFeedPanel/FeedMargin/FeedRows"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "公开行动 ACTION FEED"
+
+[node name="CurrentActionBanner" type="Label" parent="RootMargin/Shell/TableArea/V075RightSidebar/PublicActionFeedPanel/FeedMargin/FeedRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.78, 0.38, 1)
+text = "当前：等待公开行动"
+text_overrun_behavior = 3
+autowrap_mode = 2
+
+[node name="PublicActionFeedScroll" type="ScrollContainer" parent="RootMargin/Shell/TableArea/V075RightSidebar/PublicActionFeedPanel/FeedMargin/FeedRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="PublicActionFeed" type="RichTextLabel" parent="RootMargin/Shell/TableArea/V075RightSidebar/PublicActionFeedPanel/FeedMargin/FeedRows/PublicActionFeedScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "[color=#8ca2bd]等待第一条公开行动[/color]"
+fit_content = true
+scroll_active = false
+
+[node name="HandCategoryTabs" type="HBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="GeneralHandTabButton" type="Button" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader/HandCategoryTabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 28)
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "手牌 0/5"
+
+[node name="CommodityHandTabButton" type="Button" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader/HandCategoryTabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 28)
+layout_mode = 2
+toggle_mode = true
+text = "商品 0/5"
+
+[node name="CurrentActionPanel" type="PanelContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows" index="0"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleCurrentAction")
+
+[node name="ActionMargin" type="MarginContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows/CurrentActionPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 5
+
+[node name="ActionRows" type="VBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows/CurrentActionPanel/ActionMargin"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="CurrentActionTitle" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows/CurrentActionPanel/ActionMargin/ActionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "当前行动 · 请选择卡牌"
+text_overrun_behavior = 3
+
+[node name="CurrentActionDetails" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows/CurrentActionPanel/ActionMargin/ActionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.86, 0.95, 1)
+theme_override_font_sizes/font_size = 10
+text = "点击牌轨查看价格，或点击手牌选择行动。"
+text_overrun_behavior = 3
+autowrap_mode = 2
+
+[node name="CurrentActionReason" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows/CurrentActionPanel/ActionMargin/ActionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.7, 0.38, 1)
+theme_override_font_sizes/font_size = 9
+text = ""
+text_overrun_behavior = 3
+
+[node name="ActionButtons" type="HBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows/CurrentActionPanel/ActionMargin/ActionRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 2
+
+[node name="CurrentActionCancelButton" type="Button" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows/CurrentActionPanel/ActionMargin/ActionRows/ActionButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 28)
+layout_mode = 2
+disabled = true
+text = "取消"
+
+[node name="CurrentActionConfirmButton" type="Button" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows/CurrentActionPanel/ActionMargin/ActionRows/ActionButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 28)
+layout_mode = 2
+disabled = true
+text = "确认"
