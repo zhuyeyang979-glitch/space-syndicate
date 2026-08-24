@@ -4535,6 +4535,9 @@ func player_snapshot(viewer_id: String) -> Dictionary:
 	snapshot["sample_mode_id"] = V075_SAMPLE_MODE_ID
 	snapshot["save_notice"] = "V0.7.5 sample save/resume disabled"
 	snapshot["special_actions"] = []
+	snapshot["v076_public_action_arrangement"] = (
+		_v075_public_action_arrangement_projection(viewer_id)
+	)
 	if _combat_initialized:
 		var private_facts := _combat_player_private_facts(viewer_id)
 		var authority := _combat_owner.call(
@@ -5198,6 +5201,195 @@ func _facility_ai_observation(
 
 func _facility_validation_report(state: Dictionary) -> Dictionary:
 	return PublicActionBatchCore.validation_report(state)
+
+
+# Viewer-scoped, presentation-only projection for the public action table.
+# During submission the authoritative local queues are still private.  We
+# therefore publish only anonymous pending entries, with the current viewer's
+# own card face/target summary attached to their own rows.  Once the batch is
+# locked, the frozen anonymous queue and its resolution cursor come from the
+# existing PublicActionBatchCore owner.  No actor id, seat, private instance id,
+# hidden order, or target binding crosses this boundary.
+func _v075_public_action_arrangement_projection(viewer_id: String) -> Dictionary:
+	var entries: Array = []
+	if _phase == "submission":
+		for actor_id in _player_ids:
+			var queue_variant: Variant = _queued_by_player.get(actor_id, [])
+			if not (queue_variant is Array):
+				continue
+			var queue := queue_variant as Array
+			for binding_variant in queue:
+				if not (binding_variant is Dictionary):
+					continue
+				var binding := binding_variant as Dictionary
+				var action_id := str(binding.get("action_id", ""))
+				if action_id.is_empty():
+					continue
+				var local_owner := actor_id == viewer_id
+				var domain := str(binding.get("action_domain", "facility"))
+				var row := _v075_arrangement_entry_base(
+					"pending.%s" % action_id.sha256_text().left(16),
+					"pending",
+					domain,
+					-1
+				)
+				row["owner_hint"] = "你" if local_owner else "匿名"
+				row["label"] = (
+					_v075_arrangement_card_label(
+						str(binding.get("card_definition_id", "")),
+						domain
+					)
+					if local_owner
+					else "匿名行动"
+				)
+				row["viewer_owned"] = local_owner
+				if local_owner:
+					row["card_definition_id"] = str(
+						binding.get("card_definition_id", "")
+					)
+					row["detail"] = _v075_arrangement_target_detail(binding)
+				entries.append(row)
+		entries.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+			return str(left.get("id", "")) < str(right.get("id", ""))
+		)
+	else:
+		var public_state := _facility_state
+		var public_projection := PublicActionBatchCore.public_projection(
+			public_state
+		)
+		var public_queue := public_projection.get(
+			"anonymous_global_queue",
+			[]
+		) as Array
+		var authority_queue := public_state.get("authority_queue", []) as Array
+		var cursor := int(public_state.get("resolution_cursor", 0))
+		for index in range(public_queue.size()):
+			var public_entry := public_queue[index] as Dictionary
+			var authority_entry := (
+				authority_queue[index] as Dictionary
+				if index < authority_queue.size()
+				else {}
+			)
+			var action := authority_entry.get("action", {}) as Dictionary
+			var actor_id := str(authority_entry.get("actor_id", ""))
+			var local_owner := actor_id == viewer_id
+			var domain := str(public_entry.get(
+				"action_domain",
+				authority_entry.get("action_domain", "facility")
+			))
+			var status := str(public_entry.get("resolution_status", "pending"))
+			var lane := "history" if status == "resolved" else "queue"
+			if status != "resolved" and index == cursor:
+				lane = "active"
+			elif status != "resolved" and index > cursor:
+				lane = "next"
+			var row := _v075_arrangement_entry_base(
+				str(public_entry.get("anonymous_action_id", "")),
+				lane,
+				domain,
+				index
+			)
+			row["owner_hint"] = "你" if local_owner else "匿名"
+			row["label"] = (
+				_v075_arrangement_card_label(
+					str(action.get("source_card_definition_id", "")),
+					domain
+				)
+				if local_owner
+				else _v075_arrangement_domain_label(domain)
+			)
+			row["viewer_owned"] = local_owner
+			row["resolution_status"] = status
+			if local_owner:
+				row["card_definition_id"] = str(
+					action.get("source_card_definition_id", "")
+				)
+				row["detail"] = _v075_arrangement_target_detail(action)
+			entries.append(row)
+	return {
+		"schema": "V076PublicActionArrangementProjectionV1",
+		"ruleset_id": V075_RULESET_ID,
+		"viewer_id": viewer_id,
+		"batch_id": _batch_id() if not _match_id.is_empty() else "",
+		"phase": _phase,
+		"revision": _facility_authority_revision(),
+		"entries": entries,
+		"privacy_scope": "viewer_scoped_public_plus_own_submission",
+		"hidden_order_disclosed": false,
+		"actor_id_disclosed": false,
+		"private_queue_disclosed": false,
+	}
+
+
+func _v075_arrangement_entry_base(
+	entry_id: String,
+	lane: String,
+	domain: String,
+	resolution_id: int
+) -> Dictionary:
+	var status := "等待提交"
+	if lane == "active":
+		status = "正在结算"
+	elif lane == "history":
+		status = "已结算"
+	elif lane == "next":
+		status = "即将结算"
+	return {
+		"id": entry_id,
+		"anonymous_action_id": entry_id,
+		"resolution_id": resolution_id,
+		"lane": lane,
+		"kind": lane,
+		"state": status,
+		"active": lane == "active",
+		"action_domain": domain,
+		"label": _v075_arrangement_domain_label(domain),
+		"owner_hint": "匿名",
+		"detail": status,
+		"accent": _v075_arrangement_domain_accent(domain),
+		"badges": [domain.to_upper(), status],
+		"tooltip": "公开排列 · %s" % status,
+	}
+
+
+func _v075_arrangement_domain_label(domain: String) -> String:
+	return {
+		"facility": "设施行动",
+		"monster": "怪兽行动",
+		"military": "军队行动",
+	}.get(domain, "公开行动") as String
+
+
+func _v075_arrangement_card_label(
+	definition_id: String,
+	domain: String
+) -> String:
+	var definition := CardDefinitionsV075.definition(definition_id)
+	if definition.is_empty():
+		return _v075_arrangement_domain_label(domain)
+	var card_type := str(definition.get("card_type", ""))
+	var color := str(definition.get("primary_color", ""))
+	var rank := int(definition.get("level", 1))
+	return "%s · %s · L%d" % [card_type, color, rank]
+
+
+func _v075_arrangement_target_detail(binding: Dictionary) -> String:
+	var region := str(binding.get("target_region_id", ""))
+	if not region.is_empty():
+		return "目标：%s" % region
+	var monster := str(binding.get(
+		"target_monster_source_instance_id",
+		binding.get("target_source_instance_id", "")
+	))
+	return "目标：已预绑定怪兽" if not monster.is_empty() else "已预绑定目标"
+
+
+func _v075_arrangement_domain_accent(domain: String) -> String:
+	return {
+		"facility": "#55d6bc",
+		"monster": "#e48c78",
+		"military": "#7bb8ff",
+	}.get(domain, "#74d9c6") as String
 
 
 func _facility_lock_batch(
