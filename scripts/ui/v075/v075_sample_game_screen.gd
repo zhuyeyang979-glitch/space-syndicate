@@ -2643,6 +2643,14 @@ func _dock_target_rail_in_production_flow() -> void:
 		"target_rail_float_rect",
 		Rect2(Vector2(12.0, 104.0), Vector2(320.0, 210.0))
 	) as Rect2
+	if get_viewport_rect().size.x < 540.0:
+		# Reserve the left edge for the utility rail on the smallest phone-like
+		# viewport; the direct-action panel occupies the right-hand lane.
+		target_rect.position.x = COMBAT_LAYOUT_HORIZONTAL_GUTTER
+		target_rect.size.x = minf(
+			target_rect.size.x,
+			maxf(120.0, get_viewport_rect().size.x - 316.0)
+		)
 	_virtual_target_rail_float.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_virtual_target_rail_float.position = target_rect.position
 	_virtual_target_rail_float.custom_minimum_size = Vector2(target_rect.size.x, 0.0)
@@ -3014,6 +3022,28 @@ func _apply_single_viewport_layout() -> void:
 	var roster_panel := $RootMargin/Shell/TableArea/RosterPanel as Control
 	var target_panel := $RootMargin/Shell/TargetPanel as Control
 	var dock_panel := $RootMargin/Shell/DockPanel as Control
+	var weather_strip := (
+		_planet_board.get_node_or_null("PlanetRows/WeatherForecastStrip")
+		as Control
+	)
+	var left_space_rail := (
+		_planet_board.get_node_or_null(
+			"PlanetRows/PlanetStageViewport/PlanetLeftSpaceRail"
+		)
+		as Control
+	)
+	var right_space_rail := (
+		_planet_board.get_node_or_null(
+			"PlanetRows/PlanetStageViewport/PlanetRightSpaceRail"
+		)
+		as Control
+	)
+	var map_host := (
+		_planet_board.get_node_or_null(
+			"PlanetRows/PlanetStageViewport/MapHost"
+		)
+		as Control
+	)
 	var planet_stage := (
 		$RootMargin/Shell/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport
 		as Control
@@ -3024,6 +3054,7 @@ func _apply_single_viewport_layout() -> void:
 	var track_height := 144.0 if compact else (154.0 if wide else 148.0)
 	var target_height := 34.0 if compact else 38.0
 	var dock_height := 220.0 if compact else (226.0 if wide else 220.0)
+	var narrow := viewport_size.x < COMBAT_LAYOUT_NARROW_MAX_WIDTH
 	var shell_separation := 3.0
 	var available_height := maxf(
 		1.0,
@@ -3051,9 +3082,35 @@ func _apply_single_viewport_layout() -> void:
 	track_panel.custom_minimum_size.y = track_height
 	table_area.custom_minimum_size.y = table_height
 	table_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# The inherited Shell can retain a wider desktop minimum from the hand and
+	# map surfaces. Constrain the actual table row to the current viewport on
+	# compact/narrow screens and center it inside that shell; otherwise the
+	# right-side direct-action panel inherits an offscreen HBox position.
+	var compact_table := viewport_size.x < COMBAT_LAYOUT_REGULAR_MIN_WIDTH
+	if compact_table:
+		table_area.custom_minimum_size.x = maxf(1.0, viewport_size.x)
+		table_area.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	else:
+		table_area.custom_minimum_size.x = 0.0
+		table_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	target_panel.custom_minimum_size.y = target_height
 	dock_panel.custom_minimum_size.y = dock_height
-	roster_panel.custom_minimum_size.x = 154.0 if compact else 190.0
+	# The inherited roster/weather rails carry desktop-width minimums that force
+	# the right-side direct-action panel outside a genuinely narrow viewport.
+	# Narrow play uses the single-table contract: keep the planet map and direct
+	# action surface, while collapsing secondary roster/weather rails.
+	roster_panel.visible = not narrow
+	roster_panel.custom_minimum_size.x = (
+		0.0 if narrow else (154.0 if compact else 190.0)
+	)
+	if weather_strip != null:
+		weather_strip.visible = not narrow
+	if left_space_rail != null:
+		left_space_rail.visible = false
+	if right_space_rail != null:
+		right_space_rail.visible = false
+	if map_host != null and narrow:
+		map_host.custom_minimum_size.x = 0.0
 	_planet_board.custom_minimum_size = Vector2(0.0, table_height)
 	_planet_board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	planet_stage.custom_minimum_size.y = maxf(
