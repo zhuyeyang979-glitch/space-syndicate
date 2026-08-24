@@ -69,6 +69,7 @@ func _run() -> void:
 	var v074_screen_source := _source("res://scripts/ui/v074/v074_sample_game_screen.gd")
 	var v073_screen_source := _source("res://scripts/ui/v073/v073_sample_game_screen.gd")
 	var v075_bootstrap_source := _source("res://scripts/v075_runtime/v075_application_bootstrap.gd")
+	var v075_loading_overlay_source := _source("res://scripts/ui/v075/v075_new_game_loading_overlay.gd")
 	var v075_application_flow_source := _source("res://scripts/v075_runtime/v075_application_flow.gd")
 	var v075_runtime_composition_source := _source("res://scenes/runtime/V075RuntimeComposition.tscn")
 	var player_board_source := _source("res://scripts/ui/player_board.gd")
@@ -85,7 +86,8 @@ func _run() -> void:
 	_expect(v075_screen_scene_source.contains("res://scenes/ui/v074/V074SampleGameScreen.tscn") and v075_screen_scene_source.count("res://scenes/ui/v075/V075CombatPlayerSurface.tscn") == 1 and _contains_all(v075_screen_scene_source, ["V075CombatOverlay", "CombatSurface"]), "V075SampleGameScreen deliberately extends the shared V0.7.4 sample shell and owns one V0.7.5 combat surface")
 	_expect(_contains_all(v075_screen_source, ["class_name V075SampleGameScreen", 'const V075_RULESET_ID := "v0.7.5"', "application_intent_requested.emit(intent.duplicate(true))", "_on_private_target_selection_requested", "_on_military_mission_selected"]), "V075SampleGameScreen owns the V0.7.5 ruleset chrome and typed combat intents")
 	_expect(v073_screen_source.contains("signal application_intent_requested(intent: Dictionary)") and v073_screen_source.contains("func _emit_intent("), "the inherited sample-screen contract exposes the typed application-intent signal")
-	_expect(v075_bootstrap_source.contains("_game_screen.application_intent_requested.connect(") and v075_bootstrap_source.contains('_application_flow.call("submit_intent", intent)'), "V075ApplicationBootstrap routes production-screen intents to the V0.7.5 application flow")
+	_expect(_contains_all(v075_bootstrap_source, ["V075NewGameLoadingOverlay", "_new_game_loading_overlay.call(", '"bind_sources"']), "V075ApplicationBootstrap binds the presentation-only new-game loading overlay")
+	_expect(_contains_all(v075_loading_overlay_source, ["application_intent_requested.connect(", "func bind_sources", '_application_flow.call("submit_intent", intent)']), "V075NewGameLoadingOverlay owns the typed application-intent bridge and forwards it to the existing application flow")
 	_expect(v075_application_flow_source.contains("func submit_intent(intent: Dictionary) -> Dictionary:") and v075_application_flow_source.contains("func issue_intent(intent_kind: String, parameters: Dictionary = {}) -> Dictionary:"), "V075ApplicationFlow owns typed intent submission and issuance")
 	_expect(_contains_all(v075_runtime_composition_source, ["res://scripts/v075_runtime/v075_application_flow.gd", "V075RulesetRuntimeOwner", "V075RuntimeOwner", "V075CombatRuntimeOwner", "V075CombatTelemetryService"]), "V075RuntimeComposition owns the current ruleset, runtime, combat and telemetry authorities")
 	_expect(player_board_source.contains("func set_player_state(data: Dictionary)") \

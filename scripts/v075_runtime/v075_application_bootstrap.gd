@@ -10,6 +10,9 @@ const V076HumanGoldenProfile := preload(
 
 @onready var _application_flow: Node = %V075RuntimeComposition
 @onready var _game_screen: Control = %V075GameScreen
+@onready var _new_game_loading_overlay: Control = (
+	%V075NewGameLoadingOverlay
+)
 @onready var _playtest_telemetry: Node = (
 	$V075RuntimeComposition/V073PlaytestTelemetryService
 )
@@ -30,11 +33,12 @@ func _ready() -> void:
 	)
 	_playtest_telemetry.call("bind_sources", _application_flow, _game_screen)
 	_game_screen.call("bind_playtest_telemetry", _playtest_telemetry)
-	_game_screen.application_intent_requested.connect(
-		_on_application_intent_requested
+	_new_game_loading_overlay.call(
+		"bind_sources",
+		_application_flow,
+		_game_screen,
+		_playtest_telemetry
 	)
-	_application_flow.projection_changed.connect(_on_projection_changed)
-	_application_flow.receipt_ready.connect(_on_receipt_ready)
 	_application_flow.owner_private_receipt_ready.connect(
 		_on_owner_private_receipt_ready
 	)
@@ -53,18 +57,6 @@ func game_runtime_context_query() -> RuntimeContextQuery:
 		_game_screen,
 		_playtest_telemetry
 	)
-
-
-func _on_application_intent_requested(intent: Dictionary) -> void:
-	_application_flow.call("submit_intent", intent)
-
-
-func _on_projection_changed(snapshot: Dictionary) -> void:
-	_game_screen.call("apply_snapshot", snapshot)
-
-
-func _on_receipt_ready(receipt: Dictionary) -> void:
-	_game_screen.call("apply_receipt", receipt)
 
 
 func _on_owner_private_receipt_ready(receipt: Dictionary) -> void:
