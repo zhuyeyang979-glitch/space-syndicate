@@ -15,9 +15,11 @@ track, hand, catalog, card execution path, receipt owner, clock, RNG, map, or
 tutorial owner was added.
 
 The real `res://scenes/main.tscn` readiness gate passes `169/169` for one Human
-plus three AI with zero fixture-state injection. Focused production viewport
-cases pass at `1366x768`, `1600x960`, and `1920x1080`; pacing is `11/11`, the
-screen wrapper `30/30`, Coach placement `258/258`, and visual contract green.
+plus three AI with zero fixture-state injection. The production responsive
+viewport matrix passes all seven cases (`480x960`, `640x960`, `660x960`,
+`900x960`, `1366x768`, `1600x960`, and `1920x1080`) with `144/144` checks;
+pacing is `11/11`, the screen wrapper `30/30`, Coach placement `258/258`, and
+visual contract green.
 Headed Candidate 2 captures and the append-only receipt are under
 `reports/playtest/alpha07_human_candidate_1_blocker/`.
 
@@ -46,8 +48,8 @@ next_stage=V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST
 <!-- V076_STATUS_END -->
 
 latest_completed_atomic_step=V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR
-latest_completed_stage_head_sha=e02e18acdb54508ad166c53384125411a94369aa
-latest_completed_stage_tree_sha=ff82bef2b139f6370eb71cf811c2acb7a40db1f0
+latest_completed_stage_head_sha=f8340207d785e7b35ea7451048e5d71d0325232c
+latest_completed_stage_tree_sha=3a142247c5cabd75a8ad92fbee6210ace5a7c9e5
 
 <!-- V076_ALPHA07_STEP13_READINESS_STATUS_BEGIN -->
 golden_step_13_status=PENDING
@@ -80,17 +82,14 @@ next_stage=V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST
 
 - `v076_alpha07_human_playability_readiness_test`: `169/169`, run
   `20260823-214021-065-v076_alpha07_human_playability_readiness_test-397f755f`.
-- `v075_responsive_viewport_matrix_test`: focused `PASS` at 1366x768,
-  1600x960, and 1920x1080, runs `20260823-214709-020-v075_responsive_viewport_matrix_test-60def905`,
-  `20260823-214709-020-v075_responsive_viewport_matrix_test-a65ccc2f`, and
-  `20260823-214709-020-v075_responsive_viewport_matrix_test-d09a78a8`.
+- `v075_responsive_viewport_matrix_test`: `7/7` production cases green,
+  `144/144` checks, with no failures.
 - Pacing `11/11`, wrapper `30/30`, Coach `258/258`, and visual contract pass in
   the final-head runner receipts. All runner diagnostics, hard script errors,
   and scoped residual processes are zero.
-- `reports/playtest/alpha07_human_candidate_1_blocker/candidate2_readiness_receipt.json`
-  SHA-256 `3a09510ed19888f40e1c92cc0357490a04accefc8508a4ebc496b2640a9d9f02`.
+- `reports/playtest/alpha07_human_candidate_1_blocker/candidate3_layout_revalidation_receipt.json`
+  SHA-256 `11a947d7a432cae791ba361c2592087c38c6ce172544becec0bcfe34af054f26`.
 
-The full matrix also retains an honest focused-out-of-contract boundary: its
-480/640/660/900 narrow cases report panel overflow, while the three contracted
-production viewport cases pass. This preflight does not convert that boundary,
-or any automated readiness, into Human Green.
+The full matrix now includes the narrow phone-like cases without panel
+overflow. This preflight does not convert automated readiness into Human
+Green; a real human retest and observer attestation remain required.

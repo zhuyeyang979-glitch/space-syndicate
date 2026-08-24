@@ -4,8 +4,8 @@
   "recorded_on": "2026-08-24",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
-    "tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
+    "head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
+    "tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
@@ -1331,8 +1331,8 @@
     {
       "stage_id": "V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR_READINESS",
       "ledger_status": "CURRENT_DELTA_GREEN",
-      "head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
-      "tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
+      "head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
+      "tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
       "change_class": "CROSS_DOMAIN_INTEGRATION",
       "stage_kind": "INFRASTRUCTURE",
       "infrastructure_justification": "Binds the existing production GameScreen, track, hand, Application Flow, Runtime Owner, Coach, and DBG receipt consumer after the Human Playability repair. This stage proves automated readiness for a new real-human attempt; it does not rewrite the Victory readiness stage or claim Golden STEP13-15.",
@@ -1350,8 +1350,8 @@
         {
           "evidence_id": "alpha07-human-playability-readiness",
           "result": "PASS",
-          "receipt_path": "reports/playtest/alpha07_human_candidate_1_blocker/candidate2_readiness_receipt.json",
-          "receipt_sha256": "3a09510ed19888f40e1c92cc0357490a04accefc8508a4ebc496b2640a9d9f02",
+          "receipt_path": "reports/playtest/alpha07_human_candidate_1_blocker/candidate3_layout_revalidation_receipt.json",
+          "receipt_sha256": "11a947d7a432cae791ba361c2592087c38c6ce172544becec0bcfe34af054f26",
           "test": "v076_alpha07_human_playability_readiness_test",
           "runner_run_id": "20260823-214021-065-v076_alpha07_human_playability_readiness_test-397f755f",
           "checks": "169/169",
@@ -1537,7 +1537,7 @@
     "test_bytes_changed_after_stage3": true,
     "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "STEP09, STEP11, and STEP12 remain distinct Golden step-level PRODUCTION_GREEN results. The append-only Human Playability repair readiness stage is bound to candidate e02e18acdb54508ad166c53384125411a94369aa / ff82bef2b139f6370eb71cf811c2acb7a40db1f0 and proves automated readiness only: real main.tscn, one Human plus three AI, 169/169 readiness, three target viewport cases, pacing, wrapper, Coach, visual, and headed production captures. STEP13 remains PENDING because human execution/confirmation and observer attestation have not occurred. Full-product production green, STEP13-STEP15 human passes, per-card certification, and full-world reproof remain false or pending."
+    "current_claim": "STEP09, STEP11, and STEP12 remain distinct Golden step-level PRODUCTION_GREEN results. The append-only Human Playability layout revalidation stage is bound to candidate f8340207d785e7b35ea7451048e5d71d0325232c / 3a142247c5cabd75a8ad92fbee6210ace5a7c9e5 and proves automated readiness only: real main.tscn, one Human plus three AI, 169/169 readiness, seven production viewport cases at 144/144, pacing, wrapper, Coach, visual, and existing production evidence continuity. STEP13 remains PENDING because human execution/confirmation and observer attestation have not occurred. Full-product production green, STEP13-STEP15 human passes, per-card certification, and full-world reproof remain false or pending."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -1555,8 +1555,8 @@
     "golden_human_green_count": 0,
     "production_cutover_status": true,
     "latest_completed_stage": "V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR_READINESS",
-    "latest_completed_stage_head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
-    "latest_completed_stage_tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
+    "latest_completed_stage_head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
+    "latest_completed_stage_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
     "next_stage": "V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST",
     "v075_pr90_dependency_boundary": "CURRENT_V075_OWNER_REUSED_NO_OWNER_SUPERSESSION"
   },
