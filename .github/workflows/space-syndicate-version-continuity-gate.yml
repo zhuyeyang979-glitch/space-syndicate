@@ -1,0 +1,54 @@
+name: Space Syndicate Version Continuity Gate
+run-name: Space Syndicate Version Continuity Gate
+
+"on":
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  space-syndicate-version-continuity-gate:
+    name: Space Syndicate Version Continuity Gate
+    runs-on: windows-2022
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout exact source SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify source identity
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $expectedHead = if ("${{ github.event_name }}" -eq "pull_request") {
+            "${{ github.event.pull_request.head.sha }}"
+          } else {
+            "${{ github.sha }}"
+          }
+          $actualHead = (git rev-parse HEAD).Trim()
+          if ($actualHead -cne $expectedHead) {
+            throw "Checkout mismatch: expected=$expectedHead actual=$actualHead"
+          }
+
+      - name: Run continuity self-test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python .\tools\product_continuity\version_continuity_selftest.py
+          if ($LASTEXITCODE -ne 0) {
+            throw "Version continuity self-test failed."
+          }
+
+      - name: Run continuity gate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python .\tools\product_continuity\version_continuity_gate.py --json
+          if ($LASTEXITCODE -ne 0) {
+            throw "Version continuity gate failed."
+          }
