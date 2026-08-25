@@ -254,6 +254,8 @@ var _public_arrangement_numeric_placeholder_count := 0
 var _public_arrangement_collapsed_count := 0
 var _public_arrangement_expanded_count := 0
 var _card_move_animation_count := 0
+var _card_transition_source_rect_capture_count := 0
+var _card_transition_source_rect_missing_count := 0
 var _coach_pacing_gate_active := false
 var _coach_pacing_saved_multiplier := 2
 var _coach_pacing_restore_multiplier := 2
@@ -857,6 +859,9 @@ func _current_action_receipt_context() -> Dictionary:
 		"card_instance_id": _selected_card_id,
 		"card_color": _selected_card_color,
 		"target_binding": _pending_confirm_binding.duplicate(true),
+		# Capture the real hand Control before ApplicationFlow/superclass receipt
+		# consumption can rebuild the projection and free that node.
+		"source_rect": _hand_card_global_rect(_selected_card_id),
 		"started_msec": _current_action_started_msec,
 	}
 
@@ -920,7 +925,16 @@ func _apply_human_flow_receipt(
 		_action_submission_pending = false
 		if accepted:
 			var accepted_card_id := str(action_before.get("card_instance_id", ""))
-			var source_rect := _hand_card_global_rect(accepted_card_id)
+			var source_rect := action_before.get("source_rect", Rect2()) as Rect2
+			if not source_rect.has_area():
+				# A projection refresh may have happened between intent capture and
+				# receipt delivery.  Use the live rect only as a diagnostic fallback;
+				# the authoritative queue path remains unchanged.
+				source_rect = _hand_card_global_rect(accepted_card_id)
+			if source_rect.has_area():
+				_card_transition_source_rect_capture_count += 1
+			else:
+				_card_transition_source_rect_missing_count += 1
 			if is_instance_valid(_central_public_action_arrangement) and _central_public_action_arrangement.has_method("register_card_source_transition"):
 				_central_public_action_arrangement.call(
 					"register_card_source_transition",
@@ -1258,6 +1272,8 @@ func combat_debug_snapshot() -> Dictionary:
 		"manual_drag_start_count": _manual_drag_start_count,
 		"manual_drag_drop_count": _manual_drag_drop_count,
 		"manual_drag_rejection_count": _manual_drag_rejection_count,
+		"card_transition_source_rect_capture_count": _card_transition_source_rect_capture_count,
+		"card_transition_source_rect_missing_count": _card_transition_source_rect_missing_count,
 		"human_playability": {
 			"schema": "V076HumanPlayabilityScreenDebugV1",
 			"main_table_single_viewport": true,
@@ -1312,6 +1328,8 @@ func combat_debug_snapshot() -> Dictionary:
 			"manual_drag_start_count": _manual_drag_start_count,
 			"manual_drag_drop_count": _manual_drag_drop_count,
 			"manual_drag_rejection_count": _manual_drag_rejection_count,
+			"card_transition_source_rect_capture_count": _card_transition_source_rect_capture_count,
+			"card_transition_source_rect_missing_count": _card_transition_source_rect_missing_count,
 			"public_batch_direct_action_entry_count": (
 				_central_public_action_arrangement.call(
 					"arrangement_debug_snapshot"
@@ -3238,23 +3256,29 @@ func _input(event: InputEvent) -> void:
 			var drop_position := button.position
 			var drop_rect := Rect2()
 			if is_instance_valid(_central_public_action_arrangement):
-				if _central_public_action_arrangement.has_method("drawer_global_rect"):
+				if _central_public_action_arrangement.has_method("drag_drop_rect"):
+					var active_rect: Variant = _central_public_action_arrangement.call(
+						"drag_drop_rect"
+					)
+					if active_rect is Rect2:
+						drop_rect = active_rect
+				elif _central_public_action_arrangement.has_method("drawer_global_rect"):
 					var candidate_rect: Variant = _central_public_action_arrangement.call(
 						"drawer_global_rect"
 					)
 					if candidate_rect is Rect2:
 						drop_rect = candidate_rect
-				if not drop_rect.has_area():
-					drop_rect = _central_public_action_arrangement.get_global_rect()
 			if drop_rect.has_point(drop_position):
 				_manual_drag_drop_count += 1
 				_on_central_card_drop_requested(
 					_manual_drag_payload.duplicate(true)
 				)
-				_manual_drag_last_drop_card_id = _manual_drag_card_id
-				_manual_drag_last_drop_msec = Time.get_ticks_msec()
 			else:
 				_manual_drag_rejection_count += 1
+			if is_instance_valid(_central_public_action_arrangement) and _central_public_action_arrangement.has_method(
+				"end_drag_drop_mode"
+			):
+				_central_public_action_arrangement.call("end_drag_drop_mode")
 			_reset_manual_drag()
 		return
 	if event is InputEventMouseMotion and not _manual_drag_payload.is_empty():
@@ -3265,6 +3289,10 @@ func _input(event: InputEvent) -> void:
 			and motion.position.distance_to(_manual_drag_start_position) >= 10.0
 		):
 			_manual_drag_active = true
+			if is_instance_valid(_central_public_action_arrangement) and _central_public_action_arrangement.has_method(
+				"begin_drag_drop_mode"
+			):
+				_central_public_action_arrangement.call("begin_drag_drop_mode")
 
 
 func _hand_payload_at_position(position: Vector2) -> Dictionary:
@@ -3291,15 +3319,18 @@ func _reset_manual_drag() -> void:
 
 func _on_central_card_drop_requested(payload: Dictionary) -> void:
 	var duplicate_key := str(payload.get("instance_id", ""))
+	var now_msec := Time.get_ticks_msec()
 	if (
 		not duplicate_key.is_empty()
 		and duplicate_key == _manual_drag_last_drop_card_id
-		and Time.get_ticks_msec() - _manual_drag_last_drop_msec <= 250
+		and now_msec - _manual_drag_last_drop_msec <= 250
 	):
 		# The native Godot drop callback can follow the manual release bridge in
 		# the same frame.  Preserve exact-once submission at the presentation
 		# boundary; the authoritative owner still owns the real ledger.
 		return
+	_manual_drag_last_drop_card_id = duplicate_key
+	_manual_drag_last_drop_msec = now_msec
 	_central_card_drop_count += 1
 	if payload.is_empty():
 		_central_card_drop_rejection_count += 1
@@ -4805,7 +4836,13 @@ func _set_hand_selection_visual(card_id: String) -> void:
 # while the drag is still in flight.  CentralPublicActionArrangement receives
 # the payload on drop and routes it through the existing legal-action path.
 func _on_hand_card_dragged(_payload: Dictionary) -> void:
-	return
+	# The semantic card wrapper emits this after the real CardFace hit control
+	# crosses the drag dead-zone.  Open the same bounded target used by the
+	# manual InputEvent bridge; no gameplay state is changed here.
+	if is_instance_valid(_central_public_action_arrangement) and _central_public_action_arrangement.has_method(
+		"begin_drag_drop_mode"
+	):
+		_central_public_action_arrangement.call("begin_drag_drop_mode")
 
 
 func _render_military_card_action_popup(payload: Dictionary) -> void:

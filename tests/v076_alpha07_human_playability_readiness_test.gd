@@ -225,17 +225,33 @@ func _assert_real_pointer_contract(context: Dictionary) -> void:
 	_expect(hand_rail != null, "real V075 hand rail exists for pointer dispatch")
 	if arrangement == null or map == null or hand_rail == null:
 		return
-	# Public projections briefly use the existing discoverability peek.  Let that
-	# bounded presentation transition settle before sampling the stable
-	# collapsed contract; this wait never invokes a drawer method directly.
+	# Public cards now remain inspectable for the 30-second submission window.
+	# Confirm that persistence first, then use the real collapse button before
+	# sampling the map-input contract.
 	await _wait_frames(3)
 	await create_timer(1.20).timeout
 	await _wait_frames(2)
 
+	var panel := arrangement.find_child(
+		"PublicArrangementCardTablePopout", true, false
+	) as Control
+	var toggle := arrangement.find_child("PopoutToggle", true, false) as Button
+	var persistent_debug := arrangement.call("arrangement_debug_snapshot") as Dictionary
+	_expect(
+		bool(persistent_debug.get("submission_window_active", false))
+		and bool(persistent_debug.get("public_arrangement_expanded", false)),
+		"public card arrangement remains inspectable past the legacy peek timeout"
+	)
+	if panel != null and panel.is_visible_in_tree() and toggle != null and toggle.is_visible_in_tree():
+		_real_pointer_trace.append(await _dispatch_real_click(
+			toggle.get_global_rect().get_center(),
+			"drawer_explicit_collapse"
+		))
+		await _wait_frames(2)
 	var handle := arrangement.find_child(
 		"PublicArrangementDrawerHandle", true, false
 	) as Control
-	var panel := arrangement.find_child(
+	panel = arrangement.find_child(
 		"PublicArrangementCardTablePopout", true, false
 	) as Control
 	var host := arrangement.find_child(
@@ -510,7 +526,13 @@ func _assert_real_card_and_action_path(context: Dictionary) -> void:
 		_expect(not reason.text.strip_edges().is_empty(), "illegal track selection exposes a concrete reason")
 	_expect(claimable_commodity != null, "normal supply exposes a legal commodity acquisition")
 	var before := flow.call("local_snapshot") as Dictionary
-	var before_count := int(((before.get("personal_dbg", {}) as Dictionary).get("facts", {}) as Dictionary).get("commodity_inventory_count", 0))
+	var before_facts := (before.get("personal_dbg", {}) as Dictionary).get("facts", {}) as Dictionary
+	var before_count := int(before_facts.get("commodity_inventory_count", 0))
+	_expect(
+		(before_facts.get("hand", []) as Array).size() == 5,
+		"commodity acquisition probe begins with the ordinary hand at its five-card limit"
+	)
+	_expect(before_count < 5, "commodity acquisition probe has capacity in the independent inventory")
 	if claimable_commodity != null:
 		_click_card(claimable_commodity)
 		for _frame in range(4):

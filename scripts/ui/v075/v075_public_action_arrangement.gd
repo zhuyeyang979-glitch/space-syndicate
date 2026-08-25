@@ -55,6 +55,8 @@ var _popout_user_toggled := false
 var _popout_initialized := false
 var _popout_mode := "COLLAPSED"
 var _peek_generation := 0
+var _submission_window_active := false
+var _drag_drop_active := false
 var _popout_host: Control
 var _pending_source_transitions: Dictionary = {}
 var _pending_anchor_transitions: Dictionary = {}
@@ -260,6 +262,19 @@ func apply_public_arrangement(
 	_arrangement_update_count += 1
 	_last_public_entry_count = entries.size()
 	_last_public_phase = phase_text
+	var submission_phase := phase_text in ["30秒·悬停", "submission"]
+	if submission_phase and not entries.is_empty():
+		# The public batch is a 30-second inspectable arrangement.  Keep the
+		# bounded drawer available for the whole submission window; the user may
+		# still explicitly collapse it or use the map-target collapse path.
+		_submission_window_active = true
+		_cancel_peek()
+		if not _popout_user_toggled or _drag_drop_active:
+			_set_popout_expanded(true, false)
+	elif _submission_window_active and not submission_phase:
+		_submission_window_active = false
+		if not _popout_pinned and not _drag_drop_active and not _popout_user_toggled:
+			_set_popout_expanded(false, true)
 	set_track_state(state)
 	if is_instance_valid(_popout_count):
 		_popout_count.text = "%d 张" % entries.size()
@@ -275,6 +290,7 @@ func apply_public_arrangement(
 	_render_card_faces(entries)
 	if (
 		not entries.is_empty()
+		and not submission_phase
 		and not _popout_user_toggled
 		and not _popout_pinned
 		and (previous_entry_count < entries.size() or not had_content)
@@ -342,7 +358,10 @@ func arrangement_debug_snapshot() -> Dictionary:
 		"public_arrangement_mode": "COLLAPSIBLE_OVERLAY_POPOUT",
 		"public_arrangement_state": _popout_mode,
 		"public_arrangement_pushes_map_layout": false,
-		"public_arrangement_default_collapsed": true,
+		"public_arrangement_default_collapsed": not _submission_window_active,
+		"public_window_active": _submission_window_active,
+		"peek_suppressed_by_submission_window": _submission_window_active,
+		"peek_suppressed_by_pointer": _drag_drop_active,
 		"public_arrangement_root_mouse_filter": "IGNORE",
 		"public_arrangement_drawer_hitbox_only": true,
 		"public_arrangement_fullscreen_opaque_layer_count": 0,
@@ -351,6 +370,8 @@ func arrangement_debug_snapshot() -> Dictionary:
 		"public_arrangement_drawer_width_ratio": _drawer_width_ratio(),
 		"public_arrangement_expanded": _popout_expanded,
 		"public_arrangement_pinned": _popout_pinned,
+		"submission_window_active": _submission_window_active,
+		"drag_drop_active": _drag_drop_active,
 		"public_drawer_collapsed_handle_anchor": "LEFT_EDGE",
 		"public_drawer_collapsed_center_control_count": 0
 			if not _popout_expanded else 1,
@@ -867,6 +888,13 @@ func _on_pin_pressed() -> void:
 func _set_popout_expanded(expanded: bool, count_transition: bool) -> void:
 	_popout_expanded = expanded
 	_popout_mode = "EXPANDED" if expanded else "COLLAPSED"
+	# The full-rect root is only a native drag target while a drag is active.
+	# Outside that short gesture it remains transparent so map input reaches the
+	# production map owner even when the bounded drawer is expanded.
+	mouse_filter = (
+		Control.MOUSE_FILTER_PASS if _drag_drop_active
+		else Control.MOUSE_FILTER_IGNORE
+	)
 	if count_transition:
 		if expanded:
 			_expand_count += 1
@@ -910,6 +938,44 @@ func collapse_for_target_selection() -> void:
 	_set_popout_expanded(false, true)
 
 
+func begin_drag_drop_mode() -> Rect2:
+	# Native and manual drags share this bounded, presentation-only target.  It
+	# never exposes authority state and never turns the full planet viewport into
+	# a drop zone.
+	if _drag_drop_active:
+		return drawer_global_rect()
+	_drag_drop_active = true
+	_cancel_peek()
+	_popout_user_toggled = false
+	_set_popout_expanded(true, true)
+	_popout_mode = "DRAG_DROP"
+	if is_instance_valid(_popout_title):
+		_popout_title.text = "拖到这里出牌"
+	if is_instance_valid(_popout_phase):
+		_popout_phase.text = "松开后选择目标并确认"
+	return drawer_global_rect()
+
+
+func end_drag_drop_mode() -> void:
+	_drag_drop_active = false
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if is_instance_valid(_popout_title):
+		_popout_title.text = "公开排列"
+	if is_instance_valid(_popout_phase):
+		_popout_phase.text = _last_public_phase
+	if _submission_window_active and not _popout_pinned:
+		# Keep the public batch inspectable after a successful or rejected drag.
+		_set_popout_expanded(true, false)
+		_popout_mode = "EXPANDED"
+		return
+	if not _popout_pinned and not _popout_user_toggled:
+		_set_popout_expanded(false, true)
+
+
+func drag_drop_rect() -> Rect2:
+	return drawer_global_rect()
+
+
 func _on_handle_pressed() -> void:
 	_drawer_handle_input_count += 1
 	_cancel_peek()
@@ -925,7 +991,8 @@ func _on_drawer_panel_gui_input(event: InputEvent) -> void:
 
 
 func _schedule_peek() -> void:
-	if not is_inside_tree() or _popout_pinned or _popout_user_toggled:
+	if not is_inside_tree() or _popout_pinned or _popout_user_toggled \
+		or _submission_window_active:
 		return
 	_peek_generation += 1
 	var generation := _peek_generation
@@ -938,7 +1005,8 @@ func _schedule_peek() -> void:
 
 
 func _finish_peek(generation: int) -> void:
-	if generation != _peek_generation or _popout_pinned or _popout_user_toggled:
+	if generation != _peek_generation or _popout_pinned or _popout_user_toggled \
+		or _submission_window_active:
 		return
 	_set_popout_expanded(false, true)
 	_popout_mode = "COLLAPSED"
@@ -1071,6 +1139,11 @@ func _on_slot_hovered(entry: Dictionary) -> void:
 
 
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
+	if not _popout_expanded or not _drag_drop_active:
+		return false
+	var global_position := get_global_transform() * _at_position
+	if not drawer_global_rect().has_point(global_position):
+		return false
 	if not (data is Dictionary):
 		return false
 	var envelope := data as Dictionary
@@ -1087,3 +1160,4 @@ func _drop_data(_at_position: Vector2, data: Variant) -> void:
 	card_drop_requested.emit(
 		(envelope.get("payload", {}) as Dictionary).duplicate(true)
 	)
+	call_deferred("end_drag_drop_mode")

@@ -341,8 +341,30 @@ func _assert_human_card_zone_transition() -> String:
 			{}
 		) as Dictionary
 	).get("card_move_animation_count", 0))
+	var input_before := _screen.call("debug_snapshot") as Dictionary
+	var manual_drag_before := int(input_before.get("manual_drag_drop_count", 0))
+	var central_drop_before := int(input_before.get("central_card_drop_count", 0))
+	var source_capture_before := int(input_before.get(
+		"card_transition_source_rect_capture_count",
+		0
+	))
 	var queued := await _queue_human_card_through_table(card_id)
 	_expect(queued, "drag/table target path accepts the real human card")
+	var input_after := _screen.call("debug_snapshot") as Dictionary
+	_expect(
+		int(input_after.get("manual_drag_drop_count", 0)) == manual_drag_before + 1,
+		"real SceneTree pointer drag reaches the bounded manual bridge exactly once"
+	)
+	_expect(
+		int(input_after.get("central_card_drop_count", 0)) == central_drop_before + 1,
+		"native/manual routing produces exactly one central drop request"
+	)
+	_expect(
+		int(input_after.get("card_transition_source_rect_capture_count", 0))
+			== source_capture_before + 1
+		and int(input_after.get("card_transition_source_rect_missing_count", 0)) == 0,
+		"card.queue captures the real hand source rect before projection refresh"
+	)
 	var after_queue := _flow.call("local_snapshot") as Dictionary
 	var queued_facts := _dbg_facts(after_queue)
 	_expect(
@@ -430,13 +452,33 @@ func _queue_human_card_through_table(card_id: String) -> bool:
 			and not str(semantic.get("summary", semantic.get("effect", ""))).strip_edges().is_empty(),
 			"real hand card face exposes name, cost, type, and purpose"
 		)
-	_click_card(card_control)
 	var arrangement := _screen.find_child(
 		"CentralPublicActionArrangement",
 		true,
 		false
 	) as Control
-	arrangement.emit_signal("card_drop_requested", payload)
+	var start_position := card_control.get_global_rect().get_center()
+	_push_mouse_motion(start_position, Vector2.ZERO)
+	await process_frame
+	_push_mouse_button(MOUSE_BUTTON_LEFT, start_position, true)
+	await process_frame
+	var drag_position := start_position + Vector2(32.0, -96.0)
+	_push_mouse_motion(drag_position, drag_position - start_position)
+	await process_frame
+	# The production drag bridge opens the bounded public drawer after the
+	# dead-zone.  Release only inside that real panel rectangle; never emit the
+	# card_drop_requested signal directly from a test.
+	var drop_rect := Rect2()
+	if arrangement.has_method("drag_drop_rect"):
+		var candidate_rect: Variant = arrangement.call("drag_drop_rect")
+		if candidate_rect is Rect2:
+			drop_rect = candidate_rect
+	if not drop_rect.has_area():
+		return false
+	var finish_position := drop_rect.get_center()
+	_push_mouse_motion(finish_position, finish_position - drag_position)
+	await process_frame
+	_push_mouse_button(MOUSE_BUTTON_LEFT, finish_position, false)
 	await process_frame
 	var choices := _screen.find_child(
 		"RegionPopupTargetChoices",
@@ -532,19 +574,18 @@ func _assert_public_arrangement_interaction() -> void:
 			and float(before.get("public_arrangement_map_visible_area_ratio", 0.0)) >= 0.55,
 		"map remains visible behind the bounded public drawer"
 	)
-	# A production projection may briefly PEEK after the first public card.  It
-	# must return to the stable collapsed handle without user input.
+	# The public batch remains inspectable throughout its 30-second submission
+	# window.  This replaces the old 1.05-second PEEK that real humans could miss.
 	await create_timer(1.18).timeout
 	var post_peek := arrangement.call("arrangement_debug_snapshot") as Dictionary
 	_expect(
-		not bool(post_peek.get("public_arrangement_expanded", true)),
-		"public arrangement returns to its compact handle after the PEEK window"
+		bool(post_peek.get("submission_window_active", false))
+		and bool(post_peek.get("public_arrangement_expanded", false)),
+		"public arrangement remains inspectable across the submission window"
 	)
-	if not bool(post_peek.get("public_arrangement_expanded", false)):
+	if bool(post_peek.get("public_arrangement_expanded", false)):
 		toggle.pressed.emit()
 		await process_frame
-	toggle.pressed.emit()
-	await process_frame
 	var collapsed := arrangement.call("arrangement_debug_snapshot") as Dictionary
 	_expect(
 		not bool(collapsed.get("public_arrangement_expanded", true)),
@@ -1232,6 +1273,28 @@ func _click_card(card: Control) -> void:
 	click.pressed = true
 	click.position = card.size * 0.5
 	card.call("_gui_input", click)
+
+
+func _push_mouse_button(
+	button_index: int,
+	position: Vector2,
+	pressed: bool
+) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = button_index
+	event.position = position
+	event.global_position = position
+	event.pressed = pressed
+	Input.parse_input_event(event)
+
+
+func _push_mouse_motion(position: Vector2, relative: Vector2) -> void:
+	var event := InputEventMouseMotion.new()
+	event.position = position
+	event.global_position = position
+	event.relative = relative
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT if relative.length() > 0.0 else 0
+	Input.parse_input_event(event)
 
 
 func _receipt_count(intent_kind: String, accepted: bool) -> int:

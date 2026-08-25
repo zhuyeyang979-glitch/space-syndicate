@@ -54,7 +54,7 @@ func _run() -> void:
 				"active": false,
 			},
 		],
-		"30秒公开排列",
+		"30秒·悬停",
 		"按权威顺序排列",
 		"匿名身份保持隐藏。"
 	)
@@ -65,6 +65,10 @@ func _run() -> void:
 	_expect(int(debug.get("active_count", 0)) == 1, "active lane remains visible")
 	_expect(int(debug.get("history_count", 0)) == 1, "history lane remains visible")
 	_expect(not bool(debug.get("has_private_text", true)), "arrangement keeps private tokens out of rendered text")
+	await create_timer(1.18).timeout
+	debug = arrangement.arrangement_debug_snapshot() as Dictionary
+	_expect(bool(debug.get("submission_window_active", false)), "submission window remains active past the legacy peek timeout")
+	_expect(bool(debug.get("public_arrangement_expanded", false)), "public cards remain inspectable for the submission window")
 
 	arrangement.apply_public_arrangement(
 		[{
@@ -83,16 +87,22 @@ func _run() -> void:
 	debug = arrangement.arrangement_debug_snapshot() as Dictionary
 	_expect(int(debug.get("arrangement_animation_count", 0)) >= 1, "arrangement transition animates")
 
-	arrangement._drop_data(Vector2.ZERO, {
+	arrangement.begin_drag_drop_mode()
+	await process_frame
+	var drop_rect := arrangement.drag_drop_rect() as Rect2
+	_expect(drop_rect.has_area(), "real drag mode exposes a bounded drop rectangle")
+	var local_drop := arrangement.get_global_transform().affine_inverse() * drop_rect.get_center()
+	arrangement._drop_data(local_drop, {
 		"drag_type": "v073_card",
 		"payload": {"instance_id": "card.local.1", "definition_id": "facility.factory.life.rank_1"},
 	})
 	_expect(dropped.size() == 1, "valid drag payload emits one drop signal")
-	arrangement._drop_data(Vector2.ZERO, {
+	arrangement._drop_data(local_drop, {
 		"drag_type": "invalid",
 		"payload": {"instance_id": "card.local.2"},
 	})
 	_expect(dropped.size() == 1, "invalid drag payload is rejected")
+	arrangement.end_drag_drop_mode()
 
 	arrangement.queue_free()
 	_finish()

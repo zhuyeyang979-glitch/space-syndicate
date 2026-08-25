@@ -9,6 +9,7 @@ signal drag_started(payload: Dictionary)
 const HOVER_SCALE := 1.08
 const HOVER_LIFT_PX := 18.0
 const HOVER_SECONDS := 0.12
+const DRAG_DEADZONE_PX := 10.0
 
 @onready var _face: SpaceSyndicateCardFace = %CardFace
 
@@ -18,6 +19,9 @@ var _selected := false
 var _draggable := false
 var _hovered := false
 var _motion_tween: Tween
+var _drag_candidate := false
+var _drag_gesture_started := false
+var _drag_start_position := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -88,6 +92,8 @@ func debug_snapshot() -> Dictionary:
 		"selected": _selected,
 		"hovered": _hovered,
 		"draggable": _draggable,
+		"drag_candidate": _drag_candidate,
+		"drag_gesture_started": _drag_gesture_started,
 		"disabled": disabled,
 		"legality_state": str(_presentation_data.get(
 			"legality_state",
@@ -141,11 +147,52 @@ func _on_mouse_exited() -> void:
 func _on_face_gui_input(event: InputEvent) -> void:
 	if bool(_presentation_data.get("disabled", _payload.get("disabled", false))):
 		return
+	if event is InputEventMouseButton:
+		var button := event as InputEventMouseButton
+		if button.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if button.pressed:
+			_drag_candidate = _draggable and not _payload.is_empty()
+			_drag_gesture_started = false
+			_drag_start_position = button.position
+		else:
+			_drag_candidate = false
+			_drag_gesture_started = false
+			_apply_visual_state(true)
+		return
 	if not _draggable or not (event is InputEventMouseMotion):
 		return
 	var motion := event as InputEventMouseMotion
-	if (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
-		drag_started.emit(_payload.duplicate(true))
+	if (
+		not _drag_candidate
+		or (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0
+		or motion.position.distance_to(_drag_start_position) < DRAG_DEADZONE_PX
+	):
+		return
+	_drag_candidate = false
+	_drag_gesture_started = true
+	_apply_visual_state(true)
+	var envelope := _drag_envelope()
+	var preview := _drag_preview()
+	# CardFace is the actual STOP-filter hit control in the production scene.
+	# Starting the native drag here keeps Godot's real drag discovery path alive
+	# even though the semantic wrapper owns the payload and telemetry.
+	_face.force_drag(envelope, preview)
+	drag_started.emit(_payload.duplicate(true))
+
+
+func _drag_envelope() -> Dictionary:
+	return {
+		"drag_type": "v073_card",
+		"payload": _payload.duplicate(true),
+	}
+
+
+func _drag_preview() -> Control:
+	var preview := duplicate() as Control
+	preview.modulate = Color(1.0, 1.0, 1.0, 0.86)
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return preview
 
 
 func _get_drag_data(_at_position: Vector2) -> Variant:
@@ -153,14 +200,8 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 		_presentation_data.get("disabled", _payload.get("disabled", false))
 	):
 		return null
-	var preview := duplicate() as Control
-	preview.modulate = Color(1.0, 1.0, 1.0, 0.86)
-	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	set_drag_preview(preview)
-	return {
-		"drag_type": "v073_card",
-		"payload": _payload.duplicate(true),
-	}
+	set_drag_preview(_drag_preview())
+	return _drag_envelope()
 
 
 func _apply_visual_state(animated: bool) -> void:
@@ -182,7 +223,7 @@ func _apply_visual_state(animated: bool) -> void:
 	_face.set_interaction_state({
 		"hovered": _hovered,
 		"selected": _selected,
-		"dragging": false,
+		"dragging": _drag_gesture_started,
 		"pressed": false,
 		"returning": false,
 		"disabled": disabled,
