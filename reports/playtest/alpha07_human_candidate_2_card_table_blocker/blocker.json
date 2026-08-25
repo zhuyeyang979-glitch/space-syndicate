@@ -1,0 +1,53 @@
+{
+  "schema": "space_syndicate.v076.alpha07.human_candidate_2_card_table_blocker.v1",
+  "append_only": true,
+  "recorded_at_utc": "2026-08-24T14:37:07.8405210Z",
+  "candidate": "Alpha 0.7 Living Planet - Human Candidate 2",
+  "candidate_head_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+  "candidate_tree_sha": "60099c99bd15aca044958038c55bff7b74592544",
+  "production_scene": "res://scenes/main.tscn",
+  "classification": "PRE_GOLDEN_HUMAN_CARD_TABLE_FLOW_BLOCKED",
+  "human_candidate_2_short_retest_started": true,
+  "human_candidate_2_short_retest_completed": false,
+  "human_golden_step13_started": false,
+  "human_golden_step13_pass_claimed": false,
+  "human_green": false,
+  "full_product_production_green": false,
+  "step13_status": "PENDING",
+  "player_configuration": {
+    "human_count": 1,
+    "ai_count": 3,
+    "fixture_state_injection_count": 0,
+    "agent_input_event_count": 0
+  },
+  "blockers": [
+    "ACQUIRED_COMMODITY_CARD_NOT_VISIBLE_IN_COMMODITY_HAND",
+    "PUBLIC_ARRANGEMENT_LOOKS_LIKE_DEBUG_DATA_TABLE_NOT_GAME_CARDS",
+    "PLAYED_CARD_REMAINS_VISIBLE_IN_HAND_AFTER_ACCEPTED_PLAY",
+    "PUBLIC_ARRANGEMENT_SHOWS_NUMBERS_INSTEAD_OF_CARD_FACES",
+    "PUBLIC_ARRANGEMENT_NOT_COLLAPSIBLE_OVER_MAP",
+    "AI_PLAYERS_DO_NOT_VISIBLY_PLAY_CARDS",
+    "SUSHI_TRACK_ONLY_WOBBLES_WITHOUT_AUTHORITATIVE_NEXT_PLAYER_ADVANCE",
+    "CARD_ZONE_AND_ANIMATION_TRANSITIONS_ARE_NOT_INTUITIVE"
+  ],
+  "short_retest_observed": {
+    "01_normal_new_game": "PASS_WITH_LONG_STARTUP",
+    "02_no_vertical_drag_or_table_scroll": "PASS",
+    "03_tutorial_steps_1_2": "PASS",
+    "04_coach_step_3_pointer_and_next_stability": "PASS",
+    "05_shared_track_card_acquisition": "BLOCKED",
+    "06_legal_hand_card_play": "BLOCKED",
+    "07_human_and_ai_action_feedback": "PARTIAL",
+    "08_pace_1x_2x_4x": "PASS",
+    "09_normal_exit": "PASS"
+  },
+  "verbatim_human_feedback": "关于在窗口中完成的九项短测的结果：1。可以正常进入new game, 但是进入时间很长，是不是应该做一个loading条，或者看看有没有办法能够缩短进入游戏的时间；2现在确实不需要上下拖动或分隔主桌滚动；3教程可以顺利跳过或完成；4成功；5没法正常拿牌，因为没法正常出牌，手牌是5张满的，然后寿司轨道似乎也没有正常滚动；6没法打出，因为现在玩家行动在右侧有一个小框，汇总是对的，但是因为游戏的结算规则是30秒内所有玩家打出牌进入一个排列，它需要有一个动画，就是玩家的牌在这个游戏画面的中央形成一个排列。然后它像一个Hover一样，玩家可以在这30秒内随时查看。现在就没有这个动画，所以看不出谁打了什么牌，然后视觉上很不直观，然后我也没法正常拖拽卡牌，然后打出这一点，还没做到；7能看到；8正常；9正常。",
+  "not_claimed": [
+    "human_golden_run_pass",
+    "human_green",
+    "step13_golden_pass",
+    "step14_final_settlement_human_pass",
+    "step15_feedback_clean_stop_human_pass",
+    "full_alpha07_production_green"
+  ]
+}

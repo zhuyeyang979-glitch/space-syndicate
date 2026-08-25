@@ -691,6 +691,10 @@ var _match_id := ""
 var _seed := DEFAULT_MATCH_SEED
 var _phase := "idle"
 var _batch_number := 0
+## Monotonic identity for every accepted/rejected card-submission attempt.
+## Queue indexes are presentation/order data and may be reused after a remove;
+## they must never be used as exact-once authority request identities.
+var _submission_identity_sequence := 0
 var _clock_msec := 0
 var _opened_at_msec := 0
 var _submission_deadline_msec := 0
@@ -910,6 +914,44 @@ func legal_card_actions(actor_id: String) -> Array:
 				"fizzle_policy_id": "FIZZLE_FULL_ASSET_REFUND",
 				"source_revision": _batch_number,
 			})
+	return _append_queued_action_options(actor_id, result)
+
+
+func _append_queued_action_options(actor_id: String, result: Array) -> Array:
+	## A queued card lives in DBG committed escrow, so it is absent from the
+	## projected hand. Keep its already-authorized source/target binding visible
+	## to actor-scoped legal queries while preserving the single zone owner.
+	var seen: Dictionary = {}
+	for option_variant in result:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		var key := "%s|%s" % [
+			str(option.get("card_instance_id", "")),
+			str(option.get("target_slot_id", "")),
+		]
+		if not key.begins_with("|"):
+			seen[key] = true
+	for binding_variant in _queued_by_player.get(actor_id, []) as Array:
+		if not (binding_variant is Dictionary):
+			continue
+		var binding := binding_variant as Dictionary
+		var card_id := str(binding.get("card_instance_id", ""))
+		var slot_id := str(binding.get("target_slot_id", ""))
+		if card_id.is_empty() or slot_id.is_empty():
+			continue
+		var key := "%s|%s" % [card_id, slot_id]
+		if seen.has(key):
+			continue
+		var option := binding.duplicate(true)
+		option["option_id"] = "queued.%s" % str(
+			binding.get("action_id", key)
+		)
+		option["queued"] = true
+		option["authority_zone"] = "committed_escrow"
+		option["source_revision"] = _batch_number
+		result.append(option)
+		seen[key] = true
 	return result
 
 
@@ -936,11 +978,7 @@ func queue_card_action(
 		return _reject_action("target_not_legal_for_card")
 	var binding := {
 		"actor_id": actor_id,
-		"action_id": "action.%s.%s.%02d" % [
-			_batch_id(),
-			actor_id,
-			queue.size(),
-		],
+		"action_id": _next_submission_action_id(actor_id),
 		"card_instance_id": card_instance_id,
 		"card_definition_id": str(card.get("definition_id", "")),
 		"target_slot_id": target_slot_id,
@@ -955,6 +993,16 @@ func queue_card_action(
 		"expected_damage_revision": slot.get("damage_revision"),
 		"target_bound": true,
 	}
+	var reservation := _reserve_card_submission(actor_id, binding)
+	if not bool(reservation.get("accepted", false)):
+		return _reject_action(str(reservation.get(
+			"reason_code",
+			"card_submission_reservation_failed"
+		)))
+	binding["authority_zone"] = "committed_escrow"
+	binding["card_reservation_request_id"] = str(
+		reservation.get("request_id", "")
+	)
 	queue.append(binding)
 	_queued_by_player[actor_id] = queue
 	var receipt := {
@@ -992,12 +1040,75 @@ func remove_queued_action(actor_id: String, action_id: String) -> Dictionary:
 		return _reject_action("queue_binding_locked")
 	var queue := _queued_by_player.get(actor_id, []) as Array
 	for index in range(queue.size()):
-		if str((queue[index] as Dictionary).get("action_id", "")) == action_id:
+		var binding := queue[index] as Dictionary
+		if str(binding.get("action_id", "")) == action_id:
+			var released := _release_card_submission(actor_id, binding)
+			if not bool(released.get("accepted", false)):
+				return _reject_action(str(released.get(
+					"reason_code",
+					"card_submission_release_failed"
+				)))
 			queue.remove_at(index)
 			_queued_by_player[actor_id] = queue
 			_emit_local_state()
 			return {"accepted": true, "reason_code": "queued_action_removed"}
 	return _reject_action("queued_action_missing")
+
+
+func _reserve_card_submission(
+	actor_id: String,
+	binding: Dictionary
+) -> Dictionary:
+	var dbg := _dbg_by_player.get(actor_id) as RefCounted
+	if dbg == null:
+		return {"accepted": false, "reason_code": "dbg_authority_missing"}
+	var action_id := str(binding.get("action_id", ""))
+	var card_instance_id := str(binding.get("card_instance_id", ""))
+	var request_id := "intent.reserve.%s" % action_id
+	var intent := dbg.call(
+		"create_authority_intent",
+		request_id,
+		DBG_CORE.ACTION_RESERVE_CARD_SUBMISSION,
+		{"instance_id": card_instance_id}
+	) as Dictionary
+	var receipt := dbg.call("apply_intent", intent) as Dictionary
+	return {
+		"accepted": bool(receipt.get("success", false)),
+		"reason_code": str(receipt.get(
+			"reason_code",
+			"card_submission_reservation_failed"
+		)),
+		"request_id": request_id,
+		"receipt": receipt.duplicate(true),
+	}
+
+
+func _release_card_submission(
+	actor_id: String,
+	binding: Dictionary
+) -> Dictionary:
+	var dbg := _dbg_by_player.get(actor_id) as RefCounted
+	if dbg == null:
+		return {"accepted": false, "reason_code": "dbg_authority_missing"}
+	var action_id := str(binding.get("action_id", ""))
+	var card_instance_id := str(binding.get("card_instance_id", ""))
+	var request_id := "intent.release.%s" % action_id
+	var intent := dbg.call(
+		"create_authority_intent",
+		request_id,
+		DBG_CORE.ACTION_RELEASE_CARD_SUBMISSION,
+		{"instance_id": card_instance_id}
+	) as Dictionary
+	var receipt := dbg.call("apply_intent", intent) as Dictionary
+	return {
+		"accepted": bool(receipt.get("success", false)),
+		"reason_code": str(receipt.get(
+			"reason_code",
+			"card_submission_release_failed"
+		)),
+		"request_id": request_id,
+		"receipt": receipt.duplicate(true),
+	}
 
 
 func lock_player_submission(actor_id: String) -> Dictionary:
@@ -1926,7 +2037,14 @@ func _finish_macro_boundary() -> void:
 	if not bool(advanced.get("accepted", false)):
 		_fail("track_advance_failed", advanced)
 		return
+	_on_authoritative_track_advanced(advanced)
 	_begin_batch()
+
+
+func _on_authoritative_track_advanced(_receipt: Dictionary) -> void:
+	# Extension hook for production pacing observers.  The base runtime keeps
+	# this no-op so it does not introduce another state owner.
+	return
 
 
 func _commit_victory() -> void:
@@ -2021,7 +2139,10 @@ func _build_bound_actions(
 	binding: Dictionary,
 	local_index: int
 ) -> Dictionary:
-	var card := _card_in_hand(actor_id, str(binding.get("card_instance_id", "")))
+	var card := _card_for_queued_action(
+		actor_id,
+		str(binding.get("card_instance_id", ""))
+	)
 	var slot := _slot_by_id(str(binding.get("target_slot_id", "")))
 	if card.is_empty() or slot.is_empty() 			or not _legal_slot_for_card(actor_id, card, slot) 			or not _binding_matches_slot(binding, slot):
 		return {}
@@ -2213,6 +2334,19 @@ func _card_in_hand(actor_id: String, card_instance_id: String) -> Dictionary:
 	return {}
 
 
+func _card_for_queued_action(
+	actor_id: String,
+	card_instance_id: String
+) -> Dictionary:
+	var facts := (_dbg_projection(actor_id).get("facts", {}) as Dictionary)
+	for zone_name in ["committed_escrow", "hand"]:
+		for card_variant in facts.get(zone_name, []) as Array:
+			var card := card_variant as Dictionary
+			if str(card.get("instance_id", "")) == card_instance_id:
+				return card.duplicate(true)
+	return {}
+
+
 func _dbg_projection(actor_id: String) -> Dictionary:
 	var dbg := _dbg_by_player.get(actor_id) as RefCounted
 	return dbg.call("player_projection", actor_id) as Dictionary if dbg != null else {}
@@ -2382,6 +2516,15 @@ func _batch_id() -> String:
 	return "batch.%s.%04d" % [_match_id, _batch_number]
 
 
+func _next_submission_action_id(actor_id: String) -> String:
+	_submission_identity_sequence += 1
+	return "action.%s.%s.%06d" % [
+		_batch_id(),
+		actor_id,
+		_submission_identity_sequence,
+	]
+
+
 func _zero_colors() -> Dictionary:
 	return {
 		"life": 0,
@@ -2406,6 +2549,7 @@ func _reset_runtime() -> void:
 	_match_id = ""
 	_phase = "idle"
 	_batch_number = 0
+	_submission_identity_sequence = 0
 	_clock_msec = 0
 	_opened_at_msec = 0
 	_submission_deadline_msec = 0

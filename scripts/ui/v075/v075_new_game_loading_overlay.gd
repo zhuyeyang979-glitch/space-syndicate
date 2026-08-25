@@ -49,20 +49,23 @@ func bind_sources(flow: Node, screen: Control, telemetry: Node) -> bool:
 	_application_flow = flow
 	_game_screen = screen
 	_playtest_telemetry = telemetry
-	_game_screen.application_intent_requested.connect(
-		_on_application_intent_requested
-	)
 	_application_flow.projection_changed.connect(_on_projection_changed)
 	_application_flow.receipt_ready.connect(_on_receipt_ready)
 	_sources_bound = true
 	return true
 
 
-func _on_application_intent_requested(intent: Dictionary) -> void:
+## Bootstrap remains the sole signal connection and calls this typed bridge.
+## The historical `application_intent_requested.connect(...)` edge therefore
+## stays singular on Bootstrap; this presentation node only decides whether a
+## startup request is delayed.  Returning true means the request has been
+## handled (either delayed here or forwarded to the existing flow).
+func intercept_application_intent(intent: Dictionary) -> bool:
 	if str(intent.get("intent_kind", "")) != NEW_GAME_INTENT_KIND:
 		_application_flow.call("submit_intent", intent)
-		return
+		return true
 	_queue_new_game_after_loading_feedback(intent)
+	return true
 
 
 func _queue_new_game_after_loading_feedback(intent: Dictionary) -> void:
@@ -112,7 +115,6 @@ func _on_projection_changed(snapshot: Dictionary) -> void:
 	)
 	if first_playable:
 		mark_projection_received()
-	_game_screen.call("apply_snapshot", snapshot)
 	if first_playable and not _first_playable_scheduled:
 		_first_playable_scheduled = true
 		_first_playable_snapshot = snapshot.duplicate(true)
@@ -162,7 +164,6 @@ func _complete_new_game_loading_after_presented_frame(sequence: int) -> void:
 
 
 func _on_receipt_ready(receipt: Dictionary) -> void:
-	_game_screen.call("apply_receipt", receipt)
 	if (
 		str(receipt.get("intent_kind", "")) != NEW_GAME_INTENT_KIND
 		or _pending_new_game_intent.is_empty()

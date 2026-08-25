@@ -1,0 +1,39 @@
+{
+  "schema": "space_syndicate.v076.alpha07.human_candidate_3.natural_tail_classification.v1",
+  "append_only": true,
+  "recorded_at_utc": "2026-08-24T19:47:03.4378463Z",
+  "candidate_head_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+  "production_scene": "res://scenes/main.tscn",
+  "production_seed_probe": {
+    "command": "V076_SEED_START=900626424 V076_SEED_COUNT=1 godot --headless --path . --script res://tests/v076_alpha07_seed_tail_probe.gd",
+    "exit_code": 0,
+    "row": "V076_SEED_TAIL_ROW|seed=900626424|accepted=true|phase=settled|batch=4|progress=43|target=8|ai_public=3|capacity=40|scroll=3|reason=sample_match_completed",
+    "seed": 900626424,
+    "accepted": true,
+    "phase": "settled",
+    "batch": 4,
+    "public_progress": 43,
+    "public_progress_target": 8,
+    "ai_public_cards": 3,
+    "initial_capacity": 40,
+    "track_scroll_sequence": 3,
+    "reason": "sample_match_completed",
+    "classification": "normal_production_victory_terminated_before_observable_natural_tail"
+  },
+  "inherited_natural_tail_sentinel": {
+    "command": "godot --headless --path . --script res://tests/v074_unified_track_visible_capacity_10_test.gd",
+    "exit_code": 0,
+    "status": "PASS",
+    "passed": 32,
+    "total": 32,
+    "classification": "inherited_authority_sentinel_proves_natural_tail_behavior",
+    "proven": [
+      "purchase creates vacancy",
+      "no immediate refill",
+      "vacancy follows authoritative track movement",
+      "capacity is restored at the natural tail",
+      "purchase does not advance supply cursor or RNG"
+    ]
+  },
+  "disclosure": "The focused production match legitimately reached settled/Victory at batch 4, so it cannot continue observing a post-Victory tail in the same run. The natural-tail claims are therefore attributed to the inherited 32/32 authority sentinel, not relabeled as a complete production-match tail observation."
+}

@@ -1,0 +1,30 @@
+{
+  "schema": "space_syndicate.v076.alpha07.human_candidate_3.map_hand_reproduction.v1",
+  "append_only": true,
+  "recorded_at_utc": "2026-08-24T23:19:10Z",
+  "production_scene": "res://scenes/main.tscn",
+  "required_states": [
+    "drawer_collapsed_map_center",
+    "drawer_collapsed_map_edge",
+    "drawer_expanded_outside_panel",
+    "target_selection_legal_region",
+    "general_hand_visible",
+    "commodity_hand_visible",
+    "no_hover_card_semantics"
+  ],
+  "agent_input_injected": false,
+  "fixture_card_injection_count": 0,
+  "fixture_target_injection_count": 0,
+  "fixture_hand_injection_count": 0,
+  "direct_method_call_as_click_proof_count": 0,
+  "current_window_available_at_freeze": false,
+  "next_run_must_use_real_scene_tree_gui_dispatch": true,
+  "next_run_must_capture": [
+    "screenshots",
+    "input_trace",
+    "control_hit_trace",
+    "authority_receipts",
+    "projection_snapshots",
+    "terminal_manifest"
+  ]
+}

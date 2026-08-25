@@ -6,6 +6,9 @@ signal combat_presentation_receipt_ready(receipt: Dictionary)
 const CardDefinitionsV075 := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
+const ALPHA01_CONTENT_MANIFEST := preload(
+	"res://resources/content/alpha01/alpha01_content_manifest.tres"
+)
 const PublicActionBatchCore := preload(
 	"res://scripts/v075/runtime/v075_public_action_batch_core.gd"
 )
@@ -233,6 +236,15 @@ var _v075_submission_legal_actions_cache: Dictionary = {}
 var _v075_submission_card_cache: Dictionary = {}
 var _v075_track_projection_cache: Dictionary = {}
 var _v075_public_facility_slots_cache: Array = []
+## Presentation-safe, batch-local AI action receipts.  These rows are derived
+## from the existing queue/lock authority; they never own a card, queue, or
+## gameplay state.  Only a seat label and a public outcome cross the boundary.
+var _v075_ai_public_action_by_actor: Dictionary = {}
+var _v075_ai_observation_count_by_actor: Dictionary = {}
+var _v075_ai_public_action_sequence := 0
+var _v076_projection_flush_scheduled := false
+var _v076_last_track_advance_msec := -1
+var _v076_last_track_advance_sequence := -1
 var _v076_production_asset_reservations: Dictionary = {}
 var _v076_production_military_submission_by_uid: Dictionary = {}
 var _v076_military_consequence_fingerprint_by_id: Dictionary = {}
@@ -2525,9 +2537,9 @@ func legal_card_actions(actor_id: String) -> Array:
 	if _phase == "submission" and _v075_submission_legal_actions_cache.has(
 		actor_id
 	):
-		return (
+		return _append_queued_action_options(actor_id, (
 			_v075_submission_legal_actions_cache.get(actor_id, []) as Array
-		).duplicate(true)
+		).duplicate(true))
 	var result := super.legal_card_actions(actor_id)
 	if (
 		not _combat_initialized
@@ -2705,13 +2717,33 @@ func queue_card_action(
 			!= str(card.get("definition_id", ""))
 	):
 		return _reject_action("combat_card_action_binding_identity_mismatch")
+	var action_id := _next_submission_action_id(actor_id)
+	var reservation_binding := {
+		"actor_id": actor_id,
+		"action_id": action_id,
+		"card_instance_id": card_instance_id,
+		"card_definition_id": str(card.get("definition_id", "")),
+	}
+	var reservation := _reserve_card_submission(actor_id, reservation_binding)
+	if not bool(reservation.get("accepted", false)):
+		return _reject_action(str(reservation.get(
+			"reason_code",
+			"combat_card_submission_reservation_failed"
+		)))
+	card_action_binding = _authoritative_card_action_binding(
+		actor_id,
+		card_instance_id
+	)
+	if (
+		card_action_binding.is_empty()
+		or str(card_action_binding.get("authoritative_zone", ""))
+			!= "committed_escrow"
+	):
+		_release_card_submission(actor_id, reservation_binding)
+		return _reject_action("combat_card_escrow_binding_unavailable")
 	var binding := {
 		"actor_id": actor_id,
-		"action_id": "action.%s.%s.%02d" % [
-			_batch_id(),
-			actor_id,
-			queue.size(),
-		],
+		"action_id": action_id,
 		"card_instance_id": card_instance_id,
 		"card_definition_id": str(card.get("definition_id", "")),
 		"target_slot_id": target_slot_id,
@@ -2727,6 +2759,10 @@ func queue_card_action(
 		"action_domain": domain,
 		"target_bound": true,
 		"card_action_binding": card_action_binding,
+		"authority_zone": "committed_escrow",
+		"card_reservation_request_id": str(
+			reservation.get("request_id", "")
+		),
 	}
 	for lineage_field in [
 		"option_id",
@@ -4535,6 +4571,13 @@ func player_snapshot(viewer_id: String) -> Dictionary:
 	snapshot["sample_mode_id"] = V075_SAMPLE_MODE_ID
 	snapshot["save_notice"] = "V0.7.5 sample save/resume disabled"
 	snapshot["special_actions"] = []
+	# The DBG projection remains authoritative for lifecycle history.  This
+	# viewer-safe list tells the production hand renderer which accepted queue
+	# bindings are now reserved in PENDING_PUBLIC_SUBMISSION, so the same card
+	# cannot be painted as both a hand card and a public card.
+	snapshot["pending_public_card_instance_ids"] = (
+		_v075_pending_public_card_ids(viewer_id)
+	)
 	snapshot["v076_public_action_arrangement"] = (
 		_v075_public_action_arrangement_projection(viewer_id)
 	)
@@ -4853,6 +4896,13 @@ func debug_snapshot() -> Dictionary:
 	result["ai_military_monster_assault_count"] = _combat_ai_military_monster_count
 	result["ai_combat_invalid_target_count"] = _combat_ai_invalid_target_count
 	result["ai_action_slot_limit"] = V075_AUTO_ACTION_LIMIT
+	result["ai_public_action_receipt_count"] = _v075_ai_public_action_sequence
+	result["ai_public_action_receipts"] = _v075_ai_public_action_by_actor.values().duplicate(true)
+	result["ai_observation_count_by_actor"] = _v075_ai_observation_count_by_actor.duplicate(true)
+	result["ai_explicit_pass_count"] = _v075_ai_public_action_by_actor.values().filter(
+		func(value: Variant) -> bool:
+			return value is Dictionary and str((value as Dictionary).get("status", "")) == "PASS"
+	).size()
 	result["special_support_placeholder_count"] = 0
 	result["military_guard_task_count"] = 0
 	result["military_bound_action_count"] = 0
@@ -5038,6 +5088,15 @@ func _reset_runtime() -> void:
 	_v075_submission_rollback_count = 0
 	_v075_public_card_identity_rejection_count = 0
 	_v075_public_facility_slots_cache = []
+	_v075_ai_public_action_by_actor = {}
+	_v075_ai_observation_count_by_actor = {}
+	_v075_ai_public_action_sequence = 0
+	# A deferred projection flush belongs to the current runtime generation;
+	# clear its scheduling guard whenever a new game/reset starts so a timer
+	# from the previous generation cannot suppress the first new handoff.
+	_v076_projection_flush_scheduled = false
+	_v076_last_track_advance_msec = -1
+	_v076_last_track_advance_sequence = -1
 	_v076_production_asset_reservations = {}
 	_v076_production_military_submission_by_uid = {}
 	_v076_military_consequence_fingerprint_by_id = {}
@@ -5058,6 +5117,9 @@ func _reset_runtime() -> void:
 func _begin_batch() -> void:
 	_clear_v075_submission_caches()
 	_clear_v075_track_projection_cache()
+	_v075_ai_public_action_by_actor = {}
+	_v075_ai_observation_count_by_actor = {}
+	_v075_ai_public_action_sequence = 0
 	super._begin_batch()
 	if _combat_initialized and _phase != "failed":
 		var result := _begin_combat_batch()
@@ -5210,15 +5272,35 @@ func _facility_validation_report(state: Dictionary) -> Dictionary:
 # locked, the frozen anonymous queue and its resolution cursor come from the
 # existing PublicActionBatchCore owner.  No actor id, seat, private instance id,
 # hidden order, or target binding crosses this boundary.
+func _v075_pending_public_card_ids(viewer_id: String) -> Array[String]:
+	var result: Array[String] = []
+	for binding_variant in _queued_by_player.get(viewer_id, []) as Array:
+		if not (binding_variant is Dictionary):
+			continue
+		var card_id := str((binding_variant as Dictionary).get(
+			"card_instance_id",
+			""
+		))
+		if not card_id.is_empty() and not result.has(card_id):
+			result.append(card_id)
+	return result
+
+
 func _v075_public_action_arrangement_projection(viewer_id: String) -> Dictionary:
 	var entries: Array = []
 	if _phase == "submission":
-		for actor_id in _player_ids:
-			var queue_variant: Variant = _queued_by_player.get(actor_id, [])
-			if not (queue_variant is Array):
-				continue
-			var queue := queue_variant as Array
-			for binding_variant in queue:
+		# Match PublicActionBatchCore's authority queue: round-robin local
+		# action index, then the existing fixed player order. This keeps the
+		# pending presentation identical to the order that will be locked.
+		for local_action_index in range(V075_AUTO_ACTION_LIMIT):
+			for actor_id in _player_ids:
+				var queue_variant: Variant = _queued_by_player.get(actor_id, [])
+				if not (queue_variant is Array):
+					continue
+				var queue := queue_variant as Array
+				if local_action_index >= queue.size():
+					continue
+				var binding_variant: Variant = queue[local_action_index]
 				if not (binding_variant is Dictionary):
 					continue
 				var binding := binding_variant as Dictionary
@@ -5227,6 +5309,11 @@ func _v075_public_action_arrangement_projection(viewer_id: String) -> Dictionary
 					continue
 				var local_owner := actor_id == viewer_id
 				var domain := str(binding.get("action_domain", "facility"))
+				# Monster, military and other Private Direct Action submissions
+				# never enter this public card table.
+				if domain != "facility":
+					continue
+				var seat_index := _player_ids.find(actor_id)
 				var row := _v075_arrangement_entry_base(
 					"pending.%s" % action_id.sha256_text().left(16),
 					"pending",
@@ -5234,6 +5321,17 @@ func _v075_public_action_arrangement_projection(viewer_id: String) -> Dictionary
 					-1
 				)
 				row["owner_hint"] = "你" if local_owner else "匿名"
+				row["seat_label"] = "你" if local_owner else "AI玩家 %d" % maxi(1, seat_index)
+				row["card_face_mode"] = "face" if local_owner else "back"
+				row["projection_role"] = "public_pending_card"
+				row["authority_zone"] = "pending_public_submission"
+				row["public_batch_entry"] = true
+				row["public_card_face_projection"] = true
+				row["source_receipt"] = "queue.%s" % action_id.sha256_text().left(16)
+				row["presentation_correlation_id"] = (
+					"public.card.%s" % action_id.sha256_text().left(20)
+				)
+				row["source_anchor"] = "local_hand" if local_owner else "ai_seat_%02d" % maxi(1, seat_index)
 				row["label"] = (
 					_v075_arrangement_card_label(
 						str(binding.get("card_definition_id", "")),
@@ -5244,14 +5342,14 @@ func _v075_public_action_arrangement_projection(viewer_id: String) -> Dictionary
 				)
 				row["viewer_owned"] = local_owner
 				if local_owner:
+					row["card_instance_id"] = str(binding.get("card_instance_id", ""))
 					row["card_definition_id"] = str(
 						binding.get("card_definition_id", "")
 					)
 					row["detail"] = _v075_arrangement_target_detail(binding)
 				entries.append(row)
-		entries.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
-			return str(left.get("id", "")) < str(right.get("id", ""))
-		)
+		# Keep the authority's player/queue order. Presentation hashes are
+		# correlation identities only and must never reorder the public batch.
 	else:
 		var public_state := _facility_state
 		var public_projection := PublicActionBatchCore.public_projection(
@@ -5277,6 +5375,8 @@ func _v075_public_action_arrangement_projection(viewer_id: String) -> Dictionary
 				"action_domain",
 				authority_entry.get("action_domain", "facility")
 			))
+			if domain != "facility":
+				continue
 			var status := str(public_entry.get("resolution_status", "pending"))
 			var lane := "history" if status == "resolved" else "queue"
 			if status != "resolved" and index == cursor:
@@ -5290,6 +5390,22 @@ func _v075_public_action_arrangement_projection(viewer_id: String) -> Dictionary
 				index
 			)
 			row["owner_hint"] = "你" if local_owner else "匿名"
+			row["seat_label"] = "你" if local_owner else "AI玩家 %d" % maxi(1, _player_ids.find(actor_id))
+			row["card_face_mode"] = "face" if local_owner else "back"
+			row["projection_role"] = "public_batch_card"
+			row["authority_zone"] = "public_batch"
+			row["public_batch_entry"] = true
+			row["public_card_face_projection"] = true
+			row["source_receipt"] = str(public_entry.get(
+				"anonymous_action_id",
+				"public.%06d" % index
+			))
+			row["presentation_correlation_id"] = (
+				"public.card.%s" % str(
+					authority_entry.get("action_id", "")
+				).sha256_text().left(20)
+			)
+			row["source_anchor"] = "local_hand" if local_owner else "ai_seat_%02d" % maxi(1, _player_ids.find(actor_id))
 			row["label"] = (
 				_v075_arrangement_card_label(
 					str(action.get("source_card_definition_id", "")),
@@ -5301,11 +5417,70 @@ func _v075_public_action_arrangement_projection(viewer_id: String) -> Dictionary
 			row["viewer_owned"] = local_owner
 			row["resolution_status"] = status
 			if local_owner:
+				row["card_instance_id"] = str(action.get("source_card_instance_id", ""))
 				row["card_definition_id"] = str(
 					action.get("source_card_definition_id", "")
 				)
 				row["detail"] = _v075_arrangement_target_detail(action)
 			entries.append(row)
+	# Public-safe AI receipts make a silent private/empty branch observable.  A
+	# queued facility card is already represented above; PASS remains a feed row
+	# and never pretends to be a card instance.
+	for ai_row_variant in _v075_ai_public_action_by_actor.values():
+		if not (ai_row_variant is Dictionary):
+			continue
+		var ai_row := ai_row_variant as Dictionary
+		var ai_entry_id := "ai:%s" % str(ai_row.get("receipt_id", ""))
+		var already_present := false
+		for existing_variant in entries:
+			if existing_variant is Dictionary and str((existing_variant as Dictionary).get("source_anchor", "")) == str(ai_row.get("source_anchor", "")):
+				already_present = true
+				break
+		if already_present:
+			continue
+		# The authority marks a facility action as public_card before the frozen
+		# batch projection is visible.  Preserve that public fact as a legal card
+		# back if the queue snapshot is between edges; this is a presentation
+		# consumer of the existing receipt, never a second queue or card owner.
+		if bool(ai_row.get("public_card", false)):
+			entries.append({
+				"id": ai_entry_id,
+				"resolution_id": -1,
+				"lane": "queue",
+				"kind": "public_card",
+				"state": "QUEUED",
+				"active": true,
+				"action_domain": "facility",
+				"label": "一张匿名公开牌",
+				"owner_hint": str(ai_row.get("actor_label", "匿名玩家")),
+				"seat_label": str(ai_row.get("actor_label", "匿名玩家")),
+				"card_face_mode": "back",
+				"projection_role": "public_card_receipt",
+				"authority_zone": "public_batch",
+				"public_batch_entry": true,
+				"public_card_face_projection": true,
+				"source_receipt": str(ai_row.get("receipt_id", "")),
+				"presentation_correlation_id": "public.card.%s" % str(
+					ai_row.get("receipt_id", "")
+				).sha256_text().left(20),
+				"source_anchor": str(ai_row.get("source_anchor", "")),
+				"detail": "匿名牌已进入公开排列 · 等待公开结算",
+				"summary": "公开牌背",
+				"tooltip": "%s：公开牌已进入排列。" % str(
+					ai_row.get("actor_label", "匿名玩家")
+				),
+				"badges": ["PUBLIC", "QUEUED"],
+				"accent": "#55d6bc",
+			})
+			continue
+		# Private Direct Action and PASS remain visible only through Action Feed;
+		# do not fabricate a card-table row for either branch.
+		if str(ai_row.get("status", "")) != "PASS":
+			continue
+		continue
+	var private_direct_action_entry_count := (
+		_v075_private_direct_action_entry_count(entries)
+	)
 	return {
 		"schema": "V076PublicActionArrangementProjectionV1",
 		"ruleset_id": V075_RULESET_ID,
@@ -5318,7 +5493,41 @@ func _v075_public_action_arrangement_projection(viewer_id: String) -> Dictionary
 		"hidden_order_disclosed": false,
 		"actor_id_disclosed": false,
 		"private_queue_disclosed": false,
+		"private_direct_action_entry_count": private_direct_action_entry_count,
+		"public_card_face_mode": "viewer_face_ai_card_back",
+		"pending_public_card_instance_ids": _v075_pending_public_card_ids(viewer_id),
+		"ai_public_action_receipts": _v075_ai_public_action_by_actor.values().duplicate(true),
+		"ai_observation_count": _v075_ai_observation_count_by_actor.values().duplicate(true),
+		"track_phase": _phase,
+		"handoff_sequence": int((_track_core.call("player_projection_v1", viewer_id).get("public_facts", {}) as Dictionary).get("scroll_sequence", 0)) if _track_core != null else 0,
 	}
+
+
+func _v075_private_direct_action_entry_count(entries: Array) -> int:
+	var count := 0
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		# A public PASS receipt may retain the failed action domain for a
+		# diagnostic reason, but it is not a private card entry.  Count only an
+		# actual projected private-action row so this field cannot be a hardcoded
+		# zero if a future projection path leaks one.
+		if (
+			str(entry.get("projection_role", "")) == "public_pass_receipt"
+			or str(entry.get("state", "")).to_upper() == "PASS"
+			or str(entry.get("kind", "")).to_lower() == "pass"
+		):
+			continue
+		var domain := str(entry.get("action_domain", ""))
+		var private_projection := (
+			str(entry.get("projection_role", "")).begins_with("private_")
+			or str(entry.get("authority_zone", "")).begins_with("pending_private")
+			or bool(entry.get("private_direct_action", false))
+		)
+		if domain in ["monster", "military", "direct_attack", "private_direct_action"] or private_projection:
+			count += 1
+	return count
 
 
 func _v075_arrangement_entry_base(
@@ -5537,7 +5746,7 @@ func _build_bound_actions(
 		""
 	)) != str(binding.get("card_instance_id", "")):
 		return {}
-	var card := _card_in_hand(
+	var card := _card_for_queued_action(
 		actor_id,
 		str(binding.get("card_instance_id", ""))
 	)
@@ -5746,7 +5955,19 @@ func _track_start_config() -> Dictionary:
 		"local_visible_slot_count": V075_CARD_CAPACITY,
 		"match_instance_id": _match_id,
 		"card_definition_registry_id": CardDefinitionsV075.REGISTRY_ID,
+		# Selection comes from the existing Alpha01 content manifest, whose
+		# `card_catalog` is the current CardRuntimeCatalogV06Resource.  The track
+		# owns deterministic order only; it does not create card definitions.
+		"commodity_definition_ids": _alpha01_commodity_track_definition_ids(),
 	}
+
+
+func _alpha01_commodity_track_definition_ids() -> Array:
+	var runtime_selection := ALPHA01_CONTENT_MANIFEST.runtime_selection_snapshot()
+	var acquisition := runtime_selection.get("acquisition", {}) as Dictionary
+	return (
+		acquisition.get("commodity_track_rank_1_ids", []) as Array
+	).duplicate(true)
 
 
 
@@ -7974,6 +8195,71 @@ func _military_private_option(
 	return projected
 
 
+func _v075_ai_seat_label(actor_id: String) -> String:
+	var seat_index := _player_ids.find(actor_id)
+	return "AI玩家 %d" % maxi(1, seat_index)
+
+
+func _v075_record_ai_public_action(
+	actor_id: String,
+	action_kind: String,
+	reason_code: String = "",
+	action_domain: String = "facility",
+	card_queued: bool = false
+) -> Dictionary:
+	if actor_id == _local_player_id or actor_id.is_empty():
+		return {}
+	_v075_ai_public_action_sequence += 1
+	var sequence := _v075_ai_public_action_sequence
+	var row := {
+		"schema": "V076AIPublicActionReceiptV1",
+		"batch_id": _batch_id(),
+		"receipt_id": "ai.public.%s.%02d" % [_batch_id(), sequence],
+		"sequence": sequence,
+		"actor_label": _v075_ai_seat_label(actor_id),
+		"source_anchor": "ai_seat_%02d" % maxi(1, _player_ids.find(actor_id)),
+		"action_kind": action_kind,
+		"action_domain": action_domain,
+		"status": "QUEUED" if card_queued else "PASS",
+		"reason_code": reason_code,
+		"public_card": card_queued and action_domain == "facility",
+		"card_face_mode": "back" if card_queued and action_domain == "facility" else "none",
+		"public_label": "一张匿名牌" if card_queued and action_domain == "facility" else "明确跳过",
+		"target_public": "按公开结算顺序" if card_queued else "当前没有合法公开牌",
+		"direct_action_public_effect": action_domain in ["monster", "military"],
+	}
+	_v075_ai_public_action_by_actor[actor_id] = row.duplicate(true)
+	return row
+
+
+func _v075_observed_option_matches(
+	option: Dictionary,
+	observed_actions: Array
+) -> bool:
+	var option_card_id := str(option.get("card_instance_id", ""))
+	var option_slot_id := str(option.get("target_slot_id", ""))
+	var option_region_id := str(option.get(
+		"target_region_id",
+		option.get("region_id", "")
+	))
+	for observed_variant in observed_actions:
+		if not (observed_variant is Dictionary):
+			continue
+		var observed := observed_variant as Dictionary
+		if str(observed.get("card_instance_id", "")) != option_card_id:
+			continue
+		var observed_slot_id := str(observed.get("target_slot_id", ""))
+		var observed_region_id := str(observed.get(
+			"target_region_id",
+			observed.get("region_id", "")
+		))
+		if not observed_slot_id.is_empty() and observed_slot_id == option_slot_id:
+			return true
+		if not observed_region_id.is_empty() and observed_region_id == option_region_id:
+			return true
+	return false
+
+
 func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 	if bool(_locked_by_player.get(actor_id, false)):
 		return {
@@ -7993,8 +8279,42 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 	if queue.is_empty():
 		var acquisition := _auto_acquire_track_item(actor_id)
 		if not bool(acquisition.get("accepted", false)):
+			_v075_record_ai_public_action(
+				actor_id,
+				"PASS_NO_ACQUISITION",
+				str(acquisition.get("reason_code", "acquisition_rejected"))
+			)
 			return acquisition
-		var legal := _auto_legal_actions(actor_id)
+		# The Observation DTO is the AI's private read boundary.  The existing
+		# legal-action query remains the typed target authority, but facility
+		# candidates are accepted only when they are present in that observation.
+		var observation := ai_observation(actor_id)
+		if observation.is_empty():
+			_v075_record_ai_public_action(
+				actor_id,
+				"PASS_OBSERVATION_FAILED",
+				"canonical_ai_observation_failed"
+			)
+			return {
+				"accepted": false,
+				"reason_code": "canonical_ai_observation_failed",
+				"actor_id": actor_id,
+			}
+		_v075_ai_observation_count_by_actor[actor_id] = int(
+			_v075_ai_observation_count_by_actor.get(actor_id, 0)
+		) + 1
+		var observed_actions := observation.get("legal_actions", []) as Array
+		var queried := _auto_legal_actions(actor_id)
+		var legal: Array = []
+		for option_variant in queried:
+			if not (option_variant is Dictionary):
+				continue
+			var option := option_variant as Dictionary
+			var domain := str(option.get("action_domain", "facility"))
+			if domain in ["monster", "military"]:
+				legal.append(option.duplicate(true))
+			elif _v075_observed_option_matches(option, observed_actions):
+				legal.append(option.duplicate(true))
 		for _action_index in range(V075_AUTO_ACTION_LIMIT):
 			queue = _queued_by_player.get(actor_id, []) as Array
 			var available := _auto_available_actions(actor_id, queue, legal)
@@ -8019,13 +8339,36 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 			)
 			if not bool(queue_receipt.get("accepted", false)):
 				_combat_ai_invalid_target_count += 1
+				_v075_record_ai_public_action(
+					actor_id,
+					"PASS_COMMIT_REJECTED",
+					str(queue_receipt.get("reason_code", "commit_rejected")),
+					action_domain
+				)
 				return queue_receipt
+			_v075_record_ai_public_action(
+				actor_id,
+				"PUBLIC_CARD_QUEUED" if action_domain == "facility" else "PRIVATE_DIRECT_ACTION_QUEUED",
+				str(queue_receipt.get("reason_code", "queued")),
+				action_domain,
+				true
+			)
 			if str(preferred.get("action_domain", "")) == "military":
 				if str(preferred.get("task_kind", "")) == "assault_region":
 					_combat_ai_military_region_count += 1
 				else:
 					_combat_ai_military_monster_count += 1
-	return lock_player_submission(actor_id)
+	var locked := lock_player_submission(actor_id)
+	if bool(locked.get("accepted", false)) and (
+		_queued_by_player.get(actor_id, []) as Array
+	).is_empty():
+		_v075_record_ai_public_action(
+			actor_id,
+			"PASS_NO_LEGAL_CARD",
+			"no_legal_public_card"
+		)
+		_emit_local_state()
+	return locked
 
 
 func _auto_available_actions(
@@ -8274,6 +8617,71 @@ func _auto_maintenance(actor_id: String) -> void:
 			_fail("v075_auto_maintenance_merge_failed", merged)
 			return
 	finish_maintenance(actor_id)
+
+
+func _process_submission() -> void:
+	# The inherited submission loop performs several authoritative AI
+	# acquisitions/queues/locks in one logical batch.  Coalesce only the
+	# presentation signal while that batch runs; card ownership, Tick order,
+	# receipt ledgers and RNG remain handled by the inherited authority.
+	var was_coalesced := _projection_emit_coalesced
+	_projection_emit_coalesced = true
+	super._process_submission()
+	_projection_emit_coalesced = was_coalesced
+	if _projection_emit_pending and not _projection_emit_coalesced:
+		if not _v076_projection_flush_scheduled:
+			_v076_projection_flush_scheduled = true
+			get_tree().create_timer(0.05).timeout.connect(
+				_flush_v076_coalesced_projection
+			)
+
+
+func _process_maintenance() -> void:
+	# A maintenance boundary can cause each AI merge and completion receipt to
+	# publish the same local projection.  Those repeated presentation rebuilds
+	# used to make the authoritative handoff appear to take several seconds.
+	# Reuse the inherited coalescing switch for this one authority-owned batch;
+	# the final snapshot is still emitted after every AI maintenance decision has
+	# committed, so no Tick/RNG/card/track state is skipped or reordered.
+	var was_coalesced := _projection_emit_coalesced
+	_projection_emit_coalesced = true
+	super._process_maintenance()
+	_projection_emit_coalesced = was_coalesced
+	if _projection_emit_pending and not _projection_emit_coalesced:
+		# Let the authority return the new batch/track phase first.  The existing
+		# full viewer projection is scheduled on the next timer edge, keeping the
+		# handoff responsive while retaining the same final state and receipt.
+		if not _v076_projection_flush_scheduled:
+			_v076_projection_flush_scheduled = true
+			get_tree().create_timer(0.05).timeout.connect(
+				_flush_v076_coalesced_projection
+			)
+
+
+func _flush_v076_coalesced_projection() -> void:
+	_v076_projection_flush_scheduled = false
+	if _projection_emit_coalesced or not _projection_emit_pending:
+		return
+	_projection_emit_pending = false
+	_emit_local_state()
+
+
+func _on_authoritative_track_advanced(_receipt: Dictionary) -> void:
+	_v076_last_track_advance_msec = Time.get_ticks_msec()
+	_v076_last_track_advance_sequence = int(
+		(_track_core.call("authoritative_scroll_sequence_v1")
+		if _track_core != null and _track_core.has_method(
+			"authoritative_scroll_sequence_v1"
+		) else -1)
+	)
+
+
+func v076_track_advance_timing_snapshot() -> Dictionary:
+	return {
+		"sequence": _v076_last_track_advance_sequence,
+		"committed_msec": _v076_last_track_advance_msec,
+		"authority_owned": true,
+	}
 
 
 func _preferred_v075_ai_action(

@@ -9966,3 +9966,72 @@ deleted. Evidence and the remaining action inventory are recorded in
   `human_green=false`, Golden counts remain `5/3/0`, and STEP13 remains
   `PENDING`. The append-only receipt is
   `reports/playtest/alpha07_human_candidate_1_blocker/candidate2_readiness_receipt.json`.
+
+## 2026-08-24 — V076 Alpha 0.7 Human Candidate 2 repair validation
+
+- Continued the same task-owned Candidate 2 worktree without resetting or
+  discarding the earlier human blocker evidence. The narrow delta adds a
+  presentation-only staged new-game loading overlay, Coach pacing lifecycle
+  gating through the existing Application Flow, explicit full-hand shared-track
+  affordances, a central privacy-safe public-action arrangement with a
+  staggered fade/scale formation animation, and a native plus manual drag
+  bridge that reuses the existing legal `card.queue` path.
+- Focused validation is green: loading `19/19`, central arrangement `8/8`, real
+  production human-playability readiness `182/182`, pacing determinism `11/11`,
+  golden observation readiness `35/35`, UI text PASS, visual contract PASS, and
+  `git diff --check` PASS. A real headed production drag audit observed one
+  drag start, one central drop, one accepted `card.queue` submission, one manual
+  drop, and zero rejections.
+- Godot MCP ran the real `res://scenes/main.tscn` under
+  `4.7.stable.official.5b4e0cb0f`; hard product/runtime-owner errors are zero.
+  A later headed poll reported one local WASAPI output-device invalidation,
+  classified as an environment/runner issue. The latest
+  automated first-playable marker is `3209 ms`; authority initialization remains
+  synchronous by design, while the overlay makes the wait visible and records
+  presentation-only timing. The headed window is intentionally left open for
+  the next human short retest.
+- This is `GREEN_AFTER_REPAIR_AUTOMATED_ONLY` and
+  `READY_FOR_REAL_HUMAN_RETEST=true`. It does not claim human execution,
+  human green, full-product production green, STEP13, STEP14, or STEP15. The
+  append-only receipt is
+  `reports/playtest/alpha07_human_candidate_2_short_retest/repair_validation_001.json`.
+
+## 2026-08-24 — V076 Alpha 0.7 Human Candidate 3 card-table focused readiness
+
+- Preserved the Candidate 2 six-blocker evidence and continued the same
+  task-owned worktree at head `46b33bba77b356b100ab68bc7c3676d503049a2c`,
+  committed tree `60099c99bd15aca044958038c55bff7b74592544`, Draft PR #93.
+  No reset, restore, checkout, stash, clean, untracked-file deletion, or
+  second gameplay/presentation Owner was introduced. The existing production
+  scene, card catalog, shared track, Application Flow, Runtime Owner, and
+  GameScreen remain authoritative.
+- The real card-table flow probe using `res://scenes/main.tscn`, one Human plus
+  three AI seats, and zero fixture injection passes `400/400`. It observes
+  three AI public cards, fifteen public arrangement entries and transitions,
+  100% public card-face coverage, zero transition failures, and zero
+  presentation gameplay/RNG mutation. The bounded overlay is default
+  collapsed, map-visible, and layout-neutral. Every rendered public face was
+  exercised through the hover path; the focused hover-capability assertion is
+  100% with zero layout reflow.
+- Narrow regressions remain green: public arrangement privacy `8/8`, public
+  arrangement behavior `8/8`, card requeue identity `12/12`, loading `19/19`,
+  shared-track authoritative presentation `42/42`, pacing `11/11`, Human
+  Playability `182/182`, and Coach close performance `161/161` over 30 samples
+  (`P95=15ms`, max `17ms`, white frames/input loss/duplicate signals all zero).
+  Editor parse and runtime-owner check-only both exit zero; MCP reports only
+  existing GDScript reload warnings and no hard runtime error.
+- The default real production seed `900626424` naturally reaches `settled` at
+  batch 4 (`progress=43`, `target=8`, `AI public=3`, `scroll=3`) and therefore
+  ends normally before a post-Victory natural tail can be observed. The
+  inherited `V074_UNIFIED_TRACK_VISIBLE_CAPACITY_10_TEST` remains the separate
+  authority proof for vacancy-following and natural-tail refill (`32/32`); the
+  two evidence classes are not conflated.
+- The desktop shortcut is verified against the Candidate 3 launcher and
+  worktree. The historical old launcher log remains recoverably in Recycle Bin;
+  Codex backups, sessions, Godot userdata, and the worktree remain retained.
+  Old empty `v076-*` temp directories were not deleted because the cleanup
+  command was blocked by execution policy; files deleted this turn: zero.
+- Candidate 3 is `READY_FOR_REAL_HUMAN_RETEST`, not Human Green. `HUMAN_GREEN=false`,
+  `STEP13=PENDING`, STEP14/15 are not started, and the headed window remains
+  open for the human short retest. Append-only evidence is under
+  `reports/playtest/alpha07_human_candidate_3_card_table_flow/`.

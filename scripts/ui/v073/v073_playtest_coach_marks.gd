@@ -4,6 +4,10 @@ class_name V073PlaytestCoachMarks
 
 signal coach_mark_shown(mark_id: String)
 signal coach_mark_skipped(mark_id: String, skip_all: bool)
+## Emitted only when the whole coach surface changes lifecycle state.  The
+## presentation owner uses this edge (rather than every mark) to gate the
+## authoritative playtest pace.
+signal coach_activity_changed(active: bool, reason_code: String)
 
 const SAFE_MARGIN := 12.0
 const HEADER_SAFE_TOP := 64.0
@@ -58,6 +62,11 @@ var _step3_panel_move_on_pointer_count := 0
 var _missing_target_count := 0
 var _target_available := false
 var _last_advance_frame := -1
+var _close_sample_msec: Array[int] = []
+var _close_white_frame_count := 0
+var _close_input_loss_count := 0
+var _close_duplicate_signal_count := 0
+var _close_generation := 0
 
 
 func _ready() -> void:
@@ -85,6 +94,7 @@ func restart_from_settings() -> void:
 	_completed = false
 	_active = true
 	_index = 0
+	coach_activity_changed.emit(true, "started")
 	_show_current()
 
 
@@ -132,6 +142,12 @@ func debug_snapshot() -> Dictionary:
 		),
 		"missing_target_count": _missing_target_count,
 		"target_available": _target_available,
+		"coachmark_close_sample_count": _close_sample_msec.size(),
+		"coachmark_close_p95_ms": _close_p95_msec(),
+		"coachmark_close_max_ms": _close_sample_msec.max() if not _close_sample_msec.is_empty() else 0,
+		"coachmark_close_white_frame_count": _close_white_frame_count,
+		"coachmark_close_input_loss_count": _close_input_loss_count,
+		"coachmark_close_duplicate_signal_count": _close_duplicate_signal_count,
 		"suspended": _suspended,
 		"callout_position": _callout.position,
 		"gameplay_value_change_count": 0,
@@ -200,6 +216,7 @@ func _advance() -> void:
 		_active = false
 		_completed = true
 		_root.visible = false
+		coach_activity_changed.emit(false, "completed")
 		return
 	_index += 1
 	_show_current()
@@ -213,15 +230,48 @@ func _skip_all() -> void:
 	_active = false
 	_completed = true
 	_root.visible = false
+	coach_activity_changed.emit(false, "skipped_all")
 
 
 func _close() -> void:
 	if not _active:
+		_close_duplicate_signal_count += 1
 		return
+	_close_generation += 1
+	var close_generation := _close_generation
+	var close_started_msec := Time.get_ticks_msec()
 	var mark_id := str((MARKS[_index] as Dictionary).get("id", "unknown"))
 	coach_mark_skipped.emit(mark_id, false)
 	_active = false
 	_root.visible = false
+	coach_activity_changed.emit(false, "closed")
+	call_deferred("_record_close_response", close_generation, close_started_msec)
+
+
+func _record_close_response(generation: int, started_msec: int) -> void:
+	# Two normal frames cover the presentation fence used by V075 when it
+	# restores pacing.  This is a diagnostic sample only; it does not own pace
+	# or gameplay state.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if generation != _close_generation:
+		return
+	if _root.visible or _active:
+		_close_white_frame_count += 1
+		_close_input_loss_count += 1
+		return
+	_close_sample_msec.append(maxi(0, Time.get_ticks_msec() - started_msec))
+	if _close_sample_msec.size() > 64:
+		_close_sample_msec.pop_front()
+
+
+func _close_p95_msec() -> int:
+	if _close_sample_msec.is_empty():
+		return 0
+	var values := _close_sample_msec.duplicate()
+	values.sort()
+	var index := clampi(int(ceil(float(values.size()) * 0.95)) - 1, 0, values.size() - 1)
+	return int(values[index])
 
 
 func _show_current() -> void:

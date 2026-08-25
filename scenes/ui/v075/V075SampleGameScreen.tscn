@@ -1,8 +1,9 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/ui/v074/V074SampleGameScreen.tscn" id="1_base"]
 [ext_resource type="Script" path="res://scripts/ui/v075/v075_sample_game_screen.gd" id="2_wrapper"]
 [ext_resource type="PackedScene" path="res://scenes/ui/v075/V075CombatPlayerSurface.tscn" id="3_surface"]
+[ext_resource type="PackedScene" path="res://scenes/ui/v075/V075PublicActionArrangement.tscn" id="4_public_arrangement"]
 
 [sub_resource type="StyleBoxFlat" id="StyleCombatOverlay"]
 bg_color = Color(0.026, 0.044, 0.073, 0.985)
@@ -41,6 +42,18 @@ corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleCommodityHandPreview"]
+bg_color = Color(0.025, 0.055, 0.09, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.38, 0.72, 0.82, 0.72)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="V075SampleGameScreen" instance=ExtResource("1_base")]
 script = ExtResource("2_wrapper")
@@ -82,6 +95,17 @@ custom_minimum_size = Vector2(58, 28)
 layout_mode = 2
 tooltip_text = "暂停世界有效时间；权威 Tick 频率保持 20 Hz"
 text = "PAUSE"
+
+[node name="CentralPublicActionArrangement" parent="RootMargin/Shell/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport" instance=ExtResource("4_public_arrangement")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+z_index = 35
 
 [node name="V075RightSidebar" type="VBoxContainer" parent="RootMargin/Shell/TableArea"]
 unique_name_in_owner = true
@@ -232,6 +256,45 @@ custom_minimum_size = Vector2(72, 28)
 layout_mode = 2
 toggle_mode = true
 text = "商品 0/5"
+
+[node name="CommodityHandPreviewPanel" type="PanelContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 116)
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("StyleCommodityHandPreview")
+
+[node name="PreviewMargin" type="MarginContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommodityHandPreviewPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 5
+
+[node name="PreviewRows" type="VBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommodityHandPreviewPanel/PreviewMargin"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="CommodityHandPreviewLabel" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommodityHandPreviewPanel/PreviewMargin/PreviewRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.88, 0.87, 1)
+theme_override_font_sizes/font_size = 11
+text = "商品手牌（独立 0/5）"
+
+[node name="CommodityHandPreviewRail" type="HBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommodityHandPreviewPanel/PreviewMargin/PreviewRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="CommodityHandEmptyHint" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommodityHandPreviewPanel/PreviewMargin/PreviewRows/CommodityHandPreviewRail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.65, 0.76, 1)
+text = "共享寿司轨取得的商品牌会在这里显示，不占普通手牌。"
+vertical_alignment = 1
+text_overrun_behavior = 3
 
 [node name="CurrentActionPanel" type="PanelContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows" index="0"]
 unique_name_in_owner = true

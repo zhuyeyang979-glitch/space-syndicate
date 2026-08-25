@@ -1,0 +1,43 @@
+{
+  "schema": "space_syndicate.v076.alpha07.human_candidate_3.map_hand_blocker.terminal.v1",
+  "append_only": true,
+  "recorded_at_utc": "2026-08-24T23:19:10Z",
+  "worktree": "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice",
+  "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+  "head_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+  "tree_sha": "60099c99bd15aca044958038c55bff7b74592544",
+  "tracked_change_count": 21,
+  "index_change_count": 0,
+  "untracked_count": 292,
+  "godot_processes_at_freeze": [
+    {
+      "pid": 13840,
+      "process": "Godot_v4.7-stable_win64_console",
+      "mode": "headless",
+      "command_suffix": "tests/v076_alpha07_coachmark_close_performance_test.gd",
+      "window_title": "",
+      "window_handle": 0
+    },
+    {
+      "pid": 28196,
+      "process": "Godot_v4.7-stable_win64",
+      "mode": "headless",
+      "command_suffix": "tests/v076_alpha07_coachmark_close_performance_test.gd",
+      "window_title": "",
+      "window_handle": 0
+    }
+  ],
+  "headed_window_left_open": false,
+  "normal_close_required": "No headed session was present; the two windowless test processes are stale headless verification children and are handled separately.",
+  "current_session_evidence_root": "reports/playtest/alpha07_human_candidate_3_map_hand_blocker",
+  "current_human_session_evidence_preserved": true,
+  "current_local_work_preserved": true,
+  "worktree_reset_count": 0,
+  "worktree_stash_count": 0,
+  "worktree_clean_count": 0,
+  "candidate3_evidence_mutation_count": 0,
+  "human_green": false,
+  "step13_started": false,
+  "step14_started": false,
+  "step15_started": false
+}

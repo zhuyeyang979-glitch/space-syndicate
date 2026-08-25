@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/CardResolutionTrack.tscn" id="1_track"]
+[ext_resource type="Script" path="res://scripts/ui/v075/v075_public_action_arrangement.gd" id="2_script"]
+
+[node name="V075PublicActionArrangement" instance=ExtResource("1_track")]
+custom_minimum_size = Vector2(0, 0)
+mouse_filter = 2
+script = ExtResource("2_script")

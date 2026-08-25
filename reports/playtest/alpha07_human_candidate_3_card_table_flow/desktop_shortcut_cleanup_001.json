@@ -1,0 +1,35 @@
+{
+  "schema": "space_syndicate.v076.alpha07.desktop_shortcut_cleanup.v2",
+  "append_only": true,
+  "recorded_at_local": "2026-08-25T02:51:14.0156933+09:00",
+  "candidate_head_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+  "shortcut": {
+    "path": "C:/Users/Administrator/OneDrive/Desktop/太空辛迪加.lnk",
+    "target": "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice/Launch Space Syndicate.cmd",
+    "working_directory": "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice",
+    "description": "太空辛迪加 - Alpha 0.7 Living Planet - Human Candidate 3",
+    "icon": "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice/assets/icon.ico,0",
+    "arguments": "",
+    "verified": true
+  },
+  "cleanup": {
+    "moved_to_recycle_bin": [
+      {
+        "path": "C:/Users/Administrator/AppData/Local/SpaceSyndicate/launcher.log",
+        "bytes": 2696,
+        "sha256_before": "22FE9650AC2102ECE59D0BC91593E45B2FE70B8CD3D99498148D3E4D959236CA",
+        "reason": "historical July/old-worktree launcher log",
+        "recoverable": true,
+        "verified_absent_after": true
+      }
+    ],
+    "prior_explicit_old_temp_cleanup_preserved": true,
+    "protected_data_retained": [
+      "C:/Users/Administrator/.codex/backup-*",
+      "C:/Users/Administrator/.codex/sessions",
+      "C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加",
+      "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice"
+    ],
+    "recycle_bin_cleared": false
+  }
+}

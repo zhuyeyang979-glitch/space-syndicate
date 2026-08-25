@@ -264,14 +264,21 @@ func _apply_density_for_size() -> void:
 		cost_badge.custom_minimum_size = Vector2(20, 18) if is_mini_card else (Vector2(22, 20) if compact else Vector2(28, 26))
 	if route_glyph_badge != null:
 		route_glyph_badge.custom_minimum_size = Vector2(18, 18) if is_mini_card else (Vector2(21, 20) if compact else Vector2(24, 26))
-	art_panel.custom_minimum_size = Vector2(0, 26 if dock_mini else (30 if hand_mini else (104 if codex_full else (58 if inspector_full else (28 if is_mini_card else (42 if compact else 70))))))
+	# dock_mini is the production hand face, not a debug thumbnail.  It must
+	# retain a readable art cue and semantic rows without requiring Hover.
+	# Keep the smaller hand density for narrow cards, but reserve explicit room
+	# for the target/legal chips below the art.
+	art_panel.custom_minimum_size = Vector2(0, 38 if dock_mini else (30 if hand_mini else (104 if codex_full else (58 if inspector_full else (28 if is_mini_card else (42 if compact else 70))))))
 	if keyword_chip_rail != null:
-		keyword_chip_rail.visible = not dock_mini
-		keyword_chip_rail.custom_minimum_size = Vector2(0, 0 if dock_mini else (18 if hand_mini else (22 if compact else 24)))
+		# The previous dock_mini branch hid every chip, making target and
+		# legality hover-only.  Keep a compact two-chip rail; the helper below
+		# prioritizes target and state entries from the existing semantic payload.
+		keyword_chip_rail.visible = true
+		keyword_chip_rail.custom_minimum_size = Vector2(0, 18 if dock_mini else (18 if hand_mini else (22 if compact else 24)))
 		keyword_chip_rail.add_theme_constant_override("h_separation", 3 if hand_mini else 4)
 		keyword_chip_rail.add_theme_constant_override("v_separation", 1 if hand_mini else 2)
-	effect_label.custom_minimum_size = Vector2(0, 20 if dock_mini else (34 if hand_mini else (96 if codex_full else (92 if inspector_full else (34 if is_mini_card else (42 if compact else 58))))))
-	effect_label.max_lines_visible = 1 if dock_mini else (3 if hand_mini else (5 if codex_full else (7 if inspector_full else (3 if is_mini_card else (3 if compact else 4)))))
+	effect_label.custom_minimum_size = Vector2(0, 28 if dock_mini else (34 if hand_mini else (96 if codex_full else (92 if inspector_full else (34 if is_mini_card else (42 if compact else 58))))))
+	effect_label.max_lines_visible = 2 if dock_mini else (3 if hand_mini else (5 if codex_full else (7 if inspector_full else (3 if is_mini_card else (3 if compact else 4)))))
 	effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	effect_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	stat_label.custom_minimum_size = Vector2(22, 0) if is_mini_card else (Vector2(26, 0) if compact else Vector2(36, 0))
@@ -574,7 +581,25 @@ func _render_keyword_chips(hand_mini: bool, inspector_full: bool) -> void:
 		return
 	_clear_children(keyword_chip_rail)
 	var entries := _card_keyword_entries()
-	var limit := 4 if hand_mini else (8 if inspector_full else 6)
+	var dock_mini := _is_dock_mini_card()
+	if dock_mini:
+		# Existing semantic producers already provide use-case, target, and
+		# legality entries in that order.  For the compact production face,
+		# expose target + legality (the use-case is repeated in the short effect)
+		# and avoid a wrapped rail that would clip the effect row.
+		var prioritized: Array = []
+		for entry_variant in entries:
+			if not (entry_variant is Dictionary):
+				continue
+			var entry := entry_variant as Dictionary
+			var text := str(entry.get("text", ""))
+			if text.contains("区域") or text.contains("怪兽") or text.contains("玩家") or text.contains("目标") or text in ["可出牌", "不可用", "可查看"]:
+				prioritized.append(entry)
+		if prioritized.size() >= 2:
+			entries = prioritized.slice(0, 2)
+		else:
+			entries = entries.slice(0, 2)
+	var limit := 2 if dock_mini else (4 if hand_mini else (8 if inspector_full else 6))
 	for index in range(mini(limit, entries.size())):
 		var entry := entries[index] as Dictionary
 		_add_keyword_chip(entry, hand_mini)

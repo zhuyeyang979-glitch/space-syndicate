@@ -11,6 +11,8 @@ const VIEWPORTS := [
 var _checks := 0
 var _failures: Array[String] = []
 var _receipts: Array[Dictionary] = []
+var _real_pointer_trace: Array[Dictionary] = []
+var _direct_method_call_false_green_count := 0
 
 
 func _init() -> void:
@@ -25,6 +27,9 @@ func _run() -> void:
 			await _cleanup(context)
 	var functional_context := await _start_from_real_ui(Vector2i(1600, 960))
 	if not functional_context.is_empty():
+		await _assert_coach_pacing_gate(functional_context)
+		await _dismiss_coach_before_play(functional_context)
+		await _assert_real_pointer_contract(functional_context)
 		await _assert_pause_freezes_submission_timer(functional_context)
 		await _assert_real_card_and_action_path(functional_context)
 		await _assert_pacing_controls(functional_context)
@@ -44,6 +49,70 @@ func _run() -> void:
 		]
 	)
 	quit(0 if _failures.is_empty() else 1)
+
+
+
+func _assert_coach_pacing_gate(context: Dictionary) -> void:
+	var screen := context.get("screen") as Control
+	var flow := context.get("flow") as Node
+	var coach := screen.get_node("V073PlaytestCoachMarks") as Node
+	var before := flow.call("local_snapshot") as Dictionary
+	var initial_screen_debug := screen.call("debug_snapshot") as Dictionary
+	var initial_human := initial_screen_debug.get("human_playability", {}) as Dictionary
+	_expect(bool((coach.call("debug_snapshot") as Dictionary).get("active", false)), "new game opens the coach activity gate")
+	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("effective_multiplier", -1)) == 0, "coach activity immediately pauses the shared effective pace")
+	_expect(int(initial_human.get("coach_pacing_saved_multiplier", -1)) == 2, "coach gate saves the Candidate 2 default 2x once")
+	var runtime := flow.get("_runtime_owner") as Node
+	if runtime != null:
+		runtime.call("_process", 31.0)
+	var after_long_delta := flow.call("local_snapshot") as Dictionary
+	_expect(
+		is_equal_approx(
+			float(before.get("submission_seconds_remaining", -1.0)),
+			float(after_long_delta.get("submission_seconds_remaining", -2.0))
+		),
+		"coach gate keeps the authoritative submission timer unchanged across a 31-second delta"
+	)
+	var next := coach.find_child("CoachNext", true, false) as Button
+	if next != null:
+		next.pressed.emit()
+		await process_frame
+		next.pressed.emit()
+		await process_frame
+	var after_steps := flow.call("local_snapshot") as Dictionary
+	_expect(
+		is_equal_approx(
+			float(before.get("submission_seconds_remaining", -1.0)),
+			float(after_steps.get("submission_seconds_remaining", -2.0))
+		),
+		"coach step changes preserve the frozen authoritative submission timer"
+	)
+	await create_timer(0.12).timeout
+	var after_wall_delay := flow.call("local_snapshot") as Dictionary
+	_expect(
+		is_equal_approx(
+			float(before.get("submission_seconds_remaining", -1.0)),
+			float(after_wall_delay.get("submission_seconds_remaining", -2.0))
+		),
+		"coach gate keeps submission time frozen during a real wall-clock delay"
+	)
+
+
+func _dismiss_coach_before_play(context: Dictionary) -> void:
+	var screen := context.get("screen") as Control
+	var flow := context.get("flow") as Node
+	var coach := screen.get_node("V073PlaytestCoachMarks") as Node
+	var skip := coach.find_child("CoachSkipAll", true, false) as Button
+	_expect(skip != null, "coach exposes a production Skip control")
+	if skip != null:
+		skip.pressed.emit()
+		await process_frame
+		await process_frame
+	_expect(not bool((coach.call("debug_snapshot") as Dictionary).get("active", true)), "Skip closes the coach activity gate")
+	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("effective_multiplier", -1)) == 2, "Skip restores the saved Candidate 2 pace exactly once")
+	var human := (screen.call("debug_snapshot") as Dictionary).get("human_playability", {}) as Dictionary
+	_expect(int(human.get("coach_pacing_gate_apply_count", 0)) == 1, "coach opening applies one pause request")
+	_expect(int(human.get("coach_pacing_gate_restore_count", 0)) == 1, "coach Skip applies one restore request")
 
 
 func _start_from_real_ui(viewport_size: Vector2i) -> Dictionary:
@@ -135,16 +204,293 @@ func _assert_viewport(context: Dictionary, viewport_size: Vector2i) -> void:
 	_expect(cancel != null and cancel.focus_mode == Control.FOCUS_ALL, "%s cancel button is keyboard focusable" % viewport_size)
 
 
+func _assert_real_pointer_contract(context: Dictionary) -> void:
+	"""Exercise the production V075 tree through SceneTree GUI dispatch.
+
+	This is deliberately additive to the inherited data-flow checks above.  It
+	never emits a Button signal, calls a Control's private input method, or calls
+	a map/target resolver as a substitute for a mouse event.
+	"""
+	var screen := context.get("screen") as Control
+	if screen == null:
+		return
+	var arrangement := screen.find_child(
+		"CentralPublicActionArrangement", true, false
+	) as Control
+	var planet_board := screen.find_child("PlanetBoard", true, false) as Node
+	var map := planet_board.call("get_embedded_map_view") as Control \
+		if planet_board != null and planet_board.has_method("get_embedded_map_view") else null
+	var hand_rail := screen.find_child("HandRail", true, false) as Control
+	_expect(map != null, "real V075 production map view exists for pointer dispatch")
+	_expect(hand_rail != null, "real V075 hand rail exists for pointer dispatch")
+	if arrangement == null or map == null or hand_rail == null:
+		return
+	# Public projections briefly use the existing discoverability peek.  Let that
+	# bounded presentation transition settle before sampling the stable
+	# collapsed contract; this wait never invokes a drawer method directly.
+	await _wait_frames(3)
+	await create_timer(1.20).timeout
+	await _wait_frames(2)
+
+	var handle := arrangement.find_child(
+		"PublicArrangementDrawerHandle", true, false
+	) as Control
+	var panel := arrangement.find_child(
+		"PublicArrangementCardTablePopout", true, false
+	) as Control
+	var host := arrangement.find_child(
+		"PublicArrangementPopoutHost", true, false
+	) as Control
+	_expect(handle != null and handle.is_visible_in_tree(), "collapsed public drawer exposes a visible handle")
+	_expect(handle != null and handle.get_global_rect().position.x <= map.get_global_rect().position.x + 12.0, "collapsed public drawer handle stays on the map left edge")
+	_expect(panel == null or not panel.is_visible_in_tree(), "collapsed public drawer panel is absent from the hit-test tree")
+	_expect(host == null or host.mouse_filter == Control.MOUSE_FILTER_IGNORE, "public drawer host is pointer-transparent")
+
+	var board_counts := {
+		"district_selected": 0,
+		"map_background_clicked": 0,
+		"camera_interacted": 0,
+	}
+	for signal_name in board_counts.keys():
+		if planet_board != null and planet_board.has_signal(str(signal_name)):
+			planet_board.connect(str(signal_name), func(_value: Variant = null) -> void:
+				board_counts[signal_name] = int(board_counts[signal_name]) + 1
+			)
+
+	# A center click and four interior points are enough to prove that the
+	# collapsed state does not swallow the map.  An idle district click opens the
+	# inherited RegionPopup; close that intentional modal immediately through its
+	# production button before sampling the next map point, so a popup cannot
+	# masquerade as drawer passthrough evidence.
+	var map_rect := map.get_global_rect()
+	var region_popup := screen.find_child("RegionPopup", true, false) as Control
+	var region_popup_close := screen.find_child(
+		"RegionPopupClose", true, false
+	) as Button
+	var region_popup_swallowed_map_click_count := 0
+	var idle_points := []
+	for y_ratio in [0.14, 0.32, 0.50, 0.68, 0.86]:
+		for x_ratio in [0.12, 0.31, 0.50, 0.69]:
+			idle_points.append(Vector2(
+				map_rect.position.x + map_rect.size.x * float(x_ratio),
+				map_rect.position.y + map_rect.size.y * float(y_ratio),
+			))
+	var collapsed_map_view_hit_count := 0
+	for point_index in range(idle_points.size()):
+		var point := idle_points[point_index] as Vector2
+		var trace := await _dispatch_real_click(point, "collapsed_map_%02d" % point_index)
+		_real_pointer_trace.append(trace)
+		var hovered_pressed_path := str((trace.get("hovered_pressed", {}) as Dictionary).get("path", ""))
+		if hovered_pressed_path.contains("/OverlayLayer/RegionPopup/"):
+			region_popup_swallowed_map_click_count += 1
+		if hovered_pressed_path.contains("/MapHost/PlanetMapView"):
+			collapsed_map_view_hit_count += 1
+		_expect(
+			hovered_pressed_path.contains("/MapHost/PlanetMapView"),
+			"each collapsed drawer map sample is received by the production MapView"
+		)
+		if region_popup != null and region_popup.is_visible_in_tree():
+			_expect(region_popup_close != null, "idle region inspection exposes a production close control")
+			if region_popup_close != null and region_popup_close.is_visible_in_tree():
+				_real_pointer_trace.append(await _dispatch_real_click(
+					region_popup_close.get_global_rect().get_center(),
+					"region_popup_close"
+				))
+				await _wait_frames(2)
+			_expect(not region_popup.is_visible_in_tree(), "production RegionPopup closes before the next map sample")
+	var collapsed_map_hits := int(board_counts["district_selected"]) + int(board_counts["map_background_clicked"])
+	_expect(collapsed_map_hits >= 1, "collapsed drawer leaves a real map click reachable")
+	_expect(int(board_counts["camera_interacted"]) >= 1, "collapsed drawer leaves real map camera interaction reachable")
+	_expect(collapsed_map_view_hit_count >= 20, "real pointer gate samples at least twenty collapsed-map coordinates")
+	_expect(region_popup_swallowed_map_click_count == 0, "collapsed drawer map samples never hit the modal RegionPopup")
+
+	# Expand using the actual left handle, then click outside the panel through
+	# the same dispatch path.  The arrangement may close itself, but it must not
+	# consume the outside map gesture.
+	if handle != null and handle.is_visible_in_tree():
+		_real_pointer_trace.append(await _dispatch_real_click(handle.get_global_rect().get_center(), "drawer_handle"))
+		await _wait_frames(2)
+		panel = arrangement.find_child("PublicArrangementCardTablePopout", true, false) as Control
+		if panel != null and panel.is_visible_in_tree():
+			var outside := map.get_global_rect().get_center() + Vector2(map_rect.size.x * 0.36, 0.0)
+			var before_camera := int(board_counts["camera_interacted"])
+			_real_pointer_trace.append(await _dispatch_real_drag(outside, outside + Vector2(28.0, 0.0), "expanded_outside_map"))
+			_expect(int(board_counts["camera_interacted"]) > before_camera, "expanded drawer outside area reaches the map")
+		await _wait_frames(2)
+		panel = arrangement.find_child("PublicArrangementCardTablePopout", true, false) as Control
+		_expect(panel == null or not panel.is_visible_in_tree(), "outside map input collapses the expanded drawer")
+
+	# Authority-to-visible parity and no-hover semantic fields use only the
+	# production projection controls.  No hand is injected into the scene.
+	var flow := context.get("flow") as Node
+	var snapshot := flow.call("local_snapshot") as Dictionary if flow != null else {}
+	var facts := (snapshot.get("personal_dbg", {}) as Dictionary).get("facts", {}) as Dictionary
+	var authority_hand := facts.get("hand", []) as Array
+	var projected_ids := {}
+	var visible_ids := {}
+	for child in hand_rail.get_children():
+		if not (child is Control) or not child.has_method("payload"):
+			continue
+		var card := child as Control
+		var payload := card.call("payload") as Dictionary
+		var instance_id := str(payload.get("instance_id", ""))
+		if instance_id.is_empty():
+			continue
+		projected_ids[instance_id] = true
+		if _control_visible_inside_viewport(card, root.get_viewport().get_visible_rect()):
+			visible_ids[instance_id] = true
+			await _assert_no_hover_face_semantics(card)
+	_expect(projected_ids.size() == authority_hand.size(), "general hand authority and production projection counts match")
+	_expect(visible_ids.size() == projected_ids.size(), "every projected general hand card is visibly inside the viewport")
+
+	# Select one real hand card, then use the map's own district coordinate
+	# discovery only to choose a point.  The click itself remains a real GUI
+	# dispatch and is accepted only when the production signal/receipt changes.
+	var target_card: Control = null
+	for child in hand_rail.get_children():
+		if child is Control and child.has_method("payload"):
+			var payload := child.call("payload") as Dictionary
+			if not bool(payload.get("disabled", false)):
+				target_card = child as Control
+				break
+	if target_card != null:
+		_real_pointer_trace.append(await _dispatch_real_click(target_card.get_global_rect().get_center(), "target_card"))
+		await _wait_frames(2)
+		_expect(
+			region_popup == null or not region_popup.is_visible_in_tree(),
+			"ordinary hand target mode keeps the modal RegionPopup hidden"
+		)
+		var selected_panel := screen.find_child("CurrentActionPanel", true, false) as Control
+		var before_binding := int((screen.call("debug_snapshot") as Dictionary).get("map_target_binding_count", 0))
+		var before_selection := int(board_counts["district_selected"])
+		var target_binding_seen := false
+		var target_selection_seen := false
+		if map.has_method("get_district_control_position"):
+			# Coordinate discovery is deliberately limited to the production map's
+			# own district controls.  A visible district may be illegal for the
+			# selected card, so probe those real coordinates until the authority's
+			# legal-target query accepts one; no resolver or binding method is called
+			# by the test itself.
+			for index in range(16):
+				var local_position := map.call("get_district_control_position", index) as Vector2
+				if local_position.x < 0.0 or local_position.y < 0.0:
+					continue
+				var target_position := map.global_position + local_position
+				_real_pointer_trace.append(await _dispatch_real_click(target_position, "real_region_target_probe_%02d" % index))
+				await _wait_frames(2)
+				var current_debug := screen.call("debug_snapshot") as Dictionary
+				var current_binding := int(current_debug.get("map_target_binding_count", 0))
+				var current_selection := int(board_counts["district_selected"])
+				if current_selection > before_selection:
+					target_selection_seen = true
+				if current_binding > before_binding:
+					target_binding_seen = true
+					break
+		_expect(target_selection_seen, "real target click reaches the production district signal")
+		_expect(target_binding_seen, "real target click creates a production target binding")
+		_expect(selected_panel == null or selected_panel.is_visible_in_tree(), "target mode keeps the fixed action panel visible")
+
+	print("V076_REAL_POINTER_TRACE=" + JSON.stringify(_real_pointer_trace))
+
+
+func _dispatch_real_click(position: Vector2, state: String) -> Dictionary:
+	_push_mouse_motion(position, Vector2.ZERO)
+	await process_frame
+	var hovered_before := root.gui_get_hovered_control()
+	_push_mouse_button(MOUSE_BUTTON_LEFT, position, true, false)
+	await process_frame
+	var hovered_pressed := root.gui_get_hovered_control()
+	_push_mouse_button(MOUSE_BUTTON_LEFT, position, false, false)
+	await process_frame
+	return {
+		"state": state,
+		"position": position,
+		"hovered_before": _control_trace(hovered_before),
+		"hovered_pressed": _control_trace(hovered_pressed),
+	}
+
+
+func _dispatch_real_drag(start: Vector2, finish: Vector2, state: String) -> Dictionary:
+	_push_mouse_motion(start, Vector2.ZERO)
+	await process_frame
+	_push_mouse_button(MOUSE_BUTTON_LEFT, start, true, false)
+	await process_frame
+	_push_mouse_motion(finish, finish - start)
+	await process_frame
+	_push_mouse_button(MOUSE_BUTTON_LEFT, finish, false, false)
+	await process_frame
+	return {
+		"state": state,
+		"start": start,
+		"finish": finish,
+		"hovered": _control_trace(root.gui_get_hovered_control()),
+	}
+
+
+func _control_trace(control: Control) -> Dictionary:
+	if control == null or not is_instance_valid(control):
+		return {"path": "<none>"}
+	var chain: Array[String] = []
+	var cursor: Node = control
+	while cursor != null:
+		chain.append(str(cursor.get_path()))
+		cursor = cursor.get_parent()
+	return {
+		"path": str(control.get_path()),
+		"chain": chain,
+		"visible": control.is_visible_in_tree(),
+		"mouse_filter": control.mouse_filter,
+		"focus_mode": control.focus_mode,
+		"z_index": control.z_index,
+		"global_rect": control.get_global_rect(),
+		"modulate_alpha": control.modulate.a,
+	}
+
+
+func _control_visible_inside_viewport(control: Control, viewport_rect: Rect2) -> bool:
+	if control == null or not control.is_visible_in_tree() or control.modulate.a <= 0.01:
+		return false
+	var visible_rect := control.get_global_rect().intersection(viewport_rect)
+	var cursor: Node = control.get_parent()
+	while cursor != null:
+		if cursor is Control:
+			var parent_control := cursor as Control
+			if parent_control.clip_contents:
+				visible_rect = visible_rect.intersection(parent_control.get_global_rect())
+		cursor = cursor.get_parent()
+	return visible_rect.has_area()
+
+
+func _assert_no_hover_face_semantics(card: Control) -> void:
+	var face := card.find_child("CardFace", true, false) as Control
+	if face == null:
+		_expect(false, "production hand card contains its existing CardFace renderer")
+		return
+	for label_name in ["NameLabel", "CostLabel", "TypeLabel", "EffectLabel", "RouteGlyphLabel"]:
+		var label := face.find_child(label_name, true, false) as Label
+		_expect(
+			label != null and label.is_visible_in_tree() and not label.text.strip_edges().is_empty()
+			and _control_visible_inside_viewport(label, root.get_viewport().get_visible_rect()),
+			"unhovered card exposes readable %s" % label_name
+		)
+
+
 func _assert_real_card_and_action_path(context: Dictionary) -> void:
 	var screen := context.get("screen") as Control
 	var flow := context.get("flow") as Node
 	var track_rail := screen.find_child("TrackRail", true, false) as HBoxContainer
 	var unaffordable: Control
 	var claimable_commodity: Control
+	var normal_full_hand_affordance := false
 	for child in track_rail.get_children():
 		if not child.has_method("payload"):
 			continue
 		var payload := child.call("payload") as Dictionary
+		if (
+			str(payload.get("card_kind", "")) == "normal_card"
+			and (child as Control).tooltip_text.contains("满手")
+		):
+			normal_full_hand_affordance = true
 		if not bool(payload.get("claimable", false)) and unaffordable == null:
 			unaffordable = child as Control
 		if bool(payload.get("claimable", false)) and str(payload.get("card_kind", "")) == "commodity_card":
@@ -154,6 +500,7 @@ func _assert_real_card_and_action_path(context: Dictionary) -> void:
 		if child.has_method("payload") and (child.call("payload") as Dictionary).has("claimable"):
 			interactive_state_count += 1
 	_expect(interactive_state_count > 0, "every visible real track card exposes an explicit interaction state")
+	_expect(normal_full_hand_affordance, "normal track cards visibly explain that a full five-card hand can still acquire to discard")
 	if unaffordable != null:
 		_click_card(unaffordable)
 		await process_frame
@@ -366,6 +713,14 @@ func _assert_coach_step3(context: Dictionary) -> void:
 	_expect(int(after.get("pointer_entry_recompute_count", -1)) == 0, "pointer entry never triggers placement recomputation")
 	_expect(float(after.get("step3_pointer_entry_position_delta_px", -1.0)) <= 1.0, "Step 3 pointer-entry position delta is at most one pixel")
 	_expect(int(after.get("step3_mouse_event_loss_count", -1)) == 0, "Coach loses no Step 3 mouse event")
+	var close := coach.find_child("CoachClose", true, false) as Button
+	if close != null:
+		close.pressed.emit()
+		await process_frame
+		await process_frame
+	var flow := context.get("flow") as Node
+	var pacing := flow.call("pacing_snapshot") as Dictionary
+	_expect(int(pacing.get("effective_multiplier", -1)) == 2, "Coach Close restores the saved pace after the Step 3 check")
 
 
 func _click_card(card: Control) -> void:
@@ -374,6 +729,34 @@ func _click_card(card: Control) -> void:
 	click.pressed = true
 	click.position = card.size * 0.5
 	card.call("_gui_input", click)
+
+
+func _push_mouse_button(
+	button_index: int,
+	position: Vector2,
+	pressed: bool,
+	double_click: bool
+) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = button_index
+	event.pressed = pressed
+	event.double_click = double_click
+	event.position = position
+	event.global_position = position
+	Input.parse_input_event(event)
+
+
+func _push_mouse_motion(position: Vector2, relative: Vector2) -> void:
+	var event := InputEventMouseMotion.new()
+	event.position = position
+	event.global_position = position
+	event.relative = relative
+	Input.parse_input_event(event)
+
+
+func _wait_frames(count: int) -> void:
+	for _index in range(maxi(1, count)):
+		await process_frame
 
 
 func _receipt_count(intent_kind: String, accepted: bool) -> int:

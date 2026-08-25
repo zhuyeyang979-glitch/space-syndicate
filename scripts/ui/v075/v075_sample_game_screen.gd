@@ -36,6 +36,15 @@ const ProjectionAdapter := preload(
 const V075CardDefinitionRegistry := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
+const V075InteractiveCardFaceScene := preload(
+	"res://scenes/ui/v075/V075InteractiveCardFace.tscn"
+)
+const CARD_RUNTIME_CATALOG_V06 := preload(
+	"res://resources/cards/runtime/card_runtime_catalog_v06.tres"
+)
+const CARD_ILLUSTRATION_CATALOG := preload(
+	"res://resources/presentation/alpha01_card_illustration_catalog.tres"
+)
 const V075_FACILITY_ART_PATHS := [
 	"res://assets/third_party/commercial/materials/ambientcg/"
 	+ "MetalPlates013/MetalPlates013_1K-JPG_Color.jpg",
@@ -135,6 +144,9 @@ const COMBAT_MAP_DEFAULT_COLOR := Color("#74d9c6")
 @onready var _public_action_feed_panel: PanelContainer = %PublicActionFeedPanel
 @onready var _current_action_banner: Label = %CurrentActionBanner
 @onready var _public_action_feed: RichTextLabel = %PublicActionFeed
+@onready var _central_public_action_arrangement: Control = (
+	%CentralPublicActionArrangement
+)
 @onready var _current_action_panel: PanelContainer = %CurrentActionPanel
 @onready var _current_action_title: Label = %CurrentActionTitle
 @onready var _current_action_details: Label = %CurrentActionDetails
@@ -151,6 +163,10 @@ const COMBAT_MAP_DEFAULT_COLOR := Color("#74d9c6")
 @onready var _pause_button: Button = %PauseButton
 @onready var _general_hand_tab_button: Button = %GeneralHandTabButton
 @onready var _commodity_hand_tab_button: Button = %CommodityHandTabButton
+@onready var _commodity_hand_preview_panel: PanelContainer = %CommodityHandPreviewPanel
+@onready var _commodity_hand_preview_label: Label = %CommodityHandPreviewLabel
+@onready var _commodity_hand_preview_rail: HBoxContainer = %CommodityHandPreviewRail
+@onready var _commodity_hand_empty_hint: Label = %CommodityHandEmptyHint
 
 var _v075_flow: Node
 var _v075_capabilities: Dictionary = {}
@@ -204,6 +220,21 @@ var _action_feedback_samples_msec: Array[int] = []
 var _public_action_feed_visible_count := 0
 var _blank_public_action_count := 0
 var _action_feed_duplicate_entry_count := 0
+var _central_public_arrangement_refresh_count := 0
+var _central_public_arrangement_hover_count := 0
+var _central_public_arrangement_private_projection_violation_count := 0
+var _central_card_drop_count := 0
+var _central_card_drop_submission_count := 0
+var _central_card_drop_rejection_count := 0
+var _manual_drag_start_count := 0
+var _manual_drag_drop_count := 0
+var _manual_drag_rejection_count := 0
+var _manual_drag_card_id := ""
+var _manual_drag_payload: Dictionary = {}
+var _manual_drag_start_position := Vector2.ZERO
+var _manual_drag_active := false
+var _manual_drag_last_drop_card_id := ""
+var _manual_drag_last_drop_msec := -1
 var _local_feedback_sequence := 0
 var _pacing_multiplier := 2
 var _pacing_state: Dictionary = {}
@@ -212,9 +243,39 @@ var _fast_forward_request_pending := false
 var _single_viewport_layout_snapshot: Dictionary = {}
 var _action_submission_pending := false
 var _active_hand_category := "general"
+var _pending_public_card_instance_ids: Dictionary = {}
+var _commodity_hand_visible_count := 0
+var _commodity_hand_projection_latency_msec := 0
+var _card_zone_multi_projection_count := 0
+var _accepted_card_hand_residual_count := 0
+var _public_card_face_coverage_count := 0
+var _public_card_face_total_count := 0
+var _public_arrangement_numeric_placeholder_count := 0
+var _public_arrangement_collapsed_count := 0
+var _public_arrangement_expanded_count := 0
+var _card_move_animation_count := 0
+var _coach_pacing_gate_active := false
+var _coach_pacing_saved_multiplier := 2
+var _coach_pacing_restore_multiplier := 2
+var _coach_pacing_saved := false
+var _coach_pacing_request_pending := false
+var _coach_pacing_request_target := -1
+var _coach_pacing_gate_apply_count := 0
+var _coach_pacing_gate_restore_count := 0
+var _coach_restore_fence_passed := false
+var _coach_close_fence_generation := 0
+var _coach_close_fence_active := false
+var _coach_close_fence_release_scheduled := false
+var _coach_close_fence_skipped_refresh_count := 0
+var _v076_handoff_fast_path_reentry := false
+var _v076_acceptance_refresh_suppressed := false
+var _v076_deferred_full_snapshot: Dictionary = {}
+var _v076_full_snapshot_scheduled := false
 
 
 func _ready() -> void:
+	set_process_input(true)
+	_configure_commodity_preview_dock()
 	if is_instance_valid(_combat_surface):
 		_combat_surface.connect(
 			"private_target_selection_requested",
@@ -228,6 +289,17 @@ func _ready() -> void:
 			_combat_surface.connect(
 				"responsive_minimum_resolved",
 				Callable(self, "_on_combat_surface_minimum_resolved")
+			)
+	if is_instance_valid(_central_public_action_arrangement):
+		if _central_public_action_arrangement.has_signal("public_entry_hovered"):
+			_central_public_action_arrangement.connect(
+				"public_entry_hovered",
+				Callable(self, "_on_central_public_entry_hovered")
+			)
+		if _central_public_action_arrangement.has_signal("card_drop_requested"):
+			_central_public_action_arrangement.connect(
+				"card_drop_requested",
+				Callable(self, "_on_central_card_drop_requested")
 			)
 	_combat_collapse_button.pressed.connect(_toggle_combat_surface)
 	_current_action_confirm_button.pressed.connect(_confirm_current_action)
@@ -262,7 +334,39 @@ func _ready() -> void:
 			"coach_mark_skipped",
 			Callable(self, "_on_coach_pacing_gate_skipped")
 		)
+		if _coach_marks.has_signal("coach_activity_changed"):
+			_coach_marks.connect(
+				"coach_activity_changed",
+				Callable(self, "_on_coach_activity_changed")
+			)
 	call_deferred("_resolve_combat_layout")
+
+
+func _configure_commodity_preview_dock() -> void:
+	"""Keep the independent commodity projection beside the hand, not above it.
+
+	The V073 inherited dock was a vertical stack.  A fixed-height V075 dock also
+	contains the hand, queue and command row, so a vertical commodity sibling is
+	necessarily clipped on a real table.  Reparenting this existing projection
+	consumer into DockBody preserves the commodity owner while giving both hand
+	owners a stable horizontal surface.
+	"""
+	if not is_instance_valid(_commodity_hand_preview_panel):
+		return
+	var dock_body := get_node_or_null(
+		"RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody"
+	) as HBoxContainer
+	if dock_body == null:
+		return
+	if _commodity_hand_preview_panel.get_parent() != dock_body:
+		_commodity_hand_preview_panel.reparent(dock_body, false)
+		# Keep the hand first, the independent commodity preview second, and the
+		# existing action queue last.  No owner or authority data moves here.
+		dock_body.move_child(_commodity_hand_preview_panel, 1)
+	_commodity_hand_preview_panel.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_commodity_hand_preview_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_commodity_hand_preview_panel.custom_minimum_size.y = 0.0
+	_commodity_hand_preview_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 
 
 func _process(delta: float) -> void:
@@ -288,7 +392,9 @@ func _process(delta: float) -> void:
 	_advance_track_presentation(delta)
 	if _acceptance_refresh_elapsed >= ACCEPTANCE_REFRESH_SECONDS:
 		_acceptance_refresh_elapsed = 0.0
-		_update_acceptance_state()
+		# The authority edge is already committed. The deferred full projection
+		# below will refresh diagnostics after the handoff; do not walk the full
+		# audit on this critical edge.
 
 
 func bind_application_flow(
@@ -303,6 +409,7 @@ func bind_application_flow(
 	_bind_presentation_source(flow)
 	_bind_pacing_source(flow)
 	super.bind_application_flow(flow, identity, capabilities)
+	call_deferred("_reconcile_coach_pacing_gate")
 	_set_v075_chrome()
 	_combat_status.text = "等待战斗投影 · %s" % _viewer_player_id
 	_update_acceptance_state()
@@ -317,10 +424,64 @@ func apply_snapshot(snapshot: Dictionary) -> void:
 	):
 		super.apply_snapshot(snapshot)
 		return
+	var previous_phase := str(_v075_snapshot.get("phase", ""))
+	var incoming_phase := str(incoming.get("phase", ""))
+	var previous_sequence := int((
+		(_v075_snapshot.get("unified_track", {}) as Dictionary).get(
+			"public_facts", {}
+		) as Dictionary
+	).get("scroll_sequence", -1))
+	var incoming_sequence := int((
+		(incoming.get("unified_track", {}) as Dictionary).get(
+			"public_facts", {}
+		) as Dictionary
+	).get("scroll_sequence", -1))
+	if (
+		not _v076_handoff_fast_path_reentry
+		and previous_phase == "maintenance"
+		and incoming_phase == "submission"
+		and incoming_sequence > previous_sequence
+	):
+		# The authority has already committed the new track phase.  Update the
+		# visible rail and action header synchronously, then let the normal full
+		# projection refresh (roster/assets/hand) arrive on a short follow-up edge.
+		# This keeps a real handoff responsive without introducing a second owner or
+		# dropping any state from the authoritative snapshot.
+		_v075_snapshot = incoming
+		_pending_public_card_instance_ids = {}
+		for pending_variant in incoming.get("pending_public_card_instance_ids", []) as Array:
+			var pending_id := str(pending_variant)
+			if not pending_id.is_empty():
+				_pending_public_card_instance_ids[pending_id] = true
+		_snapshot = _parent_compatibility_snapshot(incoming)
+		_refresh_phase()
+		_refresh_track()
+		_refresh_central_public_action_arrangement()
+		_sync_terminal_phase(incoming_phase)
+		# The authority edge is already committed. Defer the diagnostic-only
+		# acceptance walk so it cannot block the next-player handoff.
+		call_deferred("_update_acceptance_state")
+		_v076_deferred_full_snapshot = incoming.duplicate(true)
+		if not _v076_full_snapshot_scheduled:
+			_v076_full_snapshot_scheduled = true
+			get_tree().create_timer(0.35).timeout.connect(
+				_flush_v076_handoff_snapshot
+			)
+		return
 	_v075_snapshot = incoming
+	var pending_ids := incoming.get("pending_public_card_instance_ids", []) as Array
+	_pending_public_card_instance_ids = {}
+	for pending_variant in pending_ids:
+		var pending_id := str(pending_variant)
+		if not pending_id.is_empty():
+			_pending_public_card_instance_ids[pending_id] = true
+	_refresh_central_public_action_arrangement()
 	_update_combat_session(incoming)
 	var parent_snapshot := _parent_compatibility_snapshot(incoming)
+	_v076_acceptance_refresh_suppressed = _v076_handoff_fast_path_reentry
 	super.apply_snapshot(parent_snapshot)
+	_v076_acceptance_refresh_suppressed = false
+	call_deferred("_sync_public_arrangement_source_anchors")
 	_sync_terminal_phase(str(incoming.get("phase", "")))
 	var projection := _extract_combat_projection(incoming)
 	if not projection.is_empty():
@@ -336,7 +497,21 @@ func apply_snapshot(snapshot: Dictionary) -> void:
 			str(incoming.get("preferred_source_instance_id", ""))
 		)
 	_revalidate_current_action()
-	_update_acceptance_state()
+	if _v076_handoff_fast_path_reentry:
+		call_deferred("_update_acceptance_state")
+	else:
+		_update_acceptance_state()
+
+
+func _flush_v076_handoff_snapshot() -> void:
+	_v076_full_snapshot_scheduled = false
+	if _v076_deferred_full_snapshot.is_empty():
+		return
+	var snapshot := _v076_deferred_full_snapshot.duplicate(true)
+	_v076_deferred_full_snapshot = {}
+	_v076_handoff_fast_path_reentry = true
+	apply_snapshot(snapshot)
+	_v076_handoff_fast_path_reentry = false
 
 
 func apply_receipt(receipt: Dictionary) -> void:
@@ -361,6 +536,32 @@ func apply_receipt(receipt: Dictionary) -> void:
 	if _is_combat_receipt(receipt):
 		apply_combat_receipt(receipt)
 	_apply_human_flow_receipt(receipt, action_before)
+	# Keep the maintenance receipt path non-blocking.  The inherited V073
+	# surface already schedules its diagnostic acceptance refresh; repeating
+	# that full map/layout audit synchronously here would delay the next-player
+	# authority edge even though the receipt itself is already committed.
+	var receipt_intent := str(receipt.get("intent_kind", ""))
+	if receipt_intent == "maintenance.finish" \
+			and bool(receipt.get("accepted", false)):
+		call_deferred("_update_acceptance_state")
+	elif receipt_intent in ["ui.pacing.set", "ui.pacing.fast_forward_next_decision"]:
+		# V073 classifies this as a lightweight presentation receipt; do not
+		# reintroduce the heavy audit after the superclass returns.
+		pass
+	else:
+		if _v076_handoff_fast_path_reentry:
+			call_deferred("_update_acceptance_state")
+		else:
+			_update_acceptance_state()
+
+
+func apply_public_resolution_receipt(receipt: Dictionary) -> void:
+	# ApplicationFlow already removed actor/card-private fields.  Consume the
+	# public receipt immediately so the action feed does not wait for a later
+	# projection refresh; the stable public identity suppresses that later copy.
+	if not bool(receipt.get("accepted", false)):
+		return
+	_append_local_public_feedback(_public_history_entry(receipt))
 	_update_acceptance_state()
 
 
@@ -395,6 +596,17 @@ func _bind_pacing_source(flow: Node) -> void:
 func _apply_pacing_state(state: Dictionary) -> void:
 	_pacing_state = state.duplicate(true)
 	_pacing_multiplier = int(state.get("multiplier", 2))
+	if (
+		_coach_pacing_gate_active
+		and _pacing_multiplier != 0
+		and not (
+			_coach_pacing_request_pending
+			and _coach_pacing_request_target == 0
+		)
+	):
+		# Fail closed if an out-of-band presentation update reports a running pace
+		# while Coach is active; the existing typed pace request will reassert 0x.
+		call_deferred("_reconcile_coach_pacing_gate")
 	for entry in [
 		{"button": _pause_button, "multiplier": 0},
 		{"button": _speed_1x_button, "multiplier": 1},
@@ -405,9 +617,13 @@ func _apply_pacing_state(state: Dictionary) -> void:
 		if button == null:
 			continue
 		var selected := int(entry.get("multiplier", 0)) == _pacing_multiplier
+		if _coach_pacing_gate_active:
+			selected = int(entry.get("multiplier", 0)) == 0
 		button.button_pressed = selected
 		button.tooltip_text = (
-			"当前为 %d 倍世界有效时间" % _pacing_multiplier
+			"教学进行中 · 完成后恢复 %d×" % _coach_pacing_restore_multiplier
+			if _coach_pacing_gate_active and int(entry.get("multiplier", 0)) != 0
+			else "当前为 %d 倍世界有效时间" % _pacing_multiplier
 			if selected
 			else "%d 倍世界有效时间" % int(entry.get("multiplier", 1))
 		)
@@ -416,7 +632,123 @@ func _apply_pacing_state(state: Dictionary) -> void:
 
 
 func _request_pacing_multiplier(multiplier: int) -> void:
+	if _coach_pacing_gate_active and multiplier != 0:
+		if multiplier in [1, 2, 4]:
+			# Keep coach time frozen, but remember the user's requested post-coach
+			# speed.  This is presentation intent only until the lifecycle edge
+			# restores it through the existing pacing owner.
+			_coach_pacing_restore_multiplier = multiplier
+			_update_pacing_button_state()
+		_show_toast("教学进行中；结束后恢复 %d×" % multiplier, true)
+		return
 	_emit_intent("ui.pacing.set", {"multiplier": multiplier})
+
+
+func _on_coach_activity_changed(active: bool, _reason_code: String) -> void:
+	if active:
+		# A reopened Coach invalidates any pending close release.  The fence is
+		# presentation-only and never owns the world clock or the match state.
+		_coach_close_fence_generation += 1
+		_coach_close_fence_active = false
+		_coach_close_fence_release_scheduled = false
+		_coach_restore_fence_passed = false
+		if not _coach_pacing_gate_active:
+			_coach_pacing_saved_multiplier = _valid_coach_multiplier(
+				_pacing_multiplier
+			)
+			_coach_pacing_restore_multiplier = _coach_pacing_saved_multiplier
+			_coach_pacing_saved = true
+		_coach_pacing_gate_active = true
+	else:
+		if not _coach_pacing_gate_active:
+			return
+		# Hide the Coach immediately, then suppress diagnostic acceptance walks for
+		# two normal frames.  The old close path could run the full map/layout
+		# audit in the same frame as the pacing restore and present as a white
+		# screen.  This fence only gates presentation diagnostics; authority,
+		# Runtime, tick order, and RNG remain untouched.
+		_coach_close_fence_generation += 1
+		_coach_close_fence_active = true
+		_coach_close_fence_release_scheduled = false
+		_schedule_coach_close_fence_release(_coach_close_fence_generation)
+		_coach_pacing_gate_active = false
+	call_deferred("_reconcile_coach_pacing_gate")
+	_update_pacing_button_state()
+
+
+func _schedule_coach_close_fence_release(generation: int) -> void:
+	if _coach_close_fence_release_scheduled:
+		return
+	_coach_close_fence_release_scheduled = true
+	call_deferred("_release_coach_close_fence", generation)
+
+
+func _release_coach_close_fence(generation: int) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if generation != _coach_close_fence_generation:
+		return
+	_coach_close_fence_release_scheduled = false
+	_coach_close_fence_active = false
+	# One low-priority refresh after the fence keeps acceptance evidence current
+	# without putting the expensive audit on the close/input critical path.
+	call_deferred("_update_acceptance_state")
+
+
+func _valid_coach_multiplier(value: int) -> int:
+	return value if value in [1, 2, 4] else 2
+
+
+func _reconcile_coach_pacing_gate() -> void:
+	if not is_instance_valid(_v075_flow):
+		return
+	# Once the coach lifecycle has completed and its one-shot restore has been
+	# acknowledged, ordinary player pace controls must remain authoritative.  In
+	# particular, a manual PAUSE request must not be mistaken for a pending coach
+	# restore and immediately overwritten with the saved multiplier.
+	if not _coach_pacing_gate_active and not _coach_pacing_saved:
+		return
+	if not _coach_pacing_gate_active and not _coach_restore_fence_passed:
+		# Let the Coach root hide and one normal frame render before restoring the
+		# world pace.  This prevents the pacing receipt and the first AI burst from
+		# landing in the same idle edge as the close click.
+		_coach_restore_fence_passed = true
+		call_deferred("_restore_coach_pacing_after_frame")
+		return
+	var target := 0 if _coach_pacing_gate_active else _valid_coach_multiplier(
+		_coach_pacing_restore_multiplier
+	)
+	if (
+		_coach_pacing_request_pending
+		and _coach_pacing_request_target == target
+	):
+		return
+	var effective := int(_pacing_state.get(
+		"effective_multiplier",
+		_pacing_multiplier
+	))
+	if effective == target:
+		_coach_pacing_request_pending = false
+		_coach_pacing_request_target = -1
+		if not _coach_pacing_gate_active:
+			_coach_pacing_saved = false
+		_update_pacing_button_state()
+		return
+	_coach_pacing_request_pending = true
+	_coach_pacing_request_target = target
+	_request_pacing_multiplier(target)
+
+
+func _restore_coach_pacing_after_frame() -> void:
+	await get_tree().process_frame
+	if _coach_pacing_gate_active:
+		_coach_restore_fence_passed = false
+		return
+	_reconcile_coach_pacing_gate()
+
+
+func _update_pacing_button_state() -> void:
+	_apply_pacing_state(_pacing_state)
 
 
 func _request_fast_forward() -> void:
@@ -507,11 +839,22 @@ func _on_coach_pacing_gate_skipped(
 	call_deferred("_update_fast_forward_button_state")
 
 
+func _on_coach_pacing_gate_finished(
+	_active: bool,
+	_reason_code: String
+) -> void:
+	# Kept as a named bridge for older scene/test compositions that discover the
+	# lifecycle callback by method name.  The signal connection uses the generic
+	# activity handler above so completion, Skip and Close share one edge.
+	_on_coach_activity_changed(_active, _reason_code)
+
+
 func _current_action_receipt_context() -> Dictionary:
 	return {
 		"mode": _current_action_mode,
 		"track_item": _selected_track_item.duplicate(true),
 		"card_definition_id": _selected_card_definition_id,
+		"card_instance_id": _selected_card_id,
 		"card_color": _selected_card_color,
 		"target_binding": _pending_confirm_binding.duplicate(true),
 		"started_msec": _current_action_started_msec,
@@ -555,6 +898,14 @@ func _apply_human_flow_receipt(
 				"result_label": "成功",
 			})
 			_show_toast("购买成功 · %s · 去向 %s" % [payment, destination_text], true)
+			if kind == "commodity_card":
+				# The authority will publish the new inventory in the next snapshot.
+				# Select its already-existing hand surface now so the acquired card is
+				# discoverable immediately instead of remaining behind an inactive tab.
+				_active_hand_category = "commodity"
+				_commodity_hand_tab_button.button_pressed = true
+				_general_hand_tab_button.button_pressed = false
+				_commodity_hand_tab_button.grab_focus()
 		else:
 			_current_action_reason.text = _purchase_rejection_text(
 				str(receipt.get("reason_code", "购买条件已变化"))
@@ -568,6 +919,19 @@ func _apply_human_flow_receipt(
 	elif intent_kind == "card.queue":
 		_action_submission_pending = false
 		if accepted:
+			var accepted_card_id := str(action_before.get("card_instance_id", ""))
+			var source_rect := _hand_card_global_rect(accepted_card_id)
+			if is_instance_valid(_central_public_action_arrangement) and _central_public_action_arrangement.has_method("register_card_source_transition"):
+				_central_public_action_arrangement.call(
+					"register_card_source_transition",
+					accepted_card_id,
+					_general_card_face_data({
+						"instance_id": accepted_card_id,
+						"definition_id": action_before.get("card_definition_id", ""),
+					}),
+					source_rect
+				)
+			_card_move_animation_count += 1
 			var binding := action_before.get("target_binding", {}) as Dictionary
 			_append_local_public_feedback({
 				"actor_label": "你",
@@ -582,10 +946,46 @@ func _apply_human_flow_receipt(
 			})
 		_record_action_feedback_latency(action_before)
 		_update_current_action_panel()
-	elif intent_kind == "ui.pacing.set":
+	elif intent_kind == "queue.remove":
+		_action_submission_pending = false
+		_pending_confirm_binding = {}
 		if accepted:
+			_current_action_mode = "idle"
+			_current_action_source_surface = ""
+			if not _selected_card_id.is_empty():
+				super._clear_selected_card()
+			_show_toast("已撤回提交，卡牌返回手牌", true)
+		else:
+			_show_toast("撤回失败，队列状态已变化", false)
+		_update_current_action_panel()
+	elif intent_kind == "ui.pacing.set":
+		var pacing_target := int((receipt.get("pacing", {}) as Dictionary).get(
+			"multiplier",
+			-1
+		))
+		var gate_request_matched := (
+			_coach_pacing_request_pending
+			and pacing_target == _coach_pacing_request_target
+		)
+		if gate_request_matched:
+			_coach_pacing_request_pending = false
+			_coach_pacing_request_target = -1
+		if accepted:
+			if pacing_target == 0 and _coach_pacing_gate_active and gate_request_matched:
+				_coach_pacing_gate_apply_count += 1
+			elif pacing_target > 0 and not _coach_pacing_gate_active and gate_request_matched:
+				_coach_pacing_gate_restore_count += 1
+				_coach_pacing_saved = false
 			_apply_pacing_state(receipt.get("pacing", {}) as Dictionary)
 			_show_toast("已切换至 %d×" % _pacing_multiplier, true)
+			if (
+				_coach_pacing_gate_active and pacing_target != 0
+			) or (
+				not _coach_pacing_gate_active
+				and _coach_pacing_request_pending
+				and pacing_target != _coach_pacing_request_target
+			):
+				call_deferred("_reconcile_coach_pacing_gate")
 		else:
 			_show_toast("速度切换被拒绝", false)
 	elif intent_kind == "ui.pacing.fast_forward_next_decision":
@@ -753,6 +1153,16 @@ func combat_debug_snapshot() -> Dictionary:
 	var surface_debug := {}
 	if is_instance_valid(_combat_surface):
 		surface_debug = _combat_surface.call("debug_snapshot") as Dictionary
+	var arrangement_debug := {}
+	if (
+		is_instance_valid(_central_public_action_arrangement)
+		and _central_public_action_arrangement.has_method(
+			"arrangement_debug_snapshot"
+		)
+	):
+		arrangement_debug = _central_public_action_arrangement.call(
+			"arrangement_debug_snapshot"
+		) as Dictionary
 	return {
 		"schema": "V075SampleGameScreenCombatDebugV1",
 		"ruleset_id": V075_RULESET_ID,
@@ -832,6 +1242,22 @@ func combat_debug_snapshot() -> Dictionary:
 		"combat_map_trail_count": _combat_map_trail_count,
 		"combat_map_effect_count": _combat_map_effect_count,
 		"combat_map_callout_count": _combat_map_callout_count,
+		"central_public_arrangement_refresh_count": (
+			_central_public_arrangement_refresh_count
+		),
+		"central_public_arrangement_hover_count": (
+			_central_public_arrangement_hover_count
+		),
+		"central_public_arrangement_private_projection_violation_count": (
+			_central_public_arrangement_private_projection_violation_count
+		),
+		"public_arrangement": arrangement_debug,
+		"central_card_drop_count": _central_card_drop_count,
+		"central_card_drop_submission_count": _central_card_drop_submission_count,
+		"central_card_drop_rejection_count": _central_card_drop_rejection_count,
+		"manual_drag_start_count": _manual_drag_start_count,
+		"manual_drag_drop_count": _manual_drag_drop_count,
+		"manual_drag_rejection_count": _manual_drag_rejection_count,
 		"human_playability": {
 			"schema": "V076HumanPlayabilityScreenDebugV1",
 			"main_table_single_viewport": true,
@@ -873,9 +1299,32 @@ func combat_debug_snapshot() -> Dictionary:
 			"visible_submission_seconds_remaining": _submission_remaining,
 			"pace_control_mode_count": 4,
 			"default_playtest_pace": 2,
-			"mandatory_card_drag_count": 0,
-			"public_batch_direct_action_entry_count": 0,
-			"shared_sushi_track_direct_action_resolution_count": 0,
+			"coach_pacing_gate_active": _coach_pacing_gate_active,
+			"coach_pacing_saved_multiplier": _coach_pacing_saved_multiplier,
+			"coach_pacing_restore_multiplier": _coach_pacing_restore_multiplier,
+			"coach_pacing_gate_apply_count": _coach_pacing_gate_apply_count,
+			"coach_pacing_gate_restore_count": _coach_pacing_gate_restore_count,
+			"coach_pacing_request_pending": _coach_pacing_request_pending,
+			"coach_close_fence_active": _coach_close_fence_active,
+			"coach_close_fence_generation": _coach_close_fence_generation,
+			"coach_close_fence_skipped_refresh_count": _coach_close_fence_skipped_refresh_count,
+			"mandatory_card_drag_count": _central_card_drop_submission_count,
+			"manual_drag_start_count": _manual_drag_start_count,
+			"manual_drag_drop_count": _manual_drag_drop_count,
+			"manual_drag_rejection_count": _manual_drag_rejection_count,
+			"public_batch_direct_action_entry_count": (
+				_central_public_action_arrangement.call(
+					"arrangement_debug_snapshot"
+				) as Dictionary
+			).get("last_public_entry_count", 0)
+			if is_instance_valid(_central_public_action_arrangement)
+			else 0,
+			"shared_sushi_track_direct_action_resolution_count": (
+				_v075_snapshot.get(
+					"v076_public_action_arrangement",
+					{}
+				) as Dictionary
+			).get("entries", []).size(),
 			"private_information_violation_count": 0,
 			"direct_hand_injection_count": 0,
 			"direct_discard_injection_count": 0,
@@ -892,6 +1341,14 @@ func combat_debug_snapshot() -> Dictionary:
 		"presentation_rng_draw_delta": 0,
 		"gameplay_mutation_count": 0,
 		"rng_draw_delta": 0,
+		# Preserve the inherited map-input diagnostics on the V075 wrapper.  The
+		# target resolver remains owned by the existing V074/V075 runtime; these
+		# counters are a read-only projection used by real-pointer evidence.
+		"selected_region_id": _selected_region_id,
+		"map_region_selection_count": _map_region_selection_count,
+		"map_target_binding_count": _map_target_binding_count,
+		"map_illegal_target_reject_count": _map_illegal_target_reject_count,
+		"region_popup_opened_from_map": _map_region_popup_opened,
 	}
 
 
@@ -1061,6 +1518,11 @@ func _presentation_source_identity_green() -> bool:
 
 
 func _update_acceptance_state() -> void:
+	if _coach_close_fence_active:
+		_coach_close_fence_skipped_refresh_count += 1
+		return
+	if _v076_acceptance_refresh_suppressed:
+		return
 	super._update_acceptance_state()
 	acceptance_state["schema"] = "V075SampleAcceptanceStateV1"
 	acceptance_state["ruleset_id"] = V075_RULESET_ID
@@ -1929,6 +2391,7 @@ func _set_v075_chrome() -> void:
 
 func _refresh_hand() -> void:
 	super._refresh_hand()
+	_apply_hand_drag_affordance()
 	var facts := (
 		(_v075_snapshot.get("personal_dbg", {}) as Dictionary).get(
 			"facts",
@@ -1945,7 +2408,8 @@ func _refresh_hand() -> void:
 	if _active_hand_category == "commodity":
 		_render_commodity_inventory(facts)
 	else:
-		_fit_hand_cards_to_single_row()
+		_render_general_hand(facts)
+	_render_commodity_hand_preview(facts)
 	_general_hand_tab_button.button_pressed = _active_hand_category == "general"
 	_commodity_hand_tab_button.button_pressed = (
 		_active_hand_category == "commodity"
@@ -1958,7 +2422,122 @@ func _refresh_hand() -> void:
 		"commodity_inventory_count",
 		(facts.get("commodity_inventory", []) as Array).size()
 	))
+	_update_hand_dock_minimum_height(facts)
 	_update_current_action_panel()
+
+
+func _render_commodity_hand_preview(facts: Dictionary) -> void:
+	if not is_instance_valid(_commodity_hand_preview_rail):
+		return
+	for child in _commodity_hand_preview_rail.get_children().duplicate():
+		if child == _commodity_hand_empty_hint:
+			continue
+		_commodity_hand_preview_rail.remove_child(child)
+		child.queue_free()
+	var inventory := facts.get("commodity_inventory", []) as Array
+	_commodity_hand_visible_count = 0
+	if is_instance_valid(_commodity_hand_preview_label):
+		_commodity_hand_preview_label.text = "商品手牌（独立 %d/5）" % inventory.size()
+	if is_instance_valid(_commodity_hand_preview_panel):
+		# Keep the separate commodity owner discoverable without reserving a
+		# full card-height block when it is empty.  Once a commodity is acquired,
+		# the real independent preview expands again.
+		var compact_preview := get_viewport_rect().size.x < 900.0
+		_commodity_hand_preview_panel.custom_minimum_size.y = 54.0 \
+			if inventory.is_empty() else (82.0 if compact_preview else 104.0)
+	if is_instance_valid(_commodity_hand_empty_hint):
+		_commodity_hand_empty_hint.visible = inventory.is_empty()
+	for commodity_variant in inventory:
+		if not (commodity_variant is Dictionary):
+			continue
+		var commodity := (commodity_variant as Dictionary).duplicate(true)
+		commodity["authority_zone"] = "commodity_hand"
+		commodity["projection_role"] = "private_commodity_card"
+		var card := _commodity_card_face(commodity)
+		if card == null:
+			continue
+		_commodity_hand_preview_rail.add_child(card)
+		_commodity_hand_visible_count += 1
+	if _commodity_hand_visible_count > 0 and is_instance_valid(_commodity_hand_empty_hint):
+		_commodity_hand_empty_hint.visible = false
+		_fit_preview_card_row()
+		call_deferred("_fit_preview_card_row")
+
+
+func _commodity_card_face(commodity: Dictionary) -> V075InteractiveCardFace:
+	var color_id := str(commodity.get("primary_color", "industry"))
+	var level := int(commodity.get("level", 1))
+	var tooltip := "%s · %s · Lv.%d\n来源：共享寿司轨 · %s\n%s\n合法操作：%s" % [
+		str(commodity.get("name", "商品牌")),
+		_combat_color_label(color_id),
+		level,
+		str(commodity.get("source_receipt_id", "待回执")),
+		str(commodity.get("effect", "等待 Catalog 效果投影")),
+		str(commodity.get("legal_action_summary", "查看合法目标")),
+	]
+	var presentation := {
+		"name": str(commodity.get("name", "商品牌")),
+		"effect": str(commodity.get("short_effect", commodity.get("effect", "商品操作"))),
+		"type": str(commodity.get("card_type", "商品牌")),
+		"rank": str(commodity.get("rank", "L%d" % level)),
+		"cost": str(commodity.get("cost", "免费")),
+		"kind": "commodity_card",
+		"route": _combat_color_label(color_id),
+		"accent": COLOR_VALUES.get(color_id, Color.WHITE),
+		"presentation": "dock_mini",
+		"summary": str(commodity.get("short_effect", commodity.get("effect", "商品操作"))),
+		"short_effect": str(commodity.get("short_effect", commodity.get("effect", "商品操作"))),
+		"use_case": "操盘商品",
+		"purpose": "操盘商品",
+		"target_type": str(commodity.get("target_type", "商品库存")),
+		"legality_state": "可查看",
+		"play_state": "可查看",
+		"disabled": false,
+		"keywords": [
+			{"text": "操盘商品", "tooltip": "用途：操盘商品", "accent": Color("#fde68a")},
+			{"text": "商品库存", "tooltip": "独立商品手牌，不占普通手牌上限", "accent": Color("#bfdbfe")},
+		],
+		"keywords_authoritative": true,
+		"illustration_key": str(commodity.get("illustration_key", "")),
+		"card_frame_key": "card.frame.commodity",
+		"tooltip": tooltip,
+	}
+	var card := V075InteractiveCardFaceScene.instantiate() as V075InteractiveCardFace
+	if card == null:
+		return null
+	card.configure(commodity, presentation, false)
+	card.set_selected(
+		str(commodity.get("instance_id", ""))
+			== str(_selected_commodity_item.get("instance_id", ""))
+	)
+	card.activated.connect(_on_commodity_inventory_activated)
+	card.hover_summary.connect(_on_card_hover_summary.bind("commodity_inventory"))
+	return card
+
+
+func _fit_preview_card_row() -> void:
+	var available_width := _commodity_hand_preview_panel.size.x
+	if available_width <= 1.0:
+		available_width = _commodity_hand_preview_panel.custom_minimum_size.x
+	var card_count := maxi(1, _commodity_hand_preview_rail.get_child_count())
+	var preview_card_width := clampf(
+		(available_width - 24.0 - float(card_count - 1) * 4.0) / float(card_count),
+		48.0,
+		94.0
+	)
+	var preview_card_height := 112.0 if available_width >= 300.0 else 88.0
+	for child in _commodity_hand_preview_rail.get_children():
+		if child is Control:
+			var control := child as Control
+			control.custom_minimum_size = Vector2(
+				preview_card_width,
+				preview_card_height
+			)
+			# Keep each independent commodity face at its authored compact size.
+			# Expanding a single card to the whole preview lane made its CardUI
+			# vertically exceed the fixed dock and clipped the semantic footer.
+			control.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			control.size_flags_stretch_ratio = 0.0
 
 
 func _set_hand_category(category: String) -> void:
@@ -1979,27 +2558,251 @@ func _render_commodity_inventory(facts: Dictionary) -> void:
 		var commodity := (commodity_variant as Dictionary).duplicate(true)
 		var color_id := str(commodity.get("primary_color", "industry"))
 		var level := int(commodity.get("level", 1))
-		var art_item := {
-			"card_kind": "commodity_card",
-			"card_definition_id": str(commodity.get("commodity_id", "")),
-			"primary_color": color_id,
-		}
-		var card := V073SampleCardButton.new()
-		card.configure(
-			commodity,
-			"%s商品 · Lv.%d" % [_combat_color_label(color_id), level],
-			"独立库存 · 可参与既有商品合成",
-			_card_art(art_item),
-			COLOR_VALUES.get(color_id, Color.WHITE),
-			"COMMODITY"
+		var card := (
+			V075InteractiveCardFaceScene.instantiate()
+			as V075InteractiveCardFace
 		)
+		var tooltip := "%s · %s · Lv.%d\n来源：共享寿司轨 · %s\n%s\n合法操作：%s" % [
+			str(commodity.get("name", "商品牌")),
+			_combat_color_label(color_id),
+			level,
+			str(commodity.get("source_receipt_id", "待回执")),
+			str(commodity.get("effect", "等待 Catalog 效果投影")),
+			str(commodity.get("legal_action_summary", "查看合法目标")),
+		]
+		var presentation := {
+			"name": str(commodity.get("name", "商品牌")),
+			"effect": str(commodity.get(
+				"short_effect",
+				commodity.get("effect", "商品操作")
+			)),
+			"type": str(commodity.get("card_type", "商品牌")),
+			"rank": str(commodity.get("rank", "L%d" % level)),
+			"cost": str(commodity.get("cost", "免费")),
+			"kind": "commodity_card",
+			"route": _combat_color_label(color_id),
+			"accent": COLOR_VALUES.get(color_id, Color.WHITE),
+			"presentation": "dock_mini",
+			"summary": str(commodity.get("short_effect", commodity.get("effect", "商品操作"))),
+			"short_effect": str(commodity.get("short_effect", commodity.get("effect", "商品操作"))),
+			"use_case": "操盘商品",
+			"purpose": "操盘商品",
+			"target_type": str(commodity.get("target_type", "商品库存")),
+			"legality_state": "可查看",
+			"play_state": "可查看",
+			"disabled": false,
+			"keywords": [
+				{"text": "操盘商品", "tooltip": "用途：操盘商品", "accent": Color("#fde68a")},
+				{"text": "商品库存", "tooltip": "独立商品手牌，不占普通手牌上限", "accent": Color("#bfdbfe")},
+			],
+			"keywords_authoritative": true,
+			"illustration_key": str(commodity.get("illustration_key", "")),
+			"card_frame_key": "card.frame.commodity",
+			"tooltip": tooltip,
+		}
+		card.call("configure", commodity, presentation, false)
 		card.set_selected(
 			str(commodity.get("instance_id", ""))
 				== str(_selected_commodity_item.get("instance_id", ""))
 		)
 		card.activated.connect(_on_commodity_inventory_activated)
+		card.hover_summary.connect(
+			_on_card_hover_summary.bind("commodity_inventory")
+		)
 		_hand_rail.add_child(card)
 	_fit_hand_cards_to_single_row()
+
+
+func _render_general_hand(facts: Dictionary) -> void:
+	_clear_children(_hand_rail)
+	for card_variant in facts.get("hand", []) as Array:
+		if not (card_variant is Dictionary):
+			continue
+		var payload := (card_variant as Dictionary).duplicate(true)
+		var instance_id := str(payload.get("instance_id", ""))
+		if _pending_public_card_instance_ids.has(instance_id):
+			# The authoritative queue has reserved this instance in
+			# PENDING_PUBLIC_SUBMISSION.  Keep the DBG facts intact, but do not
+			# paint a second hand projection while the public-card transition runs.
+			continue
+		payload["authority_zone"] = "general_hand"
+		payload["projection_role"] = "private_hand_card"
+		var card := (
+			V075InteractiveCardFaceScene.instantiate()
+			as V075InteractiveCardFace
+		)
+		card.configure(payload, _general_card_face_data(payload), true)
+		card.set_selected(
+			instance_id == _selected_card_id
+		)
+		card.activated.connect(_on_hand_card_activated)
+		card.drag_started.connect(_on_hand_card_dragged)
+		card.hover_summary.connect(
+			_on_card_hover_summary.bind("hand_dock")
+		)
+		_hand_rail.add_child(card)
+	_fit_hand_cards_to_single_row()
+
+
+func _general_card_face_data(card: Dictionary) -> Dictionary:
+	var definition_id := str(card.get(
+		"card_definition_id",
+		card.get("definition_id", "")
+	))
+	var catalog_id := definition_id.trim_prefix("starter.")
+	var catalog_definition := CARD_RUNTIME_CATALOG_V06.card_snapshot(catalog_id)
+	var machine := catalog_definition.get("machine", {}) as Dictionary
+	var player := catalog_definition.get("player", {}) as Dictionary
+	var card_type := str(card.get("card_type", "card"))
+	var color_id := str(card.get("primary_color", "industry"))
+	var level := int(card.get("level", 1))
+	var domain := _v075_card_domain(definition_id)
+	var instance_id := str(card.get("instance_id", ""))
+	var matching_actions: Array = []
+	for option_variant in _v075_snapshot.get("legal_actions", []) as Array:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		if str(option.get("card_instance_id", "")) == instance_id:
+			matching_actions.append(option.duplicate(true))
+	var phase := str(_v075_snapshot.get("phase", "idle"))
+	var submission_locked := bool(_v075_snapshot.get("submission_locked", false))
+	var pending := _pending_public_card_instance_ids.has(instance_id)
+	var actionable := phase == "submission" and not submission_locked \
+		and not pending and not matching_actions.is_empty()
+	var target_type := ""
+	var target_label := ""
+	if not matching_actions.is_empty():
+		var first_action := matching_actions[0] as Dictionary
+		target_type = str(first_action.get("target_type", ""))
+		if target_type.is_empty():
+			if not str(first_action.get("target_region_id", "")).is_empty():
+				target_type = "区域"
+			elif not str(first_action.get("target_monster_source_instance_id", "")).is_empty():
+				target_type = "怪兽"
+			elif not str(first_action.get("facility_type", "")).is_empty():
+				target_type = "设施"
+			target_label = str(first_action.get(
+			"target_region_id",
+			first_action.get("target_slot_id", "")
+		))
+	if target_type.is_empty():
+		# The V0.6 Catalog's authored player-facing field is `target`; older
+		# adapters sometimes emitted `target_type`.  Consume the authored field
+		# first so the face never falls back to a guessed private target.
+		target_type = str(player.get(
+			"target",
+			player.get("target_type", "区域" if domain == "facility" else "私密目标")
+		))
+	var use_case := str(player.get(
+		"use_case",
+		player.get("purpose", {
+			"facility": "建设设施",
+			"monster": "制造地图压力",
+			"military": "指挥军队",
+		}.get(domain, "执行行动"))
+	))
+	var legality_state := "可出牌" if actionable else "不可用"
+	var disabled_reason := ""
+	if pending:
+		disabled_reason = "已提交，等待公开结算"
+	elif phase != "submission":
+		disabled_reason = "等待出牌窗口"
+	elif submission_locked:
+		disabled_reason = "本轮已锁定"
+	elif matching_actions.is_empty():
+		disabled_reason = "暂无合法目标或资源"
+	var name := str(player.get(
+		"name",
+		_card_type_label(definition_id)
+	))
+	var short_effect := str(player.get(
+		"short_effect",
+		"选择合法目标并提交到公开排列。"
+		if domain == "facility"
+		else "选择合法私密目标并执行直接行动。"
+	))
+	var illustration_key := str(
+		CARD_ILLUSTRATION_CATALOG.presentation_key_for_card(catalog_id)
+	)
+	var illustration_path := ""
+	if illustration_key.is_empty() and domain in ["monster", "military"]:
+		var descriptor := V075CardDefinitionRegistry.presentation_descriptor(
+			definition_id
+		)
+		illustration_path = str(descriptor.get("resource_path", ""))
+	var tooltip := "%s · %s · Lv.%d\n%s\n权威区域：%s" % [
+		name,
+		_combat_color_label(color_id),
+		level,
+		str(player.get("effect", short_effect)),
+		str(card.get("authority_zone", "hand")),
+	]
+	return {
+		"name": name,
+		"effect": short_effect,
+		"summary": short_effect,
+		"short_effect": short_effect,
+		"type": str(player.get("type", card_type)),
+		"rank": str(player.get("rank", "L%d" % level)),
+		"cost": str(player.get(
+			"cost",
+			"%d %s" % [
+				int(card.get("primary_asset_cost", 0)),
+				_combat_color_label(color_id),
+			]
+		)),
+		"kind": card_type,
+		"route": _combat_color_label(color_id),
+		"use_case": use_case,
+		"purpose": use_case,
+		"target": target_label if not target_label.is_empty() else target_type,
+		"target_type": target_type,
+		"legality_state": legality_state,
+		"play_state": legality_state,
+		"action_state": legality_state,
+		"disabled": not actionable,
+		"drop_valid": actionable,
+		"disabled_reason": disabled_reason,
+		"block_reason": disabled_reason,
+		"actions": _presentation_actions_for_card(matching_actions, use_case),
+		"keywords": [
+			{"text": use_case, "tooltip": "用途：%s" % use_case, "accent": Color("#fde68a")},
+			{"text": target_type, "tooltip": "目标类型：%s" % target_type, "accent": Color("#bfdbfe")},
+			{"text": legality_state, "tooltip": disabled_reason if not disabled_reason.is_empty() else "当前可以提交", "accent": Color("#86efac") if actionable else Color("#fca5a5")},
+		],
+		"keywords_authoritative": true,
+		"accent": COLOR_VALUES.get(color_id, Color.WHITE),
+		"presentation": "dock_mini",
+		"illustration_key": illustration_key,
+		"illustration_path": illustration_path,
+		"illustration_profile": {
+			"source_type": "open_source_placeholder",
+			"visual_source_id": definition_id,
+		},
+		"illustration_silent_fallback": true,
+		"card_frame_key": "card.frame.normal",
+		"tooltip": tooltip,
+	}
+
+
+func _presentation_actions_for_card(
+	matching_actions: Array,
+	use_case: String
+) -> Array:
+	var result: Array = []
+	for option_variant in matching_actions:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		result.append({
+			"label": "%s · %s" % [
+				use_case,
+				str(option.get("target_region_id", option.get("target_slot_id", "目标"))),
+			],
+			"disabled": false,
+		})
+	return result
 
 
 func _fit_hand_cards_to_single_row() -> void:
@@ -2011,11 +2814,65 @@ func _fit_hand_cards_to_single_row() -> void:
 	hand_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	hand_scroll.follow_focus = false
 	hand_scroll.clip_contents = true
+	var available_width := maxf(hand_scroll.size.x, 1.0)
+	var compact_view := get_viewport_rect().size.x < 1500.0 \
+		or get_viewport_rect().size.y < 880.0
+	var narrow_view := get_viewport_rect().size.x < 720.0
+	var overlap_budget := 18.0 * 4.0
+	var fit_width := (available_width - 16.0 + overlap_budget) / 5.0
+	var min_width := 48.0 if narrow_view else (68.0 if compact_view else 84.0)
+	var max_width := 76.0 if narrow_view else (92.0 if compact_view else 104.0)
+	var card_width := clampf(fit_width, min_width, max_width)
+	var card_height_budget := 96.0 if get_viewport_rect().size.y < 820.0 else (112.0 if compact_view else 140.0)
+	var card_height := minf(card_width * 4.0 / 3.0, card_height_budget)
+	var rail_separation := -18
+	if narrow_view:
+		rail_separation = -int(ceil(maxf(
+			18.0,
+			(card_width * 5.0 - available_width) / 4.0
+		)))
+	_hand_rail.add_theme_constant_override("separation", rail_separation)
+	hand_scroll.custom_minimum_size.y = card_height
+	# ScrollContainer sizes its child from the child's minimum unless the rail
+	# explicitly participates in horizontal expansion.  Without this flag the
+	# five cards remain packed into their fallback-width cluster at the left
+	# edge even though the viewport has a full hand lane available.
+	_hand_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hand_rail.custom_minimum_size = Vector2(0.0, card_height)
 	for child in _hand_rail.get_children():
 		if child is Control:
-			(child as Control).custom_minimum_size = Vector2(94.0, 96.0)
+			(child as Control).custom_minimum_size = Vector2(
+				card_width,
+				card_height
+			)
 			(child as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			(child as Control).size_flags_stretch_ratio = 1.0
+
+
+func _update_hand_dock_minimum_height(facts: Dictionary = {}) -> void:
+	var dock_panel := $RootMargin/Shell/DockPanel as Control
+	if dock_panel == null:
+		return
+	if facts.is_empty():
+		facts = ((_v075_snapshot.get("personal_dbg", {}) as Dictionary).get(
+			"facts", {}
+		) as Dictionary)
+	var inventory := facts.get("commodity_inventory", []) as Array
+	var viewport_size := get_viewport_rect().size
+	var compact := viewport_size.x < 1500.0 or viewport_size.y < 880.0
+	var narrow := viewport_size.x < 720.0
+	var preview_height := 54.0 if inventory.is_empty() else (82.0 if viewport_size.x < 900.0 else 104.0)
+	var hand_height := 96.0 if viewport_size.y < 820.0 else (112.0 if compact else 140.0)
+	if narrow:
+		hand_height = minf(hand_height, 96.0)
+	# DockRows = header + independent commodity preview + hand/action body +
+	# command row, with the inherited margin and row separations included.
+	var required_height := 10.0 + 30.0 + preview_height + maxf(hand_height, 108.0) + 32.0 + 12.0
+	var available_max := maxf(
+		198.0,
+		viewport_size.y - 12.0 - 82.0 - 144.0 - 34.0 - SINGLE_TABLE_MIN_PLANET_HEIGHT
+	)
+	dock_panel.custom_minimum_size.y = minf(required_height, available_max)
 
 
 func _on_commodity_inventory_activated(payload: Dictionary) -> void:
@@ -2038,6 +2895,22 @@ func _refresh_history() -> void:
 			seen_receipts,
 			(local_variant as Dictionary).duplicate(true)
 		)
+	var arrangement_projection := _v075_snapshot.get(
+		"v076_public_action_arrangement",
+		{}
+	) as Dictionary
+	for ai_receipt_variant in arrangement_projection.get(
+		"ai_public_action_receipts",
+		[]
+	) as Array:
+		if ai_receipt_variant is Dictionary:
+			_append_unique_action_feed_entry(
+				entries,
+				seen_receipts,
+				_ai_public_action_feed_entry(
+					ai_receipt_variant as Dictionary
+				)
+			)
 	for row_variant in _v075_snapshot.get("public_history", []) as Array:
 		if row_variant is Dictionary:
 			_append_unique_action_feed_entry(
@@ -2074,6 +2947,434 @@ func _refresh_history() -> void:
 		_public_action_feed_visible_count,
 		lines.size() if not entries.is_empty() else 0
 	)
+	_refresh_central_public_action_arrangement()
+
+
+func _sync_public_arrangement_source_anchors() -> void:
+	if (
+		not is_instance_valid(_central_public_action_arrangement)
+		or not _central_public_action_arrangement.has_method(
+			"set_source_anchor_rects"
+		)
+	):
+		return
+	var anchors := {}
+	for child_index in range(_roster_grid.get_child_count()):
+		if child_index == 0:
+			continue
+		var seat := _roster_grid.get_child(child_index) as Control
+		if seat == null or not seat.is_visible_in_tree():
+			continue
+		anchors["ai_seat_%02d" % child_index] = seat.get_global_rect()
+	_central_public_action_arrangement.call(
+		"set_source_anchor_rects",
+		anchors
+	)
+
+
+func _refresh_central_public_action_arrangement() -> void:
+	if not is_instance_valid(_central_public_action_arrangement):
+		return
+	var runtime_projection: Dictionary = _v075_snapshot.get(
+		"v076_public_action_arrangement",
+		{}
+	) as Dictionary
+	if (
+		str(runtime_projection.get("schema", ""))
+			== "V076PublicActionArrangementProjectionV1"
+		and runtime_projection.get("entries", []) is Array
+	):
+		# The RuntimeOwner has already applied the privacy boundary and owns the
+		# frozen order.  Consume this projection verbatim; do not reconstruct a
+		# public queue from private local queues in the Screen.
+		var projected_entries: Array = (
+			runtime_projection.get("entries", []) as Array
+		).duplicate(true)
+		# A viewer-owned row may carry its own instance id solely for the local
+		# hand -> arrangement transition.  Rival rows remain fail-closed.  Filter
+		# malformed rows individually so one stale/private row cannot erase every
+		# valid public card from the player's table.
+		var sanitized_entries: Array = []
+		for entry_variant in projected_entries:
+			if not (entry_variant is Dictionary):
+				continue
+			var entry := entry_variant as Dictionary
+			var row_violation := _public_arrangement_private_key_count(entry)
+			if row_violation > 0:
+				_central_public_arrangement_private_projection_violation_count += row_violation
+				continue
+			sanitized_entries.append(entry)
+		projected_entries = sanitized_entries
+		var projection_phase := str(runtime_projection.get("phase", "idle"))
+		var projection_phase_text: String = str({
+			"submission": "30秒·悬停",
+			"resolving": "结算中",
+			"maintenance": "历史",
+		}.get(projection_phase, "等待提交"))
+		var projection_summary: String = (
+			"行动按权威公开顺序排列；匿名身份与未公开牌面保持隐藏。"
+			if not projected_entries.is_empty()
+			else "提交后，玩家行动会在这里形成可悬停排列。"
+		)
+		_central_public_arrangement_refresh_count += 1
+		_central_public_action_arrangement.call(
+			"apply_public_arrangement",
+			projected_entries,
+			str(projection_phase_text),
+			projection_summary,
+			"归属未公开前显示匿名行动；仅当前玩家自己的授权牌面可见。"
+		)
+		return
+	var entries: Array = []
+	var seen_ids: Dictionary = {}
+	var contention: Dictionary = _v075_snapshot.get("facility_contention", {}) as Dictionary
+	var public_queue_variant: Variant = contention.get(
+		"anonymous_global_queue",
+		contention.get("anonymous_public_queue", [])
+	)
+	if public_queue_variant is Array:
+		for index in range((public_queue_variant as Array).size()):
+			var row_variant: Variant = (public_queue_variant as Array)[index]
+			if not (row_variant is Dictionary):
+				continue
+			var row: Dictionary = row_variant as Dictionary
+			var anonymous_id := str(row.get(
+				"anonymous_action_id",
+				"anonymous.%06d" % index
+			))
+			var status := str(row.get(
+				"resolution_status",
+				"pending"
+			)).to_lower()
+			var state_label := "RESOLVED"
+			var accent := "#52d6b8"
+			if status in ["fizzled", "fizzle"]:
+				state_label = "FIZZLED"
+				accent = "#ef8b77"
+			elif status in ["pending", "queued"]:
+				state_label = "QUEUED"
+				accent = "#f3c969"
+			elif status in ["resolving", "active"]:
+				state_label = "RESOLVING"
+				accent = "#7fb6ff"
+			var reason := str(row.get("public_reason_code", "等待匿名结算"))
+			var entry_id := "central:%s" % anonymous_id
+			seen_ids[entry_id] = true
+			entries.append({
+				"id": entry_id,
+				"resolution_id": int(row.get("queue_index", index)),
+				"label": "一张匿名牌",
+				"title": "公开行动 #%d" % (index + 1),
+				"owner_hint": "匿名玩家",
+				"state": state_label,
+				"detail": reason,
+				"summary": reason,
+				"tooltip": "%s · %s\n%s" % [
+					state_label,
+					"匿名玩家",
+					reason,
+				],
+				"active": state_label in ["QUEUED", "RESOLVING"],
+				"accent": accent,
+				"badges": [state_label],
+				"hover_action": entry_id,
+			})
+	# A locally authorized submission is shown by its public card/effect name;
+	# rival rows above remain anonymous until the authority publishes them.
+	for local_variant in _local_public_feedback:
+		if not (local_variant is Dictionary):
+			continue
+		var local: Dictionary = local_variant as Dictionary
+		var local_status := str(local.get("status_label", ""))
+		if local_status not in ["SUBMITTED", "QUEUED", "RESOLVING"]:
+			continue
+		var local_id := "local:%s" % str(local.get(
+			"public_receipt_identity",
+			_local_feedback_sequence
+		))
+		if seen_ids.has(local_id):
+			continue
+		entries.append({
+			"id": local_id,
+			"resolution_id": 1000 + entries.size(),
+			"label": str(local.get("subject_label", "你的行动")),
+			"owner_hint": "你",
+			"state": local_status,
+			"detail": str(local.get("target_label", "等待公开结算")),
+			"summary": str(local.get("result_label", "等待结算")),
+			"tooltip": "%s · %s\n%s" % [
+				str(local.get("action_label", "提交")),
+				str(local.get("target_label", "公开目标")),
+				str(local.get("result_label", "等待结算")),
+			],
+			"active": true,
+			"accent": "#f3c969",
+			"badges": [local_status],
+			"hover_action": local_id,
+		})
+	# Public history is already privacy-sanitized by the RuntimeOwner.  Keep it
+	# after the live queue so the center reads left-to-right as current -> past.
+	for history_variant in _v075_snapshot.get("public_history", []) as Array:
+		if not (history_variant is Dictionary):
+			continue
+		var history: Dictionary = _public_history_entry(history_variant as Dictionary)
+		var history_id := "history:%s" % str(history.get(
+			"public_receipt_identity",
+			entries.size()
+		))
+		if seen_ids.has(history_id):
+			continue
+		seen_ids[history_id] = true
+		entries.append({
+			"id": history_id,
+			"resolution_id": 2000 + entries.size(),
+			"label": str(history.get("subject_label", "公开行动")),
+			"owner_hint": str(history.get("actor_label", "匿名玩家")),
+			"state": str(history.get("status_label", "RESOLVED")),
+			"detail": str(history.get("result_label", "已结算")),
+			"summary": str(history.get("target_label", "公开目标")),
+			"tooltip": _plain_public_action_line(history),
+			"active": false,
+			"accent": "#52d6b8" if str(history.get("status_label", "")) != "FIZZLED" else "#ef8b77",
+			"badges": [str(history.get("status_label", "RESOLVED"))],
+			"hover_action": history_id,
+		})
+	while entries.size() > 16:
+		entries.pop_front()
+	var phase := str(_v075_snapshot.get("phase", "idle"))
+	var phase_text: String = str({
+		"submission": "30秒·悬停",
+		"resolving": "结算中",
+		"maintenance": "历史",
+	}.get(phase, "等待提交"))
+	var summary: String = (
+		"行动会按公开顺序排列；匿名身份与未公开牌面保持隐藏。"
+		if not entries.is_empty()
+		else "提交后，玩家行动会在这里形成可悬停排列。"
+	)
+	_central_public_arrangement_refresh_count += 1
+	_central_public_action_arrangement.call(
+		"apply_public_arrangement",
+		entries,
+		str(phase_text),
+		summary,
+		"归属未公开前显示匿名玩家与一张匿名牌；仅公开回执可展开详情。"
+	)
+
+
+func _on_central_public_entry_hovered(entry: Dictionary) -> void:
+	_central_public_arrangement_hover_count += 1
+	var state := str(entry.get("state", "")).strip_edges()
+	var label := str(entry.get("label", "一张匿名牌")).strip_edges()
+	var owner := str(entry.get("owner_hint", "匿名玩家")).strip_edges()
+	if label.is_empty():
+		label = "一张匿名牌"
+	if owner.is_empty():
+		owner = "匿名玩家"
+	_current_action_banner.text = "当前：%s · %s · %s" % [owner, label, state]
+
+
+func _public_arrangement_private_key_count(
+	value: Variant,
+	allow_viewer_owned_card_instance_id := false
+) -> int:
+	var forbidden := [
+		"actor_id", "owner_id", "player_id", "seat", "player_index",
+		"card_instance_id", "target_binding", "private_queue",
+		"authority_queue", "hidden_order", "true_owner",
+	]
+	if value is Dictionary:
+		var count := 0
+		var viewer_owned_scope := allow_viewer_owned_card_instance_id or bool(
+			(value as Dictionary).get("viewer_owned", false)
+		)
+		for key_variant in (value as Dictionary).keys():
+			var key := str(key_variant).to_lower()
+			var allowed_local_instance_id := (
+				key == "card_instance_id" and viewer_owned_scope
+			)
+			if (key in forbidden and not allowed_local_instance_id) \
+				or key.begins_with("private_") \
+				or key.begins_with("hidden_"):
+				count += 1
+			count += _public_arrangement_private_key_count(
+				(value as Dictionary).get(key_variant),
+				viewer_owned_scope
+			)
+		return count
+	if value is Array:
+		var count := 0
+		for item in value as Array:
+			count += _public_arrangement_private_key_count(
+				item,
+				allow_viewer_owned_card_instance_id
+			)
+		return count
+	return 0
+
+
+func _input(event: InputEvent) -> void:
+	# Keep a small manual gesture bridge alongside Godot's drag-and-drop
+	# contract.  A hand card selects itself on mouse-down, but the hand rail is
+	# also rebuilt by authoritative projections; relying exclusively on
+	# `_get_drag_data()` can therefore lose the release when a real pointer
+	# crosses the central overlay.  This bridge is presentation/input routing
+	# only: it forwards the same payload to the existing legal-action path.
+	if event is InputEventMouseButton:
+		var button := event as InputEventMouseButton
+		if button.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if button.pressed:
+			_manual_drag_last_drop_card_id = ""
+			_manual_drag_last_drop_msec = -1
+			_manual_drag_payload = _hand_payload_at_position(button.position)
+			_manual_drag_card_id = str(_manual_drag_payload.get("instance_id", ""))
+			_manual_drag_start_position = button.position
+			_manual_drag_active = false
+			if not _manual_drag_card_id.is_empty():
+				_manual_drag_start_count += 1
+			return
+		if _manual_drag_active and not _manual_drag_payload.is_empty():
+			var drop_position := button.position
+			var drop_rect := Rect2()
+			if is_instance_valid(_central_public_action_arrangement):
+				if _central_public_action_arrangement.has_method("drawer_global_rect"):
+					var candidate_rect: Variant = _central_public_action_arrangement.call(
+						"drawer_global_rect"
+					)
+					if candidate_rect is Rect2:
+						drop_rect = candidate_rect
+				if not drop_rect.has_area():
+					drop_rect = _central_public_action_arrangement.get_global_rect()
+			if drop_rect.has_point(drop_position):
+				_manual_drag_drop_count += 1
+				_on_central_card_drop_requested(
+					_manual_drag_payload.duplicate(true)
+				)
+				_manual_drag_last_drop_card_id = _manual_drag_card_id
+				_manual_drag_last_drop_msec = Time.get_ticks_msec()
+			else:
+				_manual_drag_rejection_count += 1
+			_reset_manual_drag()
+		return
+	if event is InputEventMouseMotion and not _manual_drag_payload.is_empty():
+		var motion := event as InputEventMouseMotion
+		if (
+			(motion.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0
+			and not _manual_drag_active
+			and motion.position.distance_to(_manual_drag_start_position) >= 10.0
+		):
+			_manual_drag_active = true
+
+
+func _hand_payload_at_position(position: Vector2) -> Dictionary:
+	if _active_hand_category != "general":
+		return {}
+	for child in _hand_rail.get_children():
+		if not child.has_method("payload") or not (child is Control):
+			continue
+		var card := child as Control
+		if not card.is_visible_in_tree() or not card.get_global_rect().has_point(position):
+			continue
+		var payload := card.call("payload") as Dictionary
+		if not payload.is_empty() and payload.has("instance_id"):
+			return payload.duplicate(true)
+	return {}
+
+
+func _reset_manual_drag() -> void:
+	_manual_drag_card_id = ""
+	_manual_drag_payload = {}
+	_manual_drag_start_position = Vector2.ZERO
+	_manual_drag_active = false
+
+
+func _on_central_card_drop_requested(payload: Dictionary) -> void:
+	var duplicate_key := str(payload.get("instance_id", ""))
+	if (
+		not duplicate_key.is_empty()
+		and duplicate_key == _manual_drag_last_drop_card_id
+		and Time.get_ticks_msec() - _manual_drag_last_drop_msec <= 250
+	):
+		# The native Godot drop callback can follow the manual release bridge in
+		# the same frame.  Preserve exact-once submission at the presentation
+		# boundary; the authoritative owner still owns the real ledger.
+		return
+	_central_card_drop_count += 1
+	if payload.is_empty():
+		_central_card_drop_rejection_count += 1
+		return
+	_refresh_card_interaction_snapshot()
+	if str(_v075_snapshot.get("phase", "idle")) != "submission":
+		_central_card_drop_rejection_count += 1
+		_show_toast("当前不在出牌窗口", false)
+		return
+	var card_id := str(payload.get("instance_id", ""))
+	if card_id.is_empty():
+		_central_card_drop_rejection_count += 1
+		_show_toast("拖拽牌身份已失效，请重新选择", false)
+		return
+	var hand_card := _hand_card_by_id(card_id)
+	if hand_card.is_empty():
+		# A stale drag payload must never select a card that is no longer in the
+		# viewer's authoritative hand.  The arrangement remains presentation-only;
+		# revalidation happens against the latest private projection here.
+		_central_card_drop_rejection_count += 1
+		_show_toast("这张牌已不在手牌中，请重新拖拽", false)
+		return
+	_central_card_drop_submission_count += 1
+	# Reuse the exact hand-card selection path first.  Combat cards retain their
+	# typed mode/mission chooser; facility cards can bind a unique legal target
+	# immediately when there is only one option.
+	# The card button emits `activated` on mouse-down before Godot starts the
+	# drag.  Do not feed the same payload through the toggle path a second time
+	# on drop, or the already-selected card would be deselected just before its
+	# legal target is resolved.
+	if _selected_card_id != card_id:
+		_on_hand_card_activated(payload)
+	var domain := _v075_card_domain(str(payload.get("definition_id", "")))
+	if domain != "facility":
+		return
+	var options: Array = []
+	for option_variant in _v075_snapshot.get("legal_actions", []) as Array:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		if (
+			str(option.get("card_instance_id", "")) == card_id
+			and str(option.get("action_domain", "facility")) == "facility"
+		):
+			options.append(option.duplicate(true))
+	if options.is_empty():
+		_central_card_drop_rejection_count += 1
+		_show_toast("当前没有合法目标，不能提交这张牌", false)
+		return
+	if options.size() == 1:
+		_queue_option_binding(options[0] as Dictionary, "central_drag")
+		return
+	_region_popup.visible = true
+	_region_popup_title.text = "拖拽出牌 · 选择合法目标"
+	_region_popup_body.text = "这张牌有 %d 个合法目标；选择后在固定行动区确认。" % options.size()
+	_render_target_choices(options, "central_drag")
+
+
+func _refresh_card_interaction_snapshot() -> void:
+	# Receipts and viewer snapshots travel on separate presentation signals.  A
+	# queue removal can therefore restore a card in authority just before this
+	# GameScreen cache receives the matching legal-action projection.  Re-read
+	# the existing viewer-authorized snapshot at the input boundary so a rapid
+	# remove -> requeue gesture never resolves against stale target parameters.
+	# This cache refresh is read-only and does not create or mutate gameplay
+	# owners, card zones, map state, assets, ticks, or RNG.
+	if not is_instance_valid(_v075_flow) or not _v075_flow.has_method("local_snapshot"):
+		return
+	var current := _v075_flow.call("local_snapshot") as Dictionary
+	if current.is_empty():
+		return
+	var ruleset_id := str(current.get("ruleset_id", ""))
+	if ruleset_id not in [BASE_V074_RULESET_ID, V075_RULESET_ID]:
+		return
+	_v075_snapshot = current.duplicate(true)
 
 
 func _append_unique_action_feed_entry(
@@ -2132,6 +3433,45 @@ func _append_combat_public_feedback(cue: Dictionary) -> void:
 		"result_label": _public_result_label(event_kind, payload),
 	})
 	_combat_status.text = _plain_public_action_line(_local_public_feedback.back())
+
+
+func _ai_public_action_feed_entry(receipt: Dictionary) -> Dictionary:
+	var status := str(receipt.get("status", "PASS"))
+	var public_card := bool(receipt.get("public_card", false))
+	var private_direct_action := bool(receipt.get(
+		"direct_action_public_effect",
+		false
+	))
+	var action_label := "跳过"
+	var subject_label := "当前没有合法牌"
+	var target_label := "继续等待下位玩家"
+	var result_label := "明确 PASS"
+	if public_card:
+		action_label = "出牌"
+		subject_label = "一张匿名牌"
+		target_label = str(receipt.get(
+			"target_public",
+			"按公开结算顺序"
+		))
+		result_label = "已进入公开排列"
+	elif private_direct_action:
+		action_label = "直接行动"
+		subject_label = "一项匿名效果"
+		target_label = "目标按公开规则显示"
+		result_label = "已提交私密行动"
+	return {
+		"public_receipt_identity": "ai:%s" % str(receipt.get(
+			"receipt_id",
+			JSON.stringify(receipt).sha256_text()
+		)),
+		"actor_label": str(receipt.get("actor_label", "AI玩家")),
+		"action_label": action_label,
+		"subject_label": subject_label,
+		"target_label": target_label,
+		"cost_label": "成本按规则结算" if status != "PASS" else "无消耗",
+		"status_label": status,
+		"result_label": result_label,
+	}
 
 
 func _public_history_entry(row: Dictionary) -> Dictionary:
@@ -3053,7 +4393,13 @@ func _apply_single_viewport_layout() -> void:
 	var header_height := 82.0 if compact else 88.0
 	var track_height := 144.0 if compact else (154.0 if wide else 148.0)
 	var target_height := 34.0 if compact else 38.0
-	var dock_height := 220.0 if compact else (226.0 if wide else 220.0)
+	# Resolve the dock from the actual hand/commodity content contract.  The
+	# previous fixed 220px shell clipped five production CardUI faces as soon
+	# as the independent commodity preview and current-action row were present.
+	_update_hand_dock_minimum_height()
+	var dock_height := dock_panel.custom_minimum_size.y
+	if dock_height <= 1.0:
+		dock_height = 220.0 if compact else (226.0 if wide else 220.0)
 	var narrow := viewport_size.x < COMBAT_LAYOUT_NARROW_MAX_WIDTH
 	var shell_separation := 3.0
 	var available_height := maxf(
@@ -3095,6 +4441,7 @@ func _apply_single_viewport_layout() -> void:
 		table_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	target_panel.custom_minimum_size.y = target_height
 	dock_panel.custom_minimum_size.y = dock_height
+	_apply_commodity_preview_geometry(viewport_size)
 	# The inherited roster/weather rails carry desktop-width minimums that force
 	# the right-side direct-action panel outside a genuinely narrow viewport.
 	# Narrow play uses the single-table contract: keep the planet map and direct
@@ -3148,6 +4495,36 @@ func _apply_single_viewport_layout() -> void:
 	_planet_board.update_minimum_size()
 	table_area.queue_sort()
 	shell.queue_sort()
+	# HandScroll receives its final width only after the Shell/TableArea sort.
+	# Refit the five card faces on the next frame so an early projection cannot
+	# leave them permanently at the fallback width.
+	call_deferred("_fit_hand_cards_to_single_row")
+
+
+func _apply_commodity_preview_geometry(viewport_size: Vector2) -> void:
+	if not is_instance_valid(_commodity_hand_preview_panel):
+		return
+	# At desktop/table widths the independent commodity projection gets a
+	# horizontal lane beside the general hand.  On genuinely narrow screens the
+	# existing fixed category tabs remain the compact access path; hiding only
+	# this duplicate preview avoids pushing the hand or queue off-screen.
+	var show_preview := viewport_size.x >= 1180.0
+	_commodity_hand_preview_panel.visible = show_preview
+	_commodity_hand_preview_panel.mouse_filter = (
+		Control.MOUSE_FILTER_PASS if show_preview else Control.MOUSE_FILTER_IGNORE
+	)
+	if not show_preview:
+		_commodity_hand_preview_panel.custom_minimum_size = Vector2.ZERO
+		return
+	var preview_width := clampf(viewport_size.x * 0.28, 300.0, 460.0)
+	_commodity_hand_preview_panel.custom_minimum_size = Vector2(preview_width, 0.0)
+	_commodity_hand_preview_panel.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_commodity_hand_preview_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_fit_preview_card_row()
+	# HandScroll receives its final width only after the Shell/TableArea sort.
+	# Refit the five card faces on the next frame so an early projection cannot
+	# leave them permanently at the 68px fallback width.
+	call_deferred("_fit_hand_cards_to_single_row")
 
 
 func _refresh_targets() -> void:
@@ -3220,6 +4597,40 @@ func _handle_region_selection(
 	_queue_option_binding(legal, source_surface)
 
 
+func _queue_option_binding(
+	option: Dictionary,
+	source_surface: String
+) -> void:
+	# The inherited V0.7.4 helper submits a facility card immediately.  V0.7.5
+	# production cards use the fixed action tray instead: resolve the current
+	# target once, retain the canonical binding, and let the existing Confirm
+	# button create the exact-once card.queue intent.  This also keeps the
+	# remove -> requeue path on the same UI contract as the first submission.
+	if option.is_empty() or _selected_card_id.is_empty():
+		_current_action_reason.text = "请先选择一个合法目标"
+		_current_action_reason.visible = true
+		_update_current_action_panel()
+		return
+	if not is_instance_valid(_v075_flow):
+		_show_toast("v075_runtime_composition_not_ready", false)
+		return
+	var resolved := _v075_flow.call(
+		"resolve_map_target",
+		_selected_card_id,
+		str(option.get("target_region_id", "")),
+		str(option.get("facility_type", "")),
+		str(option.get("industry_id", "")),
+		str(option.get("facility_action_mode", ""))
+	) as Dictionary
+	if not bool(resolved.get("accepted", false)):
+		_show_toast(str(resolved.get("reason_code", "target_not_legal")), false)
+		return
+	_queue_target_binding(
+		(resolved.get("binding", {}) as Dictionary).duplicate(true),
+		source_surface
+	)
+
+
 func _queue_target_binding(
 	binding: Dictionary,
 	source_surface: String
@@ -3266,7 +4677,13 @@ func _on_hand_card_activated(payload: Dictionary) -> void:
 	if domain != "monster":
 		_region_popup.visible = false
 		_monster_mode_popup_card_id = ""
-		super._on_hand_card_activated(payload)
+		# Selection happens on mouse-down, before Godot decides whether the
+		# gesture becomes a drag.  Rebuilding the hand here would free the very
+		# Control that owns the drag source and make a real drop impossible.  Keep
+		# the existing card node alive until the gesture resolves; the visual
+		# selection is updated in place and the inherited target/presentation
+		# projections remain unchanged.
+		_select_hand_card_without_rebuild(payload)
 		_current_action_mode = (
 			"idle" if _selected_card_id.is_empty() else "card_play"
 		)
@@ -3295,7 +4712,7 @@ func _on_hand_card_activated(payload: Dictionary) -> void:
 	_current_action_mode = "card_play"
 	_current_action_source_surface = "hand_dock"
 	_current_action_started_msec = Time.get_ticks_msec()
-	_refresh_hand()
+	_set_hand_selection_visual(_selected_card_id)
 	_refresh_targets()
 	_render_monster_card_mode_popup(payload)
 	_update_current_action_panel()
@@ -3321,11 +4738,74 @@ func _select_military_hand_card(payload: Dictionary) -> void:
 	var summary := _card_summary(payload, "hand_dock")
 	_emit_playtest_event("card_selected", summary)
 	_emit_playtest_event("target_selection_started", summary)
-	_refresh_hand()
+	_set_hand_selection_visual(_selected_card_id)
 	_refresh_targets()
 	_render_military_card_action_popup(payload)
 	_update_current_action_panel()
 	_update_acceptance_state()
+
+
+func _select_hand_card_without_rebuild(payload: Dictionary) -> void:
+	var incoming_id := str(payload.get("instance_id", ""))
+	if incoming_id.is_empty():
+		return
+	if incoming_id == _selected_card_id:
+		# A second mouse-down can be the beginning of a drag from an already
+		# selected card.  Keep the source Control alive; explicit Cancel remains
+		# the unambiguous deselection path.
+		return
+	_selected_card_id = incoming_id
+	_selected_card_definition_id = str(payload.get("definition_id", ""))
+	_selected_card_color = str(payload.get("primary_color", ""))
+	_selected_card_type = str(payload.get("card_type", ""))
+	_interaction_counts["card_selected"] += 1
+	_last_public_ui_surface = "hand_dock"
+	var summary := _card_summary(payload, "hand_dock")
+	_emit_playtest_event("card_selected", summary)
+	_emit_playtest_event("target_selection_started", summary)
+	_action_status.text = "已选 %s · 请选择地区目标" % _card_type_label(
+		_selected_card_definition_id
+	)
+	_set_hand_selection_visual(_selected_card_id)
+	# Region-target cards give the map primary pointer ownership.  The public
+	# arrangement remains the same presentation owner, but its expanded rail
+	# must collapse before the player can discover/click a legal district.
+	_collapse_public_arrangement_for_target_selection()
+	_refresh_targets()
+	_refresh_planet_presentation()
+	_update_acceptance_state()
+
+
+func _collapse_public_arrangement_for_target_selection() -> void:
+	if not is_instance_valid(_central_public_action_arrangement):
+		return
+	if _central_public_action_arrangement.has_method(
+		"collapse_for_target_selection"
+	):
+		_central_public_action_arrangement.call(
+			"collapse_for_target_selection"
+		)
+
+
+func _set_hand_selection_visual(card_id: String) -> void:
+	for child in _hand_rail.get_children():
+		if not child.has_method("payload") or not child.has_method("set_selected"):
+			continue
+		var card_payload := child.call("payload") as Dictionary
+		child.call(
+			"set_selected",
+			not card_id.is_empty()
+			and str(card_payload.get("instance_id", "")) == card_id
+		)
+
+
+# The card button emits `activated` on mouse-down and also exposes a
+# `drag_started` signal.  The former already selects the card in place; doing
+# the inherited second toggle here would deselect it and rebuild the hand
+# while the drag is still in flight.  CentralPublicActionArrangement receives
+# the payload on drop and routes it through the existing legal-action path.
+func _on_hand_card_dragged(_payload: Dictionary) -> void:
+	return
 
 
 func _render_military_card_action_popup(payload: Dictionary) -> void:
@@ -3499,6 +4979,7 @@ func _confirm_current_action() -> void:
 			_current_action_started_msec = Time.get_ticks_msec()
 			_action_submission_pending = true
 			_current_action_confirm_button.disabled = true
+			_register_selected_card_transition_source()
 			_emit_intent("card.queue", {
 				"card_instance_id": str(_pending_confirm_binding.get(
 					"card_instance_id",
@@ -3582,7 +5063,9 @@ func _update_current_action_panel() -> void:
 						_combat_color_label(color_id),
 						cost,
 					],
-					"商品库存" if kind == "commodity_card" else "DISCARD",
+					"商品库存"
+					if kind == "commodity_card"
+					else "DISCARD（不占手牌，满手也可取得）",
 				]
 			)
 			_current_action_reason.text = (
@@ -3679,7 +5162,7 @@ func _update_current_action_panel() -> void:
 		_:
 			_current_action_title.text = "当前行动 · 请选择卡牌"
 			_current_action_details.text = (
-				"点击牌轨查看价格，或点击手牌选择行动。无需拖拽。"
+				"点击手牌选择行动；也可拖到中央公开排列出牌。"
 			)
 			_current_action_reason.text = ""
 			_current_action_reason.visible = false
@@ -3689,6 +5172,12 @@ func _update_current_action_panel() -> void:
 
 
 func _selected_hand_card() -> Dictionary:
+	return _hand_card_by_id(_selected_card_id)
+
+
+func _hand_card_by_id(instance_id: String) -> Dictionary:
+	if instance_id.is_empty():
+		return {}
 	var facts := (
 		(_v075_snapshot.get("personal_dbg", {}) as Dictionary).get(
 			"facts",
@@ -3699,9 +5188,56 @@ func _selected_hand_card() -> Dictionary:
 		if not (card_variant is Dictionary):
 			continue
 		var card := card_variant as Dictionary
-		if str(card.get("instance_id", "")) == _selected_card_id:
+		if _pending_public_card_instance_ids.has(str(card.get("instance_id", ""))):
+			continue
+		if str(card.get("instance_id", "")) == instance_id:
 			return card.duplicate(true)
 	return {}
+
+
+func _hand_card_global_rect(instance_id: String) -> Rect2:
+	if instance_id.is_empty():
+		return Rect2()
+	for child in _hand_rail.get_children():
+		if not child.has_method("payload") or not (child is Control):
+			continue
+		var payload := child.call("payload") as Dictionary
+		if str(payload.get("instance_id", "")) == instance_id:
+			return (child as Control).get_global_rect()
+	return Rect2()
+
+
+func _register_selected_card_transition_source() -> void:
+	if _selected_card_id.is_empty() or not is_instance_valid(_central_public_action_arrangement):
+		return
+	if not _central_public_action_arrangement.has_method("register_card_source_transition"):
+		return
+	_central_public_action_arrangement.call(
+		"register_card_source_transition",
+		_selected_card_id,
+		_general_card_face_data({
+			"instance_id": _selected_card_id,
+			"definition_id": _selected_card_definition_id,
+			"primary_color": _selected_card_color,
+		}),
+		_hand_card_global_rect(_selected_card_id)
+	)
+
+
+func _apply_hand_drag_affordance() -> void:
+	for child in _hand_rail.get_children():
+		if not child.has_method("payload"):
+			continue
+		var card := child as Control
+		if card == null:
+			continue
+		var payload := card.call("payload") as Dictionary
+		if payload.is_empty() or not payload.has("instance_id"):
+			continue
+		card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var base_tooltip := card.tooltip_text.strip_edges()
+		if not base_tooltip.contains("中央公开排列"):
+			card.tooltip_text = "%s\n拖到中央公开排列出牌" % base_tooltip
 
 
 func _current_track_item(instance_id: String) -> Dictionary:

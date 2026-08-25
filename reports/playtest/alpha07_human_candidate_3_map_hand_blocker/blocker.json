@@ -1,0 +1,44 @@
+{
+  "schema": "space_syndicate.v076.alpha07.human_candidate_3.map_hand_blocker.v1",
+  "append_only": true,
+  "recorded_at_utc": "2026-08-24T23:19:10Z",
+  "candidate": "Alpha 0.7 Living Planet - Human Candidate 3",
+  "candidate_head_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+  "candidate_tree_sha": "60099c99bd15aca044958038c55bff7b74592544",
+  "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+  "human_candidate_3_retest_started": true,
+  "human_candidate_3_retest_completed": false,
+  "human_golden_step13_started": false,
+  "human_golden_step13_pass_claimed": false,
+  "classification": "PRE_GOLDEN_MAP_POINTER_AND_CARD_READABILITY_BLOCKED",
+  "blocker_count": 6,
+  "blockers": [
+    "COLLAPSED_PUBLIC_DRAWER_STILL_OCCLUDES_MAP_CENTER",
+    "COLLAPSED_PUBLIC_DRAWER_OR_OVERLAY_INTERCEPTS_MAP_POINTER_INPUT",
+    "PUBLIC_DRAWER_COLLAPSED_HANDLE_IS_NOT_LEFT_EDGE_ICON",
+    "GENERAL_AND_OR_COMMODITY_HAND_NOT_VISIBLE_IN_REAL_MAIN_TABLE",
+    "REGION_TARGET_SELECTION_UNREACHABLE_THROUGH_REAL_POINTER_PATH",
+    "CARD_PURPOSE_REQUIRES_HOVER_INSTEAD_OF_BEING_READABLE_ON_CARD_FACE"
+  ],
+  "automated_readiness_contract_gap": true,
+  "missing_dimensions": [
+    "TOP_LEVEL_POINTER_PASSTHROUGH",
+    "COLLAPSED_DRAWER_ACTUAL_HIT_RECT",
+    "AUTHORITY_TO_VISIBLE_HAND_PARITY",
+    "NO_HOVER_ESSENTIAL_CARD_SEMANTICS",
+    "REAL_REGION_TARGET_POINTER_PATH"
+  ],
+  "candidate3_evidence_mutation_count": 0,
+  "current_window_capture": {
+    "headed_window_found": false,
+    "godot_window_handle": 0,
+    "capture_status": "NOT_AVAILABLE_WINDOW_ALREADY_CLOSED",
+    "note": "The previously left-open Candidate 3 window was not present at freeze time; no screenshot or pointer trace is represented as if it existed."
+  },
+  "human_green": false,
+  "step13_status": "PENDING",
+  "step14_status": "NOT_STARTED",
+  "step15_status": "NOT_STARTED",
+  "pr93_is_draft": true,
+  "full_world_reproof_count": 0
+}

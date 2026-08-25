@@ -93,3 +93,33 @@ next_stage=V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST
 The full matrix now includes the narrow phone-like cases without panel
 overflow. This preflight does not convert automated readiness into Human
 Green; a real human retest and observer attestation remain required.
+
+## Append-only Candidate 3 status (2026-08-24T19:47:03Z)
+
+The prior Candidate 2 status block is historical and remains unchanged. The
+current exact candidate is:
+
+```text
+human_candidate_2_disposition=PRE_GOLDEN_CARD_TABLE_PRESENTATION_AND_TRACK_FLOW_BLOCKED
+public_arrangement_drawer_status=PRODUCTION_READY_FOR_HUMAN_RETEST
+hand_card_semantic_visual_status=PRODUCTION_READY_FOR_HUMAN_RETEST
+coachmark_close_performance_status=PRODUCTION_READY_FOR_HUMAN_RETEST
+public_batch_projection_status=PRODUCTION_READY_FOR_HUMAN_RETEST
+sushi_track_authoritative_scroll_status=PRODUCTION_READY_FOR_HUMAN_RETEST
+latest_completed_atomic_step=V076_ALPHA07_CARD_TABLE_DRAWER_AND_TRACK_FLOW_REPAIR
+next_stage=V076_ALPHA07_HUMAN_CANDIDATE_3_SHORT_RETEST
+candidate_head_sha=46b33bba77b356b100ab68bc7c3676d503049a2c
+candidate_tree_sha=60099c99bd15aca044958038c55bff7b74592544
+card_table_flow_readiness=400/400 PASS
+natural_tail_inherited_sentinel=32/32 PASS
+human_green=false
+production_green=false
+golden_step_13_status=PENDING
+step_14_status=NOT_STARTED
+step_15_status=NOT_STARTED
+pr93_is_draft=true
+```
+
+The real headed `main.tscn` session is left open for the human Candidate 3
+short retest. This append does not claim Golden execution or observer
+attestation.

@@ -39,8 +39,16 @@ func _ready() -> void:
 		_game_screen,
 		_playtest_telemetry
 	)
+	_game_screen.application_intent_requested.connect(
+		_on_application_intent_requested
+	)
+	_application_flow.projection_changed.connect(_on_projection_changed)
+	_application_flow.receipt_ready.connect(_on_receipt_ready)
 	_application_flow.owner_private_receipt_ready.connect(
 		_on_owner_private_receipt_ready
+	)
+	_application_flow.public_resolution_ready.connect(
+		_on_public_resolution_ready
 	)
 	_application_flow.final_settlement_presented.connect(
 		_on_final_settlement_presented
@@ -59,8 +67,32 @@ func game_runtime_context_query() -> RuntimeContextQuery:
 	)
 
 
+func _on_application_intent_requested(intent: Dictionary) -> void:
+	if (
+		_new_game_loading_overlay.has_method("intercept_application_intent")
+		and bool(_new_game_loading_overlay.call(
+			"intercept_application_intent",
+			intent
+		))
+	):
+		return
+	_application_flow.call("submit_intent", intent)
+
+
+func _on_projection_changed(snapshot: Dictionary) -> void:
+	_game_screen.call("apply_snapshot", snapshot)
+
+
+func _on_receipt_ready(receipt: Dictionary) -> void:
+	_game_screen.call("apply_receipt", receipt)
+
+
 func _on_owner_private_receipt_ready(receipt: Dictionary) -> void:
 	_game_screen.call("apply_owner_private_receipt", receipt)
+
+
+func _on_public_resolution_ready(receipt: Dictionary) -> void:
+	_game_screen.call("apply_public_resolution_receipt", receipt)
 
 
 func _on_final_settlement_presented(settlement: Dictionary) -> void:

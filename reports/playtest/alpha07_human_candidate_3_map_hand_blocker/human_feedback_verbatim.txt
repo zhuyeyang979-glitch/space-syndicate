@@ -1,0 +1,20 @@
+HUMAN_CANDIDATE_3_RETEST_STARTED=true
+HUMAN_CANDIDATE_3_RETEST_COMPLETED=false
+HUMAN_GOLDEN_STEP13_STARTED=false
+HUMAN_GOLDEN_STEP13_PASS_CLAIMED=false
+
+BLOCKER_01=COLLAPSED_PUBLIC_DRAWER_STILL_OCCLUDES_MAP_CENTER
+BLOCKER_02=COLLAPSED_PUBLIC_DRAWER_OR_OVERLAY_INTERCEPTS_MAP_POINTER_INPUT
+BLOCKER_03=PUBLIC_DRAWER_COLLAPSED_HANDLE_IS_NOT_LEFT_EDGE_ICON
+BLOCKER_04=GENERAL_AND_OR_COMMODITY_HAND_NOT_VISIBLE_IN_REAL_MAIN_TABLE
+BLOCKER_05=REGION_TARGET_SELECTION_UNREACHABLE_THROUGH_REAL_POINTER_PATH
+BLOCKER_06=CARD_PURPOSE_REQUIRES_HOVER_INSTEAD_OF_BEING_READABLE_ON_CARD_FACE
+
+CLASSIFICATION=PRE_GOLDEN_MAP_POINTER_AND_CARD_READABILITY_BLOCKED
+
+This is a new append-only Candidate 3 human feedback record. It does not
+invalidate or rewrite Candidate 3's prior 400/400 data-chain evidence. That
+evidence covered the already-instrumented arrangement/card-flow contract, but
+did not cover top-level pointer reachability, the actual collapsed drawer hit
+rectangle, authority-to-visible-hand parity, no-hover essential semantics, or
+the real region-target pointer path.

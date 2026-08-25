@@ -29,8 +29,11 @@ const ASSET_RESERVATION_LOCK_ICON_PATH := (
 	+ "kenney_board_game_icons/icons/lock.png"
 )
 const V074_TRACK_VISIBLE_CAPACITY := 10
-const TRACK_PRESENTATION_DRIFT_AMPLITUDE_PX := 3.0
-const TRACK_PRESENTATION_ANGULAR_SPEED := 0.45
+# The shared track owner publishes `scroll_sequence` and physical slot indexes.
+# Presentation interpolates only between those authoritative snapshots; there
+# is deliberately no idle sine/wobble loop that could masquerade as handoff.
+const TRACK_ADVANCE_PRESENTATION_SECONDS := 0.68
+const TRACK_PRESENTATION_MARKERS := ["静止", "交接中", "已交接"]
 
 @onready var _region_count_input: SpinBox = %RegionCountSpinBox
 @onready var _complexity_option: OptionButton = %GeographyComplexityOption
@@ -60,10 +63,30 @@ var _track_focus_order_green := false
 var _track_horizontal_scroll_required := false
 var _track_real_card_count := 0
 var _track_vacancy_slot_count := 0
-var _track_motion_phase := 0.0
 var _track_motion_offset_px := 0.0
 var _track_motion_sample_count := 0
 var _track_motion_observed_delta_px := 0.0
+var _track_motion_marker_index := 0
+var _track_meta_base_text := ""
+var _track_authoritative_scroll_sequence := -1
+var _track_last_slot_by_instance: Dictionary = {}
+var _track_last_vacancy_slots: Array[int] = []
+var _track_authoritative_advance_count := 0
+var _track_authoritative_sequence_delta_count := 0
+var _track_next_player_handoff_count := 0
+var _track_card_slot_index_delta_count := 0
+var _track_vacancy_slot_index_delta_count := 0
+var _track_oscillation_only_count := 0
+var _track_advance_animation_count := 0
+var _track_advance_animation_settle_count := 0
+var _track_visual_translation_completed_count := 0
+var _track_visual_return_to_old_phase_count := 0
+var _track_card_end_rect_match_count := 0
+var _track_vacancy_end_rect_match_count := 0
+var _track_animation_end_offset_px := 0.0
+var _track_last_translation_px := 0.0
+var _track_transition_generation := 0
+var _track_handoff_tween: Tween
 var _asset_pip_fraction_text_count := 0
 var _asset_pip_trailing_blank_width_px := 0.0
 var _asset_pip_symbol_coverage := 0
@@ -140,6 +163,9 @@ func apply_snapshot(snapshot: Dictionary) -> void:
 
 
 func _refresh_track() -> void:
+	var previous_sequence := _track_authoritative_scroll_sequence
+	var previous_slots := _track_last_slot_by_instance.duplicate(true)
+	var previous_vacancies := _track_last_vacancy_slots.duplicate()
 	_clear_children(_track_rail)
 	_normal_card_render_count = 0
 	_normal_card_art_count = 0
@@ -150,7 +176,6 @@ func _refresh_track() -> void:
 	_track_real_card_count = 0
 	_track_vacancy_slot_count = 0
 	_track_focus_order_green = false
-	_track_motion_offset_px = 0.0
 	var track := _snapshot.get("unified_track", {}) as Dictionary
 	var public_facts := track.get("public_facts", {}) as Dictionary
 	var private_facts := track.get(
@@ -163,6 +188,7 @@ func _refresh_track() -> void:
 	own_items.sort_custom(_track_item_before)
 	var instance_ids := {}
 	var occupied_slots := {}
+	var current_slots: Dictionary = {}
 	var track_cards: Array[Control] = []
 	for item_index in range(own_items.size()):
 		var item := own_items[item_index] as Dictionary
@@ -176,7 +202,7 @@ func _refresh_track() -> void:
 		var color_id := str(item.get("primary_color", "industry"))
 		var title := "商品 · %s" % COLOR_LABELS.get(color_id, color_id)
 		var badge := "COMMODITY"
-		var meta := "库存 0/5"
+		var meta := "库存 0/5 · 点击直接取得"
 		if kind == "normal_card":
 			title = "%s · %s" % [
 				_card_type_label(str(item.get(
@@ -186,7 +212,7 @@ func _refresh_track() -> void:
 				COLOR_LABELS.get(color_id, color_id),
 			]
 			badge = "NORMAL · L1"
-			meta = "成本 %d · 进入弃牌" % int(
+			meta = "成本 %d · 弃牌 · 满手可取" % int(
 				item.get("primary_asset_cost", 1)
 			)
 		var art := _card_art(item)
@@ -207,6 +233,7 @@ func _refresh_track() -> void:
 		))
 		card.set_meta("track_local_slot_index", local_slot_index)
 		occupied_slots[local_slot_index] = true
+		current_slots[instance_id] = local_slot_index
 		card.activated.connect(_on_track_card_activated)
 		card.hover_summary.connect(
 			_on_card_hover_summary.bind("unified_track")
@@ -228,6 +255,10 @@ func _refresh_track() -> void:
 		_track_rail.add_child(vacancy)
 		_track_rail.move_child(vacancy, slot_index)
 		_track_vacancy_slot_count += 1
+	var current_vacancies: Array[int] = []
+	for slot_index in range(V074_TRACK_VISIBLE_CAPACITY):
+		if not occupied_slots.has(slot_index):
+			current_vacancies.append(slot_index)
 	_track_real_card_count = track_cards.size()
 	for card_index in range(track_cards.size()):
 		var card := track_cards[card_index]
@@ -256,7 +287,7 @@ func _refresh_track() -> void:
 	track_scroll.clip_contents = false
 	_track_rail.clip_contents = false
 	_track_horizontal_scroll_required = false
-	_track_meta.text = (
+	_track_meta_base_text = (
 		"共享寿司轨 %d/%d · 空位 %d · 60%% 普通 / 40%% 商品 · 滚动 %d"
 		% [
 			_track_real_card_count,
@@ -264,6 +295,23 @@ func _refresh_track() -> void:
 			_track_vacancy_slot_count,
 			int(public_facts.get("scroll_sequence", 0)),
 		]
+	)
+	_track_meta.text = "%s · %s" % [
+		_track_meta_base_text,
+		TRACK_PRESENTATION_MARKERS[_track_motion_marker_index],
+	]
+	_track_authoritative_scroll_sequence = int(
+		public_facts.get("scroll_sequence", 0)
+	)
+	_track_last_slot_by_instance = current_slots
+	_track_last_vacancy_slots = current_vacancies
+	_handle_authoritative_track_transition(
+		previous_sequence,
+		_track_authoritative_scroll_sequence,
+		previous_slots,
+		current_slots,
+		previous_vacancies,
+		current_vacancies
 	)
 
 
@@ -365,27 +413,183 @@ func _refresh_assets() -> void:
 	)
 
 
-func _advance_track_presentation(delta: float) -> void:
+func _advance_track_presentation(_delta: float) -> void:
+	# Tweening is owned by `_animate_authoritative_track_transition`; this
+	# method intentionally contains no continuous transform or luminance wave.
+	# Keep the marker text stable between authority snapshots.
+	if is_instance_valid(_track_meta) and not _track_meta_base_text.is_empty():
+		_track_meta.text = "%s · %s" % [
+			_track_meta_base_text,
+			TRACK_PRESENTATION_MARKERS[_track_motion_marker_index],
+		]
+
+
+func _handle_authoritative_track_transition(
+	previous_sequence: int,
+	current_sequence: int,
+	previous_slots: Dictionary,
+	current_slots: Dictionary,
+	previous_vacancies: Array,
+	current_vacancies: Array
+) -> void:
+	if previous_sequence < 0:
+		_reset_track_presentation_baseline()
+		return
+	var sequence_delta := current_sequence - previous_sequence
+	if sequence_delta < 0:
+		# Starting a new game resets the authoritative sequence.  It is a new
+		# baseline, not a reverse handoff and never presentation oscillation.
+		_reset_track_presentation_evidence()
+		_reset_track_presentation_baseline()
+		return
+	if sequence_delta == 0:
+		# Purchase and snapshot replay can rebuild the projection, but neither is
+		# allowed to manufacture a handoff animation.
+		return
+	_track_authoritative_advance_count += sequence_delta
+	_track_authoritative_sequence_delta_count += sequence_delta
+	_track_next_player_handoff_count += sequence_delta
+	for card_id_variant in current_slots.keys():
+		var card_id := str(card_id_variant)
+		if not previous_slots.has(card_id):
+			continue
+		if int(previous_slots.get(card_id, -1)) != int(current_slots.get(card_id, -1)):
+			_track_card_slot_index_delta_count += 1
+	if previous_vacancies != current_vacancies:
+		_track_vacancy_slot_index_delta_count += maxi(
+			1,
+			sequence_delta
+		)
+	_track_motion_marker_index = 1
+	_track_transition_generation += 1
+	call_deferred(
+		"_animate_authoritative_track_transition",
+		sequence_delta,
+		_track_transition_generation
+	)
+
+
+func _reset_track_presentation_baseline() -> void:
+	_track_transition_generation += 1
+	if _track_handoff_tween != null and _track_handoff_tween.is_valid():
+		_track_handoff_tween.kill()
+	_track_handoff_tween = null
+	_track_motion_offset_px = 0.0
+	_track_motion_marker_index = 0
+	_track_animation_end_offset_px = 0.0
+	if _track_rail != null and is_instance_valid(_track_rail):
+		_track_rail.position.x = 0.0
+
+
+func _reset_track_presentation_evidence() -> void:
+	_track_motion_sample_count = 0
+	_track_motion_observed_delta_px = 0.0
+	_track_authoritative_advance_count = 0
+	_track_authoritative_sequence_delta_count = 0
+	_track_next_player_handoff_count = 0
+	_track_card_slot_index_delta_count = 0
+	_track_vacancy_slot_index_delta_count = 0
+	_track_oscillation_only_count = 0
+	_track_advance_animation_count = 0
+	_track_advance_animation_settle_count = 0
+	_track_visual_translation_completed_count = 0
+	_track_visual_return_to_old_phase_count = 0
+	_track_card_end_rect_match_count = 0
+	_track_vacancy_end_rect_match_count = 0
+	_track_last_translation_px = 0.0
+
+
+func _track_step_width() -> float:
+	if _track_rail == null or not is_instance_valid(_track_rail):
+		return 96.0
+	if _track_rail.get_child_count() >= 2:
+		var first := _track_rail.get_child(0) as Control
+		var second := _track_rail.get_child(1) as Control
+		if first != null and second != null:
+			var measured_pitch := second.position.x - first.position.x
+			if measured_pitch > 1.0:
+				return measured_pitch
+	return maxf(
+		72.0,
+		_track_rail.size.x / float(V074_TRACK_VISIBLE_CAPACITY)
+	)
+
+
+func _animate_authoritative_track_transition(
+	sequence_delta: int,
+	transition_generation: int
+) -> void:
 	if _track_rail == null or not is_instance_valid(_track_rail):
 		return
-	if _track_rail.get_child_count() == 0:
+	# Let the HBoxContainer settle the newly projected authoritative slots so
+	# the translation uses the actual production slot pitch at every viewport.
+	await get_tree().process_frame
+	if transition_generation != _track_transition_generation:
 		return
-	_track_motion_phase = fposmod(
-		_track_motion_phase + delta * TRACK_PRESENTATION_ANGULAR_SPEED,
-		TAU
-	)
-	var next_offset := (
-		-TRACK_PRESENTATION_DRIFT_AMPLITUDE_PX
-		* (_track_motion_phase / TAU)
-	)
+	if _track_rail == null or not is_instance_valid(_track_rail):
+		return
+	if _track_handoff_tween != null and _track_handoff_tween.is_valid():
+		_track_handoff_tween.kill()
+	var step_width := _track_step_width()
+	# The new projection is already in its authoritative final order. Start one
+	# slot behind it, then settle at x=0; cards and vacancy panels share this
+	# exact transform and therefore finish in the new physical slots.
+	_track_last_translation_px = step_width * float(maxi(1, sequence_delta))
+	_track_rail.position.x = -_track_last_translation_px
+	_track_motion_offset_px = _track_rail.position.x
+	_track_motion_marker_index = 1
+	_track_motion_sample_count += 1
+	_track_advance_animation_count += 1
 	_track_motion_observed_delta_px = maxf(
 		_track_motion_observed_delta_px,
-		absf(next_offset - _track_motion_offset_px)
+		_track_last_translation_px
 	)
-	if not is_equal_approx(next_offset, _track_motion_offset_px):
-		_track_motion_sample_count += 1
-	_track_motion_offset_px = next_offset
-	_track_rail.position.x = next_offset
+	_track_handoff_tween = create_tween()
+	_track_handoff_tween.set_trans(Tween.TRANS_CUBIC)
+	_track_handoff_tween.set_ease(Tween.EASE_OUT)
+	_track_handoff_tween.tween_property(
+		_track_rail,
+		"position:x",
+		0.0,
+		TRACK_ADVANCE_PRESENTATION_SECONDS
+	)
+	_track_handoff_tween.tween_callback(func() -> void:
+		_track_rail.position.x = 0.0
+		_track_motion_offset_px = _track_rail.position.x
+		_track_animation_end_offset_px = absf(_track_rail.position.x)
+		_track_motion_marker_index = 2
+		_track_advance_animation_settle_count += 1
+		if _track_animation_end_offset_px <= 0.5:
+			_track_visual_translation_completed_count += 1
+		if _track_cards_match_authoritative_slots():
+			_track_card_end_rect_match_count += 1
+		if _track_vacancies_match_authoritative_slots():
+			_track_vacancy_end_rect_match_count += 1
+	)
+
+
+func _track_cards_match_authoritative_slots() -> bool:
+	if _track_rail == null or not is_instance_valid(_track_rail):
+		return false
+	for child_index in range(_track_rail.get_child_count()):
+		var child := _track_rail.get_child(child_index) as Control
+		if child == null or bool(child.get_meta("track_vacancy", false)):
+			continue
+		if int(child.get_meta("track_local_slot_index", -1)) != child_index:
+			return false
+	return true
+
+
+func _track_vacancies_match_authoritative_slots() -> bool:
+	if _track_rail == null or not is_instance_valid(_track_rail):
+		return false
+	for child_index in range(_track_rail.get_child_count()):
+		var child := _track_rail.get_child(child_index) as Control
+		if child == null or not bool(child.get_meta("track_vacancy", false)):
+			continue
+		if int(child.get_meta("track_local_slot_index", -1)) != child_index:
+			return false
+	return true
 
 
 func _build_track_vacancy_slot(slot_index: int) -> Control:
@@ -1415,14 +1619,74 @@ func _update_acceptance_state() -> void:
 		_track_focus_order_green
 	)
 	acceptance_state["track_sushi_motion_enabled"] = (
-		_track_motion_sample_count > 1
-		and _track_motion_observed_delta_px > 0.0
+		_track_authoritative_advance_count > 0
+		and _track_visual_translation_completed_count > 0
 	)
 	acceptance_state["track_motion_sample_count"] = (
 		_track_motion_sample_count
 	)
 	acceptance_state["track_motion_observed_delta_px"] = (
 		_track_motion_observed_delta_px
+	)
+	acceptance_state["track_authoritative_scroll_sequence"] = (
+		_track_authoritative_scroll_sequence
+	)
+	acceptance_state["track_authoritative_advance_count"] = (
+		_track_authoritative_advance_count
+	)
+	acceptance_state["track_authoritative_sequence_delta_count"] = (
+		_track_authoritative_sequence_delta_count
+	)
+	acceptance_state["track_authoritative_animation_count"] = (
+		_track_advance_animation_count
+	)
+	acceptance_state["track_authoritative_animation_settle_count"] = (
+		_track_advance_animation_settle_count
+	)
+	acceptance_state["track_phase_delta_count"] = (
+		_track_authoritative_advance_count
+	)
+	acceptance_state["track_next_player_handoff_count"] = (
+		_track_next_player_handoff_count
+	)
+	acceptance_state["track_card_slot_index_delta_count"] = (
+		_track_card_slot_index_delta_count
+	)
+	acceptance_state["track_vacancy_slot_index_delta_count"] = (
+		_track_vacancy_slot_index_delta_count
+	)
+	acceptance_state["track_oscillation_only_count"] = (
+		_track_oscillation_only_count
+	)
+	acceptance_state["track_visual_translation_completes_next_phase"] = (
+		_track_visual_translation_completed_count > 0
+		and _track_visual_translation_completed_count
+			== _track_advance_animation_settle_count
+	)
+	acceptance_state["track_visual_return_to_old_phase_count"] = (
+		_track_visual_return_to_old_phase_count
+	)
+	acceptance_state["track_card_end_rect_matches_new_slot"] = (
+		_track_card_end_rect_match_count > 0
+		and _track_card_end_rect_match_count
+			== _track_advance_animation_settle_count
+	)
+	acceptance_state["track_vacancy_end_rect_matches_new_slot"] = (
+		_track_vacancy_end_rect_match_count > 0
+		and _track_vacancy_end_rect_match_count
+			== _track_advance_animation_settle_count
+	)
+	acceptance_state["track_animation_end_offset_px"] = (
+		_track_animation_end_offset_px
+	)
+	acceptance_state["track_last_translation_px"] = (
+		_track_last_translation_px
+	)
+	acceptance_state["track_presentation_authority_source"] = (
+		"unified_track.public_facts.scroll_sequence"
+	)
+	acceptance_state["track_advance_presentation_ms"] = (
+		TRACK_ADVANCE_PRESENTATION_SECONDS * 1000.0
 	)
 	acceptance_state["track_vacancy_interactive_count"] = 0
 	acceptance_state["track_refill_mode_id"] = str(
