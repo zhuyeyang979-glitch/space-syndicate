@@ -38,6 +38,7 @@ def write(name: str, title: str, body: str) -> None:
 
 def render(data: dict) -> None:
     versions = data["versions"]
+    milestone = data.get("commercial_presentation_milestone", {})
     write("SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.md", "Space Syndicate Product Continuity Registry", "\n".join([
         "This is a generated index. The JSON file is the only continuity authority; existing Owner, reuse, green-ledger, Golden-scenario, and card-certification records remain their own authorities.",
         "\n## Current identity\n",
@@ -52,10 +53,15 @@ def render(data: dict) -> None:
         "## Version lineage\n",
         table(["Version", "Parent", "Base commit", "Final/current commit", "Release status", "Human play"], [[x["version_id"], x.get("parent_version_id") or "ROOT", x["base_commit_sha"], x.get("final_commit_sha") or "OPEN", x["release_status"], x["human_play_status"]] for x in versions]),
         "\n## Version deltas\n",
-        "\n".join(f"### {x['version_delta_id']}\n\n- Inherited: {', '.join(x['inherited_capability_ids']) or 'none'}\n- Added: {', '.join(x['added_capability_ids']) or 'none'}\n- Changed: {', '.join(x['changed_capability_ids']) or 'none'}\n- Fixed: {', '.join(x.get('fixed_capability_ids', [])) or 'none separately registered; see changed'}\n- Migrated: {', '.join(x.get('migrated_capability_ids', [])) or 'none separately registered; see inherited/changed'}\n- Superseded: {', '.join(x.get('superseded_capability_ids', [])) or 'none'}\n- Retired: {', '.join(x.get('retired_capability_ids', [])) or 'none'}\n- Cancelled goals: {', '.join(x.get('cancelled_goal_ids', [])) or 'none'}\n- Deferred: {', '.join(x['deferred_capability_ids']) or 'none'}\n- Known gaps: {', '.join(x['known_gap_ids']) or 'none'}\n" for x in versions),
+        "\n".join(f"### {x['version_delta_id']}\n\n- Inherited: {', '.join(x['inherited_capability_ids']) or 'none'}\n- Added: {', '.join(x['added_capability_ids']) or 'none'}\n- Changed: {', '.join(x['changed_capability_ids']) or 'none'}\n- Fixed: {', '.join(x.get('fixed_capability_ids', [])) or 'none separately registered; see changed'}\n- Migrated: {', '.join(x.get('migrated_capability_ids', [])) or 'none separately registered; see inherited/changed'}\n- Superseded: {', '.join(x.get('superseded_capability_ids', [])) or 'none'}\n- Retired: {', '.join(x.get('retired_capability_ids', [])) or 'none'}\n- Cancelled goals: {', '.join(x.get('cancelled_goal_ids', [])) or 'none'}\n- Deferred: {', '.join(x['deferred_capability_ids']) or 'none'}\n- Known gaps: {', '.join(x['known_gap_ids']) or 'none'}\n- Delta metadata: {', '.join(x.get('delta_metadata', {}).get('changed', [])) or 'none'}; fixed={', '.join(x.get('delta_metadata', {}).get('fixed', [])) or 'none'}; verified existing={', '.join(x.get('delta_metadata', {}).get('verified_existing', [])) or 'none'}; added/restored={', '.join(x.get('delta_metadata', {}).get('added_or_restored', [])) or 'none'}; restored={', '.join(x.get('delta_metadata', {}).get('restored', [])) or 'none'}\n" for x in versions),
     ]))
     write("SPACE_SYNDICATE_CURRENT_DEVELOPMENT_STATUS.md", "Current Development Status", "\n".join([
-        "The current V0.7.6 candidate is not Human Green. Golden STEP13 remains pending; STEP14 and STEP15 have not started.",
+        (
+            "The current V0.7.6 candidate is not Human Green. Golden STEP13, "
+            "STEP14, and STEP15 remain pending. Commercial Presentation M1 is "
+            f"{milestone.get('status', 'UNKNOWN')}; the next consolidated human "
+            "playtest remains deferred."
+        ),
         "\n## Active work\n",
         table(["ID", "Status", "Priority", "Next task", "Dependencies"], [[x["work_item_id"], x["status"], x["priority"], x["next_task"], ", ".join(x["dependencies"])] for x in data["current_work_items"]]),
         "\n## Release requirements\n" + "\n".join(f"- `{x}`" for x in data["release_requirements"]["required_before_ready_merge_tag"]),

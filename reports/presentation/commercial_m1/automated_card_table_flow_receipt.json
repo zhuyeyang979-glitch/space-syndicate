@@ -1,0 +1,62 @@
+{
+  "schema": "V076AutomatedCardTableFlowReceiptV1",
+  "recorded_at": "2026-08-26T12:55:00+09:00",
+  "scope": "PRODUCTION_MAIN_AUTOMATED_READINESS",
+  "run_id": "20260826-033556-831-v076_alpha07_card_table_flow_readiness_test-5889d5cb",
+  "result": "892/892 PASS",
+  "result_status": "passed",
+  "duration_seconds": 140.27,
+  "startup_seconds": 2.446,
+  "first_ai_action_feed_seconds": 3.724,
+  "process_exit_code": 0,
+  "runner_exit_code": 0,
+  "marker_found": true,
+  "script_error_count": 0,
+  "diagnostic_count": 0,
+  "task_introduced_error_count": 0,
+  "residual_process_count": 0,
+  "production_main_scene_used": true,
+  "fixture_state_injection_count": 0,
+  "direct_method_call_false_green_count": 0,
+  "track_handoff_count": 3,
+  "action_window_count": 4,
+  "second_commodity_acquisition_exact_once": true,
+  "presentation_source_count": 102,
+  "presentation_queued_count": 102,
+  "presentation_started_count": 102,
+  "presentation_finished_count": 102,
+  "public_resolution_count": 43,
+  "director_seen_receipt_count": 138,
+  "director_queued_cue_count_after_drain": 0,
+  "presentation_collision_count": 0,
+  "presentation_rejection_count": 0,
+  "authority_guard": {
+    "snapshot_sha256": "ac0610885498f721a208c9c717b3aebc248089a7e0e4540245d7a61911e02bc3",
+    "public_resolution_source_high_water": 43,
+    "unchanged_after_presentation_drain": true
+  },
+  "sealed_hashes": {
+    "result_json_sha256": "eeda5918d7b247615875b250a5032c28a054c5fcb8ffac316b6e87fd2337cf0f",
+    "stdout_sha256": "776deca7883438d45b001531443278d190223c606e04a9198ae4c720b648f83b",
+    "test_script_sha256": "9bc3590327d76a6bcd82511fb4df62a6300ba4d915ef30be99a2127ecff58966"
+  },
+  "source": {
+    "committed_head_at_run": "348a7b966afbaf0ef5e9aca25ea0dfb4ed0b95a7",
+    "dirty_task_owned_candidate_at_run": true,
+    "promoted_product_commit": "62ceba063d685871ee3869707862598da00ba649",
+    "test_script": "res://tests/v076_alpha07_card_table_flow_readiness_test.gd",
+    "external_runner_evidence_root": "C:/Users/Administrator/AppData/Local/SpaceSyndicate/commercial_m1_card_table_final/b940bdd1365349fa89256747d48c31ee/20260826-033556-831-v076_alpha07_card_table_flow_readiness_test-5889d5cb"
+  },
+  "scope_limits": {
+    "headless_automation": true,
+    "visual_review": false,
+    "human_executed": false,
+    "human_confirmed": false,
+    "human_evidence": false,
+    "human_green": false,
+    "production_green": false,
+    "commercial_m1_green": false,
+    "ready_for_next_consolidated_human_playtest": false
+  },
+  "conclusion": "The production-main automated Card-table sentinel is green and the final presentation queue drains exactly once without authority mutation. This receipt is not visual or human evidence and does not override the Reuse/Point-Inertia hard stop."
+}

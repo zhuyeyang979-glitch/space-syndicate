@@ -23,7 +23,7 @@ This is a generated index. The JSON file is the only continuity authority; exist
 | capabilities | 37 |
 | product_surfaces | 33 |
 | assets | 13 |
-| current_work_items | 8 |
+| current_work_items | 29 |
 | future_backlog | 6 |
 | retired_goals | 3 |
 | cancelled_goals | 0 |
@@ -34,17 +34,17 @@ This is a generated index. The JSON file is the only continuity authority; exist
 | Surface | Current status | Production reachable | Path / evidence |
 | --- | --- | --- | --- |
 | surface.application_entry | INHERITED_PRODUCTION | true | project.godot -> scenes/main.tscn |
-| surface.menu_root_lobby | PRESENT_NOT_PRODUCTION_REACHABLE | false | legacy MenuLifecycle controller only |
-| surface.menu_overlay | PRESENT_NOT_PRODUCTION_REACHABLE | false | OverlayLayer.tscn legacy composition only |
-| surface.menu_quick_navigation | PRESENT_NOT_PRODUCTION_REACHABLE | false | child of unreachable MenuOverlay |
+| surface.menu_root_lobby | ACTIVE_PRODUCTION | true | main.tscn -> V075SampleGameScreen/OverlayLayer/CommercialShellSurfaceLayer/MenuModalOverlay -> MenuLifecycleApplicationFlowController |
+| surface.menu_overlay | ACTIVE_PRODUCTION | true | main.tscn -> V075SampleGameScreen/OverlayLayer/CommercialShellSurfaceLayer/MenuModalOverlay |
+| surface.menu_quick_navigation | ACTIVE_PRODUCTION | true | MenuOverlay -> MenuQuickNavigation |
 | surface.new_game_setup_lobby | PRESENT_NOT_PRODUCTION_REACHABLE | false | NewGameSetupPage legacy flow only |
 | surface.new_game_setup_page | PRESENT_NOT_PRODUCTION_REACHABLE | false | SetupApplicationFlowController absent from current main closure |
 | surface.embedded_start_overlay | INHERITED_PRODUCTION | true | main.tscn -> V075SampleGameScreen -> V074/V073 inherited inline OverlayLayer |
-| surface.settings | PRESENT_NOT_PRODUCTION_REACHABLE | false | legacy menu asset only |
+| surface.settings | ACTIVE_PRODUCTION | true | MenuRootLobby -> MenuLifecycleApplicationFlowController -> CommercialSettingsSurface |
 | surface.save_continue | DEFERRED | false | new-game-only candidate |
-| surface.rules | PRESENT_NOT_PRODUCTION_REACHABLE | false | legacy asset only |
-| surface.card_codex | PRESENT_NOT_PRODUCTION_REACHABLE | false | catalog source/test surfaces only |
-| surface.bestiary | PRESENT_NOT_PRODUCTION_REACHABLE | false | legacy compendium surface only |
+| surface.rules | ACTIVE_PRODUCTION | true | MenuLifecycleApplicationFlowController -> RulesQuickReferenceBoard |
+| surface.card_codex | ACTIVE_PRODUCTION | true | MenuOverlay -> CodexCompendiumSurface -> CardCodexBrowserPanel |
+| surface.bestiary | ACTIVE_PRODUCTION | true | MenuOverlay -> CodexCompendiumSurface -> BestiaryCodexBrowser |
 | surface.main_table | INHERITED_PRODUCTION | true | main.tscn -> V075SampleGameScreen |
 | surface.planet_map | INHERITED_PRODUCTION | true | V075SampleGameScreen -> PlanetBoard -> PlanetMapView |
 | surface.player_seats | INHERITED_PRODUCTION | true | V075RuntimeOwner roster projection |
@@ -69,7 +69,7 @@ This is a generated index. The JSON file is the only continuity authority; exist
 
 
 ## Known gaps
-- `gap.legacy_menu_reachability` — Legacy menu/settings/codex/rules/credits scenes are present but not reachable from current main closure; replacement completeness is unresolved.
+- `gap.legacy_menu_reachability` — Historical menu/settings/codex/rules/credits surfaces are now reachable through the single CommercialShellSurfaceLayer; standalone NewGameSetupPage remains intentionally superseded by the inherited StartOverlay.
 - `gap.natural_tail_handoff_4` — Default full-tail authority probe breaks at handoff 4; focused three-handoff proof remains separate.
 - `gap.per_card_production_certification` — 348-card production/runtime/human certification remains incomplete.
 - `gap.monster_32_card_mapping` — 32 monster catalog records lack exact production mapping proof.
@@ -78,3 +78,4 @@ This is a generated index. The JSON file is the only continuity authority; exist
 - `gap.save_resume_not_in_sample` — The current Alpha 0.7 candidate is new-game-only; Save/Continue is deferred to the separate recovery line.
 - `gap.full_world_reproof_deferred` — Full 79 gates, 2,000 seed/replay reproof and full-world card proof are intentionally not rerun for this cross-domain UI candidate.
 - `gap.dynamic_surface_audit` — Dynamic audio/resource reachability requires runtime evidence and remains UNKNOWN until audited.
+- `gap.v076_reuse_history_metadata` — The current Reuse/Point-Inertia selftest is green, but full committed-history validation reports 445 failures, including 407 historical failures and at least 22 that have no correction path under the existing governance contract.

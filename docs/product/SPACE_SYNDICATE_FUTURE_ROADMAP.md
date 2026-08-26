@@ -7,7 +7,7 @@ GENERATED_FROM=SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.json
 
 | ID | Target | Priority | Design | Implementation | Production | Human play |
 | --- | --- | --- | --- | --- | --- | --- |
-| future.v076.restore_application_shell | v0.7.6.1 | P1 | AUDIT_REQUIRED | NOT_STARTED | NOT_REACHABLE | NOT_RUN |
+| future.v076.restore_application_shell | v0.7.6.1 | P1 | COMPLETE_WITH_EXPLICIT_DEFERMENTS | PRODUCTION_REACHABLE | PARTIALLY_GREEN | NOT_RUN |
 | future.v076_adapter_acceptance | v0.7.6 | P1 | REGISTERED | PLANNED | ISOLATED | NOT_RUN |
 | future.v076_domain_reducers_and_ports | v0.7.6.1 | P1 | REGISTERED | PLANNED | ISOLATED | NOT_RUN |
 | future.v076_end_to_end_acceptance | Alpha0.7_Playtest2 | P0 | REGISTERED | PLANNED | PENDING | PENDING |
@@ -16,7 +16,7 @@ GENERATED_FROM=SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.json
 
 
 ## Rationale
-- `future.v076.restore_application_shell` — 旧 MenuRootLobby 等文件存在但当前 main 闭包不可达
+- `future.v076.restore_application_shell` — 已接入单一 CommercialShellSurfaceLayer；独立 NewGameSetupPage 与 Save/Continue 仍保留明确延后处置
 - `future.v076_adapter_acceptance` — existing reuse registry pending future domain
 - `future.v076_domain_reducers_and_ports` — close remaining cross-domain reducer boundaries
 - `future.v076_end_to_end_acceptance` — focused green is not full product green

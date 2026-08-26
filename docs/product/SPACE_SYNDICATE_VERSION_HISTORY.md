@@ -10,7 +10,7 @@ GENERATED_FROM=SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.json
 | v0.7.3 | ROOT | f49c86af20b6a65e9792aa87703154e853d4dc76 | f49c86af20b6a65e9792aa87703154e853d4dc76 | HISTORICAL_RELEASE | HISTORICAL_GREEN |
 | v0.7.4 | v0.7.3 | f49c86af20b6a65e9792aa87703154e853d4dc76 | 915d8c2f966fdf3f578aafa6c89c626e2e37ae02 | HISTORICAL_RELEASE | HISTORICAL_GREEN |
 | v0.7.5 | v0.7.4 | 915d8c2f966fdf3f578aafa6c89c626e2e37ae02 | 770d741f05964facda4afcbddcdeb3e7f40571d5 | BASELINE_PRODUCTION_CANDIDATE | BASELINE_HUMAN_EVIDENCE_INHERITED |
-| v0.7.6 | v0.7.5 | 770d741f05964facda4afcbddcdeb3e7f40571d5 | OPEN | DRAFT_PR_CANDIDATE | READY_FOR_REAL_HUMAN_RETEST_NOT_GREEN |
+| v0.7.6 | v0.7.5 | 770d741f05964facda4afcbddcdeb3e7f40571d5 | OPEN | DRAFT_PR_CANDIDATE | HUMAN_RETEST_DEFERRED_NOT_GREEN |
 
 
 ## Version deltas
@@ -27,6 +27,7 @@ GENERATED_FROM=SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.json
 - Cancelled goals: none
 - Deferred: product.application.continue
 - Known gaps: gap.save_resume_not_in_sample
+- Delta metadata: none; fixed=none; verified existing=none; added/restored=none; restored=none
 
 ### VERSION_DELTA_V0_7_4
 
@@ -40,6 +41,7 @@ GENERATED_FROM=SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.json
 - Cancelled goals: none
 - Deferred: product.application.main_menu, product.application.settings, product.application.continue, product.application.codex_entry, product.application.rules_entry, product.application.credits_entry
 - Known gaps: gap.legacy_menu_reachability
+- Delta metadata: none; fixed=none; verified existing=none; added/restored=none; restored=none
 
 ### VERSION_DELTA_V0_7_5
 
@@ -53,6 +55,7 @@ GENERATED_FROM=SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.json
 - Cancelled goals: none
 - Deferred: product.application.main_menu, product.application.settings, product.application.continue, product.application.codex_entry, product.application.rules_entry, product.application.credits_entry
 - Known gaps: gap.legacy_menu_reachability, gap.per_card_production_certification
+- Delta metadata: none; fixed=none; verified existing=none; added/restored=none; restored=none
 
 ### VERSION_DELTA_V0_7_6
 
@@ -65,4 +68,5 @@ GENERATED_FROM=SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.json
 - Retired: product.legacy_main_owner
 - Cancelled goals: none
 - Deferred: product.application.main_menu, product.application.settings, product.application.continue, product.application.codex_entry, product.application.rules_entry, product.application.credits_entry, product.card_certification
-- Known gaps: gap.legacy_menu_reachability, gap.natural_tail_handoff_4, gap.per_card_production_certification, gap.human_candidate_4_pending, gap.full_world_reproof_deferred
+- Known gaps: gap.legacy_menu_reachability, gap.natural_tail_handoff_4, gap.per_card_production_certification, gap.human_candidate_4_pending, gap.full_world_reproof_deferred, gap.v076_reuse_history_metadata
+- Delta metadata: Submission Window Presentation; fixed=Hand Post-Queue Rendering — pending headed human confirmation; verified existing=Production Clock Liveness — existing single RuntimeOwner verified live; no clock rule repair; added/restored=Facility Map Visual Projection — restored fullscreen parity through the existing PlanetBoard fan-out; restored=Bottom Countdown Production Reachability — PRESENT_NOT_PRODUCTION_REACHABLE -> ACTIVE_PRODUCTION

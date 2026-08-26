@@ -33,16 +33,17 @@ REACHABLE_SURFACES = (
     "res://scenes/ui/v074/V074SampleGameScreen.tscn",
     "res://scenes/ui/V073SampleGameScreen.tscn",
     "res://scenes/ui/v075/V075NewGameLoadingOverlay.tscn",
+    "res://scenes/ui/MenuOverlay.tscn",
+    "res://scenes/ui/MenuQuickNavigation.tscn",
+    "res://scenes/ui/MenuRootLobby.tscn",
+    "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+    "res://scenes/ui/CommercialSettingsSurface.tscn",
 )
 
 UNREACHABLE_SURFACES = (
     "res://scenes/ui/OverlayLayer.tscn",
-    "res://scenes/ui/MenuOverlay.tscn",
-    "res://scenes/ui/MenuQuickNavigation.tscn",
-    "res://scenes/ui/MenuRootLobby.tscn",
     "res://scenes/ui/NewGameSetupPage.tscn",
     "res://scenes/ui/NewGameSetupLobby.tscn",
-    "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
     "res://scripts/runtime/setup_application_flow_controller.gd",
 )
 
@@ -53,6 +54,7 @@ SUPPORT_FILES = (
     "res://scenes/ui/MenuOverlay.tscn",
     "res://scenes/ui/MenuQuickNavigation.tscn",
     "res://scenes/ui/MenuRootLobby.tscn",
+    "res://scenes/ui/CommercialSettingsSurface.tscn",
     "res://scenes/ui/NewGameSetupPage.tscn",
     "res://scenes/ui/NewGameSetupLobby.tscn",
     "res://scenes/ui/v075/V075SampleGameScreen.tscn",
@@ -369,7 +371,7 @@ def audit_repository(project_root: Path | None = None) -> dict[str, object]:
     dynamic_reachability_unknown_sources = _dynamic_reachability_unknown_sources(root)
     embedded_start_overlay_present = overlay_line > 0
     menu_root_lobby_entry = next(
-        (entry for entry in unreachable_surfaces if entry["path"] == "res://scenes/ui/MenuRootLobby.tscn"),
+        (entry for entry in required_reachable + unreachable_surfaces if entry["path"] == "res://scenes/ui/MenuRootLobby.tscn"),
         {},
     )
 

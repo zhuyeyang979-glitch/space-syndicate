@@ -91,7 +91,7 @@ def main() -> int:
 
     main_scene_edges = parse_resource_edges("res://scenes/main.tscn", main_text)
     case_count += 1
-    _assert_equal(failures, "main_edge_count", len(main_scene_edges), 4)
+    _assert_equal(failures, "main_edge_count", len(main_scene_edges), 5)
     case_count += 1
     _assert_equal(
         failures,
@@ -119,6 +119,13 @@ def main() -> int:
         "main_edge_loading_overlay",
         main_scene_edges[3].target if len(main_scene_edges) > 3 else None,
         "res://scenes/ui/v075/V075NewGameLoadingOverlay.tscn",
+    )
+    case_count += 1
+    _assert_equal(
+        failures,
+        "main_edge_menu_lifecycle",
+        main_scene_edges[4].target if len(main_scene_edges) > 4 else None,
+        "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
     )
 
     bootstrap_edges = parse_resource_edges("res://scripts/v075_runtime/v075_application_bootstrap.gd", bootstrap_text)
@@ -372,7 +379,7 @@ def main() -> int:
     case_count += 1
     _assert_true(failures, "unclassified_assets_zero", audit.get("unclassified_present_asset_count") == 0)
     case_count += 1
-    _assert_true(failures, "menu_present_but_unreachable", audit.get("menu_root_lobby_present") is True and audit.get("menu_root_lobby_production_reachable") is False)
+    _assert_true(failures, "menu_present_and_reachable", audit.get("menu_root_lobby_present") is True and audit.get("menu_root_lobby_production_reachable") is True)
     case_count += 1
     _assert_true(failures, "embedded_start_overlay_reachable", audit.get("embedded_start_overlay_present") is True and audit.get("embedded_start_overlay_production_reachable") is True)
     case_count += 1

@@ -5,8 +5,8 @@
   "read_only": true,
   "godot_full_reproof_run": false,
   "project_root": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice",
-  "head_sha": "e372c105cb0e0727f07347bda215cf526f79f75a",
-  "tree_sha": "441d0056ffc740cbbc054bdb06246237909264ad",
+  "head_sha": "3d538fce8193dfc42f4a44411d77d30f2a795669",
+  "tree_sha": "2bbe98154e343bbe2e90c21514c9a606f17ff521",
   "project_main_scene": "res://scenes/main.tscn",
   "project_main_scene_line": 18,
   "main_scene": "res://scenes/main.tscn",
@@ -202,6 +202,149 @@
       ]
     },
     {
+      "path": "res://scenes/ui/MenuOverlay.tscn",
+      "exists": true,
+      "status": "REACHABLE_FROM_CURRENT_MAIN",
+      "chain": [
+        {
+          "from": "project.godot",
+          "to": "res://scenes/main.tscn",
+          "line": 18,
+          "kind": "project_main_scene"
+        },
+        {
+          "from": "res://scenes/main.tscn",
+          "to": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+          "line": 5,
+          "kind": "ext_resource"
+        },
+        {
+          "from": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+          "to": "res://scenes/ui/MenuOverlay.tscn",
+          "line": 8,
+          "kind": "ext_resource"
+        }
+      ]
+    },
+    {
+      "path": "res://scenes/ui/MenuQuickNavigation.tscn",
+      "exists": true,
+      "status": "REACHABLE_FROM_CURRENT_MAIN",
+      "chain": [
+        {
+          "from": "project.godot",
+          "to": "res://scenes/main.tscn",
+          "line": 18,
+          "kind": "project_main_scene"
+        },
+        {
+          "from": "res://scenes/main.tscn",
+          "to": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+          "line": 5,
+          "kind": "ext_resource"
+        },
+        {
+          "from": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+          "to": "res://scenes/ui/MenuOverlay.tscn",
+          "line": 8,
+          "kind": "ext_resource"
+        },
+        {
+          "from": "res://scenes/ui/MenuOverlay.tscn",
+          "to": "res://scenes/ui/MenuQuickNavigation.tscn",
+          "line": 5,
+          "kind": "ext_resource"
+        }
+      ]
+    },
+    {
+      "path": "res://scenes/ui/MenuRootLobby.tscn",
+      "exists": true,
+      "status": "REACHABLE_FROM_CURRENT_MAIN",
+      "chain": [
+        {
+          "from": "project.godot",
+          "to": "res://scenes/main.tscn",
+          "line": 18,
+          "kind": "project_main_scene"
+        },
+        {
+          "from": "res://scenes/main.tscn",
+          "to": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+          "line": 7,
+          "kind": "ext_resource"
+        },
+        {
+          "from": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+          "to": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+          "line": 3,
+          "kind": "ext_resource"
+        },
+        {
+          "from": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+          "to": "res://scenes/ui/MenuRootLobby.tscn",
+          "line": 10,
+          "kind": "script_load"
+        }
+      ]
+    },
+    {
+      "path": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+      "exists": true,
+      "status": "REACHABLE_FROM_CURRENT_MAIN",
+      "chain": [
+        {
+          "from": "project.godot",
+          "to": "res://scenes/main.tscn",
+          "line": 18,
+          "kind": "project_main_scene"
+        },
+        {
+          "from": "res://scenes/main.tscn",
+          "to": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+          "line": 7,
+          "kind": "ext_resource"
+        },
+        {
+          "from": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+          "to": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+          "line": 3,
+          "kind": "ext_resource"
+        }
+      ]
+    },
+    {
+      "path": "res://scenes/ui/CommercialSettingsSurface.tscn",
+      "exists": true,
+      "status": "REACHABLE_FROM_CURRENT_MAIN",
+      "chain": [
+        {
+          "from": "project.godot",
+          "to": "res://scenes/main.tscn",
+          "line": 18,
+          "kind": "project_main_scene"
+        },
+        {
+          "from": "res://scenes/main.tscn",
+          "to": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+          "line": 7,
+          "kind": "ext_resource"
+        },
+        {
+          "from": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+          "to": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+          "line": 3,
+          "kind": "ext_resource"
+        },
+        {
+          "from": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+          "to": "res://scenes/ui/CommercialSettingsSurface.tscn",
+          "line": 13,
+          "kind": "script_load"
+        }
+      ]
+    },
+    {
       "path": "res://scenes/ui/OverlayLayer.tscn",
       "exists": true,
       "status": "UNREACHABLE_FROM_CURRENT_MAIN",
@@ -221,63 +364,6 @@
         {
           "from": "res://tests/transient_gameplay_windows_v06_test.gd",
           "line": 3,
-          "kind": "script_load",
-          "referrer_reachable": false
-        }
-      ]
-    },
-    {
-      "path": "res://scenes/ui/MenuOverlay.tscn",
-      "exists": true,
-      "status": "UNREACHABLE_FROM_CURRENT_MAIN",
-      "supporting_referrers": [
-        {
-          "from": "res://scenes/tools/FinalSettlementRuntimeCompositionV06Bench.tscn",
-          "line": 4,
-          "kind": "ext_resource",
-          "referrer_reachable": false
-        },
-        {
-          "from": "res://scenes/ui/OverlayLayer.tscn",
-          "line": 11,
-          "kind": "ext_resource",
-          "referrer_reachable": false
-        },
-        {
-          "from": "res://tests/intel_query_command_cutover_test.gd",
-          "line": 3,
-          "kind": "script_load",
-          "referrer_reachable": false
-        },
-        {
-          "from": "res://tests/layout_scene_smoke_test.gd",
-          "line": 3775,
-          "kind": "script_load",
-          "referrer_reachable": false
-        }
-      ]
-    },
-    {
-      "path": "res://scenes/ui/MenuQuickNavigation.tscn",
-      "exists": true,
-      "status": "UNREACHABLE_FROM_CURRENT_MAIN",
-      "supporting_referrers": [
-        {
-          "from": "res://scenes/ui/MenuOverlay.tscn",
-          "line": 5,
-          "kind": "ext_resource",
-          "referrer_reachable": false
-        }
-      ]
-    },
-    {
-      "path": "res://scenes/ui/MenuRootLobby.tscn",
-      "exists": true,
-      "status": "UNREACHABLE_FROM_CURRENT_MAIN",
-      "supporting_referrers": [
-        {
-          "from": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
-          "line": 10,
           "kind": "script_load",
           "referrer_reachable": false
         }
@@ -310,19 +396,6 @@
       ]
     },
     {
-      "path": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
-      "exists": true,
-      "status": "UNREACHABLE_FROM_CURRENT_MAIN",
-      "supporting_referrers": [
-        {
-          "from": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
-          "line": 3,
-          "kind": "ext_resource",
-          "referrer_reachable": false
-        }
-      ]
-    },
-    {
       "path": "res://scripts/runtime/setup_application_flow_controller.gd",
       "exists": true,
       "status": "UNREACHABLE_FROM_CURRENT_MAIN",
@@ -337,10 +410,10 @@
     }
   ],
   "summary": {
-    "reachable_count": 7,
-    "unreachable_count": 8,
+    "reachable_count": 12,
+    "unreachable_count": 4,
     "failure_count": 0,
-    "support_file_count": 13
+    "support_file_count": 14
   },
   "supporting_files": [
     {
@@ -365,6 +438,10 @@
     },
     {
       "path": "res://scenes/ui/MenuRootLobby.tscn",
+      "exists": true
+    },
+    {
+      "path": "res://scenes/ui/CommercialSettingsSurface.tscn",
       "exists": true
     },
     {
@@ -396,7 +473,7 @@
       "exists": true
     }
   ],
-  "asset_record_count": 3884,
+  "asset_record_count": 4032,
   "unclassified_present_asset_count": 0,
   "dynamic_reachability_unknown_sources": [
     "res://addons/funplay_mcp/core/funplay_core_tools.gd",
@@ -422,6 +499,8 @@
     "res://scripts/presentation/player_card_codex_family_ladder_dto_v1.gd",
     "res://scripts/presentation/public_player_roster_projection_service.gd",
     "res://scripts/presentation/role_portrait_catalog.gd",
+    "res://scripts/presentation/v076_deck_lifecycle_presentation.gd",
+    "res://scripts/presentation/v076_presentation_animation_director.gd",
     "res://scripts/runtime/ai_card_interaction_observation_service.gd",
     "res://scripts/runtime/ai_card_semantic_projection_input_v1.gd",
     "res://scripts/runtime/ai_card_semantic_projection_service.gd",
@@ -527,6 +606,7 @@
     "res://scripts/ui/v075/v075_public_action_arrangement.gd",
     "res://scripts/ui/v075/v075_responsive_acceptance_audit.gd",
     "res://scripts/ui/v075/v075_sample_game_screen.gd",
+    "res://scripts/ui/vertical_slice_showcase.gd",
     "res://scripts/v071_simulation/v071_rule_consistency_review.gd",
     "res://scripts/v072_simulation/v072_starter_bootstrap_review.gd",
     "res://scripts/v073_runtime/v073_sample_application_flow.gd",
@@ -826,17 +906,25 @@
     "res://tests/v076_alpha07_coachmark_close_performance_test.gd",
     "res://tests/v076_alpha07_human_playability_readiness_test.gd",
     "res://tests/v076_alpha07_pacing_determinism_test.gd",
+    "res://tests/v076_bottom_countdown_production_binding_test.gd",
     "res://tests/v076_card_submission_requeue_identity_test.gd",
+    "res://tests/v076_commercial_shell_reachability_test.gd",
+    "res://tests/v076_deck_lifecycle_presentation_test.gd",
+    "res://tests/v076_facility_commit_map_marker_e2e_test.gd",
     "res://tests/v076_human_golden_observation_readiness_test.gd",
     "res://tests/v076_military_card_crosswalk_v1_test.gd",
     "res://tests/v076_military_mission_lifecycle_reducer_test.gd",
     "res://tests/v076_military_physical_eta_owner_test.gd",
     "res://tests/v076_military_unit_profile_authoring_v1_test.gd",
     "res://tests/v076_new_game_loading_feedback_test.gd",
+    "res://tests/v076_phase5_combat_observatory_gate.gd",
+    "res://tests/v076_phase6_facility_map_track_presentation_gate.gd",
+    "res://tests/v076_phase7_sound_motion_performance_gate.gd",
     "res://tests/v076_private_direct_action_input_owner_test.gd",
     "res://tests/v076_private_military_direct_action_integration_test.gd",
     "res://tests/v076_private_monster_skill_bundle_contract_test.gd",
     "res://tests/v076_production_ai_privacy_test.gd",
+    "res://tests/v076_production_clock_liveness_test.gd",
     "res://tests/v076_production_composition_precheck_test.gd",
     "res://tests/v076_production_military_composition_test.gd",
     "res://tests/v076_production_victory_audit_readiness_test.gd",
@@ -877,7 +965,7 @@
   "embedded_start_overlay_production_reachable": true,
   "standalone_menu_superseded_by_embedded_start": "UNRESOLVED",
   "menu_root_lobby_present": true,
-  "menu_root_lobby_production_reachable": false,
-  "orphaned_menu_asset_count": 8,
+  "menu_root_lobby_production_reachable": true,
+  "orphaned_menu_asset_count": 4,
   "failures": []
 }
