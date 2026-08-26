@@ -1545,7 +1545,7 @@
       ],
       "local_blob_sha256": [
         "1e3461fe385f64e5ef830ce96f64a0e5ab8cf6faf1832fd8cbf3baa17acb3e19",
-        "7440291df7e31475ed4a9be5a920e02a170e16774f20e219c4390ba30956829c"
+        "dd8346582b5825dbf95608aff3e467b8af53f675db5ca5117cb38434b8193e4c"
       ],
       "imported_resource_paths": [
         "res://scenes/ui/v075/V075SampleGameScreen.tscn",
