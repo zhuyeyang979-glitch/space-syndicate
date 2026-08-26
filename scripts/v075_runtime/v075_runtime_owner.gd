@@ -4955,8 +4955,32 @@ func _canonical_player_projection(viewer_id: String) -> Dictionary:
 	}
 
 func player_snapshot(viewer_id: String) -> Dictionary:
+	var live_combat_public_history_sha256 := ""
+	if _combat_initialized:
+		var live_combat_history_leak_count := _private_card_identity_leak_count({
+			"combat_public_history": _combat_public_history,
+		})
+		if live_combat_history_leak_count > 0:
+			_register_private_card_identity_rejection(
+				live_combat_history_leak_count
+			)
+			return {}
+		live_combat_public_history_sha256 = (
+			PresentationReceiptIdentity.canonical_sha256(
+				_combat_public_history
+			)
+		)
 	var cached_snapshot := _v075_player_snapshot_cache_by_viewer.get(viewer_id, {}) as Dictionary
-	if int(cached_snapshot.get("generation", -1)) == _v075_snapshot_generation:
+	if (
+		int(cached_snapshot.get("generation", -1)) == _v075_snapshot_generation
+		and bool(cached_snapshot.get("combat_initialized", false)) == (
+			_combat_initialized
+		)
+		and str(cached_snapshot.get(
+			"combat_public_history_sha256",
+			""
+		)) == live_combat_public_history_sha256
+	):
 		var cached := cached_snapshot.get("snapshot", {}) as Dictionary
 		if not cached.is_empty():
 			_refresh_v075_player_snapshot_fields(cached)
@@ -5009,6 +5033,8 @@ func player_snapshot(viewer_id: String) -> Dictionary:
 		snapshot["combat_public_history"] = combat_public_history
 	_v075_player_snapshot_cache_by_viewer[viewer_id] = {
 		"generation": _v075_snapshot_generation,
+		"combat_initialized": _combat_initialized,
+		"combat_public_history_sha256": live_combat_public_history_sha256,
 		"snapshot": snapshot,
 	}
 	_refresh_v075_player_snapshot_fields(snapshot)
