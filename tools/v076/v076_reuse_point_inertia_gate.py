@@ -64,6 +64,68 @@ AUTHORITY_CONTRACTS = {
 OWNER_MAP_SCHEMA = "space_syndicate.v076.owner_reuse_map.v1"
 OWNER_MAP_REGISTRY_ID = "V076_OWNER_REUSE_MAP"
 
+DYNAMIC_REFERENCE_MANIFEST_PATH = (
+    "docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json"
+)
+DYNAMIC_REFERENCE_MANIFEST_SCHEMA = (
+    "space_syndicate.v076.dynamic_reference_manifest.v1"
+)
+DYNAMIC_REFERENCE_MANIFEST_ID = (
+    "v076-current-dynamic-reference-manifest-20260827"
+)
+DYNAMIC_REFERENCE_MANIFEST_FIELDS = {
+    "schema_version",
+    "manifest_id",
+    "entries",
+}
+DYNAMIC_REFERENCE_ENTRY_FIELDS = {
+    "dynamic_reference_id",
+    "source_path",
+    "source_blob_sha256",
+    "source_line_or_ast_location",
+    "loader",
+    "reference_expression",
+    "resolved_targets",
+    "target_set_sha256",
+    "production_reachable",
+    "resolution_method",
+    "callsite_contract",
+    "runtime_probe",
+    "failure_policy",
+}
+DYNAMIC_REFERENCE_LOCATION_FIELDS = {
+    "line",
+    "column",
+    "containing_function",
+}
+DYNAMIC_REFERENCE_CALLSITE_FIELDS = {
+    "helper_function",
+    "required_invocation_count",
+    "allowed_argument_constants",
+    "external_or_unknown_invocation_count",
+    "required_loader_sites",
+}
+DYNAMIC_REFERENCE_LOADER_SITE_FIELDS = {
+    "line",
+    "column",
+    "loader",
+    "reference_expression",
+}
+DYNAMIC_REFERENCE_RUNTIME_PROBE_FIELDS = {
+    "probe_id",
+    "test_path",
+    "expected_target_count",
+    "required_before_production_claim",
+}
+DYNAMIC_REFERENCE_FAILURE_POLICY_FIELDS = {
+    "source_blob_change_invalidates",
+    "source_location_change_invalidates",
+    "target_set_change_invalidates",
+    "unknown_callsite_fails_closed",
+    "future_site_auto_resolution_count",
+    "wildcard_count",
+}
+
 ALLOWED_COMPONENT_ROLES = {
     "OWNER",
     "REDUCER",
@@ -5404,8 +5466,8 @@ def _batch_git_blobs(root: Path, object_ids: Iterable[str]) -> dict[str, bytes]:
 
 def _snapshot_text_inventory(
     root: Path, ref: str, include_worktree: bool
-) -> tuple[set[str], dict[str, str]]:
-    """Load all potentially textual graph nodes with O(1) Git subprocesses."""
+) -> tuple[set[str], dict[str, str], dict[str, str]]:
+    """Load textual graph nodes and their exact byte hashes for one snapshot."""
     paths = _snapshot_paths(root, ref, include_worktree)
     text_paths = {
         path
@@ -5414,6 +5476,7 @@ def _snapshot_text_inventory(
         or PurePosixPath(path).suffix.casefold() in REFERENCE_TEXT_SUFFIXES
     }
     texts: dict[str, str] = {}
+    sha256_by_path: dict[str, str] = {}
     if include_worktree:
         resolved_root = root.resolve()
         for path in sorted(text_paths):
@@ -5423,18 +5486,20 @@ def _snapshot_text_inventory(
             except ValueError:
                 continue
             try:
-                texts[path] = candidate.read_text(
-                    encoding="utf-8-sig", errors="replace"
-                )
+                payload = candidate.read_bytes()
             except OSError:
                 continue
-        return paths, texts
+            sha256_by_path[path] = hashlib.sha256(payload).hexdigest()
+            texts[path] = payload.decode("utf-8-sig", errors="replace")
+        return paths, texts, sha256_by_path
     blob_index = _snapshot_blob_index(root, ref)
     wanted = {path: blob_index[path] for path in text_paths if path in blob_index}
     payloads = _batch_git_blobs(root, wanted.values())
     for path, object_id in wanted.items():
-        texts[path] = payloads[object_id].decode("utf-8-sig", errors="replace")
-    return paths, texts
+        payload = payloads[object_id]
+        sha256_by_path[path] = hashlib.sha256(payload).hexdigest()
+        texts[path] = payload.decode("utf-8-sig", errors="replace")
+    return paths, texts, sha256_by_path
 
 
 def _decode_string_body(body: str) -> str:
@@ -5544,6 +5609,369 @@ def _project_runtime_text(text: str) -> str:
     return "".join(retained)
 
 
+def _dynamic_target_set_sha256(targets: Iterable[str]) -> str:
+    """Hash one already-sorted exact res:// target set without a trailing LF."""
+    return hashlib.sha256("\n".join(targets).encode("utf-8")).hexdigest()
+
+
+def _source_line_column(text: str, offset: int) -> tuple[int, int]:
+    line = text.count("\n", 0, offset) + 1
+    previous_newline = text.rfind("\n", 0, offset)
+    return line, offset - previous_newline
+
+
+def _containing_function_at(text: str, offset: int) -> str:
+    result = ""
+    for match in re.finditer(
+        r"(?m)^\s*func\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", text
+    ):
+        if match.start() > offset:
+            break
+        result = match.group(1)
+    return result
+
+
+def _gd_comments_masked_preserving_literals(text: str) -> str:
+    chars = list(text)
+    quote = ""
+    cursor = 0
+    while cursor < len(text):
+        char = text[cursor]
+        if quote:
+            if char == "\\":
+                cursor += 2
+                continue
+            if char == quote:
+                quote = ""
+        elif char in {"\"", "'"}:
+            quote = char
+        elif char == "#":
+            end = text.find("\n", cursor)
+            end = len(text) if end < 0 else end
+            chars[cursor:end] = " " * (end - cursor)
+            cursor = end
+            continue
+        cursor += 1
+    return "".join(chars)
+
+
+def _manifest_callsite_contract_failures(
+    source_text: str,
+    contract: dict[str, Any],
+    entry_id: str,
+    resolved_targets: list[str],
+) -> list[str]:
+    failures: list[str] = []
+    helper = str(contract.get("helper_function", ""))
+    allowed = contract.get("allowed_argument_constants")
+    expected_count = contract.get("required_invocation_count")
+    if (
+        not helper
+        or not isinstance(allowed, list)
+        or any(not isinstance(value, str) or not value for value in allowed)
+    ):
+        return [f"ENTRY_CALLSITE_CONTRACT:{entry_id}"]
+
+    invocation_arguments: list[str] = []
+    invocation_pattern = re.compile(rf"\b{re.escape(helper)}\s*\(")
+    comment_clean = _gd_comments_masked_preserving_literals(source_text)
+    for match in invocation_pattern.finditer(comment_clean):
+        line_start = comment_clean.rfind("\n", 0, match.start()) + 1
+        prefix = comment_clean[line_start:match.start()]
+        if re.fullmatch(r"\s*func\s+", prefix):
+            continue
+        open_paren = comment_clean.find("(", match.start(), match.end())
+        argument = _first_call_argument(comment_clean, open_paren)
+        if argument is None:
+            invocation_arguments.append("MALFORMED")
+        else:
+            invocation_arguments.append(argument[0].strip())
+    if (
+        not _is_int(expected_count)
+        or expected_count != len(invocation_arguments)
+        or not _unique(allowed)
+        or sorted(allowed) != allowed
+        or sorted(invocation_arguments) != allowed
+    ):
+        failures.append(f"ENTRY_CALLSITE_SET:{entry_id}")
+    unknown_count = sum(value not in set(allowed) for value in invocation_arguments)
+    if (
+        contract.get("external_or_unknown_invocation_count") != 0
+        or unknown_count != 0
+    ):
+        failures.append(f"ENTRY_UNKNOWN_CALLSITE:{entry_id}")
+
+    local_constants: dict[str, str] = {}
+    for constant_match in re.finditer(
+        r"(?m)^\s*const\s+([A-Za-z_][A-Za-z0-9_]*)"
+        r"(?:\s*:\s*[^:=\r\n]+)?\s*(?::=|=)\s*([^\r\n]+)$",
+        comment_clean,
+    ):
+        constant_value = _literal_concat_value(constant_match.group(2))
+        if constant_value is not None:
+            local_constants[constant_match.group(1)] = constant_value
+    constant_targets = sorted(
+        local_constants.get(constant_name, "") for constant_name in allowed
+    )
+    if (
+        any(not target.startswith("res://") for target in constant_targets)
+        or constant_targets != resolved_targets
+    ):
+        failures.append(f"ENTRY_CONSTANT_TARGET_BINDING:{entry_id}")
+
+    required_loader_sites = contract.get("required_loader_sites")
+    if not isinstance(required_loader_sites, list) or not required_loader_sites:
+        failures.append(f"ENTRY_LOADER_SITES:{entry_id}")
+        return failures
+    ordered_sites: list[tuple[int, int, str, str]] = []
+    for site in required_loader_sites:
+        if not isinstance(site, dict) or set(site) != DYNAMIC_REFERENCE_LOADER_SITE_FIELDS:
+            failures.append(f"ENTRY_LOADER_SITE_SCHEMA:{entry_id}")
+            continue
+        line = site.get("line")
+        column = site.get("column")
+        loader = site.get("loader")
+        expression = site.get("reference_expression")
+        if (
+            not _is_int(line)
+            or line <= 0
+            or not _is_int(column)
+            or column <= 0
+            or not isinstance(loader, str)
+            or not loader
+            or not isinstance(expression, str)
+            or not expression
+        ):
+            failures.append(f"ENTRY_LOADER_SITE_VALUE:{entry_id}")
+            continue
+        ordered_sites.append((line, column, loader, expression))
+        lines = source_text.splitlines(keepends=True)
+        if line > len(lines):
+            failures.append(f"ENTRY_LOADER_SITE_LOCATION:{entry_id}")
+            continue
+        line_offset = sum(len(value) for value in lines[: line - 1])
+        loader_offset = line_offset + column - 1
+        if (
+            not source_text.startswith(loader, loader_offset)
+            or _containing_function_at(source_text, loader_offset) != helper
+        ):
+            failures.append(f"ENTRY_LOADER_SITE_LOCATION:{entry_id}")
+            continue
+        open_paren = loader_offset + len(loader)
+        if open_paren >= len(source_text) or source_text[open_paren] != "(":
+            failures.append(f"ENTRY_LOADER_SITE_CALL:{entry_id}")
+            continue
+        argument = _first_call_argument(source_text, open_paren)
+        if argument is None or re.sub(r"\s+", " ", argument[0].strip()) != expression:
+            failures.append(f"ENTRY_LOADER_SITE_EXPRESSION:{entry_id}")
+    if ordered_sites != sorted(ordered_sites) or not _unique(
+        f"{line}:{column}:{loader}:{expression}"
+        for line, column, loader, expression in ordered_sites
+    ):
+        failures.append(f"ENTRY_LOADER_SITE_ORDER:{entry_id}")
+    return failures
+
+
+def _snapshot_dynamic_reference_manifest(
+    paths: set[str],
+    texts: dict[str, str],
+    sha256_by_path: dict[str, str],
+) -> tuple[dict[tuple[str, int, int, str, str], dict[str, Any]], set[str]]:
+    """Load exact current resolutions; malformed or broad entries resolve nothing."""
+    if DYNAMIC_REFERENCE_MANIFEST_PATH not in paths:
+        return {}, set()
+    failures: set[str] = set()
+    raw = texts.get(DYNAMIC_REFERENCE_MANIFEST_PATH)
+    try:
+        manifest = json.loads(raw) if isinstance(raw, str) else None
+    except json.JSONDecodeError:
+        manifest = None
+    if not isinstance(manifest, dict):
+        return {}, {"DYNAMIC_REFERENCE_MANIFEST_INVALID:ROOT_JSON"}
+    if set(manifest) != DYNAMIC_REFERENCE_MANIFEST_FIELDS:
+        failures.add("DYNAMIC_REFERENCE_MANIFEST_INVALID:ROOT_SCHEMA")
+    if manifest.get("schema_version") != DYNAMIC_REFERENCE_MANIFEST_SCHEMA:
+        failures.add("DYNAMIC_REFERENCE_MANIFEST_INVALID:SCHEMA_VERSION")
+    if manifest.get("manifest_id") != DYNAMIC_REFERENCE_MANIFEST_ID:
+        failures.add("DYNAMIC_REFERENCE_MANIFEST_INVALID:MANIFEST_ID")
+    rows = manifest.get("entries")
+    if not isinstance(rows, list) or not rows:
+        failures.add("DYNAMIC_REFERENCE_MANIFEST_INVALID:ENTRIES")
+        return {}, failures
+
+    result: dict[tuple[str, int, int, str, str], dict[str, Any]] = {}
+    seen_ids: set[str] = set()
+    for index, row in enumerate(rows):
+        rendered_id = f"ROW_{index}"
+        row_failures: list[str] = []
+        if not isinstance(row, dict):
+            failures.add(f"DYNAMIC_REFERENCE_MANIFEST_INVALID:{rendered_id}:ROW")
+            continue
+        entry_id = row.get("dynamic_reference_id")
+        if isinstance(entry_id, str) and entry_id:
+            rendered_id = entry_id
+        if set(row) != DYNAMIC_REFERENCE_ENTRY_FIELDS:
+            row_failures.append("ENTRY_SCHEMA")
+        if not isinstance(entry_id, str) or not entry_id or entry_id in seen_ids:
+            row_failures.append("ENTRY_ID")
+        else:
+            seen_ids.add(entry_id)
+        source_path = row.get("source_path")
+        source_sha = row.get("source_blob_sha256")
+        if (
+            not isinstance(source_path, str)
+            or not source_path
+            or source_path.startswith("res://")
+            or _component_binding_path(source_path) != source_path
+            or source_path not in paths
+        ):
+            row_failures.append("SOURCE_PATH")
+        if (
+            not _is_hex(source_sha, 64)
+            or sha256_by_path.get(str(source_path)) != source_sha
+        ):
+            row_failures.append("SOURCE_BLOB")
+
+        location = row.get("source_line_or_ast_location")
+        if not isinstance(location, dict) or set(location) != DYNAMIC_REFERENCE_LOCATION_FIELDS:
+            row_failures.append("SOURCE_LOCATION_SCHEMA")
+            location = {}
+        line = location.get("line")
+        column = location.get("column")
+        containing_function = location.get("containing_function")
+        if (
+            not _is_int(line)
+            or line <= 0
+            or not _is_int(column)
+            or column <= 0
+            or not isinstance(containing_function, str)
+            or not containing_function
+        ):
+            row_failures.append("SOURCE_LOCATION")
+
+        loader = row.get("loader")
+        expression = row.get("reference_expression")
+        if not isinstance(loader, str) or not loader or "*" in loader:
+            row_failures.append("LOADER")
+        if not isinstance(expression, str) or not expression or "*" in expression:
+            row_failures.append("EXPRESSION")
+
+        targets = row.get("resolved_targets")
+        normalized_targets: list[str] = []
+        if (
+            not isinstance(targets, list)
+            or not targets
+            or any(not isinstance(target, str) for target in targets)
+            or not _unique(targets if isinstance(targets, list) else [])
+            or targets != sorted(targets if isinstance(targets, list) else [])
+        ):
+            row_failures.append("TARGET_SET")
+        else:
+            for target in targets:
+                normalized = _normalize_res_reference(target)
+                if (
+                    normalized is None
+                    or target != f"res://{normalized}"
+                    or normalized not in paths
+                    or any(token in target for token in ("*", "?", "[", "]"))
+                ):
+                    row_failures.append("TARGET")
+                    continue
+                normalized_targets.append(normalized)
+            if row.get("target_set_sha256") != _dynamic_target_set_sha256(targets):
+                row_failures.append("TARGET_HASH")
+        if row.get("production_reachable") is not True:
+            row_failures.append("PRODUCTION_REACHABILITY")
+        if row.get("resolution_method") != "EXACT_CONSTANT_CALL_GRAPH_MANIFEST":
+            row_failures.append("RESOLUTION_METHOD")
+
+        contract = row.get("callsite_contract")
+        if not isinstance(contract, dict) or set(contract) != DYNAMIC_REFERENCE_CALLSITE_FIELDS:
+            row_failures.append("CALLSITE_SCHEMA")
+        elif isinstance(source_path, str) and source_path in texts:
+            row_failures.extend(
+                _manifest_callsite_contract_failures(
+                    texts[source_path],
+                    contract,
+                    rendered_id,
+                    list(targets) if isinstance(targets, list) else [],
+                )
+            )
+
+        runtime_probe = row.get("runtime_probe")
+        if not isinstance(runtime_probe, dict) or set(runtime_probe) != DYNAMIC_REFERENCE_RUNTIME_PROBE_FIELDS:
+            row_failures.append("RUNTIME_PROBE_SCHEMA")
+        elif (
+            not isinstance(runtime_probe.get("probe_id"), str)
+            or not runtime_probe.get("probe_id")
+            or not isinstance(runtime_probe.get("test_path"), str)
+            or runtime_probe.get("test_path") not in paths
+            or runtime_probe.get("expected_target_count") != len(
+                targets if isinstance(targets, list) else []
+            )
+            or runtime_probe.get("required_before_production_claim") is not True
+        ):
+            row_failures.append("RUNTIME_PROBE")
+
+        policy = row.get("failure_policy")
+        if not isinstance(policy, dict) or set(policy) != DYNAMIC_REFERENCE_FAILURE_POLICY_FIELDS:
+            row_failures.append("FAILURE_POLICY_SCHEMA")
+        elif not (
+            policy.get("source_blob_change_invalidates") is True
+            and policy.get("source_location_change_invalidates") is True
+            and policy.get("target_set_change_invalidates") is True
+            and policy.get("unknown_callsite_fails_closed") is True
+            and policy.get("future_site_auto_resolution_count") == 0
+            and policy.get("wildcard_count") == 0
+        ):
+            row_failures.append("FAILURE_POLICY")
+
+        if row_failures:
+            failures.update(
+                f"DYNAMIC_REFERENCE_MANIFEST_INVALID:{rendered_id}:{reason}"
+                for reason in row_failures
+            )
+            continue
+        assert isinstance(entry_id, str)
+        assert isinstance(source_path, str)
+        assert isinstance(line, int) and isinstance(column, int)
+        assert isinstance(loader, str) and isinstance(expression, str)
+        source_text = texts[source_path]
+        lines = source_text.splitlines(keepends=True)
+        line_offset = sum(len(value) for value in lines[: line - 1])
+        loader_offset = line_offset + column - 1
+        if (
+            line > len(lines)
+            or not source_text.startswith(loader, loader_offset)
+            or _containing_function_at(source_text, loader_offset) != containing_function
+        ):
+            failures.add(
+                f"DYNAMIC_REFERENCE_MANIFEST_INVALID:{entry_id}:SOURCE_SITE"
+            )
+            continue
+        open_paren = loader_offset + len(loader)
+        argument = (
+            _first_call_argument(source_text, open_paren)
+            if open_paren < len(source_text) and source_text[open_paren] == "("
+            else None
+        )
+        if argument is None or re.sub(r"\s+", " ", argument[0].strip()) != expression:
+            failures.add(
+                f"DYNAMIC_REFERENCE_MANIFEST_INVALID:{entry_id}:SOURCE_EXPRESSION"
+            )
+            continue
+        site_key = (source_path, line, column, loader, expression)
+        if site_key in result:
+            failures.add(
+                f"DYNAMIC_REFERENCE_MANIFEST_INVALID:{entry_id}:DUPLICATE_SITE"
+            )
+            continue
+        prepared = dict(row)
+        prepared["_normalized_targets"] = normalized_targets
+        result[site_key] = prepared
+    return result, failures
+
+
 def _snapshot_reference_closure(
     root: Path,
     ref: str,
@@ -5551,7 +5979,13 @@ def _snapshot_reference_closure(
     include_worktree: bool,
 ) -> dict[str, Any]:
     """Resolve actual resource-load and typed GDScript edges for one snapshot."""
-    paths, texts = _snapshot_text_inventory(root, ref, include_worktree)
+    paths, texts, sha256_by_path = _snapshot_text_inventory(
+        root, ref, include_worktree
+    )
+    dynamic_manifest, dynamic_manifest_failures = (
+        _snapshot_dynamic_reference_manifest(paths, texts, sha256_by_path)
+    )
+    used_dynamic_manifest_ids: set[str] = set()
     normalized_seeds = {
         _component_binding_path(str(seed).replace("\\", "/")) for seed in seeds
     }
@@ -5703,7 +6137,28 @@ def _snapshot_reference_closure(
                 loader_name = (match.group("name") or match.group("qualified") or "load").replace(" ", "")
                 if literal is None:
                     compact = re.sub(r"\s+", " ", expression.strip())[:160]
-                    dynamic_sites.add((path, loader_name, compact or "EMPTY"))
+                    rendered_expression = compact or "EMPTY"
+                    line, column = _source_line_column(comment_clean, match.start())
+                    manifest_entry = dynamic_manifest.get(
+                        (
+                            path,
+                            line,
+                            column,
+                            loader_name,
+                            rendered_expression,
+                        )
+                    )
+                    if manifest_entry is not None:
+                        dependencies.update(
+                            manifest_entry.get("_normalized_targets", [])
+                        )
+                        used_dynamic_manifest_ids.add(
+                            str(manifest_entry["dynamic_reference_id"])
+                        )
+                        continue
+                    dynamic_sites.add(
+                        (path, loader_name, rendered_expression)
+                    )
                     continue
                 referenced = _normalize_res_reference(literal)
                 if referenced is None:
@@ -5728,9 +6183,20 @@ def _snapshot_reference_closure(
                 class_paths[name] for name in class_references if name in class_paths
             )
         queue.extend(sorted(dependencies - closure))
+    for manifest_entry in dynamic_manifest.values():
+        entry_id = str(manifest_entry["dynamic_reference_id"])
+        if (
+            str(manifest_entry["source_path"]) in closure
+            and entry_id not in used_dynamic_manifest_ids
+        ):
+            dynamic_manifest_failures.add(
+                f"DYNAMIC_REFERENCE_MANIFEST_INVALID:{entry_id}:"
+                "UNUSED_REACHABLE_ENTRY"
+            )
     return {
         "reachable": closure,
         "dynamic_sites": dynamic_sites,
+        "dynamic_manifest_failures": dynamic_manifest_failures,
         "missing_refs": missing_refs,
         "duplicate_classes": duplicate_classes,
     }
@@ -5813,6 +6279,11 @@ def augment_changed_paths_with_production_references(
         reference_failures.append(
             (source, f"DYNAMIC_REFERENCE_UNRESOLVED:{loader}:{expression}")
         )
+    for failure in sorted(
+        set(new_result["dynamic_manifest_failures"])
+        - set(old_result["dynamic_manifest_failures"])
+    ):
+        reference_failures.append((DYNAMIC_REFERENCE_MANIFEST_PATH, failure))
     for source, missing in sorted(
         set(new_result["missing_refs"]) - set(old_result["missing_refs"])
     ):

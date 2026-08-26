@@ -1,0 +1,74 @@
+{
+  "schema_version": "space_syndicate.v076.dynamic_reference_manifest_focused_test_receipt.v1",
+  "receipt_id": "v076-current-monster-dynamic-reference-manifest-focused-test-20260827",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "authorized_base_head_sha": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "observed_head_sha_after_parallel_main_lane_landings": "3a4709b08c8b2950c25b3f32634340727501c7cc",
+  "executed_at_utc": "2026-08-26T17:46:30.5634303Z",
+  "scope": {
+    "manifest_path": "docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json",
+    "scanner_path": "tools/v076/v076_reuse_point_inertia_gate.py",
+    "selftest_path": "tools/v076/v076_reuse_point_inertia_gate_selftest.py",
+    "resolved_dynamic_reference_ids": [
+      "dynamic.current.monster_art.optional_texture.exists",
+      "dynamic.current.monster_art.optional_texture.load"
+    ],
+    "explicitly_excluded_source_paths": [
+      "scripts/presentation/v076_presentation_animation_director.gd"
+    ],
+    "godot_product_file_mutation_count": 0,
+    "registry_file_mutation_count": 0,
+    "full_gate_run_count": 0
+  },
+  "exact_binding": {
+    "source_path": "scripts/monster_art_view.gd",
+    "source_blob_sha256": "89515b0b4212d6c5bbc372749eb353dde20b03b835a79d1e3872eb16dce4be70",
+    "source_dynamic_site_count": 2,
+    "helper_invocation_count": 20,
+    "required_loader_site_count": 3,
+    "resolved_target_count": 20,
+    "target_set_sha256": "06fcadb6e363cc49da61463a1b42da4138d4050fb48a8ee1ec9b9a050c65a43a",
+    "target_hash_canonicalization": "UTF8_ORDINAL_SORTED_RES_PATHS_LF_JOIN_NO_TRAILING_LF",
+    "wildcard_count": 0,
+    "regex_count": 0,
+    "prefix_allowlist_count": 0,
+    "future_site_auto_resolution_count": 0
+  },
+  "runtime_probe_binding": {
+    "test_path": "tests/gameplay_balance_diagnostics_monster_art_profile_test.gd",
+    "required_before_production_claim": true,
+    "godot_runtime_probe_executed_by_this_tooling_lane": false,
+    "production_green_claimed": false
+  },
+  "focused_selftest": {
+    "command": "python -B tools/v076/v076_reuse_point_inertia_gate_selftest.py",
+    "status": "PASS",
+    "case_count": 124,
+    "pass_count": 124,
+    "failure_count": 0,
+    "new_case_ids": [
+      "121",
+      "122",
+      "123",
+      "124"
+    ],
+    "negative_contracts": [
+      "SOURCE_BLOB_DRIFT_FAILS_CLOSED",
+      "SOURCE_LINE_DRIFT_FAILS_CLOSED",
+      "LOADER_DRIFT_FAILS_CLOSED",
+      "EXPRESSION_DRIFT_FAILS_CLOSED",
+      "TARGET_HASH_DRIFT_FAILS_CLOSED",
+      "TARGET_WILDCARD_FAILS_CLOSED",
+      "FALSE_CONSTANT_TARGET_FAILS_CLOSED",
+      "FUTURE_DYNAMIC_SITE_REMAINS_UNRESOLVED",
+      "UNKNOWN_HELPER_CALL_INVALIDATES",
+      "MISSING_RUNTIME_PROBE_INVALIDATES",
+      "PERMISSIVE_FAILURE_POLICY_INVALIDATES"
+    ]
+  },
+  "artifact_sha256": {
+    "scanner": "022d08eb30e452f0ab8aa9983e0b7298e2971addcd1996bd927b75c50f47e476",
+    "selftest": "39114c47d25beed57d8c6d8d57050388f092697014ead7c097a3070238c10c1c",
+    "manifest": "52472d87729ab167ab31b785a12b2be246ede798a03c9d3bee22bb740062ecd7"
+  }
+}

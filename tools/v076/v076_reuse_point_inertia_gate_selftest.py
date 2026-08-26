@@ -3597,6 +3597,394 @@ print('not-json'); raise SystemExit(2)
         + mutated_focused_scope_correction_failures,
     )
 
+    manifest_valid_failures: list[str] = []
+    manifest_identity_negative_failures: list[str] = []
+    manifest_target_negative_failures: list[str] = []
+    manifest_future_negative_failures: list[str] = []
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="v076-dynamic-reference-manifest-"
+        ) as temp_path:
+            manifest_root = Path(temp_path)
+            _git_fixture(manifest_root, "init")
+            _git_fixture(
+                manifest_root, "config", "user.email", "selftest@example.invalid"
+            )
+            _git_fixture(
+                manifest_root, "config", "user.name", "V076 Gate Selftest"
+            )
+            source_path = "scripts/runtime/manifest_runtime.gd"
+            target_paths = sorted(
+                [
+                    "res://assets/manifest/a.png",
+                    "res://assets/manifest/b.png",
+                ]
+            )
+            source_text = (
+                "extends RefCounted\n"
+                "class_name ManifestRuntime\n"
+                'const A_PATH := "res://assets/manifest/a.png"\n'
+                'const B_PATH := "res://assets/manifest/b.png"\n'
+                "func build():\n"
+                "\treturn [_load_optional_texture(A_PATH), "
+                "_load_optional_texture(B_PATH)]\n"
+                "func _load_optional_texture(path: String):\n"
+                "\tif ResourceLoader.exists(path):\n"
+                "\t\treturn load(path)\n"
+                "\tvar image := Image.new()\n"
+                "\tif image.load(path) == OK:\n"
+                "\t\treturn ImageTexture.create_from_image(image)\n"
+                "\treturn null\n"
+            )
+
+            def fixture_location(loader: str) -> tuple[int, int]:
+                for line_number, line_text in enumerate(
+                    source_text.splitlines(), start=1
+                ):
+                    needle = "load(path)" if loader == "load" else loader
+                    column = line_text.find(needle)
+                    if column >= 0:
+                        return line_number, column + 1
+                raise RuntimeError(f"fixture loader not found: {loader}")
+
+            exists_line, exists_column = fixture_location(
+                "ResourceLoader.exists"
+            )
+            load_line, load_column = fixture_location("load")
+            image_line, image_column = fixture_location("image.load")
+            source_sha256 = hashlib.sha256(source_text.encode("utf-8")).hexdigest()
+            target_sha256 = gate._dynamic_target_set_sha256(target_paths)
+            callsite_contract = {
+                "helper_function": "_load_optional_texture",
+                "required_invocation_count": 2,
+                "allowed_argument_constants": ["A_PATH", "B_PATH"],
+                "external_or_unknown_invocation_count": 0,
+                "required_loader_sites": [
+                    {
+                        "line": exists_line,
+                        "column": exists_column,
+                        "loader": "ResourceLoader.exists",
+                        "reference_expression": "path",
+                    },
+                    {
+                        "line": load_line,
+                        "column": load_column,
+                        "loader": "load",
+                        "reference_expression": "path",
+                    },
+                    {
+                        "line": image_line,
+                        "column": image_column,
+                        "loader": "image.load",
+                        "reference_expression": "path",
+                    },
+                ],
+            }
+            runtime_probe = {
+                "probe_id": "manifest_runtime_probe",
+                "test_path": "tests/manifest_runtime_probe.gd",
+                "expected_target_count": 2,
+                "required_before_production_claim": True,
+            }
+            failure_policy = {
+                "source_blob_change_invalidates": True,
+                "source_location_change_invalidates": True,
+                "target_set_change_invalidates": True,
+                "unknown_callsite_fails_closed": True,
+                "future_site_auto_resolution_count": 0,
+                "wildcard_count": 0,
+            }
+
+            def fixture_entry(
+                entry_id: str,
+                loader: str,
+                line: int,
+                column: int,
+            ) -> dict[str, Any]:
+                return {
+                    "dynamic_reference_id": entry_id,
+                    "source_path": source_path,
+                    "source_blob_sha256": source_sha256,
+                    "source_line_or_ast_location": {
+                        "line": line,
+                        "column": column,
+                        "containing_function": "_load_optional_texture",
+                    },
+                    "loader": loader,
+                    "reference_expression": "path",
+                    "resolved_targets": list(target_paths),
+                    "target_set_sha256": target_sha256,
+                    "production_reachable": True,
+                    "resolution_method": "EXACT_CONSTANT_CALL_GRAPH_MANIFEST",
+                    "callsite_contract": copy.deepcopy(callsite_contract),
+                    "runtime_probe": copy.deepcopy(runtime_probe),
+                    "failure_policy": copy.deepcopy(failure_policy),
+                }
+
+            valid_manifest = {
+                "schema_version": gate.DYNAMIC_REFERENCE_MANIFEST_SCHEMA,
+                "manifest_id": gate.DYNAMIC_REFERENCE_MANIFEST_ID,
+                "entries": [
+                    fixture_entry(
+                        "dynamic.selftest.manifest.exists",
+                        "ResourceLoader.exists",
+                        exists_line,
+                        exists_column,
+                    ),
+                    fixture_entry(
+                        "dynamic.selftest.manifest.load",
+                        "load",
+                        load_line,
+                        load_column,
+                    ),
+                ],
+            }
+            fixture_files = {
+                "project.godot": (
+                    '[application]\nrun/main_scene="res://scenes/main.tscn"\n'
+                ),
+                "scenes/main.tscn": (
+                    '[gd_scene load_steps=2 format=3]\n'
+                    '[ext_resource type="Script" '
+                    'path="res://scripts/runtime/manifest_runtime.gd" id="1"]\n'
+                ),
+                source_path: source_text,
+                "assets/manifest/a.png": "fixture-a\n",
+                "assets/manifest/b.png": "fixture-b\n",
+                "tests/manifest_runtime_probe.gd": "extends RefCounted\n",
+                gate.DYNAMIC_REFERENCE_MANIFEST_PATH: json.dumps(
+                    valid_manifest, ensure_ascii=False, indent=2
+                )
+                + "\n",
+            }
+            for relative, payload in fixture_files.items():
+                target = manifest_root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(payload.encode("utf-8"))
+            _git_fixture(manifest_root, "add", ".")
+            _git_fixture(manifest_root, "commit", "-m", "valid exact manifest")
+            manifest_head = _git_fixture(manifest_root, "rev-parse", "HEAD")
+
+            def evaluate_manifest(
+                manifest_payload: dict[str, Any],
+                source_payload: str = source_text,
+            ) -> dict[str, Any]:
+                (manifest_root / source_path).write_bytes(
+                    source_payload.encode("utf-8")
+                )
+                (manifest_root / gate.DYNAMIC_REFERENCE_MANIFEST_PATH).write_bytes(
+                    (
+                        json.dumps(
+                            manifest_payload, ensure_ascii=False, indent=2
+                        )
+                        + "\n"
+                    ).encode("utf-8")
+                )
+                return gate._snapshot_reference_closure(
+                    manifest_root,
+                    manifest_head,
+                    ["project.godot"],
+                    True,
+                )
+
+            valid_result = gate._snapshot_reference_closure(
+                manifest_root,
+                manifest_head,
+                ["project.godot"],
+                False,
+            )
+            if valid_result["dynamic_manifest_failures"]:
+                manifest_valid_failures.extend(
+                    sorted(valid_result["dynamic_manifest_failures"])
+                )
+            if any(
+                site[0] == source_path for site in valid_result["dynamic_sites"]
+            ):
+                manifest_valid_failures.append("EXACT_SITE_REMAINED_DYNAMIC")
+            expected_reachable = {
+                target.removeprefix("res://") for target in target_paths
+            }
+            if not expected_reachable.issubset(valid_result["reachable"]):
+                manifest_valid_failures.append("EXACT_TARGETS_NOT_REACHABLE")
+
+            for label, mutate in (
+                (
+                    "SOURCE_SHA",
+                    lambda row: row.update(
+                        {"source_blob_sha256": "0" * 64}
+                    ),
+                ),
+                (
+                    "SOURCE_LINE",
+                    lambda row: row["source_line_or_ast_location"].update(
+                        {"line": exists_line + 1}
+                    ),
+                ),
+                (
+                    "LOADER",
+                    lambda row: row.update({"loader": "ResourceLoader.load"}),
+                ),
+                (
+                    "EXPRESSION",
+                    lambda row: row.update(
+                        {"reference_expression": "runtime_path"}
+                    ),
+                ),
+            ):
+                invalid = copy.deepcopy(valid_manifest)
+                mutate(invalid["entries"][0])
+                result = evaluate_manifest(invalid)
+                if not result["dynamic_manifest_failures"] or not any(
+                    site[0] == source_path
+                    and site[1] == "ResourceLoader.exists"
+                    for site in result["dynamic_sites"]
+                ):
+                    manifest_identity_negative_failures.append(
+                        f"{label}_DID_NOT_FAIL_CLOSED"
+                    )
+
+            bad_hash = copy.deepcopy(valid_manifest)
+            bad_hash["entries"][0]["target_set_sha256"] = "0" * 64
+            bad_hash_result = evaluate_manifest(bad_hash)
+            if not bad_hash_result["dynamic_manifest_failures"]:
+                manifest_target_negative_failures.append(
+                    "TARGET_HASH_DID_NOT_FAIL_CLOSED"
+                )
+
+            wildcard = copy.deepcopy(valid_manifest)
+            wildcard_targets = list(wildcard["entries"][0]["resolved_targets"])
+            wildcard_targets[0] = "res://assets/manifest/*"
+            wildcard_targets.sort()
+            wildcard["entries"][0]["resolved_targets"] = wildcard_targets
+            wildcard["entries"][0]["target_set_sha256"] = (
+                gate._dynamic_target_set_sha256(wildcard_targets)
+            )
+            wildcard_result = evaluate_manifest(wildcard)
+            if not wildcard_result["dynamic_manifest_failures"]:
+                manifest_target_negative_failures.append(
+                    "TARGET_WILDCARD_DID_NOT_FAIL_CLOSED"
+                )
+
+            false_target = copy.deepcopy(valid_manifest)
+            false_targets = [
+                "res://assets/manifest/b.png",
+                "res://tests/manifest_runtime_probe.gd",
+            ]
+            false_target["entries"][0]["resolved_targets"] = false_targets
+            false_target["entries"][0]["target_set_sha256"] = (
+                gate._dynamic_target_set_sha256(false_targets)
+            )
+            false_target_result = evaluate_manifest(false_target)
+            if not any(
+                "ENTRY_CONSTANT_TARGET_BINDING" in failure
+                for failure in false_target_result["dynamic_manifest_failures"]
+            ):
+                manifest_target_negative_failures.append(
+                    "FALSE_TARGET_DID_NOT_FAIL_CLOSED"
+                )
+
+            future_source = (
+                source_text
+                + "func future_load(runtime_path: String):\n"
+                + "\treturn load(runtime_path)\n"
+            )
+            future_manifest = copy.deepcopy(valid_manifest)
+            future_sha = hashlib.sha256(
+                future_source.encode("utf-8")
+            ).hexdigest()
+            for entry in future_manifest["entries"]:
+                entry["source_blob_sha256"] = future_sha
+            future_result = evaluate_manifest(future_manifest, future_source)
+            if future_result["dynamic_manifest_failures"] or not any(
+                site[0] == source_path
+                and site[1] == "load"
+                and site[2] == "runtime_path"
+                for site in future_result["dynamic_sites"]
+            ):
+                manifest_future_negative_failures.append(
+                    "FUTURE_SITE_WAS_AUTO_RESOLVED:"
+                    f"manifest={sorted(future_result['dynamic_manifest_failures'])!r}:"
+                    f"sites={sorted(future_result['dynamic_sites'])!r}"
+                )
+
+            unknown_source = (
+                source_text
+                + "func unknown_helper_call(runtime_path: String):\n"
+                + "\treturn _load_optional_texture(runtime_path)\n"
+            )
+            unknown_manifest = copy.deepcopy(valid_manifest)
+            unknown_sha = hashlib.sha256(
+                unknown_source.encode("utf-8")
+            ).hexdigest()
+            for entry in unknown_manifest["entries"]:
+                entry["source_blob_sha256"] = unknown_sha
+            unknown_result = evaluate_manifest(unknown_manifest, unknown_source)
+            if not any(
+                "ENTRY_CALLSITE_SET" in failure
+                for failure in unknown_result["dynamic_manifest_failures"]
+            ):
+                manifest_future_negative_failures.append(
+                    "UNKNOWN_HELPER_CALL_DID_NOT_INVALIDATE"
+                )
+
+            missing_probe = copy.deepcopy(valid_manifest)
+            missing_probe["entries"][0]["runtime_probe"]["test_path"] = (
+                "tests/missing_probe.gd"
+            )
+            missing_probe_result = evaluate_manifest(missing_probe)
+            if not missing_probe_result["dynamic_manifest_failures"]:
+                manifest_future_negative_failures.append(
+                    "MISSING_RUNTIME_PROBE_DID_NOT_INVALIDATE"
+                )
+
+            permissive_policy = copy.deepcopy(valid_manifest)
+            permissive_policy["entries"][0]["failure_policy"][
+                "future_site_auto_resolution_count"
+            ] = 1
+            permissive_policy["entries"][0]["failure_policy"][
+                "wildcard_count"
+            ] = 1
+            permissive_policy_result = evaluate_manifest(permissive_policy)
+            if not permissive_policy_result["dynamic_manifest_failures"]:
+                manifest_future_negative_failures.append(
+                    "PERMISSIVE_POLICY_DID_NOT_INVALIDATE"
+                )
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        rendered = f"DYNAMIC_MANIFEST_FIXTURE_ERROR:{error}"
+        manifest_valid_failures.append(rendered)
+        manifest_identity_negative_failures.append(rendered)
+        manifest_target_negative_failures.append(rendered)
+        manifest_future_negative_failures.append(rendered)
+
+    append_direct_case(
+        "121",
+        "an exact source-bound dynamic manifest resolves only its declared targets",
+        "PASS",
+        "PASS" if not manifest_valid_failures else "FAIL",
+        manifest_valid_failures,
+    )
+    append_direct_case(
+        "122",
+        "dynamic source SHA, line, loader, and expression drift all fail closed",
+        "PASS",
+        "PASS" if not manifest_identity_negative_failures else "FAIL",
+        manifest_identity_negative_failures,
+    )
+    append_direct_case(
+        "123",
+        "target hash, wildcard, and false constant target cannot be manifested",
+        "PASS",
+        "PASS" if not manifest_target_negative_failures else "FAIL",
+        manifest_target_negative_failures,
+    )
+    append_direct_case(
+        "124",
+        "future sites, unknown callers, missing probes, and permissive policy do not auto-pass",
+        "PASS",
+        "PASS" if not manifest_future_negative_failures else "FAIL",
+        manifest_future_negative_failures,
+    )
+
     pass_count = sum(result["status"] == "PASS" for result in results)
     case_count = len(results)
     status = (
