@@ -177,6 +177,13 @@ if (
         -not [bool]$_.fixture_counter_zero -or
         -not [bool]$_.lineage_green -or
         -not [bool]$_.capture_identity_green -or
+        (
+            [string]$_.cue_id -ne 'FINAL_SETTLEMENT' -and
+            (
+                [int]$_.director_queue_count_for_receipt -ne 1 -or
+                [int]$_.director_finish_count_for_receipt -ne 1
+            )
+        ) -or
         -not [bool]$_.frames_green
     }).Count -ne 0
 ) {

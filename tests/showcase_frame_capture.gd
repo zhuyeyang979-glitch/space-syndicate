@@ -26,6 +26,7 @@ var _captured_frame_count := 0
 var _capture_records: Array[Dictionary] = []
 var _episode_records: Array[Dictionary] = []
 var _exact_once_rows: Array[Dictionary] = []
+var _pending_episode_reports: Array[Dictionary] = []
 
 
 func _init() -> void:
@@ -100,6 +101,15 @@ func _run() -> void:
 		var episode := episode_variant as Dictionary
 		await _capture_episode(showcase, episode, evidence_root)
 
+	if not ready_path.is_empty():
+		await _complete_headed_probe(
+			ready_path,
+			ack_path,
+			probe_nonce,
+			expected_size_label,
+			headed_capture_path
+		)
+
 	var performance := showcase.call("performance_snapshot") as Dictionary
 	var director_debug := showcase.call("animation_debug_snapshot") as Dictionary
 	var final_contract := showcase.call("get_showcase_contract") as Dictionary
@@ -110,6 +120,7 @@ func _run() -> void:
 		and int(director_debug.get("queued_cue_count", -1)) == 0,
 		"capture leaves the unique Director collision-free and drained"
 	)
+	_finalize_episode_reports()
 	_expect(_write_json("%s/performance_report.json" % evidence_root, {
 		"schema": "V076CommercialPresentationPerformanceReportV1",
 		"status": "AUTOMATION_GREEN_PENDING_VISUAL_REVIEW" if _failures.is_empty() else "FAIL",
@@ -188,14 +199,6 @@ func _run() -> void:
 		"headed_client_capture_path": headed_capture_path,
 		"headed_client_probe_requested": not ready_path.is_empty(),
 	}), "showcase capture manifest writes atomically")
-	if not ready_path.is_empty():
-		await _complete_headed_probe(
-			ready_path,
-			ack_path,
-			probe_nonce,
-			expected_size_label,
-			headed_capture_path
-		)
 
 	root.remove_child(showcase)
 	showcase.queue_free()
@@ -335,7 +338,7 @@ func _capture_episode(
 	)
 	var evidence_document := {
 		"schema": "V076CommercialPresentationEpisodeCaptureV1",
-		"status": "PASS" if _failures.is_empty() else "IN_PROGRESS",
+		"status": "PENDING_HEADED_PROBE",
 		"episode_id": episode_id,
 		"fixture_class": FIXTURE_CLASS,
 		"natural_gameplay": false,
@@ -359,24 +362,14 @@ func _capture_episode(
 		"final_evidence": final_evidence,
 	}
 	var evidence_path := "%s/evidence.json" % episode_root
-	_expect(
-		_write_json(evidence_path, evidence_document),
-		"%s evidence JSON writes atomically" % episode_id
-	)
-	var evidence_hash := (
-		FileAccess.get_sha256(evidence_path)
-		if FileAccess.file_exists(evidence_path)
-		else ""
-	)
-	_episode_records.append({
+	_pending_episode_reports.append({
 		"episode_id": episode_id,
 		"output_dir": output_dir,
 		"expected_cue_id": expected_cue_id,
 		"actual_cue_id": str(actual_cue.get("cue_id", "")),
-		"evidence_path": _project_relative_path(evidence_path),
-		"evidence_sha256": evidence_hash,
+		"evidence_path": evidence_path,
 		"frame_count": frame_records.size(),
-		"status": "PASS",
+		"document": evidence_document,
 	})
 	_exact_once_rows.append({
 		"episode_id": episode_id,
@@ -397,6 +390,42 @@ func _capture_episode(
 			"animation_debug_snapshot"
 		) as Dictionary).get("queued_cue_count", -1)),
 	})
+
+
+func _finalize_episode_reports() -> void:
+	_episode_records.clear()
+	for pending_variant in _pending_episode_reports:
+		var pending := pending_variant as Dictionary
+		var document := (
+			pending.get("document", {}) as Dictionary
+		).duplicate(true)
+		document["status"] = "PASS" if _failures.is_empty() else "FAIL"
+		var evidence_path := str(pending.get("evidence_path", ""))
+		var wrote := _write_json(evidence_path, document)
+		_expect(
+			wrote,
+			"%s evidence JSON writes atomically"
+				% str(pending.get("episode_id", ""))
+		)
+		var record_status := (
+			"PASS"
+			if wrote and str(document.get("status", "")) == "PASS"
+			else "FAIL"
+		)
+		_episode_records.append({
+			"episode_id": str(pending.get("episode_id", "")),
+			"output_dir": str(pending.get("output_dir", "")),
+			"expected_cue_id": str(pending.get("expected_cue_id", "")),
+			"actual_cue_id": str(pending.get("actual_cue_id", "")),
+			"evidence_path": _project_relative_path(evidence_path),
+			"evidence_sha256": (
+				FileAccess.get_sha256(evidence_path)
+				if FileAccess.file_exists(evidence_path)
+				else ""
+			),
+			"frame_count": int(pending.get("frame_count", 0)),
+			"status": record_status,
+		})
 
 
 func _complete_headed_probe(

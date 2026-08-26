@@ -528,6 +528,7 @@ var _card_table_presentation_last_envelope: Dictionary = {}
 var _card_table_presentation_last_surface_start: Dictionary = {}
 var _card_table_presentation_last_surface_finish: Dictionary = {}
 var _card_table_presentation_evidence_by_cue: Dictionary = {}
+var _card_table_presentation_evidence_by_receipt: Dictionary = {}
 var _final_settlement_presentation_generation := 0
 var _final_settlement_presentation_tween: Tween
 var _final_settlement_active_receipt_id := ""
@@ -999,12 +1000,27 @@ func enqueue_card_table_presentation(
 			cue_id,
 			"card_table_presentation_director_missing"
 		)
+	# Publish the lawful envelope by receipt before the Director emits its
+	# synchronous cue_queued signal.  Headed observers can therefore bind the
+	# exact event-time envelope instead of sampling the later per-cue tail row.
+	_card_table_presentation_evidence_by_receipt[receipt_id] = {
+		"receipt_id": receipt_id,
+		"cue_id": cue_id,
+		"consumer_class": normalized_consumer,
+		"status": "PENDING_DIRECTOR_QUEUE",
+		"envelope": receipt.duplicate(true),
+		"queued_cue": {},
+		"start_evidence": {},
+		"finish_evidence": {},
+		"abort_reason": "",
+	}
 	var queued := _presentation_animation_director.call(
 		"enqueue_receipt",
 		receipt.duplicate(true),
 		projection.duplicate(true)
 	) as Dictionary
 	if queued.is_empty():
+		_card_table_presentation_evidence_by_receipt.erase(receipt_id)
 		return _reject_card_table_presentation(
 			cue_id,
 			_combat_animation_director_rejection_reason()
@@ -1017,17 +1033,18 @@ func enqueue_card_table_presentation(
 		"queued_cue": queued.duplicate(true),
 		"surface_started": false,
 	}
-	_card_table_presentation_evidence_by_cue[cue_id] = {
-		"receipt_id": receipt_id,
-		"cue_id": cue_id,
-		"consumer_class": normalized_consumer,
-		"status": "QUEUED",
-		"envelope": receipt.duplicate(true),
-		"queued_cue": queued.duplicate(true),
-		"start_evidence": {},
-		"finish_evidence": {},
-		"abort_reason": "",
-	}
+	var receipt_evidence := (
+		_card_table_presentation_evidence_by_receipt.get(
+			receipt_id,
+			{}
+		) as Dictionary
+	).duplicate(true)
+	receipt_evidence["status"] = "QUEUED"
+	receipt_evidence["queued_cue"] = queued.duplicate(true)
+	_card_table_presentation_evidence_by_receipt[receipt_id] = receipt_evidence
+	_card_table_presentation_evidence_by_cue[cue_id] = (
+		receipt_evidence.duplicate(true)
+	)
 	_card_table_presentation_queued_count += 1
 	_bump_card_table_cue_count(cue_id, "source_count")
 	_bump_card_table_cue_count(cue_id, "envelope_count")
@@ -1123,6 +1140,18 @@ func begin_card_table_presentation_surface(
 		"surface_started_count"
 	)
 	_card_table_presentation_last_surface_start = normalized_evidence
+	var receipt_evidence := (
+		_card_table_presentation_evidence_by_receipt.get(
+			receipt_id,
+			{}
+		) as Dictionary
+	).duplicate(true)
+	if not receipt_evidence.is_empty():
+		receipt_evidence["status"] = "STARTED"
+		receipt_evidence["start_evidence"] = normalized_evidence.duplicate(true)
+		_card_table_presentation_evidence_by_receipt[receipt_id] = (
+			receipt_evidence
+		)
 	var cue_evidence := _card_table_presentation_evidence_by_cue.get(
 		cue_id,
 		{}
@@ -1183,14 +1212,45 @@ func finish_card_table_presentation(
 			"card_table_presentation_surface_finish_evidence_invalid"
 		)
 		return false
-	if (
-		not is_instance_valid(_presentation_animation_director)
-		or not _presentation_animation_director.has_method("finish_receipt")
-		or not bool(_presentation_animation_director.call(
+	var cue_id := str(active.get("cue_id", ""))
+	var normalized_evidence := evidence.duplicate(true)
+	normalized_evidence["bridge_receipt_id"] = receipt_id
+	normalized_evidence["cue_id"] = cue_id
+	normalized_evidence["consumer_class"] = str(active.get(
+		"consumer_class",
+		""
+	))
+	var receipt_evidence_before_finish := (
+		_card_table_presentation_evidence_by_receipt.get(
+			receipt_id,
+			{}
+		) as Dictionary
+	).duplicate(true)
+	var pending_finish_evidence := receipt_evidence_before_finish.duplicate(true)
+	if not pending_finish_evidence.is_empty():
+		# finish_receipt emits synchronously only on success.  Publish the final
+		# surface evidence first so that exact receipt observers see the terminal
+		# row in that signal; restore the prior row if the Director rejects it.
+		pending_finish_evidence["status"] = "FINISHED"
+		pending_finish_evidence["finish_evidence"] = (
+			normalized_evidence.duplicate(true)
+		)
+		_card_table_presentation_evidence_by_receipt[receipt_id] = (
+			pending_finish_evidence
+		)
+	var director_finished := (
+		is_instance_valid(_presentation_animation_director)
+		and _presentation_animation_director.has_method("finish_receipt")
+		and bool(_presentation_animation_director.call(
 			"finish_receipt",
 			receipt_id
 		))
-	):
+	)
+	if not director_finished:
+		if not receipt_evidence_before_finish.is_empty():
+			_card_table_presentation_evidence_by_receipt[receipt_id] = (
+				receipt_evidence_before_finish
+			)
 		_card_table_presentation_finish_missing_count += 1
 		_bump_card_table_cue_count(
 			str(active.get("cue_id", "")),
@@ -1200,14 +1260,6 @@ func finish_card_table_presentation(
 			"card_table_presentation_director_finish_missing"
 		)
 		return false
-	var cue_id := str(active.get("cue_id", ""))
-	var normalized_evidence := evidence.duplicate(true)
-	normalized_evidence["bridge_receipt_id"] = receipt_id
-	normalized_evidence["cue_id"] = cue_id
-	normalized_evidence["consumer_class"] = str(active.get(
-		"consumer_class",
-		""
-	))
 	_card_table_presentation_active_receipts.erase(receipt_id)
 	_card_table_presentation_finished_count += 1
 	_card_table_presentation_surface_finished_count += 1
@@ -1224,6 +1276,18 @@ func finish_card_table_presentation(
 		"surface_finished_count"
 	)
 	_card_table_presentation_last_surface_finish = normalized_evidence
+	var receipt_evidence := (
+		_card_table_presentation_evidence_by_receipt.get(
+			receipt_id,
+			{}
+		) as Dictionary
+	).duplicate(true)
+	if not receipt_evidence.is_empty():
+		receipt_evidence["status"] = "FINISHED"
+		receipt_evidence["finish_evidence"] = normalized_evidence.duplicate(true)
+		_card_table_presentation_evidence_by_receipt[receipt_id] = (
+			receipt_evidence
+		)
 	var cue_evidence := _card_table_presentation_evidence_by_cue.get(
 		cue_id,
 		{}
@@ -1248,6 +1312,18 @@ func _abort_card_table_presentation(
 	if active.is_empty():
 		return
 	var cue_id := str(active.get("cue_id", ""))
+	var receipt_evidence := (
+		_card_table_presentation_evidence_by_receipt.get(
+			receipt_id,
+			{}
+		) as Dictionary
+	).duplicate(true)
+	if not receipt_evidence.is_empty():
+		receipt_evidence["status"] = "ABORTED"
+		receipt_evidence["abort_reason"] = reason_code
+		_card_table_presentation_evidence_by_receipt[receipt_id] = (
+			receipt_evidence
+		)
 	var director_finished := (
 		is_instance_valid(_presentation_animation_director)
 		and _presentation_animation_director.has_method("finish_receipt")
@@ -1311,6 +1387,9 @@ func card_table_presentation_debug_snapshot() -> Dictionary:
 			_card_table_presentation_last_surface_finish.duplicate(true)
 		),
 		"cue_evidence": _card_table_presentation_evidence_by_cue.duplicate(true),
+		"cue_evidence_by_receipt": (
+			_card_table_presentation_evidence_by_receipt.duplicate(true)
+		),
 		"cue_counts": _card_table_presentation_cue_counts.duplicate(true),
 		"pending_final_settlement_count": int(
 			not _pending_final_settlement.is_empty()
@@ -1492,6 +1571,7 @@ func _reset_card_table_presentation_bridge() -> void:
 	_card_table_presentation_last_surface_start = {}
 	_card_table_presentation_last_surface_finish = {}
 	_card_table_presentation_evidence_by_cue = {}
+	_card_table_presentation_evidence_by_receipt = {}
 	_commercial_showcase_fixture_active_receipts = {}
 	_final_settlement_presentation_generation += 1
 	_final_settlement_presentation_tween = null

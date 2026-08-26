@@ -226,6 +226,7 @@ foreach ($episode in $episodes) {
     $evidencePath = Join-Path $episodeDirectory 'evidence.json'
     $evidence = Read-JsonFile -Path $evidencePath
     if (
+        [string]$evidence.status -ne 'PASS' -or
         [string]$evidence.episode_id -ne [string]$episode.episode_id -or
         [string]$evidence.fixture_class -ne 'PRESENTATION_FIXTURE' -or
         [bool]$evidence.natural_gameplay -or
@@ -252,11 +253,13 @@ $performance = Read-JsonFile -Path (Join-Path $EvidenceRoot 'performance_report.
 $exactOnce = Read-JsonFile -Path (Join-Path $EvidenceRoot 'animation_exact_once_report.json')
 $headedPng = Get-PngMetadata -Path $headedCapturePath
 if (
+    [string]$manifest.status -ne 'AUTOMATION_GREEN_PENDING_VISUAL_REVIEW' -or
     [string]$manifest.fixture_class -ne 'PRESENTATION_FIXTURE' -or
     [bool]$manifest.natural_gameplay -or
     [bool]$manifest.human_green -or
     [int]$manifest.episode_count -ne 13 -or
     [int]$manifest.frame_count -ne 39 -or
+    [string]$performance.status -ne 'AUTOMATION_GREEN_PENDING_VISUAL_REVIEW' -or
     [string]$performance.fixture_class -ne 'PRESENTATION_FIXTURE' -or
     [string]$exactOnce.status -ne 'PASS' -or
     [int]$exactOnce.episode_count -ne 13 -or

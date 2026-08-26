@@ -66,11 +66,24 @@ func _on_director_cue_queued(cue: Dictionary) -> void:
 	if receipt_id.is_empty():
 		_capture_failures.append("%s queued without receipt identity" % cue_id)
 		return
+	var bridge_evidence_at_queue := _bridge_evidence_for_receipt(receipt_id)
+	if (
+		str(bridge_evidence_at_queue.get("receipt_id", "")) != receipt_id
+		or str((bridge_evidence_at_queue.get(
+			"envelope",
+			{}
+		) as Dictionary).get("receipt_id", "")) != receipt_id
+	):
+		_capture_failures.append(
+			"%s queue event lacks its exact bridge envelope" % cue_id
+		)
 	_capture_by_cue[cue_id] = {
 		"cue_id": cue_id,
 		"receipt_id": receipt_id,
 		"queued_cue": _json_safe(cue),
 		"finished_cue": {},
+		"bridge_evidence_at_queue": _json_safe(bridge_evidence_at_queue),
+		"bridge_evidence_at_finish": {},
 		"phases": {},
 	}
 	_capture_jobs_pending += 2
@@ -94,6 +107,9 @@ func _on_director_cue_finished(cue: Dictionary) -> void:
 	if str(row.get("receipt_id", "")) != str(cue.get("receipt_id", "")):
 		return
 	row["finished_cue"] = _json_safe(cue)
+	row["bridge_evidence_at_finish"] = _json_safe(
+		_bridge_evidence_for_receipt(str(row.get("receipt_id", "")))
+	)
 	_capture_by_cue[cue_id] = row
 	_capture_jobs_pending += 1
 	call_deferred(
@@ -192,13 +208,19 @@ func _finish() -> void:
 		)
 	var bridge := _card_table_debug()
 	var cue_counts := bridge.get("cue_counts", {}) as Dictionary
-	var cue_evidence := bridge.get("cue_evidence", {}) as Dictionary
 	var cue_records: Array[Dictionary] = []
 	for cue_id_variant in TARGET_CUE_IDS:
 		var cue_id := str(cue_id_variant)
 		var count_row := cue_counts.get(cue_id, {}) as Dictionary
-		var evidence_row := cue_evidence.get(cue_id, {}) as Dictionary
 		var capture_row := _capture_by_cue.get(cue_id, {}) as Dictionary
+		var evidence_at_queue := capture_row.get(
+			"bridge_evidence_at_queue",
+			{}
+		) as Dictionary
+		var evidence_row := capture_row.get(
+			"bridge_evidence_at_finish",
+			{}
+		) as Dictionary
 		var phases := capture_row.get("phases", {}) as Dictionary
 		var source_count := int(count_row.get("production_source_count", -1))
 		var aggregate_parity := (
@@ -255,17 +277,45 @@ func _finish() -> void:
 			)
 		frames_green = frames_green and frame_hashes.size() >= 2
 		var receipt_id := str(capture_row.get("receipt_id", ""))
-		var evidence_receipt_id := str(evidence_row.get("receipt_id", ""))
+		var queued_cue := capture_row.get("queued_cue", {}) as Dictionary
+		var finished_cue := capture_row.get("finished_cue", {}) as Dictionary
+		var queue_envelope := evidence_at_queue.get(
+			"envelope",
+			{}
+		) as Dictionary
+		var finish_envelope := evidence_row.get("envelope", {}) as Dictionary
+		var start_evidence := evidence_row.get(
+			"start_evidence",
+			{}
+		) as Dictionary
+		var finish_evidence := evidence_row.get(
+			"finish_evidence",
+			{}
+		) as Dictionary
+		var director_queue_count := _director_cue_count(
+			_director_cues_queued,
+			cue_id,
+			receipt_id
+		)
+		var director_finish_count := _director_cue_count(
+			_director_cues_finished,
+			cue_id,
+			receipt_id
+		)
 		var capture_identity_green := (
 			not receipt_id.is_empty()
-			and str((capture_row.get("queued_cue", {}) as Dictionary).get(
-				"cue_id", ""
-			)) == cue_id
-			and not (capture_row.get("finished_cue", {}) as Dictionary).is_empty()
-			and (
-				evidence_receipt_id == receipt_id
-				or source_count > 1
-			)
+			and director_queue_count == 1
+			and director_finish_count == 1
+			and str(queued_cue.get("cue_id", "")) == cue_id
+			and str(finished_cue.get("cue_id", "")) == cue_id
+			and str(queued_cue.get("receipt_id", "")) == receipt_id
+			and str(finished_cue.get("receipt_id", "")) == receipt_id
+			and str(evidence_at_queue.get("receipt_id", "")) == receipt_id
+			and str(queue_envelope.get("receipt_id", "")) == receipt_id
+			and str(evidence_row.get("receipt_id", "")) == receipt_id
+			and str(finish_envelope.get("receipt_id", "")) == receipt_id
+			and str(start_evidence.get("bridge_receipt_id", "")) == receipt_id
+			and str(finish_evidence.get("bridge_receipt_id", "")) == receipt_id
 		)
 		if not aggregate_parity:
 			_capture_failures.append("%s production aggregate parity failed" % cue_id)
@@ -287,9 +337,13 @@ func _finish() -> void:
 			"fixture_counter_zero": fixture_zero,
 			"lineage_green": lineage_green,
 			"capture_identity_green": capture_identity_green,
+			"director_queue_count_for_receipt": director_queue_count,
+			"director_finish_count_for_receipt": director_finish_count,
 			"frames_green": frames_green,
 			"counts": _json_safe(count_row),
 			"bridge_evidence": _json_safe(evidence_row),
+			"bridge_evidence_at_queue": _json_safe(evidence_at_queue),
+			"bridge_evidence_at_finish": _json_safe(evidence_row),
 			"queued_cue": capture_row.get("queued_cue", {}),
 			"finished_cue": capture_row.get("finished_cue", {}),
 			"frames": _json_safe(phases),
@@ -466,6 +520,16 @@ func _complete_headed_probe() -> void:
 		or str(ack.get("probe_nonce", "")) != _probe_nonce
 	):
 		_capture_failures.append("headed probe acknowledgement does not match")
+
+
+func _bridge_evidence_for_receipt(receipt_id: String) -> Dictionary:
+	var by_receipt := _card_table_debug().get(
+		"cue_evidence_by_receipt",
+		{}
+	) as Dictionary
+	return (
+		by_receipt.get(receipt_id, {}) as Dictionary
+	).duplicate(true)
 
 
 func _argument_value(prefix: String, fallback: String) -> String:

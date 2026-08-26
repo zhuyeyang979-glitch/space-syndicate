@@ -3197,6 +3197,7 @@ func _assert_card_table_presentation_chain() -> void:
 	)
 	for cue_id in ["CARD_SELECT", "CARD_PLAY_PUBLIC", "CARD_RESOLUTION_FOCUS"]:
 		_assert_cue_terminal_row(final_bridge, cue_id)
+	_assert_receipt_indexed_bridge_evidence(final_bridge)
 	var select_row := _cue_row(final_bridge, "CARD_SELECT")
 	var public_row := _cue_row(final_bridge, "CARD_PLAY_PUBLIC")
 	var resolution_row := _cue_row(final_bridge, "CARD_RESOLUTION_FOCUS")
@@ -3263,6 +3264,54 @@ func _assert_card_table_presentation_chain() -> void:
 		"unique_public_resolution_count": unique_public_receipts.size(),
 		"resolution_finish_count": _resolution_finish_evidence.size(),
 	}))
+
+
+func _assert_receipt_indexed_bridge_evidence(bridge: Dictionary) -> void:
+	var indexed := bridge.get("cue_evidence_by_receipt", {}) as Dictionary
+	_expect(
+		indexed.size() == int(bridge.get("queued_count", -1)),
+		"card-table bridge retains one event-time evidence row per receipt"
+	)
+	for cue_variant in _director_cues_queued:
+		var cue := cue_variant as Dictionary
+		var cue_id := str(cue.get("cue_id", ""))
+		var receipt_id := str(cue.get("receipt_id", ""))
+		var evidence := indexed.get(receipt_id, {}) as Dictionary
+		var envelope := evidence.get("envelope", {}) as Dictionary
+		var queued_cue := evidence.get("queued_cue", {}) as Dictionary
+		_expect(
+			not receipt_id.is_empty()
+			and str(evidence.get("receipt_id", "")) == receipt_id
+			and str(evidence.get("cue_id", "")) == cue_id
+			and str(envelope.get("receipt_id", "")) == receipt_id
+			and str(queued_cue.get("receipt_id", "")) == receipt_id,
+			"%s event-time bridge evidence keeps its exact receipt identity"
+				% cue_id
+		)
+		var evidence_status := str(evidence.get("status", ""))
+		if evidence_status == "FINISHED":
+			var start_evidence := evidence.get(
+				"start_evidence",
+				{}
+			) as Dictionary
+			var finish_evidence := evidence.get(
+				"finish_evidence",
+				{}
+			) as Dictionary
+			_expect(
+				str(start_evidence.get("bridge_receipt_id", "")) == receipt_id
+				and str(finish_evidence.get("bridge_receipt_id", ""))
+					== receipt_id,
+				"%s event-time bridge row binds start and finish to one receipt"
+					% cue_id
+			)
+		else:
+			_expect(
+				evidence_status == "ABORTED"
+				and not str(evidence.get("abort_reason", "")).is_empty(),
+				"%s event-time bridge row records an explicit terminal abort"
+					% cue_id
+			)
 
 
 func _assert_resolution_receipt_chain(
