@@ -2169,6 +2169,7 @@ def _pending_domain_first_owner_activation(
     legacy_pending_placeholder = bool(
         not old_domain
         and isinstance(old_owner_row, dict)
+        and _is_int(old_owner_row.get("owner_count"))
         and old_owner_row.get("owner_count") == 0
         and old_owner_row.get("binding_status") == "PENDING"
         and str(old_owner_row.get("unique_owner", "")).startswith("UNASSIGNED_")
@@ -2191,6 +2192,29 @@ def _pending_domain_first_owner_activation(
         and new_owner.get("owner_component_id") == new_owner_id
         and new_owner.get("owner_path") == new_owner.get("path")
     )
+
+
+def _unique_owner_count_contract_failure(row: dict[str, Any]) -> str:
+    """Return the closed owner-count contract failure for one registry row."""
+
+    if "owner_count" not in row:
+        return ""
+    owner_count = row.get("owner_count")
+    if not _is_int(owner_count):
+        return "TYPE_INVALID"
+    binding_status = str(row.get("binding_status", ""))
+    expected_count: int | None = None
+    if binding_status.startswith("ACTIVE_") or binding_status == "EXTERNAL_REFERENCE_ONLY":
+        expected_count = 1
+    elif binding_status in {
+        "PENDING",
+        "OWNERSHIP_FROZEN_IMPLEMENTATION_PENDING",
+        "RETIRED",
+    }:
+        expected_count = 0
+    if expected_count is not None and owner_count != expected_count:
+        return "SEMANTICS_INVALID"
+    return ""
 
 
 def _supersession_graph_is_acyclic(entries: list[dict[str, Any]]) -> bool:
@@ -2758,6 +2782,15 @@ def _authority_snapshot_contract_failures(
     ):
         failures.append(f"HISTORY_UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH:{label}")
     owner_map = _index(unique_owner_rows, "domain_id")
+    for owner_row in unique_owner_rows:
+        if not isinstance(owner_row, dict):
+            continue
+        owner_count_failure = _unique_owner_count_contract_failure(owner_row)
+        if owner_count_failure:
+            failures.append(
+                "HISTORY_UNIQUE_OWNER_COUNT_"
+                f"{owner_count_failure}:{label}:{owner_row.get('domain_id', '')}"
+            )
     for domain in domains:
         if not isinstance(domain, dict):
             failures.append(f"HISTORY_DOMAIN_ROW_NOT_OBJECT:{label}")
@@ -2986,6 +3019,7 @@ def _golden_production_evidence_complete(
         and receipt.get("diagnostic_only") is False
         and receipt.get("fixture_only") is False
         and receipt.get("production_scene_path") == evidence.get("production_scene_path")
+        and _is_int(receipt.get("pass_count"))
         and receipt.get("pass_count") == evidence.get("pass_count")
     )
 
@@ -3781,6 +3815,16 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
         or set(unique_owner_domain_ids) != domain_id_set
     ):
         failures.append("UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH")
+    if isinstance(unique_owner_rows, list):
+        for owner_row in unique_owner_rows:
+            if not isinstance(owner_row, dict):
+                continue
+            owner_count_failure = _unique_owner_count_contract_failure(owner_row)
+            if owner_count_failure:
+                failures.append(
+                    "UNIQUE_OWNER_COUNT_"
+                    f"{owner_count_failure}:{owner_row.get('domain_id', '')}"
+                )
     reuse_rows = registry.get("reuse_entries", [])
     reuse_id_list = [
         str(row.get("reuse_id", "")) for row in reuse_rows
@@ -4429,15 +4473,26 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
             for step in golden_rows
             if isinstance(step, dict) and step.get("status") == "PENDING"
         ]
-        if golden.get("isolated_green_count") != len(isolated_ids):
+        if not _is_int(golden.get("isolated_green_count")):
+            failures.append("GOLDEN_ISOLATED_COUNT_TYPE_INVALID")
+        elif golden.get("isolated_green_count") != len(isolated_ids):
             failures.append("GOLDEN_ISOLATED_COUNT_MISMATCH")
-        if golden.get("production_pass_count") != len(production_ids):
+        if not _is_int(golden.get("production_pass_count")):
+            failures.append("GOLDEN_PRODUCTION_COUNT_TYPE_INVALID")
+        elif golden.get("production_pass_count") != len(production_ids):
             failures.append("GOLDEN_PRODUCTION_COUNT_MISMATCH")
-        if golden.get("human_execution_count") != len(human_ids):
+        if not _is_int(golden.get("human_execution_count")):
+            failures.append("GOLDEN_HUMAN_COUNT_TYPE_INVALID")
+        elif golden.get("human_execution_count") != len(human_ids):
             failures.append("GOLDEN_HUMAN_COUNT_MISMATCH")
         summary = golden.get("summary")
+        if not isinstance(summary, dict) or not _is_int(
+            summary.get("step_count")
+        ):
+            failures.append("GOLDEN_SUMMARY_STEP_COUNT_TYPE_INVALID")
         if not (
             isinstance(summary, dict)
+            and _is_int(summary.get("step_count"))
             and summary.get("step_count") == len(golden_rows)
             and summary.get("isolated_green_step_ids") == isolated_ids
             and summary.get("pending_step_ids") == pending_ids
@@ -4753,14 +4808,18 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
     if not isinstance(aggregate, dict):
         failures.append("CARD_CERTIFICATION_AGGREGATE_INVALID")
     else:
-        if aggregate.get("category_count") != len(head_category_rows):
+        if not _is_int(aggregate.get("category_count")) or aggregate.get(
+            "category_count"
+        ) != len(head_category_rows):
             failures.append("CARD_CERTIFICATION_CATEGORY_COUNT_MISMATCH")
         category_card_sum = sum(
             row.get("card_count", 0)
             for row in head_category_rows
             if isinstance(row, dict) and _is_int(row.get("card_count"))
         )
-        if aggregate.get("category_card_count_sum") != category_card_sum:
+        if not _is_int(
+            aggregate.get("category_card_count_sum")
+        ) or aggregate.get("category_card_count_sum") != category_card_sum:
             failures.append("CARD_CERTIFICATION_CARD_SUM_MISMATCH")
     if new_certified < old_certified:
         metrics["CARD_CERTIFICATION_RESET_COUNT"] += 1
@@ -5810,7 +5869,8 @@ def _manifest_callsite_contract_failures(
         failures.append(f"ENTRY_CALLSITE_SET:{entry_id}")
     unknown_count = sum(value not in set(allowed) for value in invocation_arguments)
     if (
-        contract.get("external_or_unknown_invocation_count") != 0
+        not _is_int(contract.get("external_or_unknown_invocation_count"))
+        or contract.get("external_or_unknown_invocation_count") != 0
         or unknown_count != 0
     ):
         failures.append(f"ENTRY_UNKNOWN_CALLSITE:{entry_id}")
@@ -6020,9 +6080,9 @@ def _snapshot_dynamic_reference_manifest(
             or not runtime_probe.get("probe_id")
             or not isinstance(runtime_probe.get("test_path"), str)
             or runtime_probe.get("test_path") not in paths
-            or runtime_probe.get("expected_target_count") != len(
-                targets if isinstance(targets, list) else []
-            )
+            or not _is_int(runtime_probe.get("expected_target_count"))
+            or runtime_probe.get("expected_target_count")
+            != len(targets if isinstance(targets, list) else [])
             or runtime_probe.get("required_before_production_claim") is not True
         ):
             row_failures.append("RUNTIME_PROBE")
@@ -6035,7 +6095,9 @@ def _snapshot_dynamic_reference_manifest(
             and policy.get("source_location_change_invalidates") is True
             and policy.get("target_set_change_invalidates") is True
             and policy.get("unknown_callsite_fails_closed") is True
+            and _is_int(policy.get("future_site_auto_resolution_count"))
             and policy.get("future_site_auto_resolution_count") == 0
+            and _is_int(policy.get("wildcard_count"))
             and policy.get("wildcard_count") == 0
         ):
             row_failures.append("FAILURE_POLICY")
@@ -6972,8 +7034,11 @@ def run_gate_selftest(root: Path) -> tuple[str, dict[str, Any]]:
         and status == "PASS"
         and _is_int(case_count)
         and case_count >= 30
+        and _is_int(pass_count)
         and pass_count == case_count
+        and _is_int(report.get("FALSE_GREEN_COUNT"))
         and report.get("FALSE_GREEN_COUNT") == 0
+        and _is_int(report.get("VALID_DELTA_FALSE_REJECT_COUNT"))
         and report.get("VALID_DELTA_FALSE_REJECT_COUNT") == 0
     )
     return ("PASS" if green else "FAIL"), report

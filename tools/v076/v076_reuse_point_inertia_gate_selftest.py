@@ -649,6 +649,43 @@ def _golden_step_delete(data: gate.ValidationInput) -> None:
     )
 
 
+def _golden_bool_count_attack(data: gate.ValidationInput) -> None:
+    golden = data.authorities["golden"]
+    golden["human_execution_count"] = False
+    golden["production_pass_count"] = False
+    golden["isolated_green_count"] = True
+    golden["summary"]["step_count"] = True
+
+
+def _canonical_status_bool_count_attack(data: gate.ValidationInput) -> None:
+    status = data.authorities["inherited_green"]["canonical_pr_status"]
+    status["golden_isolated_green_count"] = True
+    status["golden_production_green_count"] = False
+    status["golden_human_green_count"] = False
+    data.pr_body = _pr_body(data)
+
+
+def _card_aggregate_bool_count_attack(data: gate.ValidationInput) -> None:
+    aggregate = data.authorities["card_matrix"]["aggregate"]
+    aggregate["category_count"] = True
+    aggregate["category_card_count_sum"] = True
+    aggregate["alpha07_certified_card_count"] = True
+
+
+def _supersession_bool_count_attack(data: gate.ValidationInput) -> None:
+    entry = _prepare_atomic_replacement(data)
+    entry["dual_write_count"] = False
+    entry["fallback_count"] = False
+    entry["old_owner_production_reachability"] = False
+    entry["new_owner_production_owner_count"] = True
+
+
+def _active_unique_owner_count_attack(data: gate.ValidationInput) -> None:
+    owner_row = data.authorities["historical_reuse"]["unique_owner_domains"][0]
+    owner_row["binding_status"] = "ACTIVE_SELFTEST"
+    owner_row["owner_count"] = True
+
+
 def _diagnostic_as_human(data: gate.ValidationInput) -> None:
     step = data.authorities["golden"]["steps"][0]
     step.update(
@@ -1263,6 +1300,61 @@ CASES = (
         "FAIL",
         _product_scope_missing_owner,
         ("PRODUCT_DELTA_AFFECTED_OWNERS_INCOMPLETE",),
+    ),
+    Case(
+        "139",
+        "Golden aggregate counts reject bool-as-int substitutions",
+        "FAIL",
+        _golden_bool_count_attack,
+        (
+            "GOLDEN_HUMAN_COUNT_TYPE_INVALID",
+            "GOLDEN_PRODUCTION_COUNT_TYPE_INVALID",
+            "GOLDEN_ISOLATED_COUNT_TYPE_INVALID",
+            "GOLDEN_SUMMARY_STEP_COUNT_TYPE_INVALID",
+        ),
+    ),
+    Case(
+        "140",
+        "canonical status counts reject bool-as-int substitutions",
+        "FAIL",
+        _canonical_status_bool_count_attack,
+        (
+            "CANONICAL_STATUS_COUNT_TYPE:golden_isolated_green_count",
+            "CANONICAL_STATUS_COUNT_TYPE:golden_production_green_count",
+            "CANONICAL_STATUS_COUNT_TYPE:golden_human_green_count",
+        ),
+    ),
+    Case(
+        "141",
+        "card aggregate counts reject bool-as-int substitutions",
+        "FAIL",
+        _card_aggregate_bool_count_attack,
+        (
+            "CARD_CERTIFIED_COUNT_INVALID",
+            "CARD_CERTIFICATION_CATEGORY_COUNT_MISMATCH",
+            "CARD_CERTIFICATION_CARD_SUM_MISMATCH",
+        ),
+    ),
+    Case(
+        "142",
+        "supersession counts reject bool-as-int substitutions",
+        "FAIL",
+        _supersession_bool_count_attack,
+        (
+            "SUPERSESSION_INTEGER_FIELD:component.map.replacement_owner:dual_write_count",
+            "SUPERSESSION_INTEGER_FIELD:component.map.replacement_owner:fallback_count",
+            "SUPERSESSION_INTEGER_FIELD:component.map.replacement_owner:old_owner_production_reachability",
+            "SUPERSESSION_INTEGER_FIELD:component.map.replacement_owner:new_owner_production_owner_count",
+        ),
+    ),
+    Case(
+        "143",
+        "active unique-owner cardinality rejects bool-as-int substitution",
+        "FAIL",
+        _active_unique_owner_count_attack,
+        (
+            f"UNIQUE_OWNER_COUNT_TYPE_INVALID:{BASE_DOMAIN_ID}",
+        ),
     ),
 )
 
