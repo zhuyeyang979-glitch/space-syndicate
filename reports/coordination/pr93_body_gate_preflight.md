@@ -1,34 +1,34 @@
 ## Outcome
 
-Draft PR #93 remains the same V0.7.6 line. The append-only Human Playability
-repair is green for automated Candidate 2 readiness at the exact current
-candidate; it is not a human pass and does not advance Golden STEP13.
+Draft PR #93 remains the same V0.7.6 line. The production-main Card-table
+sentinel, commercial presentation fixture, asset registry, and continuity lane
+are green in their explicitly bounded automated scopes. This is not a human
+pass, production-green claim, Commercial M1 Green, or STEP13 advancement.
 
-The six preserved pre-Golden product blockers were repaired in the existing
-production owners: `V075SampleGameScreen` now presents the map, ten-slot track,
-action feed, hand, and confirmation area in one viewport; track acquisition and
-typed hand-card target confirmation reach the existing authoritative flow;
-public receipts render through the existing presentation projection; the
-existing clock owner exposes Pause/1x/2x/4x with default 2x; and Coach Step 3
-uses deterministic safe placement without pointer avoidance. No second screen,
-track, hand, catalog, card execution path, receipt owner, clock, RNG, map, or
-tutorial owner was added.
+`STATUS=TRUE_HARD_STOP_REQUIRING_USER_DECISION`
 
-The real `res://scenes/main.tscn` readiness gate passes `169/169` for one Human
-plus three AI with zero fixture-state injection. The production responsive
-viewport matrix passes all seven cases (`480x960`, `640x960`, `660x960`,
-`900x960`, `1366x768`, `1600x960`, and `1920x1080`) with `144/144` checks;
-pacing is `11/11`, the screen wrapper `30/30`, Coach placement `258/258`, and
-visual contract green.
-Headed Candidate 2 captures and the append-only receipt are under
-`reports/playtest/alpha07_human_candidate_1_blocker/`.
+`COMMERCIAL_M1_GREEN=false`
 
-This is `READY_FOR_REAL_HUMAN_RETEST=true` for Alpha 0.7 Living Planet — Human
-Candidate 2. `HUMAN_GREEN=false`, `production_green=false`, Golden STEP13 is
-still `PENDING`, and the human must perform the next real run.
+`READY_FOR_NEXT_CONSOLIDATED_HUMAN_PLAYTEST=false`
 
-Stage 3 remains isolated green with current delta evidence; this repair does not
-rewrite or demote the Stage 3 boundary.
+`HUMAN_RETEST_DEFERRED=true`
+
+`HUMAN_GREEN=false`
+
+`FULL_PRODUCT_PRODUCTION_GREEN=false`
+
+`STEP13_STATUS=PENDING`
+
+`STEP14_STATUS=PENDING`
+
+`STEP15_STATUS=PENDING`
+
+`PR93_IS_DRAFT=true`
+
+No second screen, track, hand, catalog, card execution path, receipt owner,
+clock, RNG, map, tutorial, asset registry, animation director, or gameplay
+Owner was added. Stage 3 remains isolated green with current delta evidence;
+this checkpoint does not reclassify it as production or human green.
 
 <!-- V076_STATUS_BEGIN -->
 stage_1_status=ISOLATED_GREEN
@@ -47,9 +47,13 @@ latest_completed_stage=V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR_READINESS
 next_stage=V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST
 <!-- V076_STATUS_END -->
 
+## Frozen inherited stage metadata
+
 latest_completed_atomic_step=V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR
 latest_completed_stage_head_sha=f8340207d785e7b35ea7451048e5d71d0325232c
 latest_completed_stage_tree_sha=3a142247c5cabd75a8ad92fbee6210ace5a7c9e5
+
+## Historical STEP13 readiness block
 
 <!-- V076_ALPHA07_STEP13_READINESS_STATUS_BEGIN -->
 golden_step_13_status=PENDING
@@ -78,7 +82,55 @@ latest_completed_atomic_step=V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR
 next_stage=V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST
 <!-- V076_ALPHA07_STEP13_READINESS_STATUS_END -->
 
-## Automated Candidate 2 readiness evidence
+## Automated production-main Card-table sentinel
+
+- `892/892 PASS`, run
+  `20260826-033556-831-v076_alpha07_card_table_flow_readiness_test-5889d5cb`.
+- Production `main.tscn`; fixture-state injection and direct-method false-green
+  counts are zero.
+- First AI Action Feed visibility: 3.724 seconds.
+- Three authoritative track handoffs, four action windows, a second commodity
+  acquisition, and presentation source/queue/start/finish `102/102/102/102`
+  are proven; the director drains to zero active cues.
+- Script errors, diagnostics, task-introduced errors, and residual processes are
+  all zero.
+- Receipt:
+  `reports/presentation/commercial_m1/automated_card_table_flow_receipt.json`.
+
+This is automated readiness evidence only; `human_evidence=false`.
+
+## Commercial presentation and asset evidence
+
+- Showcase focused gate: `984/984 PASS`, latest run
+  `20260826-034634-965-vertical_slice_showcase_test-2b8a02e7`.
+- Headed fixture: 13 episodes / 39 frames; independent review
+  `PASS_FIXTURE_ONLY`.
+- Asset registry selftest: `62/62 PASS`; asset-license and query gate: `PASS`.
+- Human-playability readiness automation: `266/266 PASS`, latest run
+  `20260826-034651-563-v076_alpha07_human_playability_readiness_test-ad67a5ed`.
+- Continuity: `105/105 PASS`, `PASS_STATIC`, zero failures.
+
+## Reuse/Point-Inertia hard stop
+
+- Evaluated predecessor HEAD:
+  `362d65a1e03550800d68cb95b13f4425ee54e868`.
+- Selftest: `120/120 PASS`; false-green and valid-delta false-reject counts: 0.
+- Full committed-history validation: `FAIL`, 565 failures, 509 historical
+  failures, 62 transitions.
+- The previously proven minimum of 22 failures outside the existing append-only
+  correction mechanism remains a lower bound. No waiver, scan weakening,
+  fabricated correction, history rewrite, or new governance task is authorized.
+
+The report/handoff commit follows the evaluated predecessor and does not pretend
+that its own transition was included in those counts. Final remote-head counts
+will be published in the append-only PR comment after the last rerun.
+
+## Next allowed step
+
+Resolve the Reuse/Point-Inertia decision path. Do not start the consolidated
+human retest or STEP13–15 while the hard stop remains.
+
+## Historical Candidate 2 readiness evidence
 
 - `v076_alpha07_human_playability_readiness_test`: `169/169`, run
   `20260823-214021-065-v076_alpha07_human_playability_readiness_test-397f755f`.
@@ -94,10 +146,10 @@ The full matrix now includes the narrow phone-like cases without panel
 overflow. This preflight does not convert automated readiness into Human
 Green; a real human retest and observer attestation remain required.
 
-## Append-only Candidate 3 status (2026-08-24T19:47:03Z)
+## Historical append-only Candidate 3 status (2026-08-24T19:47:03Z)
 
 The prior Candidate 2 status block is historical and remains unchanged. The
-current exact candidate is:
+historical exact candidate was:
 
 ```text
 human_candidate_2_disposition=PRE_GOLDEN_CARD_TABLE_PRESENTATION_AND_TRACK_FLOW_BLOCKED
@@ -120,6 +172,6 @@ step_15_status=NOT_STARTED
 pr93_is_draft=true
 ```
 
-The real headed `main.tscn` session is left open for the human Candidate 3
-short retest. This append does not claim Golden execution or observer
+That headed Candidate 3 session is no longer the current execution boundary.
+The append remains historical and does not claim Golden execution or observer
 attestation.

@@ -1,0 +1,67 @@
+{
+  "schema": "SpaceSyndicateCommercialSprintPhase0V1",
+  "recorded_at": "2026-08-26T03:35:39+09:00",
+  "master_task_id": "SPACE_SYNDICATE_ALPHA07_COMMERCIAL_PRESENTATION_AND_ASSET_REGISTRY_SPRINT_V1",
+  "product_milestone": "ALPHA_07_COMMERCIAL_PRESENTATION_MILESTONE_1",
+  "target_build_name": "Space Syndicate Alpha 0.7 — Commercial Preview 1",
+  "current_product_task": "V076_ALPHA07_HUMAN_VISIBLE_MULTI_WINDOW_COMMODITY_RESOLUTION_SIDECAR_FACILITY_AND_SUSHI_REPAIR",
+  "current_candidate": "Alpha 0.7 Living Planet — Human Candidate 5",
+  "current_candidate_disposition": "AUTOMATED_READINESS_REVOKED_BY_REAL_HUMAN_OBSERVATION",
+  "human_retest_deferred": true,
+  "human_green": false,
+  "step13_status": "PENDING",
+  "step14_status": "PENDING",
+  "step15_status": "PENDING",
+  "production_green": false,
+  "pr": 93,
+  "pr_is_draft": true,
+  "live_local_head_sha": "348a7b966afbaf0ef5e9aca25ea0dfb4ed0b95a7",
+  "live_local_tree_sha": "6c8a559f1617798f8070194eee232e91e31af8a7",
+  "live_remote_head_sha": "3bf9e9b2468e4a279af47cd3be36d0660abcfe91",
+  "remote_is_ancestor_of_local": true,
+  "live_branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+  "worktree_reset_count": 0,
+  "worktree_stash_count": 0,
+  "worktree_clean_count": 0,
+  "tracked_change_count": 30,
+  "index_change_count": 0,
+  "untracked_count": 294,
+  "tracked_file_hash_aggregate_sha256": "5050cd83db06aa6225e4d59b3a92844b97c77edb2c81c08cb2fabc421bc49f7b",
+  "untracked_file_hash_aggregate_sha256": "cd47378776d557c202f5e2bcd862a3962eeb03f69b44c6d7061b70887583df53",
+  "current_godot_process_count": 0,
+  "unresolved_human_blockers": [
+    "SECOND_COMMODITY_CANNOT_BE_ACQUIRED_IN_REAL_HUMAN_FLOW",
+    "SUSHI_AUTHORITY_COUNTERS_CHANGE_BUT_VISIBLE_TRACK_DOES_NOT_SCROLL",
+    "RESOLUTION_POPOUT_OCCLUDES_PLANET_CENTER",
+    "RESOLVING_CARD_AND_MAP_TARGET_HAVE_NO_VISUAL_CAUSAL_LINK",
+    "FACILITY_BUILD_RESULT_IS_NOT_HUMAN_VISIBLE_OR_SALIENT",
+    "AUTOMATED_TEST_USES_STATE_OR_DIRECT_METHOD_PROOF_INSTEAD_OF_REAL_VISIBLE_FLOW"
+  ],
+  "latest_focused_gate_results": {
+    "human_playability": "266/266 PASS",
+    "public_arrangement": "25/25 PASS",
+    "facility_visual_model": "40/40 PASS",
+    "facility_commit_map_marker_e2e": "46 checks, 44 passed, 2 failed",
+    "card_table_flow": "529/531, 2 failed",
+    "card_table_flow_failures": [
+      "first AI card play or explicit PASS is visible within five wall seconds",
+      "track cards and vacancy finish in their new authoritative screen slots"
+    ],
+    "card_table_screen_space": {
+      "visible_handoff_sample_count": 3,
+      "card_min_slot_ratio": 1.0,
+      "vacancy_min_slot_ratio": 1.0,
+      "end_rect_parity": false,
+      "vacancy_moves": true
+    }
+  },
+  "evidence_roots": [
+    "reports/playtest/alpha07_candidate4_human_visible_flow_blocker",
+    "reports/playtest/alpha07_current_candidate_multi_window_blocker",
+    "reports/playtest/alpha07_human_candidate_4_resolution_turn_loop_blocker",
+    "reports/playtest/alpha07_human_candidate_4_short_retest",
+    "reports/handoffs/alpha07_candidate5_commercial_sprint_phase0_20260826.json"
+  ],
+  "next_atomic_phase": "PHASE_1_ASSET_REFERENCE_REGISTRY",
+  "preservation_statement": "Candidate 5 feedback, dirty worktree, inherited Owners, and failed readiness evidence remain append-only and are not reclassified as Human Green."
+}
