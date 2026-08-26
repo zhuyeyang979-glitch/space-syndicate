@@ -1,0 +1,176 @@
+{
+  "schema": "V076CommercialPresentationVisualReviewV1",
+  "reviewed_at": "2026-08-26T12:03:59+09:00",
+  "status": "PASS_FIXTURE_ONLY",
+  "reviewer_class": "INDEPENDENT_AGENT_FRAME_BY_FRAME_VISUAL_INSPECTION",
+  "capture_run_id": "20260826-030019-680-showcase_frame_capture-db746429",
+  "focused_test_run_id": "20260826-025950-576-vertical_slice_showcase_test-7d69185a",
+  "focused_test_result": "984/984 PASS",
+  "canonical_scene": "res://scenes/tools/CommercialPresentationShowcase.tscn",
+  "capture_manifest": "reports/presentation/commercial_m1/showcase_capture_manifest.json",
+  "fixture_class": "PRESENTATION_FIXTURE",
+  "fixture_banner_text": "PRESENTATION_FIXTURE — NOT NATURAL GAMEPLAY / NOT HUMAN GREEN",
+  "capture_size": {
+    "width": 1600,
+    "height": 960
+  },
+  "episode_count": 13,
+  "frame_count": 39,
+  "reviewed_frame_count": 39,
+  "hash_match_frame_count": 39,
+  "accepted_episode_count": 13,
+  "fixture_banner_visible_frame_count": 39,
+  "all_frames_reviewed": true,
+  "all_frame_hashes_match_manifest": true,
+  "all_episodes_distinguishable": true,
+  "fixture_banner_persistent": true,
+  "runner_error_count": 0,
+  "runner_diagnostic_count": 0,
+  "runner_residual_process_count": 0,
+  "visual_blockers": {
+    "total_count": 0,
+    "numeric_contradiction_count": 0,
+    "duplicate_identity_count": 0,
+    "blocking_occlusion_count": 0,
+    "missing_required_entity_change_count": 0
+  },
+  "episodes": [
+    {
+      "episode_id": "main_menu",
+      "cue_id": "PRODUCT_SHELL_MAIN_MENU",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "The product shell is clear and the static menu composition has no contradictory or duplicated entity.",
+      "evidence_path": "reports/presentation/commercial_m1/menu_capture/evidence.json"
+    },
+    {
+      "episode_id": "loading",
+      "cue_id": "PRODUCT_SHELL_LOADING",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "World Map, Decks and Track, and Table Ready advance consistently through steps 1, 2, and 3.",
+      "evidence_path": "reports/presentation/commercial_m1/loading_capture/evidence.json"
+    },
+    {
+      "episode_id": "acquire_to_deck",
+      "cue_id": "CARD_ENTER_DECK",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "The source becomes a vacancy while one card travels to the draw pile and its count changes from 12 to 13.",
+      "evidence_path": "reports/presentation/commercial_m1/deck_acquire_capture/evidence.json"
+    },
+    {
+      "episode_id": "shuffle",
+      "cue_id": "DECK_SHUFFLE",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "Seven discard cards and twelve draw cards visibly interleave into nineteen sealed draw cards with no face disclosure.",
+      "evidence_path": "reports/presentation/commercial_m1/shuffle_capture/evidence.json"
+    },
+    {
+      "episode_id": "draw",
+      "cue_id": "CARD_DRAW",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "The draw pile changes from 19 to 18 while the local hand changes from 4/5 to 5/5.",
+      "evidence_path": "reports/presentation/commercial_m1/draw_capture/evidence.json"
+    },
+    {
+      "episode_id": "hand_hover",
+      "cue_id": "CARD_SELECT",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "Five local cards remain visible while Orbital Market lifts without covering adjacent cards or controls; its inspector is an explicit preview, not a second gameplay identity.",
+      "evidence_path": "reports/presentation/commercial_m1/hand_hover_capture/evidence.json"
+    },
+    {
+      "episode_id": "public_play",
+      "cue_id": "CARD_PLAY_PUBLIC",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "Three distinct public cards progress from selected and queued state to queued positions 1/3 through 3/3 while the sample window reads 30, 18, and 06 seconds.",
+      "evidence_path": "reports/presentation/commercial_m1/card_play_capture/evidence.json"
+    },
+    {
+      "episode_id": "public_resolution",
+      "cue_id": "CARD_RESOLUTION_FOCUS",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "The R09, R04, and R12 cards progress in order from queued to resolving to resolved while remaining inspectable.",
+      "evidence_path": "reports/presentation/commercial_m1/public_resolution_capture/evidence.json"
+    },
+    {
+      "episode_id": "facility",
+      "cue_id": "FACILITY_BUILD",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "The Region 09 Orbital Market grows from 28 percent to 68 percent and then to a built persistent model; the nearby R09 marker remains readable.",
+      "evidence_path": "reports/presentation/commercial_m1/facility_capture/evidence.json"
+    },
+    {
+      "episode_id": "monster",
+      "cue_id": "MONSTER_MELEE",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "Ember Wyrm visibly strikes Void Manta, the impact reports minus three HP, and the target moves from 9/9 to a recovered 6/9.",
+      "evidence_path": "reports/presentation/commercial_m1/monster_combat_capture/evidence.json"
+    },
+    {
+      "episode_id": "military",
+      "cue_id": "MILITARY_ASSAULT_REGION",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "Fleet Alpha travels on the spherical geodesic from the unique R07 origin to the unique R12 target, resolves armor 4 to 2, and withdraws after one mission.",
+      "evidence_path": "reports/presentation/commercial_m1/military_combat_capture/evidence.json"
+    },
+    {
+      "episode_id": "track_handoff",
+      "cue_id": "TRACK_HANDOFF",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "The ordered track changes from 01, 02, vacancy to vacancy, 01, 02 with a visible in-transit phase.",
+      "evidence_path": "reports/presentation/commercial_m1/sushi_track_capture/evidence.json"
+    },
+    {
+      "episode_id": "final_settlement",
+      "cue_id": "FINAL_SETTLEMENT",
+      "reviewed_phases": ["start", "mid", "end"],
+      "visual_acceptance": "PASS",
+      "observation": "Final Settlement visibly advances from scoring in progress through category reveal to an exactly-once locked ranking and winner.",
+      "evidence_path": "reports/presentation/commercial_m1/final_settlement_capture/evidence.json"
+    }
+  ],
+  "visual_findings": {
+    "production_table_lens_values_consistent": true,
+    "source_card_target_relationship_readable": true,
+    "five_card_hand_visible": true,
+    "three_card_public_row_visible": true,
+    "facility_model_visible": true,
+    "monster_token_and_impact_visible": true,
+    "military_geodesic_token_visible": true,
+    "military_origin_region_id": "R07",
+    "military_target_region_id": "R12",
+    "military_region_identities_unique": true,
+    "sushi_track_slot_movement_visible": true,
+    "final_settlement_three_frame_change_visible": true,
+    "sample_countdown_values": [30, 18, 6],
+    "sample_countdown_explicitly_labeled": true,
+    "nonblocking_observations": [
+      "The R09 marker touches the final Orbital Market roof edge, but both the marker text and facility silhouette remain readable."
+    ]
+  },
+  "scope_limits": {
+    "natural_gameplay": false,
+    "gameplay_green": false,
+    "human_executed": false,
+    "human_confirmed": false,
+    "human_green": false,
+    "production_green": false,
+    "commercial_m1_green": false,
+    "human_retest_deferred": true,
+    "step13_status": "PENDING",
+    "step14_status": "PENDING",
+    "step15_status": "PENDING"
+  },
+  "review_conclusion": "All 13 fixture episodes pass independent frame-by-frame visual review, all 39 frame hashes match the manifest, and the fixture watermark remains present in all 39 frames. The result is PASS_FIXTURE_ONLY and does not establish natural gameplay, Human Green, production green, or Commercial M1 Green."
+}
