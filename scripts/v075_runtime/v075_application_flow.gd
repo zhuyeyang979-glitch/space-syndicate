@@ -4,6 +4,8 @@ class_name V075ApplicationFlow
 signal projection_changed(snapshot: Dictionary)
 signal receipt_ready(receipt: Dictionary)
 signal owner_private_receipt_ready(receipt: Dictionary)
+signal deck_lifecycle_presentation_receipt_ready(receipt: Dictionary)
+signal track_presentation_receipt_ready(receipt: Dictionary)
 signal final_settlement_presented(settlement: Dictionary)
 signal runtime_fault_presented(receipt: Dictionary)
 signal public_resolution_ready(receipt: Dictionary)
@@ -20,10 +22,16 @@ const V076_PRODUCTION_MILITARY_RECEIPT_SCHEMA := (
 	"V076OwnerPrivateMilitaryApplicationReceiptV1"
 )
 const PLAYTEST_PACE_MULTIPLIERS := [0, 1, 2, 4]
-const DEFAULT_PLAYTEST_PACE_MULTIPLIER := 2
+# Human Candidate 5 runs every production action window at wall-clock 1x.
+# The other multipliers remain callable by explicit test/CI intents only; no
+# production Control exposes them to human input.
+const DEFAULT_PLAYTEST_PACE_MULTIPLIER := 1
 const FAST_FORWARD_PLAYTEST_PACE_MULTIPLIER := 4
 const ProfileCatalog := preload(
 	"res://scripts/v076/military/v076_military_unit_profile_catalog_v1.gd"
+)
+const PresentationReceiptIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
 )
 
 @onready var _ruleset_owner: Node = %V075RulesetRuntimeOwner
@@ -69,6 +77,8 @@ var _fast_forward_active := false
 var _fast_forward_request_count := 0
 var _fast_forward_decision_stop_count := 0
 var _last_human_decision_signature := ""
+var _track_presentation_receipt_forward_count := 0
+var _last_track_presentation_receipt_id := ""
 
 
 func _ready() -> void:
@@ -125,6 +135,18 @@ func _ready() -> void:
 	_runtime_owner.playtest_observation_ready.connect(
 		_on_playtest_observation_ready
 	)
+	if _runtime_owner.has_signal(
+		"deck_lifecycle_presentation_receipt_ready"
+	):
+		_runtime_owner.connect(
+			"deck_lifecycle_presentation_receipt_ready",
+			_on_deck_lifecycle_presentation_receipt_ready
+		)
+	if _runtime_owner.has_signal("track_presentation_receipt_ready"):
+		_runtime_owner.connect(
+			"track_presentation_receipt_ready",
+			_on_track_presentation_receipt_ready
+		)
 	var pacing_binding := _runtime_owner.call(
 		"set_playtest_pace_multiplier",
 		_effective_playtest_pace_multiplier
@@ -631,6 +653,196 @@ func local_snapshot() -> Dictionary:
 	)
 
 
+## Unique production aggregation point for presentation mutation evidence.
+## Every private owner returns a hash-only witness.  Missing owners, missing
+## APIs, or malformed hashes fail closed instead of falling back to an empty
+## local Projection.
+func presentation_authority_guard_snapshot() -> Dictionary:
+	var component_ids := [
+		"V075RulesetRuntimeOwner",
+		"V075RuntimeOwner",
+		"V075CombatRuntimeOwner",
+		"V076DeterministicKernel",
+		"V076PrivateDirectActionInputOwnerV1",
+		"V076MilitaryPhysicalEtaOwnerV1",
+		"V076V075ProductionAdapterV1",
+	]
+	var component_hashes: Dictionary = {}
+	var missing_components: Array[String] = []
+
+	var ruleset_debug: Dictionary = {}
+	if _ruleset_owner != null and _ruleset_owner.has_method("debug_snapshot"):
+		ruleset_debug = _ruleset_owner.call("debug_snapshot") as Dictionary
+	if ruleset_debug.is_empty():
+		missing_components.append("V075RulesetRuntimeOwner")
+	else:
+		component_hashes["V075RulesetRuntimeOwner"] = (
+			PresentationReceiptIdentity.canonical_sha256(ruleset_debug)
+		)
+
+	var runtime_guard: Dictionary = {}
+	if (
+		_runtime_owner != null
+		and _runtime_owner.has_method("presentation_authority_guard_snapshot")
+	):
+		runtime_guard = _runtime_owner.call(
+			"presentation_authority_guard_snapshot"
+		) as Dictionary
+	_register_guard_component(
+		component_hashes,
+		missing_components,
+		"V075RuntimeOwner",
+		runtime_guard
+	)
+
+	var combat_guard: Dictionary = {}
+	if (
+		_combat_owner != null
+		and _combat_owner.has_method("presentation_authority_guard_snapshot")
+	):
+		combat_guard = _combat_owner.call(
+			"presentation_authority_guard_snapshot"
+		) as Dictionary
+	_register_guard_component(
+		component_hashes,
+		missing_components,
+		"V075CombatRuntimeOwner",
+		combat_guard
+	)
+
+	var kernel_guard: Dictionary = {}
+	if (
+		_v076_kernel != null
+		and _v076_kernel.has_method("presentation_authority_guard_snapshot")
+	):
+		kernel_guard = _v076_kernel.call(
+			"presentation_authority_guard_snapshot"
+		) as Dictionary
+	_register_guard_component(
+		component_hashes,
+		missing_components,
+		"V076DeterministicKernel",
+		kernel_guard
+	)
+
+	var direct_guard: Dictionary = {}
+	if (
+		_v076_private_direct_action_owner != null
+		and _v076_private_direct_action_owner.has_method(
+			"presentation_authority_guard_snapshot"
+		)
+	):
+		direct_guard = _v076_private_direct_action_owner.call(
+			"presentation_authority_guard_snapshot"
+		) as Dictionary
+	_register_guard_component(
+		component_hashes,
+		missing_components,
+		"V076PrivateDirectActionInputOwnerV1",
+		direct_guard
+	)
+
+	for component_row in [
+		{
+			"id": "V076MilitaryPhysicalEtaOwnerV1",
+			"node": _v076_eta_owner,
+		},
+		{
+			"id": "V076V075ProductionAdapterV1",
+			"node": _v076_production_adapter,
+		},
+	]:
+		var component_id := str(component_row.get("id", ""))
+		var component: Variant = component_row.get("node")
+		var debug: Dictionary = {}
+		if component != null and component.has_method("debug_snapshot"):
+			debug = component.call("debug_snapshot") as Dictionary
+		if debug.is_empty():
+			missing_components.append(component_id)
+		else:
+			component_hashes[component_id] = (
+				PresentationReceiptIdentity.canonical_sha256(debug)
+			)
+
+	var flow_state := {
+		"intent_sequence": _intent_sequence,
+		"session_sequence": _session_sequence,
+		"composition_ready": _composition_ready,
+		"new_game_transaction_in_progress": _new_game_transaction_in_progress,
+		"new_game_transaction_stage": _new_game_transaction_stage,
+		"last_new_game_transaction_stage": _last_new_game_transaction_stage,
+		"new_game_publication_count": _new_game_publication_count,
+		"new_game_rollback_count": _new_game_rollback_count,
+		"last_published_session_id": _last_published_session_id,
+		"pacing": pacing_snapshot(),
+	}
+	var boundary := {
+		"schema": "V076PresentationAuthorityGuardV1",
+		"component_ids": component_ids,
+		"component_hashes": component_hashes,
+		"flow_state": flow_state,
+	}
+	var snapshot_sha256 := PresentationReceiptIdentity.canonical_sha256(
+		boundary
+	)
+	return {
+		"schema": "V076PresentationAuthorityGuardV1",
+		"valid": (
+			missing_components.is_empty()
+			and component_hashes.size() == component_ids.size()
+			and _all_guard_hashes_valid(component_hashes)
+			and snapshot_sha256.length() == 64
+		),
+		"component_ids": component_ids,
+		"component_hashes": component_hashes,
+		"component_count": component_hashes.size(),
+		"missing_components": missing_components,
+		"missing_component_count": missing_components.size(),
+		"kernel_current_tick": int(kernel_guard.get("current_tick", -1)),
+		"kernel_next_authority_sequence": int(kernel_guard.get(
+			"next_authority_sequence", -1
+		)),
+		"kernel_rng_state_sha256": str(kernel_guard.get(
+			"rng_state_sha256", ""
+		)),
+		"runtime_card_zone_state_sha256": str(runtime_guard.get(
+			"card_zone_state_sha256", ""
+		)),
+		"runtime_track_state_sha256": str(runtime_guard.get(
+			"track_state_sha256", ""
+		)),
+		"runtime_facility_state_sha256": str(runtime_guard.get(
+			"facility_state_sha256", ""
+		)),
+		"runtime_settlement_state_sha256": str(runtime_guard.get(
+			"settlement_state_sha256", ""
+		)),
+		"snapshot_sha256": snapshot_sha256,
+		"contains_private_values": false,
+		"writes_authority": false,
+	}
+
+
+func _register_guard_component(
+	component_hashes: Dictionary,
+	missing_components: Array[String],
+	component_id: String,
+	guard: Dictionary
+) -> void:
+	var state_sha256 := str(guard.get("state_sha256", ""))
+	if not bool(guard.get("valid", false)) or state_sha256.length() != 64:
+		missing_components.append(component_id)
+		return
+	component_hashes[component_id] = state_sha256
+
+
+func _all_guard_hashes_valid(component_hashes: Dictionary) -> bool:
+	for hash_variant in component_hashes.values():
+		if str(hash_variant).length() != 64:
+			return false
+	return true
+
+
 func planet_map_view_payload(
 	selected_card_instance_id := "",
 	selected_region_id := ""
@@ -727,6 +939,10 @@ func debug_snapshot() -> Dictionary:
 		),
 		"v076_public_batch_entry_count": 0,
 		"v076_shared_sushi_track_resolution_count": 0,
+		"track_presentation_receipt_forward_count": (
+			_track_presentation_receipt_forward_count
+		),
+		"last_track_presentation_receipt_id": _last_track_presentation_receipt_id,
 		"playtest_pacing": pacing_snapshot(),
 		"playtest_pace_change_count": _playtest_pace_change_count,
 		"fast_forward_request_count": _fast_forward_request_count,
@@ -1371,7 +1587,7 @@ func _reject(
 
 
 func _on_runtime_state_changed(snapshot: Dictionary) -> void:
-	projection_changed.emit(snapshot.duplicate(true))
+	projection_changed.emit(snapshot)
 	_publish_pacing_state_if_decision_changed()
 
 
@@ -1389,6 +1605,25 @@ func _on_public_resolution_presented(receipt: Dictionary) -> void:
 
 func _on_playtest_observation_ready(receipt: Dictionary) -> void:
 	playtest_observation_ready.emit(receipt.duplicate(true))
+
+
+func _on_deck_lifecycle_presentation_receipt_ready(
+	receipt: Dictionary
+) -> void:
+	# This is an owner-private presentation bridge.  It forwards the immutable
+	# authority receipt and never submits a gameplay intent.
+	deck_lifecycle_presentation_receipt_ready.emit(receipt.duplicate(true))
+
+
+func _on_track_presentation_receipt_ready(receipt: Dictionary) -> void:
+	# The RuntimeOwner remains the sole authority.  This flow signal is only an
+	# immutable transport bridge to the already-bound GameScreen Director.
+	_track_presentation_receipt_forward_count += 1
+	_last_track_presentation_receipt_id = str(receipt.get(
+		"receipt_id",
+		receipt.get("request_id", "")
+	))
+	track_presentation_receipt_ready.emit(receipt.duplicate(true))
 
 
 func _exit_tree() -> void:

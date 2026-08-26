@@ -5,6 +5,9 @@ class_name SpaceSyndicateBottomCountdownBar
 @onready var timer_label: Label = %CardResolutionRevealTimerLabel
 @onready var timer_bar: ProgressBar = %CardResolutionRevealTimerBar
 
+var _style_accent := Color.TRANSPARENT
+var _styles_ready := false
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -27,7 +30,10 @@ func set_state(data: Dictionary) -> void:
 	timer_label.tooltip_text = str(data.get("label_tooltip", "Current timed table window."))
 	timer_bar.value = ratio * 100.0
 	timer_bar.tooltip_text = str(data.get("bar_tooltip", "Shorter bar means this table window is closer to ending."))
-	_set_styles(accent)
+	if not _styles_ready or not _style_accent.is_equal_approx(accent):
+		_set_styles(accent)
+		_style_accent = accent
+		_styles_ready = true
 
 
 func _set_styles(accent: Color) -> void:

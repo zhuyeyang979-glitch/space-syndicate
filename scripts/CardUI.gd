@@ -136,7 +136,12 @@ func _apply_data() -> void:
 	var hand_mini := _is_mini_hand_card()
 	var inspector_full := _is_inspector_full_card()
 	var type_glyph := _card_type_glyph(display_type)
-	cost_label.text = cost_text
+	# A production hand card has a narrow header. Runtime cost descriptions can
+	# be explanatory sentences (for example, "现金 4；打出免费"); putting that
+	# whole sentence in the cost badge makes the HBox consume the name column and
+	# leaves the card looking blank/garbled. Keep the full source value for the
+	# tooltip and inspector, but use one compact, typed token in hand density.
+	cost_label.text = _compact_cost_text() if hand_mini else cost_text
 	name_label.text = _short_card_text(card_name, 12) if hand_mini else card_name
 	effect_label.text = _mini_effect_line() if hand_mini else (_inspector_full_effect_text() if inspector_full else effect_text)
 	type_label.text = _mini_route_text(display_type) if hand_mini else (_inspector_full_route_text(display_type) if inspector_full else display_type)
@@ -262,6 +267,18 @@ func _apply_density_for_size() -> void:
 	var cost_badge := get_node_or_null("CardFrame/CardMargin/CardRows/Header/CostBadge") as Control
 	if cost_badge != null:
 		cost_badge.custom_minimum_size = Vector2(20, 18) if is_mini_card else (Vector2(22, 20) if compact else Vector2(28, 26))
+		cost_badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if hand_mini else Control.SIZE_FILL
+	var header := get_node_or_null("CardFrame/CardMargin/CardRows/Header") as HBoxContainer
+	if header != null:
+		header.add_theme_constant_override("separation", 3 if hand_mini else (6 if not compact else 4))
+	if name_label != null:
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if route_glyph_badge != null:
+		route_glyph_badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if hand_mini else Control.SIZE_FILL
+	if cost_label != null:
+		cost_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if hand_mini else Control.SIZE_FILL
+	if route_glyph_label != null:
+		route_glyph_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if hand_mini else Control.SIZE_FILL
 	if route_glyph_badge != null:
 		route_glyph_badge.custom_minimum_size = Vector2(18, 18) if is_mini_card else (Vector2(21, 20) if compact else Vector2(24, 26))
 	# dock_mini is the production hand face, not a debug thumbnail.  It must
@@ -291,6 +308,20 @@ func _apply_density_for_size() -> void:
 	effect_label.add_theme_font_size_override("font_size", font_size)
 	type_label.add_theme_font_size_override("font_size", font_size)
 	stat_label.add_theme_font_size_override("font_size", font_size)
+
+
+func _compact_cost_text() -> String:
+	var clean := cost_text.strip_edges()
+	if clean.is_empty():
+		return "—"
+	if clean.contains("免费") and not clean.contains("0"):
+		return "免费"
+	var digits := RegEx.new()
+	if digits.compile("\\d+(?:\\.\\d+)?") == OK:
+		var match := digits.search(clean)
+		if match != null:
+			return match.get_string()
+	return _short_card_text(clean, 2)
 
 
 func _art_hint_for_type(value: String) -> String:

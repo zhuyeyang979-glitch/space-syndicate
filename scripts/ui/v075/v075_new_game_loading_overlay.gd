@@ -36,6 +36,9 @@ var _pending_new_game_intent: Dictionary = {}
 var _loading_sequence := 0
 var _first_playable_scheduled := false
 var _first_playable_snapshot: Dictionary = {}
+var _presentation_fixture_active := false
+var _presentation_fixture_begin_count := 0
+var _presentation_fixture_end_count := 0
 
 
 func _ready() -> void:
@@ -208,6 +211,64 @@ func begin_loading(intent_id: String) -> bool:
 	return true
 
 
+## Presentation-only lifecycle for the sealed commercial Showcase.  It reuses
+## the production Loading surface without incrementing real new-game success or
+## failure counters and without submitting an application intent.
+func begin_presentation_fixture(intent_id: String) -> bool:
+	if _active or _presentation_fixture_active:
+		return false
+	_presentation_fixture_active = true
+	_presentation_fixture_begin_count += 1
+	_intent_id = intent_id.strip_edges()
+	visible = true
+	_title.text = "正在准备新对局"
+	_set_stage(
+		"fixture_request_received",
+		1,
+		"读取地图设定与玩家席位…",
+		"PRESENTATION_FIXTURE · 不启动自然对局。",
+		0.35
+	)
+	return true
+
+
+func advance_presentation_fixture(stage_id: String) -> bool:
+	if not _presentation_fixture_active:
+		return false
+	match stage_id:
+		"authority_initialization":
+			_set_stage(
+				"fixture_authority_initialization",
+				2,
+				"生成星球、牌轨与 AI…",
+				"封存展示帧；不修改 Runtime Authority。",
+				1.35
+			)
+		"projection_received":
+			_set_stage(
+				"fixture_projection_received",
+				3,
+				"布置主桌与可操作卡牌…",
+				"封存展示投影已就绪。",
+				2.55
+			)
+		_:
+			return false
+	return true
+
+
+func end_presentation_fixture() -> bool:
+	if not _presentation_fixture_active:
+		return false
+	_presentation_fixture_active = false
+	_presentation_fixture_end_count += 1
+	_stage_id = "fixture_complete"
+	_stage_index = STAGE_COUNT
+	visible = false
+	loading_stage_changed.emit(debug_snapshot())
+	return true
+
+
 func mark_authority_initialization_started() -> void:
 	if not _active:
 		return
@@ -281,6 +342,10 @@ func is_loading() -> bool:
 	return _active
 
 
+func is_presentation_fixture_loading() -> bool:
+	return _presentation_fixture_active
+
+
 func timing_snapshot() -> Dictionary:
 	return {
 		"schema": TIMING_SCHEMA,
@@ -315,6 +380,9 @@ func debug_snapshot() -> Dictionary:
 		"receipt_accepted": _receipt_accepted,
 		"telemetry_recorded": _telemetry_recorded,
 		"last_failure_reason": _last_failure_reason,
+		"presentation_fixture_active": _presentation_fixture_active,
+		"presentation_fixture_begin_count": _presentation_fixture_begin_count,
+		"presentation_fixture_end_count": _presentation_fixture_end_count,
 	}, true)
 	return result
 

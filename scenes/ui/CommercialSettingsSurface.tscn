@@ -1,0 +1,146 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/commercial_settings_surface.gd" id="2_script"]
+
+[node name="CommercialSettingsSurface" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 430)
+layout_mode = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="Rows" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="Title" type="Label" parent="Margin/Rows"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "设置 SETTINGS"
+
+[node name="Hint" type="Label" parent="Margin/Rows"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.7, 0.8, 1)
+text = "调整声音、窗口、可访问性和提示反馈。设置只改变呈现层。"
+autowrap_mode = 3
+
+[node name="Grid" type="GridContainer" parent="Margin/Rows"]
+layout_mode = 2
+size_flags_vertical = 3
+columns = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 8
+
+[node name="MasterVolumeLabel" type="Label" parent="Margin/Rows/Grid"]
+layout_mode = 2
+text = "主音量"
+
+[node name="MasterVolume" type="HSlider" parent="Margin/Rows/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+max_value = 100.0
+value = 100.0
+step = 1.0
+
+[node name="MusicVolumeLabel" type="Label" parent="Margin/Rows/Grid"]
+layout_mode = 2
+text = "音乐音量"
+
+[node name="MusicVolume" type="HSlider" parent="Margin/Rows/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+max_value = 100.0
+value = 75.0
+step = 1.0
+
+[node name="SfxVolumeLabel" type="Label" parent="Margin/Rows/Grid"]
+layout_mode = 2
+text = "音效音量"
+
+[node name="SfxVolume" type="HSlider" parent="Margin/Rows/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+max_value = 100.0
+value = 85.0
+step = 1.0
+
+[node name="WindowModeLabel" type="Label" parent="Margin/Rows/Grid"]
+layout_mode = 2
+text = "窗口模式"
+
+[node name="WindowMode" type="OptionButton" parent="Margin/Rows/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+
+[node name="ResolutionLabel" type="Label" parent="Margin/Rows/Grid"]
+layout_mode = 2
+text = "分辨率"
+
+[node name="Resolution" type="OptionButton" parent="Margin/Rows/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+
+[node name="LanguageLabel" type="Label" parent="Margin/Rows/Grid"]
+layout_mode = 2
+text = "语言"
+
+[node name="Language" type="OptionButton" parent="Margin/Rows/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+
+[node name="ReducedMotionLabel" type="Label" parent="Margin/Rows/Grid"]
+layout_mode = 2
+text = "Reduced Motion"
+
+[node name="ReducedMotion" type="CheckButton" parent="Margin/Rows/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "缩短移动与震屏"
+
+[node name="ScreenShakeLabel" type="Label" parent="Margin/Rows/Grid"]
+layout_mode = 2
+text = "Screen Shake"
+
+[node name="ScreenShake" type="CheckButton" parent="Margin/Rows/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "允许轻微震屏"
+
+[node name="TooltipDelayLabel" type="Label" parent="Margin/Rows/Grid"]
+layout_mode = 2
+text = "提示延迟（毫秒）"
+
+[node name="TooltipDelay" type="HSlider" parent="Margin/Rows/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+min_value = 0.0
+max_value = 1200.0
+value = 420.0
+step = 20.0
+
+[node name="SettingsStatus" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.49, 0.9, 0.78, 1)
+text = "设置尚未应用。"
+
+[node name="ApplySettingsButton" type="Button" parent="Margin/Rows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+text = "应用设置"

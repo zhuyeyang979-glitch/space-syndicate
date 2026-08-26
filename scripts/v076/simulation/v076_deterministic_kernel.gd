@@ -193,6 +193,82 @@ func capture_snapshot() -> Dictionary:
 	return {"accepted": true, "reason": "", "snapshot": snapshot, "snapshot_sha256": snapshot_sha}
 
 
+## Read-only presentation witness available between deterministic Tick boundaries.
+## Replay capture keeps its strict boundary rule above; this method never advances
+## time, consumes RNG, allocates an authority sequence, or mutates a domain.
+func presentation_authority_guard_snapshot() -> Dictionary:
+	var authority_state_sha256 := state_fingerprint()
+	var rng_state_sha256 := StateCodec.fingerprint(_rng_snapshots())
+	var configured_ready := _configured and not _domain_handlers.is_empty()
+	var pristine_unconfigured := _presentation_guard_pristine_unconfigured()
+	var lifecycle_state := (
+		"CONFIGURED"
+		if configured_ready
+		else "PRISTINE_UNCONFIGURED"
+		if pristine_unconfigured
+		else "PARTIAL_INVALID"
+	)
+	var guard_state := {
+		"lifecycle_state": lifecycle_state,
+		"current_tick": _current_tick,
+		"next_authority_sequence": _next_authority_sequence,
+		"authority_state_sha256": authority_state_sha256,
+		"rng_state_sha256": rng_state_sha256,
+	}
+	var guard_state_sha256 := StateCodec.fingerprint(guard_state)
+	return {
+		"valid": (
+			(configured_ready or pristine_unconfigured)
+			and authority_state_sha256.length() == 64
+			and rng_state_sha256.length() == 64
+			and guard_state_sha256.length() == 64
+		),
+		"lifecycle_state": lifecycle_state,
+		"configured": _configured,
+		"domain_count": _domain_handlers.size(),
+		"current_tick": _current_tick,
+		"next_authority_sequence": _next_authority_sequence,
+		"authority_state_sha256": authority_state_sha256,
+		"rng_state_sha256": rng_state_sha256,
+		"state_sha256": guard_state_sha256,
+		"presentation_only": true,
+		"writes_authority": false,
+		"rng_draw_count": 0,
+		"authority_sequence_delta": 0,
+	}
+
+
+func _presentation_guard_pristine_unconfigured() -> bool:
+	## Product-shell and sealed presentation-fixture views exist before a New
+	## Game configures the Kernel.  That exact untouched lifecycle state is a
+	## valid read-only witness; any partial configuration still fails closed.
+	return (
+		not _configured
+		and _root_seed == 0
+		and _current_tick == 0
+		and _elapsed_remainder_us == 0
+		and _next_authority_sequence == 1
+		and _domain_handlers.is_empty()
+		and _derived_only_command_types_by_domain.is_empty()
+		and _initial_domain_states.is_empty()
+		and _domain_states.is_empty()
+		and _domain_rngs.is_empty()
+		and _pending_commands.is_empty()
+		and _root_commands.is_empty()
+		and _derived_commands.is_empty()
+		and _accepted_command_hashes.is_empty()
+		and _root_command_hashes.is_empty()
+		and _derived_command_hashes.is_empty()
+		and _derived_outbox.is_empty()
+		and _derived_lineage_by_command_id.is_empty()
+		and _executed_command_hashes.is_empty()
+		and _execution_log.is_empty()
+		and _tick_hashes.is_empty()
+		and _rejection_count == 0
+		and _last_rejection.is_empty()
+	)
+
+
 func restore_snapshot(snapshot: Dictionary, expected_snapshot_sha256: String) -> Dictionary:
 	if _elapsed_remainder_us != 0:
 		return {"accepted": false, "reason": "restore_requires_tick_boundary"}

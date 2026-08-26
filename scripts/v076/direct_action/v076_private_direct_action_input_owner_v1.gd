@@ -1094,6 +1094,42 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
+## Presentation may observe that these ledgers did not change, but may never
+## read their owner-private contents.  Hash the complete owner state in place
+## and expose only the witness.
+func presentation_authority_guard_snapshot() -> Dictionary:
+	var owner_state := {
+		"configured": _configured,
+		"submission_fingerprint_by_id": (
+			_submission_fingerprint_by_id.duplicate(true)
+		),
+		"submitted_result_by_id": _submitted_result_by_id.duplicate(true),
+		"settlement_fingerprint_by_id": (
+			_settlement_fingerprint_by_id.duplicate(true)
+		),
+		"damage_settlement_by_id": _damage_settlement_by_id.duplicate(true),
+		"intake_settlement_fingerprint_by_id": (
+			_intake_settlement_fingerprint_by_id.duplicate(true)
+		),
+		"intake_settlement_result_by_id": (
+			_intake_settlement_result_by_id.duplicate(true)
+		),
+		"intake_settlement_order": _intake_settlement_order.duplicate(),
+		"rejection_count": _rejection_count,
+		"collision_count": _collision_count,
+	}
+	var state_sha256 := StateCodec.fingerprint(owner_state)
+	return {
+		"schema": "V076PrivateDirectActionPresentationAuthorityGuardV1",
+		"component_id": "V076PrivateDirectActionInputOwnerV1",
+		"valid": state_sha256.length() == 64,
+		"configured": _configured,
+		"state_sha256": state_sha256,
+		"contains_private_values": false,
+		"writes_authority": false,
+	}
+
+
 static func request_validation_report(request: Dictionary) -> Dictionary:
 	if not _has_exact_fields(request, REQUEST_FIELDS):
 		return {"valid": false, "reason": "private_direct_action_request_shape_invalid"}

@@ -85,6 +85,7 @@ func _init() -> void:
 func _run() -> void:
 	_test_closed_authority_codec()
 	_test_command_envelope_types()
+	_test_presentation_authority_guard_lifecycle()
 	_test_twenty_hz_integer_clock()
 	_test_domain_handler_purity_contract()
 	_test_stable_same_tick_order()
@@ -133,6 +134,42 @@ func _test_command_envelope_types() -> void:
 	var unsafe_priority := valid.duplicate(true)
 	unsafe_priority["domain_priority"] = 9_007_199_254_740_992
 	_check(not bool(AuthorityCommand.validate(unsafe_priority).get("valid", true)), "command integer fields must remain canonical-JSON safe")
+
+
+func _test_presentation_authority_guard_lifecycle() -> void:
+	var idle_kernel := Kernel.new()
+	var idle_guard := idle_kernel.presentation_authority_guard_snapshot()
+	_check(
+		bool(idle_guard.get("valid", false))
+		and str(idle_guard.get("lifecycle_state", ""))
+			== "PRISTINE_UNCONFIGURED"
+		and not bool(idle_guard.get("configured", true))
+		and int(idle_guard.get("domain_count", -1)) == 0,
+		"presentation guard accepts only the untouched pre-New-Game Kernel lifecycle"
+	)
+	var rejected := idle_kernel.submit_command(
+		_command("idle-invalid", "combat", "add", "actor", 1, 1, 1, {"amount": 1})
+	)
+	var partial_guard := idle_kernel.presentation_authority_guard_snapshot()
+	_check(
+		not bool(rejected.get("accepted", true))
+		and not bool(partial_guard.get("valid", true))
+		and str(partial_guard.get("lifecycle_state", "")) == "PARTIAL_INVALID",
+		"presentation guard rejects a touched but unconfigured Kernel lifecycle"
+	)
+	idle_kernel.free()
+	var configured_kernel: Variant = _new_kernel(76076, ["combat"]).get("kernel")
+	var configured_guard: Dictionary = (
+		configured_kernel.presentation_authority_guard_snapshot() as Dictionary
+	)
+	_check(
+		bool(configured_guard.get("valid", false))
+		and str(configured_guard.get("lifecycle_state", "")) == "CONFIGURED"
+		and bool(configured_guard.get("configured", false))
+		and int(configured_guard.get("domain_count", 0)) == 1,
+		"presentation guard preserves the configured deterministic Kernel witness"
+	)
+	configured_kernel.free()
 
 
 func _test_domain_handler_purity_contract() -> void:

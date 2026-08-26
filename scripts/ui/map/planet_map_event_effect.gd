@@ -15,12 +15,30 @@ var _radius_px := 28.0
 var _life := 1.0
 var _duration := 1.0
 var _effect_index := -1
+var _reduced_motion := false
+var _instant_test_mode := false
+var _screen_shake_enabled := true
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	set_meta("mcp_sceneized_component", "PlanetMapEventEffect")
+
+
+func set_presentation_motion_policy(
+	reduced_motion: bool,
+	screen_shake_enabled: bool = true,
+	instant_test_mode: bool = false
+) -> void:
+	_reduced_motion = reduced_motion
+	_screen_shake_enabled = screen_shake_enabled
+	_instant_test_mode = instant_test_mode
+	if _duration > 0.0:
+		var next_duration := _policy_duration(_duration)
+		_duration = next_duration
+		_life = minf(_life, next_duration)
+	queue_redraw()
 
 
 func configure(data: Dictionary) -> void:
@@ -34,11 +52,20 @@ func configure(data: Dictionary) -> void:
 	_effect_layer = str(data.get("effect_layer", ""))
 	_card_style = str(data.get("card_style", ""))
 	_radius_px = maxf(10.0, float(data.get("radius_px", 28.0)))
-	_duration = maxf(0.01, float(data.get("duration", 1.0)))
+	_duration = _policy_duration(maxf(0.01, float(data.get("duration", 1.0))))
 	_life = clampf(float(data.get("life", _duration)), 0.0, _duration)
 	_effect_index = int(data.get("effect_index", -1))
 	name = "PlanetMapEventEffect_%s_%02d" % [_kind, max(0, _effect_index)]
 	set_process(not Engine.is_editor_hint())
+	queue_redraw()
+
+
+func update_projection(data: Dictionary) -> void:
+	"""Move an existing effect without restarting its presentation lifetime."""
+	_from_position = _as_vector2(data.get("from_position", _from_position))
+	_to_position = _as_vector2(data.get("to_position", _to_position))
+	_position = _as_vector2(data.get("screen_position", _to_position))
+	visible = bool(data.get("visible", true)) and _life > 0.0
 	queue_redraw()
 
 
@@ -49,6 +76,21 @@ func debug_snapshot() -> Dictionary:
 		"label": _label,
 		"motion_family": _motion_family,
 		"effect_layer": _effect_layer,
+		"from_position": _from_position,
+		"to_position": _to_position,
+		"screen_position": _position,
+		"life": _life,
+		"duration": _duration,
+		"visible": visible,
+		"motion_mode": _motion_mode(),
+		"reduced_motion": _reduced_motion,
+		"instant_test_mode": _instant_test_mode,
+		"screen_shake_profile": (
+			"none"
+			if _reduced_motion or _instant_test_mode or not _screen_shake_enabled
+			else "source_requested"
+		),
+		"production_ui_instant_test_mode_reachable": false,
 	}
 
 
@@ -76,6 +118,9 @@ func _draw() -> void:
 
 
 func _draw_beam(alpha: float, progress: float) -> void:
+	if _reduced_motion or _instant_test_mode:
+		_draw_local(alpha, progress)
+		return
 	if _from_position.distance_to(_to_position) <= 1.0:
 		_draw_local(alpha, progress)
 		return
@@ -96,6 +141,9 @@ func _draw_beam(alpha: float, progress: float) -> void:
 
 
 func _draw_melee(alpha: float, progress: float) -> void:
+	if _reduced_motion or _instant_test_mode:
+		_draw_local(alpha, progress)
+		return
 	var angle := (_to_position - _from_position).angle()
 	var sweep := _accent.lightened(0.10)
 	sweep.a = 0.28 + alpha * 0.46
@@ -207,3 +255,15 @@ func _as_vector2(value: Variant) -> Vector2:
 		var dict := value as Dictionary
 		return Vector2(float(dict.get("x", 0.0)), float(dict.get("y", 0.0)))
 	return Vector2.ZERO
+
+
+func _motion_mode() -> String:
+	if _instant_test_mode:
+		return "INSTANT_TEST_MODE"
+	return "REDUCED_MOTION" if _reduced_motion else "FULL_MOTION"
+
+
+func _policy_duration(full_seconds: float) -> float:
+	if _instant_test_mode:
+		return 0.01
+	return minf(full_seconds, 0.22) if _reduced_motion else full_seconds

@@ -39,6 +39,14 @@ func _ready() -> void:
 		_game_screen,
 		_playtest_telemetry
 	)
+	if _new_game_loading_overlay.has_signal("loading_stage_changed"):
+		_new_game_loading_overlay.connect(
+			"loading_stage_changed",
+			Callable(self, "_on_loading_stage_changed")
+		)
+	_on_loading_stage_changed(
+		_new_game_loading_overlay.call("debug_snapshot") as Dictionary
+	)
 	_game_screen.application_intent_requested.connect(
 		_on_application_intent_requested
 	)
@@ -46,6 +54,9 @@ func _ready() -> void:
 	_application_flow.receipt_ready.connect(_on_receipt_ready)
 	_application_flow.owner_private_receipt_ready.connect(
 		_on_owner_private_receipt_ready
+	)
+	_application_flow.deck_lifecycle_presentation_receipt_ready.connect(
+		_on_deck_lifecycle_presentation_receipt_ready
 	)
 	_application_flow.public_resolution_ready.connect(
 		_on_public_resolution_ready
@@ -91,6 +102,12 @@ func _on_owner_private_receipt_ready(receipt: Dictionary) -> void:
 	_game_screen.call("apply_owner_private_receipt", receipt)
 
 
+func _on_deck_lifecycle_presentation_receipt_ready(
+	receipt: Dictionary
+) -> void:
+	_game_screen.call("apply_deck_lifecycle_receipt", receipt)
+
+
 func _on_public_resolution_ready(receipt: Dictionary) -> void:
 	_game_screen.call("apply_public_resolution_receipt", receipt)
 
@@ -101,3 +118,11 @@ func _on_final_settlement_presented(settlement: Dictionary) -> void:
 
 func _on_runtime_fault_presented(receipt: Dictionary) -> void:
 	_game_screen.call("present_runtime_fault", receipt)
+
+
+func _on_loading_stage_changed(snapshot: Dictionary) -> void:
+	if _game_screen.has_method("set_presentation_loading_active"):
+		_game_screen.call(
+			"set_presentation_loading_active",
+			bool(snapshot.get("loading", snapshot.get("visible", false)))
+		)

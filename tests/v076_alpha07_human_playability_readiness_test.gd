@@ -13,6 +13,7 @@ var _failures: Array[String] = []
 var _receipts: Array[Dictionary] = []
 var _real_pointer_trace: Array[Dictionary] = []
 var _direct_method_call_false_green_count := 0
+var _pointer_activation_screen: Control
 
 
 func _init() -> void:
@@ -37,14 +38,17 @@ func _run() -> void:
 		await _cleanup(functional_context)
 	if OS.get_environment("V076_READINESS_FUNCTIONAL_ONLY") != "1":
 		_expect(_checks >= 60, "readiness gate executes at least sixty checks")
+	_expect(_direct_method_call_false_green_count == 0, "human readiness uses no direct _gui_input method proof")
 	print((
 		"V076_ALPHA07_HUMAN_PLAYABILITY_READINESS|status=%s|passed=%d|total=%d|"
 		+ "production_main_scene_used=true|fixture_state_injection_count=0|"
-		+ "human_green_claimed=false|details=%s"
+		+ "human_green_claimed=false|direct_method_call_false_green_count=%d|real_pointer_trace=%s|details=%s"
 	) % [
 			"PASS" if _failures.is_empty() else "FAIL",
 			_checks - _failures.size(),
 			_checks,
+			_direct_method_call_false_green_count,
+			JSON.stringify(_real_pointer_trace),
 			JSON.stringify(_failures),
 		]
 	)
@@ -61,7 +65,7 @@ func _assert_coach_pacing_gate(context: Dictionary) -> void:
 	var initial_human := initial_screen_debug.get("human_playability", {}) as Dictionary
 	_expect(bool((coach.call("debug_snapshot") as Dictionary).get("active", false)), "new game opens the coach activity gate")
 	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("effective_multiplier", -1)) == 0, "coach activity immediately pauses the shared effective pace")
-	_expect(int(initial_human.get("coach_pacing_saved_multiplier", -1)) == 2, "coach gate saves the Candidate 2 default 2x once")
+	_expect(int(initial_human.get("coach_pacing_saved_multiplier", -1)) == 1, "coach gate saves the production default 1x once")
 	var runtime := flow.get("_runtime_owner") as Node
 	if runtime != null:
 		runtime.call("_process", 31.0)
@@ -109,7 +113,7 @@ func _dismiss_coach_before_play(context: Dictionary) -> void:
 		await process_frame
 		await process_frame
 	_expect(not bool((coach.call("debug_snapshot") as Dictionary).get("active", true)), "Skip closes the coach activity gate")
-	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("effective_multiplier", -1)) == 2, "Skip restores the saved Candidate 2 pace exactly once")
+	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("effective_multiplier", -1)) == 1, "Skip restores the saved production pace exactly once")
 	var human := (screen.call("debug_snapshot") as Dictionary).get("human_playability", {}) as Dictionary
 	_expect(int(human.get("coach_pacing_gate_apply_count", 0)) == 1, "coach opening applies one pause request")
 	_expect(int(human.get("coach_pacing_gate_restore_count", 0)) == 1, "coach Skip applies one restore request")
@@ -328,7 +332,10 @@ func _assert_real_pointer_contract(context: Dictionary) -> void:
 		await _wait_frames(2)
 		panel = arrangement.find_child("PublicArrangementCardTablePopout", true, false) as Control
 		if panel != null and panel.is_visible_in_tree():
-			var outside := map.get_global_rect().get_center() + Vector2(map_rect.size.x * 0.36, 0.0)
+			# The Candidate 5 sidecar occupies the map's right edge.  Choose a
+			# point from the production map rect that is demonstrably outside the
+			# live panel instead of relying on the old centered-drawer x offset.
+			var outside := _safe_map_point_outside(map_rect, panel.get_global_rect())
 			var before_camera := int(board_counts["camera_interacted"])
 			_real_pointer_trace.append(await _dispatch_real_drag(outside, outside + Vector2(28.0, 0.0), "expanded_outside_map"))
 			_expect(int(board_counts["camera_interacted"]) > before_camera, "expanded drawer outside area reaches the map")
@@ -443,8 +450,21 @@ func _dispatch_real_drag(start: Vector2, finish: Vector2, state: String) -> Dict
 	}
 
 
-func _control_trace(control: Control) -> Dictionary:
-	if control == null or not is_instance_valid(control):
+func _safe_map_point_outside(map_rect: Rect2, blocked_rect: Rect2) -> Vector2:
+	var candidates := [
+		map_rect.position + Vector2(map_rect.size.x * 0.16, map_rect.size.y * 0.50),
+		map_rect.position + Vector2(map_rect.size.x * 0.28, map_rect.size.y * 0.50),
+		map_rect.position + Vector2(map_rect.size.x * 0.12, map_rect.size.y * 0.72),
+		map_rect.position + Vector2(map_rect.size.x * 0.50, map_rect.size.y * 0.22),
+	]
+	for candidate in candidates:
+		if map_rect.has_point(candidate) and not blocked_rect.has_point(candidate):
+			return candidate
+	return map_rect.position + Vector2(8.0, map_rect.size.y * 0.5)
+
+
+func _control_trace(control: Variant) -> Dictionary:
+	if control == null or not is_instance_valid(control) or not (control is Control):
 		return {"path": "<none>"}
 	var chain: Array[String] = []
 	var cursor: Node = control
@@ -493,6 +513,7 @@ func _assert_no_hover_face_semantics(card: Control) -> void:
 
 func _assert_real_card_and_action_path(context: Dictionary) -> void:
 	var screen := context.get("screen") as Control
+	_pointer_activation_screen = screen
 	var flow := context.get("flow") as Node
 	var track_rail := screen.find_child("TrackRail", true, false) as HBoxContainer
 	var unaffordable: Control
@@ -518,12 +539,17 @@ func _assert_real_card_and_action_path(context: Dictionary) -> void:
 	_expect(interactive_state_count > 0, "every visible real track card exposes an explicit interaction state")
 	_expect(normal_full_hand_affordance, "normal track cards visibly explain that a full five-card hand can still acquire to discard")
 	if unaffordable != null:
-		_click_card(unaffordable)
+		await _click_card(unaffordable)
 		await process_frame
 		var confirm := screen.find_child("CurrentActionConfirmButton", true, false) as Button
 		var reason := screen.find_child("CurrentActionReason", true, false) as Label
 		_expect(confirm.disabled, "illegal track selection cannot be confirmed")
 		_expect(not reason.text.strip_edges().is_empty(), "illegal track selection exposes a concrete reason")
+		var cancel := screen.find_child("CurrentActionCancelButton", true, false) as Button
+		if cancel != null and not cancel.disabled:
+			cancel.pressed.emit()
+			await process_frame
+			await process_frame
 	_expect(claimable_commodity != null, "normal supply exposes a legal commodity acquisition")
 	var before := flow.call("local_snapshot") as Dictionary
 	var before_facts := (before.get("personal_dbg", {}) as Dictionary).get("facts", {}) as Dictionary
@@ -534,7 +560,7 @@ func _assert_real_card_and_action_path(context: Dictionary) -> void:
 	)
 	_expect(before_count < 5, "commodity acquisition probe has capacity in the independent inventory")
 	if claimable_commodity != null:
-		_click_card(claimable_commodity)
+		await _click_card(claimable_commodity)
 		for _frame in range(4):
 			await process_frame
 	var after_acquire := flow.call("local_snapshot") as Dictionary
@@ -545,12 +571,18 @@ func _assert_real_card_and_action_path(context: Dictionary) -> void:
 	_expect(int(track_debug.get("supply_cursor_delta_on_acquisition", 0)) == 0, "acquisition does not advance the supply cursor")
 	_expect(int(track_debug.get("supply_rng_draw_delta_on_acquisition", 0)) == 0, "acquisition consumes no extra supply RNG")
 	var commodity_tab := screen.find_child("CommodityHandTabButton", true, false) as Button
+	var general_tab := screen.find_child("GeneralHandTabButton", true, false) as Button
+	var hand_rail_control := screen.find_child("HandRail", true, false) as Control
+	_expect(not commodity_tab.button_pressed and general_tab.button_pressed, "commodity acquisition keeps the ordinary-hand tab active")
+	_expect(hand_rail_control.get_child_count() == (before_facts.get("hand", []) as Array).size(), "ordinary hand cards remain visible immediately after commodity acquisition")
 	commodity_tab.pressed.emit()
 	await process_frame
-	_expect((screen.find_child("HandRail", true, false) as Control).get_child_count() == after_count, "commodity tab exposes every owned commodity card")
-	var general_tab := screen.find_child("GeneralHandTabButton", true, false) as Button
+	_expect(hand_rail_control.get_child_count() == after_count, "commodity tab exposes every owned commodity card")
 	general_tab.pressed.emit()
 	await process_frame
+	var hand_inventory := (((screen.call("debug_snapshot") as Dictionary).get("human_playability", {}) as Dictionary).get("hand_control_inventory", {}) as Dictionary)
+	_expect(int(hand_inventory.get("hand_duplicate_instance_control_count", -1)) == 0, "commodity/general hand surfaces keep one control per card instance")
+	_expect(int(hand_inventory.get("commodity_hand_control_count", -1)) == after_count, "commodity preview control count matches authority after returning to general hand")
 	var legal_actions := after_acquire.get("legal_actions", []) as Array
 	var playable_card_id := ""
 	for option_variant in legal_actions:
@@ -566,7 +598,7 @@ func _assert_real_card_and_action_path(context: Dictionary) -> void:
 			break
 	_expect(hand_card != null, "a legal authoritative hand card is reachable in the fixed dock")
 	if hand_card != null:
-		_click_card(hand_card)
+		await _click_card(hand_card)
 		await process_frame
 	var target_rail := screen.find_child("TargetRail", true, false) as HBoxContainer
 	var target_button: Button
@@ -622,17 +654,25 @@ func _assert_real_card_and_action_path(context: Dictionary) -> void:
 	var lock_button := screen.find_child("LockButton", true, false) as Button
 	var started_msec := Time.get_ticks_msec()
 	lock_button.pressed.emit()
+	var feed_wait_frame_count := 0
 	for _frame in range(50):
 		await process_frame
+		feed_wait_frame_count += 1
 		var human := (screen.call("debug_snapshot") as Dictionary).get("human_playability", {}) as Dictionary
 		if int(human.get("public_action_feed_visible_count", 0)) > 0:
 			break
 	var elapsed := float(Time.get_ticks_msec() - started_msec) / 1000.0
 	var human_debug := (screen.call("debug_snapshot") as Dictionary).get("human_playability", {}) as Dictionary
+	print("V076_FIRST_PUBLIC_ACTION_TIMING|elapsed_seconds=%s|wait_frames=%d|feed_visible_count=%d|phase=%s" % [
+		elapsed,
+		feed_wait_frame_count,
+		int(human_debug.get("public_action_feed_visible_count", 0)),
+		str((flow.call("local_snapshot") as Dictionary).get("phase", "")),
+	])
 	_expect(int(human_debug.get("public_action_feed_visible_count", 0)) > 0, "public receipt history projects into the fixed action feed")
 	_expect(int(human_debug.get("blank_public_action_count", -1)) == 0, "action feed never emits a blank action")
 	_expect(int(human_debug.get("action_feed_duplicate_entry_count", -1)) == 0, "action feed presents no duplicate public receipt")
-	_expect(elapsed <= 5.0, "2x pace exposes the first resolved action within five wall seconds")
+	_expect(elapsed <= 5.0, "production pace exposes the first resolved action within five wall seconds")
 	var post_lock_snapshot := flow.call("local_snapshot") as Dictionary
 	_expect(str(post_lock_snapshot.get("phase", "")) != "submission", "locked production batch leaves the acquisition phase")
 	var receipt_count_before_phase_reject := _receipt_count("track.acquire", true)
@@ -644,7 +684,7 @@ func _assert_real_card_and_action_path(context: Dictionary) -> void:
 			break
 	_expect(phase_revalidation_card != null, "post-lock track retains a card for phase revalidation")
 	if phase_revalidation_card != null:
-		_click_card(phase_revalidation_card)
+		await _click_card(phase_revalidation_card)
 		await process_frame
 		var phase_confirm := screen.find_child("CurrentActionConfirmButton", true, false) as Button
 		var phase_reason := screen.find_child("CurrentActionReason", true, false) as Label
@@ -658,7 +698,7 @@ func _assert_pause_freezes_submission_timer(context: Dictionary) -> void:
 	var flow := context.get("flow") as Node
 	var pause := screen.find_child("PauseButton", true, false) as Button
 	var speed_2x := screen.find_child("Speed2xButton", true, false) as Button
-	_expect(pause != null and speed_2x != null, "Pause and 2x controls exist for timer parity")
+	_expect(pause != null and speed_2x != null, "Pause and 2x hidden controls remain wired for timer parity")
 	if pause == null or speed_2x == null:
 		return
 	pause.pressed.emit()
@@ -673,7 +713,7 @@ func _assert_pause_freezes_submission_timer(context: Dictionary) -> void:
 	_expect(is_equal_approx(float(human_before.get("visible_submission_seconds_remaining", -1.0)), float(human_after.get("visible_submission_seconds_remaining", -2.0))), "Pause freezes the visible submission countdown")
 	speed_2x.pressed.emit()
 	await process_frame
-	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("effective_multiplier", -1)) == 2, "timer parity check restores Candidate 2 default 2x")
+	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("effective_multiplier", -1)) == 2, "timer parity check restores the requested 2x pace")
 
 
 func _assert_pacing_controls(context: Dictionary) -> void:
@@ -686,7 +726,7 @@ func _assert_pacing_controls(context: Dictionary) -> void:
 		{"node": "Speed4xButton", "multiplier": 4},
 	]:
 		var button := screen.find_child(str(entry.get("node")), true, false) as Button
-		_expect(button != null, "%s pace button exists" % str(entry.get("node")))
+		_expect(button != null and not button.is_visible_in_tree(), "%s hidden pace button remains wired" % str(entry.get("node")))
 		if button == null:
 			continue
 		button.pressed.emit()
@@ -695,9 +735,9 @@ func _assert_pacing_controls(context: Dictionary) -> void:
 		_expect(int(pace.get("multiplier", -1)) == int(entry.get("multiplier")), "%s pace request reaches the shared flow" % str(entry.get("node")))
 		_expect(int(pace.get("logical_kernel_tick_hz", 0)) == 20, "%s preserves the 20 Hz logical Kernel" % str(entry.get("node")))
 		_expect(not bool(pace.get("changes_rng_order", true)), "%s does not alter RNG order" % str(entry.get("node")))
-	(screen.find_child("Speed2xButton", true, false) as Button).pressed.emit()
+	(screen.find_child("Speed1xButton", true, false) as Button).pressed.emit()
 	await process_frame
-	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("multiplier", -1)) == 2, "Candidate 2 returns to the default 2x pace")
+	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("multiplier", -1)) == 1, "production returns to the default 1x pace")
 	_expect(int((flow.call("pacing_snapshot") as Dictionary).get("mode_count", 0)) == 4, "pace owner exposes exactly Pause, 1x, 2x and 4x")
 
 
@@ -742,15 +782,77 @@ func _assert_coach_step3(context: Dictionary) -> void:
 		await process_frame
 	var flow := context.get("flow") as Node
 	var pacing := flow.call("pacing_snapshot") as Dictionary
-	_expect(int(pacing.get("effective_multiplier", -1)) == 2, "Coach Close restores the saved pace after the Step 3 check")
+	_expect(int(pacing.get("effective_multiplier", -1)) == 1, "Coach Close restores the saved 1x pace after the Step 3 check")
 
 
-func _click_card(card: Control) -> void:
-	var click := InputEventMouseButton.new()
-	click.button_index = MOUSE_BUTTON_LEFT
-	click.pressed = true
-	click.position = card.size * 0.5
-	card.call("_gui_input", click)
+func _click_card(card: Control, expected_activation_count := 1) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	var center := card.get_global_rect().get_center()
+	var card_path := str(card.get_path())
+	var card_rect := card.get_global_rect()
+	var card_payload: Dictionary = card.call("payload") as Dictionary if card.has_method("payload") else {}
+	var card_presentation: Dictionary = card.call("presentation_data") as Dictionary if card.has_method("presentation_data") else {}
+	var card_debug_before: Dictionary = card.call("debug_snapshot") as Dictionary if card.has_method("debug_snapshot") else {}
+	var activation_key := "hand_card_activation_count" if str(card_payload.get("authority_zone", "")) == "general_hand" else "track_card_activation_count"
+	var activation_before := _screen_activation_count(activation_key)
+	var motion := InputEventMouseMotion.new()
+	motion.position = center
+	motion.global_position = center
+	root.get_viewport().push_input(motion, true)
+	await process_frame
+	var hovered_before := root.gui_get_hovered_control()
+	var hovered_before_trace := _control_trace(hovered_before)
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	down.position = center
+	down.global_position = center
+	root.get_viewport().push_input(down, true)
+	var dispatch_route := "viewport.push_input"
+	# The production handler may apply the activation on the release edge or the
+	# next frame.  Read the count only after the full click sequence settles.
+	var hovered_pressed := root.gui_get_hovered_control()
+	var hovered_pressed_trace := _control_trace(hovered_pressed)
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.pressed = false
+	up.position = center
+	up.global_position = center
+	root.get_viewport().push_input(up, true)
+	for _frame in range(3):
+		await process_frame
+	var activated_after_release := _screen_activation_count(activation_key) - activation_before
+	var hovered_after := root.gui_get_hovered_control()
+	var hovered_after_trace := _control_trace(hovered_after)
+	var card_debug_after: Dictionary = card.call("debug_snapshot") as Dictionary if is_instance_valid(card) and card.has_method("debug_snapshot") else {}
+	_real_pointer_trace.append({
+		"state": "track_card",
+		"card_path": card_path,
+		"global_rect": card_rect,
+		"payload": card_payload,
+		"presentation_data": card_presentation,
+		"card_debug_before": card_debug_before,
+		"card_debug_after": card_debug_after,
+		"hovered_before": hovered_before_trace,
+		"hovered_pressed": hovered_pressed_trace,
+		"hovered_after": hovered_after_trace,
+		"activated_count": activated_after_release,
+		"dispatch_route": dispatch_route,
+		"source_control_alive_after_down": is_instance_valid(card),
+	})
+	print("V076_CLICK_CARD|path=%s|expected=%d|activated=%d|disabled=%s|legality=%s|dispatch=%s" % [
+		card_path,
+		expected_activation_count,
+		activated_after_release,
+		str((card_presentation as Dictionary).get("disabled", false)),
+		str((card_presentation as Dictionary).get("legality_state", "")),
+		dispatch_route,
+	])
+	_expect(
+		activated_after_release == expected_activation_count,
+		"real viewport card pointer activates expected count"
+	)
 
 
 func _push_mouse_button(
@@ -766,6 +868,14 @@ func _push_mouse_button(
 	event.position = position
 	event.global_position = position
 	Input.parse_input_event(event)
+
+
+func _screen_activation_count(key: String) -> int:
+	if not is_instance_valid(_pointer_activation_screen):
+		return 0
+	var debug := _pointer_activation_screen.call("debug_snapshot") as Dictionary
+	var human := debug.get("human_playability", {}) as Dictionary
+	return int(human.get(key, 0))
 
 
 func _push_mouse_motion(position: Vector2, relative: Vector2) -> void:

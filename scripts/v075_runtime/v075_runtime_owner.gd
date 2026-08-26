@@ -2,6 +2,8 @@ extends "res://scripts/v074_runtime/v074_runtime_owner.gd"
 class_name V075RuntimeOwner
 
 signal combat_presentation_receipt_ready(receipt: Dictionary)
+signal deck_lifecycle_presentation_receipt_ready(receipt: Dictionary)
+signal track_presentation_receipt_ready(receipt: Dictionary)
 
 const CardDefinitionsV075 := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
@@ -236,6 +238,9 @@ var _v075_submission_legal_actions_cache: Dictionary = {}
 var _v075_submission_card_cache: Dictionary = {}
 var _v075_track_projection_cache: Dictionary = {}
 var _v075_public_facility_slots_cache: Array = []
+var _v075_snapshot_generation := 0
+var _v075_player_snapshot_cache_by_viewer: Dictionary = {}
+var _v075_debug_snapshot_cache: Dictionary = {}
 ## Presentation-safe, batch-local AI action receipts.  These rows are derived
 ## from the existing queue/lock authority; they never own a card, queue, or
 ## gameplay state.  Only a seat label and a public outcome cross the boundary.
@@ -245,6 +250,8 @@ var _v075_ai_public_action_sequence := 0
 var _v076_projection_flush_scheduled := false
 var _v076_last_track_advance_msec := -1
 var _v076_last_track_advance_sequence := -1
+var _v076_track_presentation_receipt_count := 0
+var _v076_last_track_presentation_receipt_id := ""
 var _v076_production_asset_reservations: Dictionary = {}
 var _v076_production_military_submission_by_uid: Dictionary = {}
 var _v076_military_consequence_fingerprint_by_id: Dictionary = {}
@@ -259,6 +266,11 @@ var _v076_monster_production_receipt_fingerprint_by_id: Dictionary = {}
 var _v076_monster_production_commit_count := 0
 var _v076_monster_production_duplicate_count := 0
 var _v076_monster_production_collision_count := 0
+var _v076_deck_lifecycle_receipt_count := 0
+var _v076_deck_lifecycle_receipt_ids: Dictionary = {}
+var _v076_deck_lifecycle_duplicate_count := 0
+var _v076_deck_lifecycle_collision_count := 0
+var _v076_deck_lifecycle_lineage_failure_count := 0
 var _new_game_transaction_stage := "idle"
 var _new_game_transaction: Dictionary = {}
 var _new_game_publication_count := 0
@@ -267,7 +279,7 @@ var _new_game_cleanup_failure_count := 0
 var _new_game_initialization_attempt_sequence := 0
 var _new_game_publication_stage_authority: Callable = Callable()
 var _new_game_publication_stage_authority_required := false
-var _playtest_pace_multiplier := 2
+var _playtest_pace_multiplier := 1
 
 
 func set_playtest_pace_multiplier(multiplier: int) -> Dictionary:
@@ -277,6 +289,7 @@ func set_playtest_pace_multiplier(multiplier: int) -> Dictionary:
 			"reason_code": "playtest_pace_multiplier_invalid",
 		}
 	_playtest_pace_multiplier = multiplier
+	_invalidate_v075_snapshot_caches()
 	return {
 		"accepted": true,
 		"reason_code": "playtest_pace_multiplier_applied",
@@ -312,6 +325,137 @@ func human_decision_snapshot() -> Dictionary:
 		"reason_code": reason_code,
 		"terminal": _phase in ["settled", "failed"],
 		"reads_local_decision_state_only": true,
+		"writes_authority": false,
+	}
+
+
+## Hash-only, read-only witness for presentation mutation checks.  Every
+## gameplay-owned collection is fingerprinted inside its owner so hidden cards
+## and private ledgers never become a UI Projection.
+func presentation_authority_guard_snapshot() -> Dictionary:
+	var dbg_authority_by_player: Dictionary = {}
+	var dbg_sources_valid := true
+	for player_id in _player_ids:
+		var dbg_core: Variant = _dbg_by_player.get(player_id)
+		if dbg_core == null or not dbg_core.has_method("core_authority_snapshot"):
+			dbg_sources_valid = false
+			continue
+		var dbg_snapshot := dbg_core.call("core_authority_snapshot") as Dictionary
+		if dbg_snapshot.is_empty():
+			dbg_sources_valid = false
+			continue
+		dbg_authority_by_player[player_id] = (
+			PresentationReceiptIdentity.canonical_sha256(dbg_snapshot)
+		)
+
+	var track_authority: Dictionary = {}
+	var track_source_valid := _track_core == null and _match_id.is_empty()
+	if _track_core != null and _track_core.has_method("core_authority_snapshot"):
+		track_authority = _track_core.call("core_authority_snapshot") as Dictionary
+		track_source_valid = not track_authority.is_empty()
+
+	var authority_state := {
+		"match_id": _match_id,
+		"seed": _seed,
+		"phase": _phase,
+		"batch_number": _batch_number,
+		"submission_identity_sequence": _submission_identity_sequence,
+		"clock_msec": _clock_msec,
+		"opened_at_msec": _opened_at_msec,
+		"submission_deadline_msec": _submission_deadline_msec,
+		"player_ids": _player_ids.duplicate(),
+		"local_player_id": _local_player_id,
+		"hidden_order": _hidden_order.duplicate(),
+		"dbg_authority_by_player": dbg_authority_by_player,
+		"cash_by_player": _cash_by_player.duplicate(true),
+		"track_authority_sha256": (
+			PresentationReceiptIdentity.canonical_sha256(track_authority)
+		),
+		"asset_state": _asset_state.duplicate(true),
+		"asset_balances": _asset_balances.duplicate(true),
+		"facility_state": _facility_state.duplicate(true),
+		"facility_slots": _facility_slots.duplicate(true),
+		"solar_state": _solar_state.duplicate(true),
+		"region_sunlit": _region_sunlit.duplicate(true),
+		"queued_by_player": _queued_by_player.duplicate(true),
+		"locked_by_player": _locked_by_player.duplicate(true),
+		"maintenance_done": _maintenance_done.duplicate(true),
+		"public_history": _public_history.duplicate(true),
+		"public_progress_points": _public_progress_points,
+		"final_settlement": _final_settlement.duplicate(true),
+		"combat_public_history": _combat_public_history.duplicate(true),
+		"processed_facility_damage_intents": (
+			_processed_facility_damage_intents.duplicate(true)
+		),
+		"facility_effect_commit_witness": (
+			_facility_effect_commit_witness.duplicate(true)
+		),
+		"facility_damage_bridge_state": (
+			_facility_damage_bridge_state.duplicate(true)
+		),
+		"v076_production_asset_reservations": (
+			_v076_production_asset_reservations.duplicate(true)
+		),
+		"v076_production_military_submission_by_uid": (
+			_v076_production_military_submission_by_uid.duplicate(true)
+		),
+		"v076_military_consequence_fingerprint_by_id": (
+			_v076_military_consequence_fingerprint_by_id.duplicate(true)
+		),
+		"v076_monster_production_receipt_fingerprint_by_id": (
+			_v076_monster_production_receipt_fingerprint_by_id.duplicate(true)
+		),
+		"v076_deck_lifecycle_receipt_ids": (
+			_v076_deck_lifecycle_receipt_ids.duplicate(true)
+		),
+		"new_game_transaction_stage": _new_game_transaction_stage,
+		"new_game_transaction": _new_game_transaction.duplicate(true),
+		"new_game_publication_count": _new_game_publication_count,
+		"new_game_abort_count": _new_game_abort_count,
+		"new_game_cleanup_failure_count": _new_game_cleanup_failure_count,
+		"new_game_initialization_attempt_sequence": (
+			_new_game_initialization_attempt_sequence
+		),
+		"playtest_pace_multiplier": _playtest_pace_multiplier,
+	}
+	var state_sha256 := PresentationReceiptIdentity.canonical_sha256(
+		authority_state
+	)
+	return {
+		"schema": "V076RuntimePresentationAuthorityGuardV1",
+		"component_id": "V075RuntimeOwner",
+		"valid": (
+			state_sha256.length() == 64
+			and dbg_sources_valid
+			and track_source_valid
+		),
+		"match_id": _match_id,
+		"phase": _phase,
+		"batch_number": _batch_number,
+		"player_authority_count": dbg_authority_by_player.size(),
+		"track_authority_present": track_source_valid,
+		"state_sha256": state_sha256,
+		"card_zone_state_sha256": (
+			PresentationReceiptIdentity.canonical_sha256(
+				dbg_authority_by_player
+			)
+		),
+		"track_state_sha256": (
+			PresentationReceiptIdentity.canonical_sha256(track_authority)
+		),
+		"facility_state_sha256": (
+			PresentationReceiptIdentity.canonical_sha256({
+				"state": _facility_state,
+				"slots": _facility_slots,
+				"damage": _facility_damage_bridge_state,
+			})
+		),
+		"settlement_state_sha256": (
+			PresentationReceiptIdentity.canonical_sha256(
+				_final_settlement
+			)
+		),
+		"contains_private_values": false,
 		"writes_authority": false,
 	}
 
@@ -1773,6 +1917,8 @@ func acquire_track_item(
 	source_instance_id: String
 ) -> Dictionary:
 	var domain := ""
+	var source_item: Dictionary = {}
+	var private_before := _v076_owner_private_card_zone_snapshot(actor_id)
 	if _track_core != null:
 		var projection := _v075_track_projection(actor_id)
 		var private_facts := (
@@ -1782,6 +1928,7 @@ func acquire_track_item(
 			var item := item_variant as Dictionary
 			if str(item.get("instance_id", "")) != source_instance_id:
 				continue
+			source_item = item.duplicate(true)
 			var definition := CardDefinitionsV075.definition(
 				str(item.get("card_definition_id", ""))
 			)
@@ -1792,6 +1939,15 @@ func acquire_track_item(
 	var receipt := super.acquire_track_item(actor_id, source_instance_id)
 	_clear_v075_track_projection_cache()
 	if bool(receipt.get("accepted", false)):
+		var private_after := _v076_owner_private_card_zone_snapshot(actor_id)
+		_v076_publish_track_acquisition_presentation(
+			actor_id,
+			source_instance_id,
+			source_item,
+			receipt,
+			private_before,
+			private_after
+		)
 		_clear_v075_submission_caches()
 		if domain == "monster":
 			_combat_monster_purchase_count += 1
@@ -1805,6 +1961,183 @@ func acquire_track_item(
 			receipt["combat_card_domain"] = domain
 			receipt["event_kind"] = "%s_card_purchased" % domain
 	return receipt
+
+
+func _v076_publish_track_acquisition_presentation(
+	actor_id: String,
+	source_instance_id: String,
+	source_item: Dictionary,
+	application_receipt: Dictionary,
+	private_before: Dictionary,
+	private_after: Dictionary
+) -> void:
+	if actor_id != _local_player_id or source_item.is_empty() or _track_core == null:
+		return
+	var request_id := "request.track.%s.%d.%s" % [
+		actor_id,
+		_batch_number,
+		source_instance_id.sha256_text().left(12),
+	]
+	var track_receipt := _track_core.call(
+		"authoritative_receipt_v1",
+		request_id
+	) as Dictionary
+	var target_zone := _v076_normalized_card_zone(str(
+		application_receipt.get("destination_zone", "")
+	))
+	var target_collection := (
+		"commodity_inventory"
+		if target_zone == "commodity_inventory"
+		else target_zone
+	)
+	var new_cards := _v076_new_cards_in_zone(
+		private_before,
+		private_after,
+		target_collection
+	)
+	if track_receipt.is_empty() or new_cards.size() != 1:
+		_v076_deck_lifecycle_lineage_failure_count += 1
+		return
+	var card_projection := _v076_card_lifecycle_projection(
+		new_cards[0] as Dictionary
+	)
+	if card_projection.is_empty():
+		_v076_deck_lifecycle_lineage_failure_count += 1
+		return
+	_v076_emit_deck_lifecycle_receipt(
+		_v076_build_deck_lifecycle_receipt(
+		"CARD_ACQUIRE",
+		track_receipt,
+		{
+			"source_zone": "track",
+			"target_zone": target_zone,
+			"source_track_instance_id": source_instance_id,
+			"card_instance_id": str(card_projection.get("instance_id", "")),
+			"card_definition_id": str(card_projection.get(
+				"definition_id",
+				card_projection.get("card_definition_id", "")
+			)),
+			"card_projection": card_projection,
+			"before_zone_counts": _v076_card_zone_counts(private_before),
+			"after_zone_counts": _v076_card_zone_counts(private_after),
+			"refill_count": 0,
+			"reshuffle_count": 0,
+		}
+		)
+	)
+
+
+func _v076_owner_private_card_zone_snapshot(actor_id: String) -> Dictionary:
+	var dbg := _dbg_by_player.get(actor_id) as RefCounted
+	if dbg == null or not dbg.has_method("player_projection"):
+		return {}
+	var projection := dbg.call("player_projection", actor_id) as Dictionary
+	var facts := projection.get("facts", {}) as Dictionary
+	if facts.is_empty():
+		return {}
+	return {
+		"revision": int(projection.get("revision", -1)),
+		"hand": (facts.get("hand", []) as Array).duplicate(true),
+		"hand_count": int(facts.get("hand_count", 0)),
+		"draw_pile_count": int(facts.get("draw_pile_count", 0)),
+		"discard": (facts.get("discard", []) as Array).duplicate(true),
+		"discard_count": int(facts.get("discard_count", 0)),
+		"commodity_inventory": (
+			facts.get("commodity_inventory", []) as Array
+		).duplicate(true),
+		"commodity_inventory_count": int(facts.get(
+			"commodity_inventory_count",
+			0
+		)),
+	}
+
+
+func _v076_new_cards_in_zone(
+	before: Dictionary,
+	after: Dictionary,
+	zone_name: String
+) -> Array:
+	var prior_ids: Dictionary = {}
+	for card_variant in before.get(zone_name, []) as Array:
+		if card_variant is Dictionary:
+			prior_ids[str((card_variant as Dictionary).get("instance_id", ""))] = true
+	var result: Array = []
+	for card_variant in after.get(zone_name, []) as Array:
+		if not (card_variant is Dictionary):
+			continue
+		var card := card_variant as Dictionary
+		var instance_id := str(card.get("instance_id", ""))
+		if not instance_id.is_empty() and not prior_ids.has(instance_id):
+			result.append(card.duplicate(true))
+	return result
+
+
+func _v076_card_lifecycle_projection(card: Dictionary) -> Dictionary:
+	var result: Dictionary = {}
+	for field_name in [
+		"instance_id",
+		"definition_id",
+		"card_definition_id",
+		"card_kind",
+		"card_type",
+		"primary_color",
+		"level",
+		"origin_class",
+		"authority_zone",
+		"projection_role",
+		"name",
+		"title",
+		"short_effect",
+		"effect",
+		"illustration_key",
+		"card_frame_key",
+	]:
+		if card.has(field_name):
+			result[field_name] = card.get(field_name)
+	if not result.has("definition_id") and result.has("card_definition_id"):
+		result["definition_id"] = str(result.get("card_definition_id", ""))
+	return result
+
+
+func _v076_card_projection_by_instance(
+	snapshot: Dictionary,
+	instance_id: String
+) -> Dictionary:
+	if instance_id.is_empty():
+		return {}
+	for zone_name in ["hand", "discard", "commodity_inventory"]:
+		for card_variant in snapshot.get(zone_name, []) as Array:
+			if (
+				card_variant is Dictionary
+				and str((card_variant as Dictionary).get("instance_id", ""))
+				== instance_id
+			):
+				return _v076_card_lifecycle_projection(
+					card_variant as Dictionary
+				)
+	return {}
+
+
+func _v076_card_zone_counts(snapshot: Dictionary) -> Dictionary:
+	return {
+		"hand_count": int(snapshot.get("hand_count", 0)),
+		"draw_pile_count": int(snapshot.get("draw_pile_count", 0)),
+		"discard_count": int(snapshot.get("discard_count", 0)),
+		"commodity_inventory_count": int(snapshot.get(
+			"commodity_inventory_count",
+			0
+		)),
+	}
+
+
+func _v076_normalized_card_zone(zone_name: String) -> String:
+	var value := zone_name.to_lower()
+	return {
+		"personal_discard": "discard",
+		"discard_pile": "discard",
+		"player_deck": "draw_pile",
+		"deck": "draw_pile",
+	}.get(value, value) as String
 
 
 func _auto_acquire_track_item(actor_id: String) -> Dictionary:
@@ -4271,6 +4604,7 @@ func resolve_next_action() -> Dictionary:
 	var source_authority_sequence := int(
 		_facility_state.get("resolution_cursor", -1)
 	)
+	var pending_public_action := _pending_facility_action(_facility_state)
 	var public_outcome := PublicActionBatchCore.resolve_next_authority_owned(
 		_facility_state
 	)
@@ -4362,6 +4696,8 @@ func resolve_next_action() -> Dictionary:
 		combat_result,
 		resolved
 	)
+	if action_domain == "facility":
+		_attach_public_facility_resolution_fields(public_receipt, pending_public_action)
 	var public_receipt_leak_count := _private_card_identity_leak_count(
 		public_receipt
 	)
@@ -4378,8 +4714,22 @@ func resolve_next_action() -> Dictionary:
 			},
 			resolution_checkpoint
 		)
+	var deck_discard_receipt: Dictionary = {}
 	if not source_card_id.is_empty():
 		var dbg := _dbg_by_player.get(actor_id) as RefCounted
+		var owner_private_before := (
+			_v076_owner_private_card_zone_snapshot(actor_id)
+			if actor_id == _local_player_id
+			else {}
+		)
+		var owner_card_projection := _v076_card_lifecycle_projection(
+			_card_for_queued_action(actor_id, source_card_id)
+		) if actor_id == _local_player_id else {}
+		if owner_card_projection.is_empty() and actor_id == _local_player_id:
+			owner_card_projection = _v076_card_projection_by_instance(
+				owner_private_before,
+				source_card_id
+		)
 		var play_intent := dbg.call(
 			"create_intent",
 			"intent.play.%s" % action_id,
@@ -4393,6 +4743,42 @@ func resolve_next_action() -> Dictionary:
 				"dbg_card_resolution_failed",
 				play_receipt,
 				resolution_checkpoint
+			)
+		if actor_id == _local_player_id:
+			var owner_private_after := (
+				_v076_owner_private_card_zone_snapshot(actor_id)
+			)
+			deck_discard_receipt = _v076_build_deck_lifecycle_receipt(
+				"CARD_DISCARD",
+				play_receipt,
+				{
+					"card_projection": owner_card_projection.duplicate(true),
+					"card_instance_id": source_card_id,
+					"card_definition_id": str(owner_card_projection.get(
+						"definition_id",
+						owner_card_projection.get("card_definition_id", "")
+					)),
+					"source_zone": str(owner_card_projection.get(
+						"authority_zone",
+						"pending_public_submission"
+					)),
+					"target_zone": "discard",
+					"source_public_receipt_id": str(public_receipt.get(
+						"combat_receipt_id",
+						public_receipt.get("receipt_id", "")
+					)),
+					"public_resolution_receipt_id": str(public_receipt.get(
+						"combat_receipt_id",
+						public_receipt.get("receipt_id", "")
+					)),
+					"destination_zone": "discard",
+					"before_zone_counts": _v076_card_zone_counts(
+						owner_private_before
+					),
+					"after_zone_counts": _v076_card_zone_counts(
+						owner_private_after
+					),
+				}
 			)
 	_facility_state = next_public_state
 	_asset_state = (
@@ -4417,6 +4803,11 @@ func resolve_next_action() -> Dictionary:
 			int(staged_event.get("presentation_ordinal", 0))
 		)
 	resolution_presented.emit(public_receipt.duplicate(true))
+	if not deck_discard_receipt.is_empty():
+		# Public focus is published first.  The owner-private discard receipt is
+		# then queued against that stable public identity, so presentation can fly
+		# the focused card to the local discard without exposing rival instances.
+		_v076_emit_deck_lifecycle_receipt(deck_discard_receipt)
 	_emit_facility_damage_events(combat_damage_receipts)
 	if str(_facility_state.get("status", "")) == "resolved":
 		_complete_batch_resolution()
@@ -4564,6 +4955,12 @@ func _canonical_player_projection(viewer_id: String) -> Dictionary:
 	}
 
 func player_snapshot(viewer_id: String) -> Dictionary:
+	var cached_snapshot := _v075_player_snapshot_cache_by_viewer.get(viewer_id, {}) as Dictionary
+	if int(cached_snapshot.get("generation", -1)) == _v075_snapshot_generation:
+		var cached := cached_snapshot.get("snapshot", {}) as Dictionary
+		if not cached.is_empty():
+			_refresh_v075_player_snapshot_fields(cached)
+			return cached
 	var snapshot := super.player_snapshot(viewer_id)
 	if snapshot.is_empty():
 		return {}
@@ -4571,6 +4968,12 @@ func player_snapshot(viewer_id: String) -> Dictionary:
 	snapshot["sample_mode_id"] = V075_SAMPLE_MODE_ID
 	snapshot["save_notice"] = "V0.7.5 sample save/resume disabled"
 	snapshot["special_actions"] = []
+	# Project the authored window duration from the single RuntimeOwner.  UI
+	# consumers may render this value, but must not invent or mutate a second
+	# gameplay duration.
+	snapshot["submission_seconds_total"] = (
+		float(SUBMISSION_WINDOW_MSEC) / 1000.0
+	)
 	# The DBG projection remains authoritative for lifecycle history.  This
 	# viewer-safe list tells the production hand renderer which accepted queue
 	# bindings are now reserved in PENDING_PUBLIC_SUBMISSION, so the same card
@@ -4604,6 +5007,11 @@ func player_snapshot(viewer_id: String) -> Dictionary:
 			_register_private_card_identity_rejection(history_leak_count)
 			return {}
 		snapshot["combat_public_history"] = combat_public_history
+	_v075_player_snapshot_cache_by_viewer[viewer_id] = {
+		"generation": _v075_snapshot_generation,
+		"snapshot": snapshot,
+	}
+	_refresh_v075_player_snapshot_fields(snapshot)
 	return snapshot
 
 
@@ -4681,6 +5089,11 @@ func ai_observation(actor_id: String) -> Dictionary:
 
 
 func debug_snapshot() -> Dictionary:
+	var cached_snapshot := _v075_debug_snapshot_cache.get("snapshot", {}) as Dictionary
+	if int(_v075_debug_snapshot_cache.get("generation", -1)) == _v075_snapshot_generation \
+		and not cached_snapshot.is_empty():
+		_refresh_v075_debug_snapshot_fields(cached_snapshot)
+		return cached_snapshot
 	var result := super.debug_snapshot()
 	var combat_debug := (
 		_combat_owner.call("debug_snapshot") as Dictionary
@@ -4776,6 +5189,18 @@ func debug_snapshot() -> Dictionary:
 	result["constitution_id"] = V075_CONSTITUTION_ID
 	result["current_production_runtime_ruleset"] = V075_RULESET_ID
 	result["playtest_pace_multiplier"] = _playtest_pace_multiplier
+	# Read-only liveness witnesses for the production submission clock. These
+	# values are owned by this RuntimeOwner; presentation consumers must never
+	# mutate them or use them to close/resolve a window.
+	result["authoritative_clock_msec"] = _clock_msec
+	result["submission_opened_at_msec"] = _opened_at_msec
+	result["submission_deadline_msec"] = _submission_deadline_msec
+	result["submission_window_id"] = _submission_window_id()
+	result["submission_started_clock_msec"] = _opened_at_msec
+	result["submission_deadline_clock_msec"] = _submission_deadline_msec
+	result["batch_id"] = _batch_id() if not _match_id.is_empty() else ""
+	result["submission_seconds_total"] = float(SUBMISSION_WINDOW_MSEC) / 1000.0
+	result["submission_seconds_remaining"] = submission_seconds_remaining()
 	result["playtest_pace_control_mode_count"] = PLAYTEST_PACE_MULTIPLIERS.size()
 	result["playtest_human_decision"] = human_decision_snapshot()
 	result["combat"] = combat_debug
@@ -4800,6 +5225,27 @@ func debug_snapshot() -> Dictionary:
 	)
 	result["v076_monster_production_collision_count"] = (
 		_v076_monster_production_collision_count
+	)
+	result["v076_deck_lifecycle_receipt_count"] = (
+		_v076_deck_lifecycle_receipt_count
+	)
+	result["v076_deck_lifecycle_receipt_identity_count"] = (
+		_v076_deck_lifecycle_receipt_ids.size()
+	)
+	result["v076_deck_lifecycle_duplicate_count"] = (
+		_v076_deck_lifecycle_duplicate_count
+	)
+	result["v076_deck_lifecycle_collision_count"] = (
+		_v076_deck_lifecycle_collision_count
+	)
+	result["v076_deck_lifecycle_lineage_failure_count"] = (
+		_v076_deck_lifecycle_lineage_failure_count
+	)
+	result["v076_track_presentation_receipt_count"] = (
+		_v076_track_presentation_receipt_count
+	)
+	result["v076_last_track_presentation_receipt_id"] = (
+		_v076_last_track_presentation_receipt_id
 	)
 	result["v075_production_monster_movement_writer_count"] = (
 		0 if is_instance_valid(_v076_monster_production_adapter) else 1
@@ -4948,7 +5394,71 @@ func debug_snapshot() -> Dictionary:
 	result["new_game_cleanup_failure_count"] = (
 		_new_game_cleanup_failure_count
 	)
+	_v075_debug_snapshot_cache = {
+		"generation": _v075_snapshot_generation,
+		"snapshot": result,
+	}
+	_refresh_v075_debug_snapshot_fields(result)
 	return result
+
+
+func _invalidate_v075_snapshot_caches() -> void:
+	_v075_snapshot_generation += 1
+	_v075_player_snapshot_cache_by_viewer = {}
+	_v075_debug_snapshot_cache = {}
+
+
+func _refresh_v075_player_snapshot_fields(snapshot: Dictionary) -> void:
+	if snapshot.is_empty():
+		return
+	snapshot["submission_seconds_total"] = float(SUBMISSION_WINDOW_MSEC) / 1000.0
+	snapshot["submission_window_id"] = _submission_window_id()
+	snapshot["submission_started_clock_msec"] = _opened_at_msec
+	snapshot["submission_deadline_clock_msec"] = _submission_deadline_msec
+	snapshot["batch_id"] = _batch_id() if not _match_id.is_empty() else ""
+	if snapshot.has("submission_seconds_remaining"):
+		snapshot["submission_seconds_remaining"] = submission_seconds_remaining()
+
+
+func _refresh_v075_debug_snapshot_fields(snapshot: Dictionary) -> void:
+	if snapshot.is_empty():
+		return
+	snapshot["authoritative_clock_msec"] = _clock_msec
+	snapshot["submission_opened_at_msec"] = _opened_at_msec
+	snapshot["submission_deadline_msec"] = _submission_deadline_msec
+	snapshot["submission_window_id"] = _submission_window_id()
+	snapshot["submission_started_clock_msec"] = _opened_at_msec
+	snapshot["submission_deadline_clock_msec"] = _submission_deadline_msec
+	snapshot["batch_id"] = _batch_id() if not _match_id.is_empty() else ""
+	snapshot["submission_seconds_total"] = float(SUBMISSION_WINDOW_MSEC) / 1000.0
+	snapshot["submission_seconds_remaining"] = submission_seconds_remaining()
+	snapshot["playtest_pace_multiplier"] = _playtest_pace_multiplier
+	var human_decision := snapshot.get("playtest_human_decision", {}) as Dictionary
+	if not human_decision.is_empty():
+		human_decision["match_started"] = not _match_id.is_empty()
+		human_decision["phase"] = _phase
+		human_decision["decision_required"] = (
+			not bool(_locked_by_player.get(_local_player_id, false))
+			if not _match_id.is_empty() and _phase == "submission"
+			else (
+				not bool(_maintenance_done.get(_local_player_id, false))
+				if not _match_id.is_empty() and _phase == "maintenance"
+				else false
+			)
+		)
+		human_decision["terminal"] = _phase in ["settled", "failed"]
+		snapshot["playtest_human_decision"] = human_decision
+
+
+func _submission_window_id() -> String:
+	if _match_id.is_empty() or _batch_number <= 0:
+		return ""
+	return "window.%s.%04d.%d" % [_match_id, _batch_number, _opened_at_msec]
+
+
+func _emit_local_state() -> void:
+	_invalidate_v075_snapshot_caches()
+	super._emit_local_state()
 
 
 func v075_track_acquisition_policy_snapshot() -> Dictionary:
@@ -5097,6 +5607,8 @@ func _reset_runtime() -> void:
 	_v076_projection_flush_scheduled = false
 	_v076_last_track_advance_msec = -1
 	_v076_last_track_advance_sequence = -1
+	_v076_track_presentation_receipt_count = 0
+	_v076_last_track_presentation_receipt_id = ""
 	_v076_production_asset_reservations = {}
 	_v076_production_military_submission_by_uid = {}
 	_v076_military_consequence_fingerprint_by_id = {}
@@ -5110,6 +5622,11 @@ func _reset_runtime() -> void:
 	_v076_monster_production_commit_count = 0
 	_v076_monster_production_duplicate_count = 0
 	_v076_monster_production_collision_count = 0
+	_v076_deck_lifecycle_receipt_count = 0
+	_v076_deck_lifecycle_receipt_ids = {}
+	_v076_deck_lifecycle_duplicate_count = 0
+	_v076_deck_lifecycle_collision_count = 0
+	_v076_deck_lifecycle_lineage_failure_count = 0
 	_clear_v075_submission_caches()
 	_clear_v075_track_projection_cache()
 
@@ -5170,6 +5687,9 @@ func set_track_stance(
 
 
 func _complete_batch_resolution() -> void:
+	var local_before := (
+		_dbg_projection(_local_player_id).get("facts", {}) as Dictionary
+	).duplicate(true)
 	if _combat_initialized and _combat_autonomy_completed_batch_id != _batch_id():
 		var completed := _resolve_combat_maintenance()
 		if not bool(completed.get("accepted", false)):
@@ -5177,6 +5697,192 @@ func _complete_batch_resolution() -> void:
 			return
 		_combat_autonomy_completed_batch_id = _batch_id()
 	super._complete_batch_resolution()
+	if _phase == "failed":
+		return
+	var local_after := (
+		_dbg_projection(_local_player_id).get("facts", {}) as Dictionary
+	).duplicate(true)
+	var dbg := _dbg_by_player.get(_local_player_id) as RefCounted
+	if dbg == null or not dbg.has_method("core_authority_snapshot"):
+		return
+	var authority := dbg.call("core_authority_snapshot") as Dictionary
+	var state := authority.get("state", {}) as Dictionary
+	var request_id := "intent.dbg.complete.%s.%d" % [
+		_local_player_id,
+		_batch_number,
+	]
+	var source_receipt := (
+		(state.get("receipt_journal", {}) as Dictionary).get(
+			request_id,
+			{}
+		) as Dictionary
+	).duplicate(true)
+	if not bool(source_receipt.get("success", false)):
+		return
+	if int(source_receipt.get("reshuffle_count", 0)) > 0:
+		_v076_emit_deck_lifecycle_receipt(
+			_v076_build_deck_lifecycle_receipt(
+				"DECK_SHUFFLE",
+				source_receipt,
+				{
+					"source_zone": "discard",
+					"target_zone": "draw_pile",
+					"discard_count_before": int(local_before.get(
+						"discard_count", 0
+					)),
+					"draw_pile_count_before": int(local_before.get(
+						"draw_pile_count", 0
+					)),
+					"before_zone_counts": _v076_card_zone_counts(local_before),
+					"after_zone_counts": _v076_card_zone_counts(local_after),
+				}
+			)
+		)
+	var refill_count := int(source_receipt.get("refill_count", 0))
+	if refill_count > 0:
+		var before_ids: Dictionary = {}
+		for card_variant in local_before.get("hand", []) as Array:
+			if card_variant is Dictionary:
+				before_ids[str((card_variant as Dictionary).get(
+					"instance_id", ""
+				))] = true
+		var drawn_cards: Array[Dictionary] = []
+		for card_variant in local_after.get("hand", []) as Array:
+			if not (card_variant is Dictionary):
+				continue
+			var card := card_variant as Dictionary
+			var instance_id := str(card.get("instance_id", ""))
+			if not instance_id.is_empty() and not before_ids.has(instance_id):
+				drawn_cards.append(_v076_card_lifecycle_projection(card))
+		_v076_emit_deck_lifecycle_receipt(
+			_v076_build_deck_lifecycle_receipt(
+				"CARD_DRAW",
+				source_receipt,
+				{
+					"source_zone": "draw_pile",
+					"target_zone": "hand",
+					"drawn_card_projections": drawn_cards,
+					"drawn_card_count": refill_count,
+					"projection_card_count": drawn_cards.size(),
+					"before_zone_counts": _v076_card_zone_counts(local_before),
+					"after_zone_counts": _v076_card_zone_counts(local_after),
+				}
+			)
+		)
+
+
+func _v076_build_deck_lifecycle_receipt(
+	event_kind: String,
+	source_receipt: Dictionary,
+	additional: Dictionary = {}
+) -> Dictionary:
+	var source_receipt_id := str(source_receipt.get(
+		"receipt_id",
+		source_receipt.get("request_id", "")
+	)).strip_edges()
+	var source_fingerprint := str(source_receipt.get(
+		"receipt_fingerprint",
+		""
+	)).strip_edges()
+	var source_authority_sequence := int(source_receipt.get(
+		"result_revision",
+		source_receipt.get("revision_after", -1)
+	))
+	var receipt_kind := {
+		"CARD_ACQUIRE": "card_intake_receipt",
+		"DECK_SHUFFLE": "deck_shuffle_receipt",
+		"CARD_DRAW": "card_draw_receipt",
+		"CARD_DISCARD": "card_discard_receipt",
+	}.get(event_kind, "") as String
+	if (
+		source_receipt_id.is_empty()
+		or not PresentationReceiptIdentity.valid_sha256(source_fingerprint)
+		or source_authority_sequence < 0
+		or receipt_kind.is_empty()
+	):
+		_v076_deck_lifecycle_lineage_failure_count += 1
+		return {}
+	var presentation_ordinal := 1 if event_kind == "CARD_DRAW" else 0
+	var presentation_identity := PresentationReceiptIdentity.canonical_sha256({
+		"domain": "v076.owner_private.card_lifecycle.presentation.v1",
+		"source_receipt_id": source_receipt_id,
+		"source_authority_sequence": source_authority_sequence,
+		"event_kind": event_kind,
+		"presentation_ordinal": presentation_ordinal,
+		"owner_player_id": _local_player_id,
+		"match_id": _match_id,
+	})
+	var presentation_receipt_id := (
+		"presentation.card_lifecycle.%s" % presentation_identity
+	)
+	var receipt := {
+		"schema": "V076OwnerPrivateCardLifecyclePresentationReceiptV1",
+		"schema_version": 1,
+		"accepted": true,
+		"receipt_scope": "owner_private",
+		"privacy_class": "CURRENT_PLAYER",
+		"current_player_authorized": true,
+		"event_kind": event_kind,
+		"cue_id": event_kind,
+		"receipt_kind": receipt_kind,
+		"presentation_receipt_id": presentation_receipt_id,
+		"receipt_id": presentation_receipt_id,
+		"owner_player_id": _local_player_id,
+		"ruleset_id": V075_RULESET_ID,
+		"batch_id": _batch_id(),
+		"source_receipt_id": source_receipt_id,
+		"source_receipt_fingerprint": source_fingerprint,
+		"source_authority_sequence": source_authority_sequence,
+		"presentation_ordinal": presentation_ordinal,
+		"source_authority_receipt_id": str(source_receipt.get(
+			"request_id", source_receipt_id
+		)),
+		"source_authority_receipt_fingerprint": source_fingerprint,
+		"source_revision_before": int(source_receipt.get(
+			"revision_before", -1
+		)),
+		"source_revision_after": int(source_receipt.get(
+			"revision_after", -1
+		)),
+		"draw_pile_count": int(source_receipt.get("draw_pile_count", 0)),
+		"discard_count": int(source_receipt.get("discard_count", 0)),
+		"hand_count": int(source_receipt.get("hand_count", 0)),
+		"reshuffle_count": int(source_receipt.get("reshuffle_count", 0)),
+		"refill_count": int(source_receipt.get("refill_count", 0)),
+		"authority_sequence_delta": 0,
+		"presentation_rng_draw_delta": 0,
+		"presentation_deck_order_mutation_count": 0,
+		"presentation_card_zone_mutation_count": 0,
+	}
+	for key_variant in additional.keys():
+		receipt[key_variant] = additional.get(key_variant)
+	receipt["receipt_fingerprint"] = (
+		PresentationReceiptIdentity.canonical_sha256(receipt)
+	)
+	return receipt
+
+
+func _v076_emit_deck_lifecycle_receipt(receipt: Dictionary) -> void:
+	var receipt_id := str(receipt.get("receipt_id", ""))
+	var fingerprint := str(receipt.get("receipt_fingerprint", ""))
+	if (
+		receipt_id.is_empty()
+		or not PresentationReceiptIdentity.valid_sha256(fingerprint)
+		or str(receipt.get("owner_player_id", "")) != _local_player_id
+		or str(receipt.get("receipt_scope", "")) != "owner_private"
+	):
+		_v076_deck_lifecycle_lineage_failure_count += 1
+		return
+	if _v076_deck_lifecycle_receipt_ids.has(receipt_id):
+		if str(_v076_deck_lifecycle_receipt_ids.get(receipt_id, "")) == fingerprint:
+			_v076_deck_lifecycle_duplicate_count += 1
+			return
+		_v076_deck_lifecycle_collision_count += 1
+		push_error("V076 deck lifecycle receipt identity collision")
+		return
+	_v076_deck_lifecycle_receipt_ids[receipt_id] = fingerprint
+	_v076_deck_lifecycle_receipt_count += 1
+	deck_lifecycle_presentation_receipt_ready.emit(receipt.duplicate(true))
 
 
 func _commit_victory() -> void:
@@ -7685,6 +8391,48 @@ func _public_action_receipt(
 	}
 
 
+func _attach_public_facility_resolution_fields(
+	receipt: Dictionary,
+	action: Dictionary
+) -> void:
+	# These are public aftermath facts, not private card/actor bindings.  Keep
+	# the source instance and owner out of the projection while giving the
+	# resolution theater enough information to name the facility, target region,
+	# action mode, and visible effect.
+	var binding := action.get("card_action_binding", {}) as Dictionary
+	var nested_action := action.get("facility_action", {}) as Dictionary
+	for field_name in [
+		"facility_type",
+		"industry_id",
+		"facility_action_mode",
+		"target_region_id",
+		"target_slot_id",
+	]:
+		var value := str(action.get(field_name, ""))
+		if value.is_empty():
+			value = str(binding.get(field_name, ""))
+		if value.is_empty():
+			value = str(nested_action.get(field_name, ""))
+		if value.is_empty() and field_name == "target_region_id":
+			value = str(action.get("region_id", binding.get(
+				"region_id",
+				nested_action.get("region_id", "")
+			)))
+		if value.is_empty() and field_name == "target_slot_id":
+			value = str(action.get("slot_id", binding.get(
+				"slot_id",
+				nested_action.get("slot_id", "")
+			)))
+		if not value.is_empty():
+			receipt[field_name] = value
+	var mode := str(receipt.get("facility_action_mode", ""))
+	receipt["public_effect_label"] = {
+		"BUILD_NEW": "设施建成",
+		"UPGRADE_OWN": "设施升级",
+		"REPAIR_OWN": "设施修复",
+	}.get(mode, "设施效果已展示")
+
+
 func _publish_combat_event(
 	event_kind: String,
 	payload: Dictionary,
@@ -8666,7 +9414,7 @@ func _flush_v076_coalesced_projection() -> void:
 	_emit_local_state()
 
 
-func _on_authoritative_track_advanced(_receipt: Dictionary) -> void:
+func _on_authoritative_track_advanced(receipt: Dictionary) -> void:
 	_v076_last_track_advance_msec = Time.get_ticks_msec()
 	_v076_last_track_advance_sequence = int(
 		(_track_core.call("authoritative_scroll_sequence_v1")
@@ -8674,6 +9422,26 @@ func _on_authoritative_track_advanced(_receipt: Dictionary) -> void:
 			"authoritative_scroll_sequence_v1"
 		) else -1)
 	)
+	# Forward the immutable authority receipt on a presentation-only signal.  No
+	# derived ETA, RNG value, or second track mutation is introduced here; the
+	# Screen will map this exact lineage to the single Animation Director.
+	_v076_track_presentation_receipt_count += 1
+	_v076_last_track_presentation_receipt_id = str(receipt.get(
+		"receipt_id",
+		receipt.get("request_id", "")
+	))
+	# The authority receipt remains unchanged.  Its presentation-only duplicate
+	# carries the committed Core sequence so a consumer never guesses identity
+	# from a projection cache which may refresh on the following frame.
+	var presentation_receipt := receipt.duplicate(true)
+	var presentation_public_facts := (
+		presentation_receipt.get("public_facts", {}) as Dictionary
+	).duplicate(true)
+	presentation_public_facts["authoritative_scroll_sequence"] = (
+		_v076_last_track_advance_sequence
+	)
+	presentation_receipt["public_facts"] = presentation_public_facts
+	track_presentation_receipt_ready.emit(presentation_receipt)
 
 
 func v076_track_advance_timing_snapshot() -> Dictionary:
@@ -8681,6 +9449,10 @@ func v076_track_advance_timing_snapshot() -> Dictionary:
 		"sequence": _v076_last_track_advance_sequence,
 		"committed_msec": _v076_last_track_advance_msec,
 		"authority_owned": true,
+		"presentation_receipt_count": _v076_track_presentation_receipt_count,
+		"last_presentation_receipt_id": (
+			_v076_last_track_presentation_receipt_id
+		),
 	}
 
 

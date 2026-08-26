@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "contract_id": "space_syndicate.v076.sound_cue_routes.v1",
+  "source_audio_contract_id": "space_syndicate.commercial_audio.events.v1",
+  "selection_policy": "deterministic_fixed_canonical_event",
+  "presentation_only": true,
+  "randomize": false,
+  "rules_rng_draw_count": 0,
+  "gameplay_mutation_count": 0,
+  "catalog_sound_cue_count": 23,
+  "registered_route_count": 25,
+  "unknown_route_policy": "SILENT_REGISTERED_PLACEHOLDER",
+  "silent_placeholder": {
+    "route_mode": "SILENT_REGISTERED_PLACEHOLDER",
+    "registered": true,
+    "reason_code": "sound_cue_route_missing",
+    "presentation_only": true,
+    "rules_rng_draw_count": 0,
+    "gameplay_mutation_count": 0
+  },
+  "required_sound_cue_ids": [
+    "CARD_ACQUIRE_SFX",
+    "CARD_ENTER_DECK_SFX",
+    "DECK_SHUFFLE_SFX",
+    "CARD_DRAW_SFX",
+    "CARD_PLAY_SFX",
+    "CARD_RESOLVE_SFX",
+    "CARD_FIZZLE_SFX",
+    "FACILITY_BUILD_SFX",
+    "MONSTER_ATTACK_SFX",
+    "MONSTER_HIT_SFX",
+    "MILITARY_ARRIVE_SFX",
+    "MILITARY_WITHDRAW_SFX",
+    "TRACK_HANDOFF_SFX",
+    "UI_CONFIRM_SFX",
+    "UI_CANCEL_SFX"
+  ],
+  "routes": [
+    {
+      "sound_cue_id": "CARD_ACQUIRE_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "commodity.claim",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "CARD_DISCARD_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "card.drop",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "CARD_DRAW_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "card.select",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "CARD_ENTER_DECK_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "normal_card.purchase",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "CARD_ENTER_HAND_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "card.select",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "CARD_EXHAUST_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "card.lock",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": true
+    },
+    {
+      "sound_cue_id": "CARD_FIZZLE_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "card.lock",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": true
+    },
+    {
+      "sound_cue_id": "CARD_MERGE_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "card.merge",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": true
+    },
+    {
+      "sound_cue_id": "CARD_PLAY_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "card.drop",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "CARD_RESOLVE_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "asset.refresh",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": true
+    },
+    {
+      "sound_cue_id": "CARD_SELECT_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "card.select",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "COMBAT_KO_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "settlement.complete",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "DECK_SHUFFLE_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "card.merge",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": true
+    },
+    {
+      "sound_cue_id": "FACILITY_BUILD_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "facility.factory_build",
+      "selector_field": "facility_type",
+      "canonical_event_by_selector": {
+        "factory": "facility.factory_build",
+        "market": "facility.market_build",
+        "warehouse": "facility.warehouse_build"
+      },
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "FINAL_SETTLEMENT_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "settlement.complete",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "MILITARY_ARRIVE_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "military.action",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "MILITARY_ASSAULT_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "military.action",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "MILITARY_WITHDRAW_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "military.action",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "MONSTER_ATTACK_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "monster.attack",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "MONSTER_HEAL_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "asset.refresh",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": true
+    },
+    {
+      "sound_cue_id": "MONSTER_HIT_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "monster.attack",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "MONSTER_UPGRADE_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "asset.refresh",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": true
+    },
+    {
+      "sound_cue_id": "TRACK_HANDOFF_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "card.drag_start",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "UI_CANCEL_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "ui.cancel",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    },
+    {
+      "sound_cue_id": "UI_CONFIRM_SFX",
+      "route_mode": "CANONICAL_EVENT",
+      "canonical_event_id": "ui.confirm",
+      "canonical_event_by_selector": {},
+      "requires_receipt_identity_sha256": false
+    }
+  ]
+}

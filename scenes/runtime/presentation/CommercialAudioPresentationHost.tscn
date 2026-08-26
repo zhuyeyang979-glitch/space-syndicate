@@ -11,7 +11,8 @@ script = ExtResource("1_host")
 catalog = ExtResource("5_catalog")
 player_card_dock_path = NodePath("../SafeArea/MainRows/PlayerCardDock")
 menu_overlay_path = NodePath("../OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
-editor_description = "Presentation-only commercial audio composition. It consumes public UI signals and stable Catalog keys without gameplay, Save, or RNG authority."
+animation_director_path = NodePath("../V076PresentationAnimationDirector")
+editor_description = "Presentation-only commercial audio composition. It consumes public UI signals and receipt-backed V076 Sound Cues through stable Catalog keys without gameplay, Save, or RNG authority."
 
 [node name="AudioEventBus" type="Node" parent="."]
 unique_name_in_owner = true

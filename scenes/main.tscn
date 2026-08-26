@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://eu6ukbvy68o3"]
+[gd_scene load_steps=6 format=3 uid="uid://eu6ukbvy68o3"]
 
 [ext_resource type="Script" path="res://scripts/v075_runtime/v075_application_bootstrap.gd" id="1_bootstrap"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/V075RuntimeComposition.tscn" id="2_runtime"]
 [ext_resource type="PackedScene" path="res://scenes/ui/v075/V075SampleGameScreen.tscn" id="3_screen"]
 [ext_resource type="PackedScene" path="res://scenes/ui/v075/V075NewGameLoadingOverlay.tscn" id="4_loading"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn" id="5_menu_lifecycle"]
 
 [node name="Main" type="Control" unique_id=649603181]
 layout_mode = 3
@@ -24,3 +25,18 @@ layout_mode = 1
 [node name="V075NewGameLoadingOverlay" parent="." instance=ExtResource("4_loading")]
 unique_name_in_owner = true
 layout_mode = 1
+
+[node name="CommercialMenuLifecycleApplicationFlowController" parent="." instance=ExtResource("5_menu_lifecycle")]
+unique_name_in_owner = true
+menu_overlay_path = NodePath("../V075GameScreen/OverlayLayer/CommercialShellSurfaceLayer/MenuModalOverlay")
+game_screen_path = NodePath("../V075GameScreen")
+v075_application_flow_path = NodePath("../V075RuntimeComposition")
+open_root_on_ready = true
+
+[connection signal="continue_requested" from="V075GameScreen/OverlayLayer/CommercialShellSurfaceLayer/MenuModalOverlay" to="CommercialMenuLifecycleApplicationFlowController" method="close_to_table"]
+[connection signal="main_menu_requested" from="V075GameScreen/OverlayLayer/CommercialShellSurfaceLayer/MenuModalOverlay" to="CommercialMenuLifecycleApplicationFlowController" method="open_root_menu"]
+[connection signal="catalog_back_requested" from="V075GameScreen/OverlayLayer/CommercialShellSurfaceLayer/MenuModalOverlay" to="CommercialMenuLifecycleApplicationFlowController" method="open_root_menu"]
+[connection signal="quick_nav_action_requested" from="V075GameScreen/OverlayLayer/CommercialShellSurfaceLayer/MenuModalOverlay" to="CommercialMenuLifecycleApplicationFlowController" method="_on_root_lobby_action_requested"]
+[connection signal="new_game_requested" from="CommercialMenuLifecycleApplicationFlowController" to="V075GameScreen" method="show_new_game_setup"]
+[connection signal="application_intent_requested" from="V075GameScreen" to="CommercialMenuLifecycleApplicationFlowController" method="handle_application_intent"]
+[connection signal="pressed" from="V075GameScreen/CommercialMenuButton" to="CommercialMenuLifecycleApplicationFlowController" method="open_pause_menu"]

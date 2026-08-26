@@ -664,7 +664,14 @@ func _public_facility_markers(public_projection: Dictionary, centers: Dictionary
 	var rows := _projection_rows(public_projection, "public_facility_slots")
 	var result: Array = []
 	var ordinal_by_region := {}
+	var ordered_rows: Array = []
 	for row_variant in rows:
+		if row_variant is Dictionary:
+			ordered_rows.append((row_variant as Dictionary).duplicate(true))
+	ordered_rows.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return _facility_marker_identity(left) < _facility_marker_identity(right)
+	)
+	for row_variant in ordered_rows:
 		if not (row_variant is Dictionary):
 			continue
 		var row := (row_variant as Dictionary).duplicate(true)
@@ -684,6 +691,12 @@ func _public_facility_markers(public_projection: Dictionary, centers: Dictionary
 		var center := _as_vector3(centers.get(region_id, Vector3.RIGHT)).normalized()
 		var marker_unit := _offset_unit(center, ordinal)
 		var industry_id := str(row.get("industry_id", "industry"))
+		var slot_id := str(row.get("slot_id", ""))
+		var facility_id := str(row.get("facility_id", ""))
+		var marker_id := facility_id if not facility_id.is_empty() else slot_id
+		if marker_id.is_empty():
+			marker_id = "%s|%s|%s|%d" % [region_id, facility_type, industry_id, ordinal]
+		var damage_points := int(row.get("damage_points", 0))
 		result.append({
 			"position": _world_from_unit(marker_unit),
 			"position_unit_sphere": marker_unit,
@@ -691,9 +704,13 @@ func _public_facility_markers(public_projection: Dictionary, centers: Dictionary
 			"level": maxi(1, int(row.get("rank", 1))),
 			"products": [industry_id],
 			"tag_color": Color(str(INDUSTRY_COLORS.get(industry_id, "#38bdf8"))),
-			"active": int(row.get("damage_points", 0)) <= 0,
+			"active": damage_points <= 0,
 			"asset_key": str(FACILITY_ASSET_KEYS.get(facility_type, "")),
 			"facility_type": facility_type,
+			"shape_kind": facility_type,
+			"marker_id": marker_id,
+			"facility_id": facility_id,
+			"slot_id": slot_id,
 			"region_id": region_id,
 			"industry_id": industry_id,
 			"owner_public_id": str(row.get("owner_public_id", row.get("owner_id", ""))),
@@ -701,9 +718,26 @@ func _public_facility_markers(public_projection: Dictionary, centers: Dictionary
 			"public_ingress_throughput": row.get("public_ingress_throughput", row.get("ingress_throughput", null)),
 			"public_egress_throughput": row.get("public_egress_throughput", row.get("egress_throughput", null)),
 			"solar_efficiency_state": str(row.get("solar_efficiency_state", "")),
-			"damage_points": int(row.get("damage_points", 0)),
+			"damage_points": damage_points,
+			"damage_revision": int(row.get("damage_revision", 0)),
+			"visual_revision": int(row.get("slot_generation", row.get("facility_generation", 0))),
+			"damage_state": "DAMAGED" if damage_points > 0 else "HEALTHY",
 		})
 	return result
+
+
+func _facility_marker_identity(row: Dictionary) -> String:
+	var facility_id := str(row.get("facility_id", ""))
+	if not facility_id.is_empty():
+		return "facility|%s" % facility_id
+	var slot_id := str(row.get("slot_id", ""))
+	if not slot_id.is_empty():
+		return "slot|%s" % slot_id
+	return "%s|%s|%s" % [
+		str(row.get("region_id", "")),
+		str(row.get("facility_type", "")),
+		str(row.get("industry_id", "")),
+	]
 
 
 func _public_unit_markers(public_projection: Dictionary, centers: Dictionary) -> Array:

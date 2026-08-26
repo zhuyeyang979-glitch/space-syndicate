@@ -3,12 +3,20 @@ class_name V075PublicActionArrangement
 
 signal public_entry_hovered(entry: Dictionary)
 signal card_drop_requested(payload: Dictionary)
+signal resolution_focus_ready(receipt: Dictionary, focus_global_rect: Rect2)
+signal card_transition_started(transition_id: String, evidence: Dictionary)
+signal card_transition_finished(transition_id: String, evidence: Dictionary)
+signal resolution_presentation_started(receipt: Dictionary, evidence: Dictionary)
+signal resolution_presentation_finished(receipt_id: String, evidence: Dictionary)
 
 const InteractiveCardFaceScene := preload(
 	"res://scenes/ui/v075/V075InteractiveCardFace.tscn"
 )
 const CardDefinitions := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
+)
+const PresentationReceiptIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
 )
 const CARD_RUNTIME_CATALOG_V06 := preload(
 	"res://resources/cards/runtime/card_runtime_catalog_v06.tres"
@@ -22,11 +30,16 @@ const CARD_OVERLAP := -24.0
 const EXPANDED_HEIGHT := 248.0
 const COLLAPSED_HEIGHT := 58.0
 const PEEK_SECONDS := 1.05
-const DRAWER_MAX_VIEWPORT_HEIGHT_RATIO := 0.42
-const DRAWER_MAX_VIEWPORT_WIDTH_RATIO := 0.90
+const DRAWER_MAX_VIEWPORT_HEIGHT_RATIO := 0.78
+const DRAWER_MAX_VIEWPORT_WIDTH_RATIO := 0.28
 const COLLAPSED_HANDLE_WIDTH := 52.0
 const COLLAPSED_HANDLE_HEIGHT := 48.0
 const DRAWER_SAFE_EDGE_MARGIN := 6.0
+const RESOLUTION_FOCUS_SCALE := 1.32
+const RESOLUTION_FOCUS_MS := 240
+const RESOLUTION_EFFECT_MS := 420
+const RESOLUTION_SETTLED_MS := 260
+const RESOLUTION_AUTO_CLOSE_SECONDS := 1.05
 
 var _last_public_signature := ""
 var _arrangement_update_count := 0
@@ -52,6 +65,7 @@ var _popout_handle: Button
 var _popout_expanded := false
 var _popout_pinned := false
 var _popout_user_toggled := false
+var _last_user_toggle_reason := ""
 var _popout_initialized := false
 var _popout_mode := "COLLAPSED"
 var _peek_generation := 0
@@ -59,7 +73,12 @@ var _submission_window_active := false
 var _drag_drop_active := false
 var _popout_host: Control
 var _pending_source_transitions: Dictionary = {}
+var _started_source_transition_ids: Dictionary = {}
+var _inflight_source_transition_card_ids: Dictionary = {}
 var _pending_anchor_transitions: Dictionary = {}
+var _inflight_anchor_transition_ids: Dictionary = {}
+var _active_transition_records: Dictionary = {}
+var _presentation_session_generation := 0
 var _source_anchor_rects: Dictionary = {}
 var _known_presentation_ids: Dictionary = {}
 var _card_face_coverage_count := 0
@@ -79,6 +98,25 @@ var _drawer_panel_input_intercept_count := 0
 var _drawer_handle_input_count := 0
 var _drawer_root_input_intercept_count := 0
 var _target_mode_collapse_count := 0
+var _target_selection_collapse_active := false
+var _resolution_window_active := false
+var _resolution_batch_id := ""
+var _resolution_revision := -1
+var _resolution_receipt_queue: Array[Dictionary] = []
+var _resolution_seen_receipts: Dictionary = {}
+var _resolution_current_receipt: Dictionary = {}
+var _resolution_focus_face: V075InteractiveCardFace
+var _resolution_stage := "IDLE"
+var _resolution_generation := 0
+var _resolution_focus_global_rect := Rect2()
+var _resolution_focus_count := 0
+var _resolution_effect_presented_count := 0
+var _resolution_terminal_count := 0
+var _resolution_current_terminal_count := 0
+var _resolution_duplicate_suppression_count := 0
+var _resolution_collision_count := 0
+var _resolution_prestart_failure_count := 0
+var _resolution_stage_history: Array[String] = []
 
 
 func _ready() -> void:
@@ -206,7 +244,10 @@ func _build_popout() -> void:
 	body.add_child(_popout_scroll)
 	_popout_card_rail = HBoxContainer.new()
 	_popout_card_rail.name = "PublicCardFaceRail"
-	_popout_card_rail.add_theme_constant_override("separation", CARD_OVERLAP)
+	_popout_card_rail.add_theme_constant_override(
+		"separation",
+		int(round(CARD_OVERLAP))
+	)
 	_popout_card_rail.custom_minimum_size = Vector2(0, CARD_HEIGHT + 24)
 	_popout_scroll.add_child(_popout_card_rail)
 	_popout_detail = Label.new()
@@ -241,9 +282,16 @@ func apply_public_arrangement(
 	entries: Array,
 	phase_text: String,
 	summary_text: String,
-	privacy_text := "匿名牌只显示公开状态；归属公开后才显示名称。"
+	privacy_text := "匿名牌只显示公开状态；归属公开后才显示名称。",
+	projection_context: Dictionary = {}
 ) -> void:
 	_build_popout()
+	var raw_phase := str(projection_context.get("phase", ""))
+	var projection_signature := {
+		"phase": raw_phase,
+		"batch_id": str(projection_context.get("batch_id", "")),
+		"revision": int(projection_context.get("revision", -1)),
+	}
 	var state := {
 		"title": "公开排列",
 		"phase": phase_text,
@@ -252,7 +300,10 @@ func apply_public_arrangement(
 		"privacy_hint": privacy_text,
 		"empty_text": "等待玩家出牌 · 牌会在这里形成排列",
 	}
-	var signature := var_to_str(state)
+	var signature := var_to_str({
+		"state": state,
+		"projection_context": projection_signature,
+	})
 	if signature == _last_public_signature:
 		return
 	var had_content := not _last_public_signature.is_empty()
@@ -262,7 +313,11 @@ func apply_public_arrangement(
 	_arrangement_update_count += 1
 	_last_public_entry_count = entries.size()
 	_last_public_phase = phase_text
-	var submission_phase := phase_text in ["30秒·悬停", "submission"]
+	var resolving_phase := raw_phase == "resolving" or phase_text == "结算中"
+	var submission_phase := raw_phase == "submission" or phase_text in ["30秒·悬停", "submission"]
+	if not str(projection_context.get("batch_id", "")).is_empty():
+		_resolution_batch_id = str(projection_context.get("batch_id", ""))
+	_resolution_revision = int(projection_context.get("revision", _resolution_revision))
 	if submission_phase and not entries.is_empty():
 		# The public batch is a 30-second inspectable arrangement.  Keep the
 		# bounded drawer available for the whole submission window; the user may
@@ -271,10 +326,21 @@ func apply_public_arrangement(
 		_cancel_peek()
 		if not _popout_user_toggled or _drag_drop_active:
 			_set_popout_expanded(true, false)
-	elif _submission_window_active and not submission_phase:
+	elif _submission_window_active and not submission_phase and not resolving_phase:
 		_submission_window_active = false
-		if not _popout_pinned and not _drag_drop_active and not _popout_user_toggled:
+		if not _resolution_window_active and not _popout_pinned and not _drag_drop_active and not _popout_user_toggled:
 			_set_popout_expanded(false, true)
+	if resolving_phase and not entries.is_empty():
+		# A locked public batch is a player-facing resolution state.  Expand the
+		# existing bounded overlay automatically; this is presentation only and
+		# does not alter the authoritative phase or queue.
+		_resolution_window_active = true
+		_target_selection_collapse_active = false
+		_popout_user_toggled = false
+		_last_user_toggle_reason = "resolution_auto_open"
+		_cancel_peek()
+		if not _popout_expanded:
+			_set_popout_expanded(true, true)
 	set_track_state(state)
 	if is_instance_valid(_popout_count):
 		_popout_count.text = "%d 张" % entries.size()
@@ -291,6 +357,7 @@ func apply_public_arrangement(
 	if (
 		not entries.is_empty()
 		and not submission_phase
+		and not resolving_phase
 		and not _popout_user_toggled
 		and not _popout_pinned
 		and (previous_entry_count < entries.size() or not had_content)
@@ -299,6 +366,8 @@ func apply_public_arrangement(
 		# remains collapsed, so repeated projection refreshes cannot reopen the
 		# drawer forever or cover the planet.
 		_schedule_peek()
+	if resolving_phase and not entries.is_empty():
+		_update_resolution_header()
 
 
 func set_track_state(data: Dictionary) -> void:
@@ -326,18 +395,468 @@ func clear_public_arrangement() -> void:
 	apply_public_arrangement([], "等待提交", "30 秒内提交的行动会在中央排列。")
 
 
+func reset_for_new_game(reason := "new_game") -> void:
+	## Pair every already-started surface with one cancellation finish before the
+	## Screen clears its bridge/Director ledgers. Pending work has not emitted a
+	## start signal and is discarded without fabricating a finish.
+	_presentation_session_generation += 1
+	_peek_generation += 1
+	for transition_id_variant in _active_transition_records.keys().duplicate():
+		var transition_id := str(transition_id_variant)
+		var record := (
+			_active_transition_records.get(transition_id, {}) as Dictionary
+		)
+		var tween := record.get("tween") as Tween
+		if tween != null and tween.is_valid():
+			tween.kill()
+		var ghost := record.get("ghost") as V075InteractiveCardFace
+		var end_rect := (
+			ghost.get_global_rect()
+			if is_instance_valid(ghost)
+			else record.get("target_rect", Rect2()) as Rect2
+		)
+		card_transition_finished.emit(transition_id, {
+			"schema": "V076PublicCardTransitionFinishV1",
+			"transition_id": transition_id,
+			"end_rect": end_rect,
+			"from_ai_seat": bool(record.get("from_ai_seat", false)),
+			"terminal_status": "CANCELLED_%s" % reason.to_upper(),
+			"presentation_only": true,
+			"gameplay_mutation_count": 0,
+			"rng_draw_delta": 0,
+			"authority_sequence_delta": 0,
+		})
+		if is_instance_valid(ghost):
+			ghost.queue_free()
+	_active_transition_records.clear()
+	if not _resolution_current_receipt.is_empty():
+		var current_receipt_id := str(_resolution_current_receipt.get(
+			"presentation_receipt_id",
+			""
+		))
+		if not current_receipt_id.is_empty():
+			var end_rect := (
+				_resolution_focus_face.get_global_rect()
+				if is_instance_valid(_resolution_focus_face)
+				else resolution_sidecar_global_rect()
+			)
+			resolution_presentation_finished.emit(current_receipt_id, {
+				"schema": "V076PublicResolutionPresentationFinishV1",
+				"receipt_id": current_receipt_id,
+				"end_rect": end_rect,
+				"terminal_status": "CANCELLED_%s" % reason.to_upper(),
+				"presentation_only": true,
+				"gameplay_mutation_count": 0,
+				"rng_draw_delta": 0,
+				"authority_sequence_delta": 0,
+			})
+	if is_instance_valid(_resolution_focus_face):
+		_resolution_focus_face.queue_free()
+	_resolution_focus_face = null
+	_resolution_generation += 1
+	_resolution_receipt_queue.clear()
+	_resolution_seen_receipts.clear()
+	_resolution_current_receipt = {}
+	_resolution_stage = "IDLE"
+	_resolution_stage_history = []
+	_resolution_focus_global_rect = Rect2()
+	_resolution_window_active = false
+	_resolution_batch_id = ""
+	_resolution_revision = -1
+	_resolution_current_terminal_count = 0
+	_resolution_focus_count = 0
+	_resolution_effect_presented_count = 0
+	_resolution_terminal_count = 0
+	_resolution_duplicate_suppression_count = 0
+	_resolution_collision_count = 0
+	_resolution_prestart_failure_count = 0
+	_pending_source_transitions.clear()
+	_started_source_transition_ids.clear()
+	_inflight_source_transition_card_ids.clear()
+	_pending_anchor_transitions.clear()
+	_inflight_anchor_transition_ids.clear()
+	_known_presentation_ids.clear()
+	_hovered_presentation_ids.clear()
+	_source_anchor_rects.clear()
+	_last_entries = []
+	_last_public_signature = ""
+	_last_public_entry_count = 0
+	_last_public_phase = ""
+	_submission_window_active = false
+	_drag_drop_active = false
+	_target_selection_collapse_active = false
+	_popout_user_toggled = false
+	_popout_pinned = false
+	_last_user_toggle_reason = "new_game_reset"
+	_card_transition_count = 0
+	_ai_seat_transition_count = 0
+	_transition_failure_count = 0
+	modulate = Color.WHITE
+	if is_instance_valid(_popout_card_rail):
+		for child in _popout_card_rail.get_children():
+			child.queue_free()
+	if _popout_initialized:
+		_set_popout_expanded(false, false)
+		_update_resolution_header()
+
+
+func consume_public_resolution_receipt(receipt: Dictionary) -> Dictionary:
+	"""Queue one privacy-sanitized public resolution for the presentation theater.
+
+	The RuntimeOwner remains the only rule/effect authority.  This method only
+	validates a stable public identity, records an exact-once presentation
+	witness, and drives the existing drawer/card-face controls.
+	"""
+	if not bool(receipt.get("accepted", false)):
+		return {"accepted": false, "reason_code": "resolution_receipt_not_accepted"}
+	var receipt_id := str(receipt.get(
+		"presentation_receipt_id",
+		receipt.get(
+			"combat_receipt_id",
+			receipt.get("receipt_id", receipt.get("anonymous_action_id", ""))
+		)
+	)).strip_edges()
+	if receipt_id.is_empty():
+		return {"accepted": false, "reason_code": "resolution_receipt_identity_missing"}
+	var fingerprint_source := receipt.duplicate(true)
+	fingerprint_source.erase("presentation_fingerprint")
+	var fingerprint := PresentationReceiptIdentity.canonical_sha256(
+		fingerprint_source
+	)
+	if _resolution_seen_receipts.has(receipt_id):
+		var prior := str(_resolution_seen_receipts.get(receipt_id, ""))
+		if prior == fingerprint:
+			_resolution_duplicate_suppression_count += 1
+			return {"accepted": true, "replayed": true, "reason_code": "resolution_receipt_duplicate_suppressed"}
+		_resolution_collision_count += 1
+		return {"accepted": false, "reason_code": "resolution_receipt_identity_collision"}
+	_resolution_seen_receipts[receipt_id] = fingerprint
+	var queued := receipt.duplicate(true)
+	queued["presentation_receipt_id"] = receipt_id
+	queued["presentation_fingerprint"] = fingerprint
+	if _resolution_current_receipt.is_empty() and _resolution_receipt_queue.is_empty():
+		_resolution_stage_history = []
+	_resolution_receipt_queue.append(queued)
+	_resolution_window_active = true
+	_target_selection_collapse_active = false
+	_popout_user_toggled = false
+	_last_user_toggle_reason = "resolution_receipt_auto_open"
+	_cancel_peek()
+	if not _popout_expanded:
+		_set_popout_expanded(true, true)
+	if _resolution_current_receipt.is_empty():
+		call_deferred("_start_next_resolution_receipt")
+	return {"accepted": true, "queued": true, "receipt_id": receipt_id}
+
+
+func _start_next_resolution_receipt() -> void:
+	if not _resolution_current_receipt.is_empty() or _resolution_receipt_queue.is_empty():
+		return
+	_resolution_current_receipt = _resolution_receipt_queue.pop_front()
+	_resolution_generation += 1
+	var generation := _resolution_generation
+	_resolution_stage = "QUEUED"
+	_resolution_current_terminal_count = 0
+	_resolution_stage_history.append("QUEUED")
+	_update_resolution_header()
+	var entry := _resolution_entry_for_receipt(_resolution_current_receipt)
+	_resolution_focus_face = _build_resolution_focus_face(entry)
+	if _resolution_focus_face == null:
+		_fail_resolution_prestart(generation)
+		return
+	_resolution_stage = "FOCUSED"
+	_resolution_stage_history.append("FOCUSED")
+	_update_resolution_header()
+	var target_size := _resolution_focus_size()
+	_resolution_focus_face.size = target_size
+	_resolution_focus_face.pivot_offset = target_size * 0.5
+	_resolution_focus_face.position = _resolution_focus_position(target_size)
+	_resolution_focus_face.scale = Vector2(0.82, 0.82)
+	_resolution_focus_face.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	var resolution_receipt_id := str(_resolution_current_receipt.get(
+		"presentation_receipt_id", ""
+	))
+	var source_rect := resolution_sidecar_global_rect()
+	var target_rect := _resolution_focus_face.get_global_rect()
+	if (
+		resolution_receipt_id.is_empty()
+		or not source_rect.has_area()
+		or not target_rect.has_area()
+	):
+		_fail_resolution_prestart(generation)
+		return
+	var focus_tween := create_tween()
+	focus_tween.set_trans(Tween.TRANS_CUBIC)
+	focus_tween.set_ease(Tween.EASE_OUT)
+	focus_tween.set_parallel(true)
+	focus_tween.tween_property(_resolution_focus_face, "scale", Vector2.ONE, RESOLUTION_FOCUS_MS / 1000.0)
+	focus_tween.tween_property(_resolution_focus_face, "modulate", Color.WHITE, RESOLUTION_FOCUS_MS / 1000.0)
+	focus_tween.chain().tween_callback(_advance_resolution_stage.bind(generation, entry))
+	_resolution_focus_count += 1
+	resolution_presentation_started.emit(
+		_resolution_current_receipt.duplicate(true),
+		{
+			"schema": "V076PublicResolutionPresentationStartV1",
+			"receipt_id": resolution_receipt_id,
+			"source_rect": source_rect,
+			"target_rect": target_rect,
+			"presentation_only": true,
+			"gameplay_mutation_count": 0,
+			"rng_draw_delta": 0,
+			"authority_sequence_delta": 0,
+		}
+	)
+
+
+func _fail_resolution_prestart(generation: int) -> void:
+	if generation != _resolution_generation:
+		return
+	var failed_receipt_id := str(_resolution_current_receipt.get(
+		"presentation_receipt_id",
+		""
+	))
+	if not failed_receipt_id.is_empty():
+		_resolution_seen_receipts.erase(failed_receipt_id)
+	if is_instance_valid(_resolution_focus_face):
+		_resolution_focus_face.queue_free()
+	_resolution_focus_face = null
+	_resolution_focus_global_rect = Rect2()
+	_resolution_current_receipt = {}
+	_resolution_stage = "IDLE"
+	_resolution_prestart_failure_count += 1
+	_update_resolution_header()
+	if not _resolution_receipt_queue.is_empty():
+		call_deferred("_start_next_resolution_receipt")
+
+
+func _emit_resolution_focus_ready(generation: int) -> void:
+	if (
+		generation != _resolution_generation
+		or not is_instance_valid(_resolution_focus_face)
+	):
+		return
+	_resolution_focus_global_rect = _resolution_focus_face.get_global_rect()
+	resolution_focus_ready.emit(
+		_resolution_current_receipt.duplicate(true),
+		_resolution_focus_global_rect
+	)
+
+
+func _advance_resolution_stage(generation: int, _entry: Dictionary) -> void:
+	if generation != _resolution_generation or _resolution_current_receipt.is_empty():
+		return
+	_emit_resolution_focus_ready(generation)
+	_resolution_stage = "RESOLVING"
+	_resolution_stage_history.append("RESOLVING")
+	_update_resolution_header()
+	await get_tree().create_timer(RESOLUTION_EFFECT_MS / 2000.0).timeout
+	if generation != _resolution_generation:
+		return
+	_resolution_stage = "EFFECT_PRESENTED"
+	_resolution_stage_history.append("EFFECT_PRESENTED")
+	_resolution_effect_presented_count += 1
+	_update_resolution_header()
+	await get_tree().create_timer(RESOLUTION_EFFECT_MS / 2000.0).timeout
+	if generation != _resolution_generation:
+		return
+	var fizzled := _resolution_receipt_is_fizzle(_resolution_current_receipt)
+	_resolution_stage = "FIZZLED" if fizzled else "RESOLVED"
+	_resolution_stage_history.append(_resolution_stage)
+	_resolution_terminal_count += 1
+	_resolution_current_terminal_count += 1
+	_update_resolution_header()
+	await get_tree().create_timer(RESOLUTION_SETTLED_MS / 1000.0).timeout
+	_finish_resolution_receipt(generation)
+
+
+func _finish_resolution_receipt(generation: int) -> void:
+	if generation != _resolution_generation:
+		return
+	var finished_receipt := _resolution_current_receipt.duplicate(true)
+	var finished_receipt_id := str(finished_receipt.get(
+		"presentation_receipt_id", ""
+	))
+	var finished_rect := (
+		_resolution_focus_face.get_global_rect()
+		if is_instance_valid(_resolution_focus_face)
+		else Rect2()
+	)
+	if is_instance_valid(_resolution_focus_face):
+		_resolution_focus_face.queue_free()
+	_resolution_focus_face = null
+	_resolution_focus_global_rect = Rect2()
+	_resolution_current_receipt = {}
+	_resolution_stage = "IDLE"
+	_update_resolution_header()
+	if not finished_receipt_id.is_empty():
+		resolution_presentation_finished.emit(finished_receipt_id, {
+			"schema": "V076PublicResolutionPresentationFinishV1",
+			"receipt_id": finished_receipt_id,
+			"end_rect": finished_rect,
+			"terminal_stage_count": _resolution_current_terminal_count,
+			"presentation_only": true,
+			"gameplay_mutation_count": 0,
+			"rng_draw_delta": 0,
+			"authority_sequence_delta": 0,
+		})
+	if not _resolution_receipt_queue.is_empty():
+		call_deferred("_start_next_resolution_receipt")
+		return
+	_resolution_generation += 1
+	var close_generation := _resolution_generation
+	await get_tree().create_timer(RESOLUTION_AUTO_CLOSE_SECONDS).timeout
+	if close_generation != _resolution_generation or not _resolution_current_receipt.is_empty() or not _resolution_receipt_queue.is_empty():
+		return
+	_resolution_window_active = false
+	if not _popout_pinned and not _drag_drop_active and not _popout_user_toggled:
+		_set_popout_expanded(false, true)
+
+
+func _resolution_entry_for_receipt(receipt: Dictionary) -> Dictionary:
+	var receipt_id := str(receipt.get("presentation_receipt_id", receipt.get("receipt_id", "")))
+	var anonymous_id := str(receipt.get("anonymous_action_id", ""))
+	for entry_variant in _last_entries:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := (entry_variant as Dictionary).duplicate(true)
+		if (
+			str(entry.get("source_receipt", "")) == receipt_id
+			or str(entry.get("id", "")) == anonymous_id
+			or str(entry.get("anonymous_action_id", "")) == anonymous_id
+		):
+			return entry
+	var fallback_entry := {
+		"id": anonymous_id if not anonymous_id.is_empty() else receipt_id,
+		"presentation_correlation_id": receipt_id,
+		"source_receipt": receipt_id,
+		"label": _resolution_public_label(receipt),
+		"owner_hint": "匿名玩家",
+		"seat_label": "匿名玩家",
+		"state": "RESOLVING",
+		"resolution_status": "resolving",
+		"detail": _resolution_public_detail(receipt),
+		"summary": _resolution_public_detail(receipt),
+		"card_face_mode": "back",
+		"projection_role": "public_resolution_receipt",
+		"public_batch_entry": true,
+		"public_card_face_projection": true,
+		"accent": "#7fb6ff",
+	}
+	return fallback_entry
+
+
+func _build_resolution_focus_face(entry: Dictionary) -> V075InteractiveCardFace:
+	if not is_instance_valid(_transition_layer):
+		return null
+	var face := InteractiveCardFaceScene.instantiate() as V075InteractiveCardFace
+	if face == null:
+		return null
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	face.z_index = 130
+	face.configure(entry, _face_data_for_entry(entry), false)
+	_transition_layer.add_child(face)
+	return face
+
+
+func _resolution_focus_position(target_size: Vector2) -> Vector2:
+	var panel_size := _popout_panel.size if is_instance_valid(_popout_panel) else Vector2(CARD_WIDTH, CARD_HEIGHT)
+	return Vector2(
+		maxf(8.0, (panel_size.x - target_size.x) * 0.5),
+		maxf(34.0, (panel_size.y - target_size.y) * 0.5 - 4.0)
+	)
+
+
+func _resolution_focus_size() -> Vector2:
+	var panel_size := (
+		_popout_panel.size
+		if is_instance_valid(_popout_panel)
+		else Vector2(CARD_WIDTH, CARD_HEIGHT)
+	)
+	var max_size := Vector2(
+		maxf(1.0, panel_size.x - 20.0),
+		maxf(1.0, panel_size.y - 58.0)
+	)
+	var authored := Vector2(CARD_WIDTH, CARD_HEIGHT) * RESOLUTION_FOCUS_SCALE
+	var fit_scale := minf(
+		1.0,
+		minf(max_size.x / authored.x, max_size.y / authored.y)
+	)
+	return authored * maxf(0.2, fit_scale)
+
+
+func _resolution_receipt_is_fizzle(receipt: Dictionary) -> bool:
+	var outcome := str(receipt.get("outcome_id", "")).to_lower()
+	var reason := str(receipt.get("reason_code", "")).to_lower()
+	return outcome.contains("fizz") or reason.contains("fizz") or outcome.contains("invalid")
+
+
+func _resolution_public_label(receipt: Dictionary) -> String:
+	var domain := str(receipt.get("action_domain", "facility"))
+	var facility_type := str(receipt.get("facility_type", ""))
+	if facility_type.is_empty():
+		facility_type = str((receipt.get("action_binding", {}) as Dictionary).get("facility_type", ""))
+	if not facility_type.is_empty():
+		return {"factory": "工厂", "market": "市场", "warehouse": "仓库"}.get(facility_type, facility_type)
+	return "战斗行动" if domain in ["monster", "military"] else "公开行动"
+
+
+func _resolution_public_detail(receipt: Dictionary) -> String:
+	var outcome := str(receipt.get("outcome_id", ""))
+	var reason := str(receipt.get("reason_code", ""))
+	var region := str(receipt.get("target_region_id", receipt.get("region_id", "")))
+	var target := " · %s" % region if not region.is_empty() else ""
+	if _resolution_receipt_is_fizzle(receipt):
+		return "结算失败：%s%s" % [reason if not reason.is_empty() else "目标无效", target]
+	if outcome.contains("facility") or bool(receipt.get("facility_created", false)) or bool(receipt.get("facility_upgraded", false)) or bool(receipt.get("facility_repaired", false)):
+		return "设施效果已展示%s" % target
+	return "公开效果已展示%s" % target
+
+
+func _update_resolution_header() -> void:
+	if not is_instance_valid(_popout_phase):
+		return
+	if _resolution_stage == "IDLE":
+		_popout_phase.text = _last_public_phase
+		return
+	var label := _resolution_public_label(_resolution_current_receipt)
+	var detail := _resolution_public_detail(_resolution_current_receipt)
+	_popout_phase.text = "%s · %s" % [_resolution_stage, label]
+	if is_instance_valid(_popout_detail):
+		_popout_detail.text = "%s · %s" % [label, detail]
+
+
 func register_card_source_transition(
 	card_instance_id: String,
 	presentation_data: Dictionary,
-	source_rect: Rect2
+	source_rect: Rect2,
+	transition_id := ""
 ) -> void:
 	if card_instance_id.is_empty():
+		return
+	# A queue intent registers once before the projection edge and once after the
+	# receipt is consumed.  Once the same card has already started its visible
+	# hand -> arrangement move, the second registration is a duplicate.  The
+	# ledger is pruned when that card leaves the public row, so a legitimate
+	# remove -> requeue of the same instance can animate again.
+	var stable_transition_id := str(transition_id).strip_edges()
+	if (
+		not stable_transition_id.is_empty()
+		and _started_source_transition_ids.has(stable_transition_id)
+	):
 		return
 	_pending_source_transitions[card_instance_id] = {
 		"presentation": presentation_data.duplicate(true),
 		"source_rect": source_rect,
+		"transition_id": stable_transition_id,
 		"registered_msec": Time.get_ticks_msec(),
 	}
+	# The human receipt path registers its source after ApplicationFlow has
+	# already applied the authoritative projection.  If the target face is
+	# therefore already rendered, trigger the transition immediately instead of
+	# waiting for an unrelated later snapshot (which can leave the card looking
+	# like it simply appeared in the public row).
+	if is_inside_tree() and not _last_entries.is_empty():
+		_trigger_pending_transitions(_last_entries)
 
 
 func set_source_anchor_rects(source_anchor_rects: Dictionary) -> void:
@@ -347,7 +866,24 @@ func set_source_anchor_rects(source_anchor_rects: Dictionary) -> void:
 
 func arrangement_debug_snapshot() -> Dictionary:
 	var base := get_debug_snapshot()
+	var sidecar_rect := resolution_sidecar_global_rect()
+	var focus_rect := resolution_focus_global_rect()
+	var center_guard := _planet_center_guard_rect()
+	var center_overlap := (
+		sidecar_rect.intersection(center_guard)
+		if sidecar_rect.has_area() and center_guard.has_area()
+		else Rect2()
+	)
 	base.merge({
+		"active_transition_count": _active_transition_records.size(),
+		"pending_source_transition_count": _pending_source_transitions.size(),
+		"inflight_source_transition_count": (
+			_inflight_source_transition_card_ids.size()
+		),
+		"pending_anchor_transition_count": _pending_anchor_transitions.size(),
+		"inflight_anchor_transition_count": (
+			_inflight_anchor_transition_ids.size()
+		),
 		"arrangement_update_count": _arrangement_update_count,
 		"arrangement_animation_count": _arrangement_animation_count,
 		"entry_formation_animation_count": _entry_formation_animation_count,
@@ -370,9 +906,22 @@ func arrangement_debug_snapshot() -> Dictionary:
 		"public_arrangement_drawer_width_ratio": _drawer_width_ratio(),
 		"public_arrangement_expanded": _popout_expanded,
 		"public_arrangement_pinned": _popout_pinned,
+		"public_arrangement_user_toggled": _popout_user_toggled,
+		"public_arrangement_user_toggle_reason": _last_user_toggle_reason,
 		"submission_window_active": _submission_window_active,
 		"drag_drop_active": _drag_drop_active,
 		"public_drawer_collapsed_handle_anchor": "LEFT_EDGE",
+		"resolution_sidecar_anchor": "RIGHT_EDGE_SAFE_RAIL",
+		"resolution_sidecar_max_width_ratio": DRAWER_MAX_VIEWPORT_WIDTH_RATIO,
+		"resolution_sidecar_max_height_ratio": DRAWER_MAX_VIEWPORT_HEIGHT_RATIO,
+		"resolution_sidecar_pushes_map_layout": false,
+		"resolution_sidecar_panel_rect": sidecar_rect,
+		"resolution_sidecar_center_guard_rect": center_guard,
+		"resolution_sidecar_center_occlusion_area_px": (
+			center_overlap.size.x * center_overlap.size.y
+			if center_overlap.has_area()
+			else 0.0
+		),
 		"public_drawer_collapsed_center_control_count": 0
 			if not _popout_expanded else 1,
 		"public_drawer_collapsed_center_occlusion_area_px": 0.0
@@ -397,6 +946,7 @@ func arrangement_debug_snapshot() -> Dictionary:
 		"drawer_panel_input_intercept_count": _drawer_panel_input_intercept_count,
 		"drawer_handle_input_count": _drawer_handle_input_count,
 		"target_mode_auto_collapse_count": _target_mode_collapse_count,
+		"target_selection_collapse_active": _target_selection_collapse_active,
 		"drawer_panel_rect": _popout_panel.get_global_rect() if is_instance_valid(_popout_panel) else Rect2(),
 		"drawer_handle_rect": _popout_handle.get_global_rect() if is_instance_valid(_popout_handle) else Rect2(),
 		"public_arrangement_card_face_coverage_percent": 100.0
@@ -422,6 +972,31 @@ func arrangement_debug_snapshot() -> Dictionary:
 		"public_arrangement_insert_count": _public_entry_insert_count,
 		"card_transition_failure_count": _transition_failure_count,
 		"visible_numeric_primary_visual_count": _numeric_placeholder_count,
+		"resolution_window_active": _resolution_window_active,
+		"resolution_stage": _resolution_stage,
+		"resolution_batch_id": _resolution_batch_id,
+		"resolution_revision": _resolution_revision,
+		"resolution_queue_count": _resolution_receipt_queue.size(),
+		"resolution_current_receipt_id": str(_resolution_current_receipt.get("presentation_receipt_id", "")),
+		"resolution_focus_animation_count": _resolution_focus_count,
+		"resolution_focus_global_rect": focus_rect,
+		"resolution_focus_within_sidecar": (
+			sidecar_rect.has_area()
+			and focus_rect.has_area()
+			and sidecar_rect.encloses(focus_rect)
+		),
+		"resolution_focus_over_planet_center": (
+			focus_rect.has_area()
+			and center_guard.has_area()
+			and focus_rect.intersects(center_guard)
+		),
+		"resolution_effect_presented_count": _resolution_effect_presented_count,
+		"resolution_terminal_count": _resolution_terminal_count,
+		"resolution_stage_history": _resolution_stage_history.duplicate(),
+		"resolution_duplicate_suppression_count": _resolution_duplicate_suppression_count,
+		"resolution_collision_count": _resolution_collision_count,
+		"resolution_prestart_failure_count": _resolution_prestart_failure_count,
+		"resolution_gameplay_mutation_count": 0,
 	}, true)
 	return base
 
@@ -451,6 +1026,9 @@ func _render_card_faces(entries: Array) -> void:
 			wrapper.queue_free()
 		else:
 			existing_wrappers[presentation_id] = wrapper
+	# Exact-once is keyed by the stable public action identity and retired only
+	# by an explicit match reset. A transient empty projection must never make a
+	# previously animated action eligible to replay.
 	_card_face_coverage_count = 0
 	_card_face_total_count = 0
 	_numeric_placeholder_count = 0
@@ -734,8 +1312,25 @@ func _trigger_pending_transitions(entries: Array) -> void:
 		var card_id := str(entry.get("card_instance_id", ""))
 		if card_id.is_empty() or not _pending_source_transitions.has(card_id):
 			continue
+		if _inflight_source_transition_card_ids.has(card_id):
+			continue
 		var transition := _pending_source_transitions[card_id] as Dictionary
-		_pending_source_transitions.erase(card_id)
+		var entry_transition_id := _entry_presentation_identity(entry)
+		var expected_transition_id := str(transition.get(
+			"transition_id",
+			""
+		))
+		if (
+			entry_transition_id.is_empty()
+			or (
+				not expected_transition_id.is_empty()
+				and expected_transition_id != entry_transition_id
+			)
+		):
+			continue
+		if _started_source_transition_ids.has(entry_transition_id):
+			_pending_source_transitions.erase(card_id)
+			continue
 		var source_rect := transition.get("source_rect", Rect2()) as Rect2
 		if not source_rect.has_area():
 			_transition_failure_count += 1
@@ -744,11 +1339,19 @@ func _trigger_pending_transitions(entries: Array) -> void:
 		if ghost == null:
 			_transition_failure_count += 1
 			continue
+		_inflight_source_transition_card_ids[card_id] = true
 		ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ghost.z_index = 120
 		ghost.configure(entry, _face_data_for_entry(entry), false)
 		_transition_layer.add_child(ghost)
-		_begin_card_transition(ghost, entry, source_rect, false)
+		_begin_card_transition(
+			ghost,
+			entry,
+			source_rect,
+			false,
+			card_id,
+			"SOURCE"
+		)
 
 
 func _trigger_pending_anchor_transitions() -> void:
@@ -760,6 +1363,8 @@ func _trigger_pending_anchor_transitions() -> void:
 		return
 	for presentation_id_variant in _pending_anchor_transitions.keys().duplicate():
 		var presentation_id := str(presentation_id_variant)
+		if _inflight_anchor_transition_ids.has(presentation_id):
+			continue
 		var entry := (
 			_pending_anchor_transitions.get(presentation_id, {}) as Dictionary
 		)
@@ -770,26 +1375,38 @@ func _trigger_pending_anchor_transitions() -> void:
 			source_anchor,
 			Rect2()
 		) as Rect2
-		_pending_anchor_transitions.erase(presentation_id)
 		var ghost := InteractiveCardFaceScene.instantiate() as V075InteractiveCardFace
 		if ghost == null or not source_rect.has_area():
 			_transition_failure_count += 1
 			continue
+		_inflight_anchor_transition_ids[presentation_id] = true
 		ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ghost.z_index = 120
 		ghost.configure(entry, _face_data_for_entry(entry), false)
 		_transition_layer.add_child(ghost)
-		_begin_card_transition(ghost, entry, source_rect, true)
+		_begin_card_transition(
+			ghost,
+			entry,
+			source_rect,
+			true,
+			presentation_id,
+			"ANCHOR"
+		)
 
 
 func _begin_card_transition(
 	ghost: V075InteractiveCardFace,
 	entry: Dictionary,
 	source_rect: Rect2,
-	from_ai_seat: bool
+	from_ai_seat: bool,
+	pending_key: String,
+	pending_kind: String
 ) -> void:
 	if ghost == null or not is_instance_valid(ghost) or not source_rect.has_area():
 		_transition_failure_count += 1
+		_release_transition_attempt(pending_key, pending_kind)
+		if is_instance_valid(ghost):
+			ghost.queue_free()
 		return
 	var local_start := (
 		_transition_layer.get_global_transform().affine_inverse()
@@ -797,24 +1414,69 @@ func _begin_card_transition(
 	)
 	ghost.position = local_start
 	ghost.size = source_rect.size
-	call_deferred("_animate_card_transition", ghost, entry, from_ai_seat)
+	call_deferred(
+		"_animate_card_transition",
+		ghost,
+		entry,
+		from_ai_seat,
+		pending_key,
+		pending_kind,
+		_presentation_session_generation
+	)
 
 
 func _animate_card_transition(
 	ghost: V075InteractiveCardFace,
 	entry: Dictionary,
-	from_ai_seat: bool = false
+	from_ai_seat: bool,
+	pending_key: String,
+	pending_kind: String,
+	session_generation: int
 ) -> void:
 	if ghost == null or not is_instance_valid(ghost):
+		_release_transition_attempt(pending_key, pending_kind)
 		return
 	await get_tree().process_frame
+	if session_generation != _presentation_session_generation:
+		_release_transition_attempt(pending_key, pending_kind)
+		if is_instance_valid(ghost):
+			ghost.queue_free()
+		return
 	var target := _face_for_entry(entry)
 	if target == null:
 		_transition_failure_count += 1
+		_release_transition_attempt(pending_key, pending_kind)
 		ghost.queue_free()
 		return
 	var target_rect := target.get_global_rect()
+	if not target_rect.has_area():
+		_transition_failure_count += 1
+		_release_transition_attempt(pending_key, pending_kind)
+		ghost.queue_free()
+		return
 	var target_local := _transition_layer.get_global_transform().affine_inverse() * target_rect.position
+	var transition_id := _entry_presentation_identity(entry)
+	if transition_id.is_empty() or _active_transition_records.has(transition_id):
+		_transition_failure_count += 1
+		_release_transition_attempt(pending_key, pending_kind)
+		ghost.queue_free()
+		return
+	_commit_transition_attempt(pending_key, pending_kind, transition_id)
+	card_transition_started.emit(transition_id, {
+		"schema": "V076PublicCardTransitionStartV1",
+		"transition_id": transition_id,
+		"entry": entry.duplicate(true),
+		"source_rect": Rect2(
+			_transition_layer.get_global_transform() * ghost.position,
+			ghost.size
+		),
+		"target_rect": target_rect,
+		"from_ai_seat": from_ai_seat,
+		"presentation_only": true,
+		"gameplay_mutation_count": 0,
+		"rng_draw_delta": 0,
+		"authority_sequence_delta": 0,
+	})
 	ghost.pivot_offset = ghost.size * 0.5
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_CUBIC)
@@ -823,10 +1485,61 @@ func _animate_card_transition(
 	tween.tween_property(ghost, "position", target_local, 0.34)
 	tween.tween_property(ghost, "size", target_rect.size, 0.34)
 	tween.tween_property(ghost, "modulate", Color(1, 1, 1, 0.0), 0.34)
-	tween.chain().tween_callback(ghost.queue_free)
+	_active_transition_records[transition_id] = {
+		"tween": tween,
+		"ghost": ghost,
+		"from_ai_seat": from_ai_seat,
+		"target_rect": target_rect,
+	}
+	tween.chain().tween_callback(
+		_emit_card_transition_finished.bind(
+			transition_id, target_rect, from_ai_seat, ghost
+		)
+	)
 	_card_transition_count += 1
 	if from_ai_seat:
 		_ai_seat_transition_count += 1
+
+
+func _emit_card_transition_finished(
+	transition_id: String,
+	end_rect: Rect2,
+	from_ai_seat: bool,
+	ghost: V075InteractiveCardFace
+) -> void:
+	_active_transition_records.erase(transition_id)
+	card_transition_finished.emit(transition_id, {
+		"schema": "V076PublicCardTransitionFinishV1",
+		"transition_id": transition_id,
+		"end_rect": end_rect,
+		"from_ai_seat": from_ai_seat,
+		"presentation_only": true,
+		"gameplay_mutation_count": 0,
+		"rng_draw_delta": 0,
+		"authority_sequence_delta": 0,
+	})
+	if is_instance_valid(ghost):
+		ghost.queue_free()
+
+
+func _release_transition_attempt(pending_key: String, pending_kind: String) -> void:
+	if pending_kind == "SOURCE":
+		_inflight_source_transition_card_ids.erase(pending_key)
+	elif pending_kind == "ANCHOR":
+		_inflight_anchor_transition_ids.erase(pending_key)
+
+
+func _commit_transition_attempt(
+	pending_key: String,
+	pending_kind: String,
+	transition_id: String
+) -> void:
+	_release_transition_attempt(pending_key, pending_kind)
+	if pending_kind == "SOURCE":
+		_pending_source_transitions.erase(pending_key)
+		_started_source_transition_ids[transition_id] = true
+	elif pending_kind == "ANCHOR":
+		_pending_anchor_transitions.erase(pending_key)
 
 
 func _face_for_entry(entry: Dictionary) -> V075InteractiveCardFace:
@@ -874,6 +1587,7 @@ func _on_face_activated(_ignored_payload: Dictionary, entry: Dictionary) -> void
 func _on_toggle_pressed() -> void:
 	_cancel_peek()
 	_popout_user_toggled = true
+	_last_user_toggle_reason = "toggle_button"
 	_set_popout_expanded(not _popout_expanded, true)
 
 
@@ -882,10 +1596,25 @@ func _on_pin_pressed() -> void:
 	_popout_pinned = _popout_pin.button_pressed
 	if _popout_pinned:
 		_popout_user_toggled = true
+		_last_user_toggle_reason = "pin_button"
 		_set_popout_expanded(true, true)
 
 
 func _set_popout_expanded(expanded: bool, count_transition: bool) -> void:
+	if not expanded and _resolution_window_active:
+		# Resolution owns a fail-visible presentation window until its final
+		# receipt drains.  Every collapse intent (toggle, Escape, outside click,
+		# target selection, drag cleanup, or a stale PEEK timer) converges here, so
+		# keep one hard presentation boundary instead of duplicating partial guards
+		# across input handlers.  Clearing the transient user override is required:
+		# once the final receipt clears `_resolution_window_active`, the existing
+		# auto-close path must still be able to collapse normally.
+		_cancel_peek()
+		_target_selection_collapse_active = false
+		_popout_user_toggled = false
+		_last_user_toggle_reason = "resolution_collapse_blocked"
+		_set_popout_expanded(true, false)
+		return
 	_popout_expanded = expanded
 	_popout_mode = "EXPANDED" if expanded else "COLLAPSED"
 	# The full-rect root is only a native drag target while a drag is active.
@@ -932,10 +1661,27 @@ func _set_popout_expanded(expanded: bool, count_transition: bool) -> void:
 func collapse_for_target_selection() -> void:
 	# Target mode gives the map primary input ownership.  Keep the compact
 	# left-edge handle available, but never leave the card rail over a region.
+	# This is a temporary presentation state, not an explicit user preference.
+	# Conflating it with `_popout_user_toggled` kept the drawer collapsed after
+	# an accepted card.queue receipt even though the submission window remained
+	# active and inspectable.
 	_cancel_peek()
-	_popout_user_toggled = true
+	_target_selection_collapse_active = true
 	_target_mode_collapse_count += 1
 	_set_popout_expanded(false, true)
+
+
+func restore_after_target_selection() -> void:
+	if not _target_selection_collapse_active:
+		return
+	_target_selection_collapse_active = false
+	if (
+		_submission_window_active
+		and not _popout_pinned
+		and not _popout_user_toggled
+		and not _drag_drop_active
+	):
+		_set_popout_expanded(true, false)
 
 
 func begin_drag_drop_mode() -> Rect2:
@@ -947,6 +1693,7 @@ func begin_drag_drop_mode() -> Rect2:
 	_drag_drop_active = true
 	_cancel_peek()
 	_popout_user_toggled = false
+	_last_user_toggle_reason = "drag_drop_reset"
 	_set_popout_expanded(true, true)
 	_popout_mode = "DRAG_DROP"
 	if is_instance_valid(_popout_title):
@@ -980,6 +1727,7 @@ func _on_handle_pressed() -> void:
 	_drawer_handle_input_count += 1
 	_cancel_peek()
 	_popout_user_toggled = true
+	_last_user_toggle_reason = "drawer_handle"
 	_set_popout_expanded(true, true)
 
 
@@ -992,7 +1740,7 @@ func _on_drawer_panel_gui_input(event: InputEvent) -> void:
 
 func _schedule_peek() -> void:
 	if not is_inside_tree() or _popout_pinned or _popout_user_toggled \
-		or _submission_window_active:
+		or _submission_window_active or _resolution_window_active:
 		return
 	_peek_generation += 1
 	var generation := _peek_generation
@@ -1006,7 +1754,7 @@ func _schedule_peek() -> void:
 
 func _finish_peek(generation: int) -> void:
 	if generation != _peek_generation or _popout_pinned or _popout_user_toggled \
-		or _submission_window_active:
+		or _submission_window_active or _resolution_window_active:
 		return
 	_set_popout_expanded(false, true)
 	_popout_mode = "COLLAPSED"
@@ -1051,13 +1799,11 @@ func _update_popout_geometry() -> void:
 		)
 		_popout_panel.custom_minimum_size.x = drawer_width
 		_popout_panel.size.x = drawer_width
-		_popout_panel.position.x = clampf(
-			(available_width - drawer_width) * 0.5,
+		# Resolution is a sidecar theatre. Keep it on the right safe rail so the
+		# globe center and primary target region remain visible throughout focus.
+		_popout_panel.position.x = maxf(
 			DRAWER_SAFE_EDGE_MARGIN,
-			maxf(
-				DRAWER_SAFE_EDGE_MARGIN,
-				available_width - drawer_width - DRAWER_SAFE_EDGE_MARGIN
-			)
+			available_width - drawer_width - DRAWER_SAFE_EDGE_MARGIN
 		)
 	if is_instance_valid(_popout_handle):
 		var handle_height := _popout_host.size.y if is_instance_valid(_popout_host) else 0.0
@@ -1076,17 +1822,24 @@ func _update_popout_geometry() -> void:
 			var scroll_height := maxf(64.0, drawer_height - 82.0)
 			_popout_scroll.custom_minimum_size.y = scroll_height
 			_popout_card_rail.custom_minimum_size.y = scroll_height
-		_popout_panel.position.y = DRAWER_SAFE_EDGE_MARGIN
+		_popout_panel.position.y = maxf(
+			DRAWER_SAFE_EDGE_MARGIN,
+			(_popout_host.size.y - drawer_height) * 0.5
+		)
 		_popout_panel.size.y = drawer_height
 
 
 func _map_visible_area_ratio() -> float:
 	if not _popout_expanded:
 		return 1.0
-	var available_height := _popout_host.size.y if is_instance_valid(_popout_host) else 0.0
-	if available_height <= 1.0:
+	if not is_instance_valid(_popout_host) or not is_instance_valid(_popout_panel):
 		return 1.0
-	return clampf(1.0 - (_expanded_height() / available_height), 0.0, 1.0)
+	var host_area := _popout_host.size.x * _popout_host.size.y
+	if host_area <= 1.0:
+		return 1.0
+	var panel_size := _popout_panel.get_global_rect().size
+	var panel_area := maxf(0.0, panel_size.x) * maxf(0.0, panel_size.y)
+	return clampf(1.0 - panel_area / host_area, 0.0, 1.0)
 
 
 func _drawer_width_ratio() -> float:
@@ -1109,6 +1862,27 @@ func drawer_global_rect() -> Rect2:
 	return Rect2()
 
 
+func resolution_sidecar_global_rect() -> Rect2:
+	return drawer_global_rect()
+
+
+func resolution_focus_global_rect() -> Rect2:
+	if is_instance_valid(_resolution_focus_face):
+		_resolution_focus_global_rect = _resolution_focus_face.get_global_rect()
+	return _resolution_focus_global_rect
+
+
+func _planet_center_guard_rect() -> Rect2:
+	if get_tree() == null or get_tree().root == null:
+		return Rect2()
+	var map_view := get_tree().root.find_child("PlanetMapView", true, false) as Control
+	if not is_instance_valid(map_view):
+		return Rect2()
+	var map_rect := map_view.get_global_rect()
+	var guard_size := Vector2.ONE * minf(map_rect.size.x, map_rect.size.y) * 0.46
+	return Rect2(map_rect.get_center() - guard_size * 0.5, guard_size)
+
+
 func _input(event: InputEvent) -> void:
 	if not _popout_expanded:
 		return
@@ -1116,15 +1890,36 @@ func _input(event: InputEvent) -> void:
 		var key_event := event as InputEventKey
 		if key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE:
 			_popout_user_toggled = true
+			_last_user_toggle_reason = "escape"
 			_set_popout_expanded(false, true)
 			get_viewport().set_input_as_handled()
 			return
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT:
-			if not drawer_global_rect().has_point(mouse_event.position):
-				_popout_user_toggled = true
+			if (
+				not drawer_global_rect().has_point(mouse_event.position)
+				and _planet_map_global_rect().has_point(mouse_event.position)
+			):
+				# An outside click gives the map/hand/track immediate pointer
+				# ownership, but it is not the same intent as pressing the drawer's
+				# explicit collapse toggle.  Keeping it as a persistent user override
+				# prevented the next accepted public card from restoring the still-live
+				# submission arrangement.
+				_popout_user_toggled = false
+				_last_user_toggle_reason = "outside_click_transient"
 				_set_popout_expanded(false, true)
+
+
+func _planet_map_global_rect() -> Rect2:
+	if get_tree() == null or get_tree().root == null:
+		return Rect2()
+	var planet := get_tree().root.find_child(
+		"PlanetStageViewport",
+		true,
+		false
+	) as Control
+	return planet.get_global_rect() if is_instance_valid(planet) else Rect2()
 
 
 func _notification(what: int) -> void:

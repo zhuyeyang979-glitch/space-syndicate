@@ -572,8 +572,14 @@ func _run() -> void:
 			"acceptance debug fails closed for %s drift" % invalid_case["label"]
 		)
 
+	for node in screen.find_children("*", "AudioStreamPlayer", true, false):
+		var player := node as AudioStreamPlayer
+		player.stop()
+		player.stream = null
 	screen.queue_free()
 	flow.queue_free()
+	await process_frame
+	await process_frame
 	_finish()
 
 

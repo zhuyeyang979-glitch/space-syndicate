@@ -1,9 +1,14 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/ui/v074/V074SampleGameScreen.tscn" id="1_base"]
 [ext_resource type="Script" path="res://scripts/ui/v075/v075_sample_game_screen.gd" id="2_wrapper"]
 [ext_resource type="PackedScene" path="res://scenes/ui/v075/V075CombatPlayerSurface.tscn" id="3_surface"]
 [ext_resource type="PackedScene" path="res://scenes/ui/v075/V075PublicActionArrangement.tscn" id="4_public_arrangement"]
+[ext_resource type="PackedScene" path="res://scenes/ui/BottomCountdownBar.tscn" id="5_countdown"]
+[ext_resource type="PackedScene" path="res://scenes/ui/MenuOverlay.tscn" id="6_menu"]
+[ext_resource type="PackedScene" path="res://scenes/ui/v076/V076DeckLifecyclePresentation.tscn" id="7_deck_lifecycle"]
+[ext_resource type="Script" path="res://scripts/presentation/v076_presentation_animation_director.gd" id="8_animation_director"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/CommercialAudioPresentationHost.tscn" id="9_commercial_audio"]
 
 [sub_resource type="StyleBoxFlat" id="StyleCombatOverlay"]
 bg_color = Color(0.026, 0.044, 0.073, 0.985)
@@ -58,9 +63,27 @@ corner_radius_bottom_left = 6
 [node name="V075SampleGameScreen" instance=ExtResource("1_base")]
 script = ExtResource("2_wrapper")
 
+[node name="V076PresentationAnimationDirector" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("8_animation_director")
+
+[node name="CommercialAudioPresentationHost" parent="." instance=ExtResource("9_commercial_audio")]
+unique_name_in_owner = true
+player_card_dock_path = NodePath("")
+menu_overlay_path = NodePath("../OverlayLayer/CommercialShellSurfaceLayer/MenuModalOverlay")
+
+[node name="BottomCountdownOverlay" parent="." instance=ExtResource("5_countdown")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+mouse_filter = 2
+z_index = 60
+
 [node name="V075PacingControls" type="HBoxContainer" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 4
 
 [node name="PacingLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow/V075PacingControls"]
@@ -106,6 +129,29 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 z_index = 35
+
+[node name="CommercialMenuButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderPrimaryRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(86, 0)
+layout_mode = 2
+tooltip_text = "打开主菜单、设置、规则、资料库或退出。"
+text = "菜单"
+
+[node name="CommercialShellSurfaceLayer" type="Control" parent="OverlayLayer"]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+z_index = 100
+
+[node name="MenuModalOverlay" parent="OverlayLayer/CommercialShellSurfaceLayer" instance=ExtResource("6_menu")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
 
 [node name="V075RightSidebar" type="VBoxContainer" parent="RootMargin/Shell/TableArea"]
 unique_name_in_owner = true
@@ -236,6 +282,11 @@ bbcode_enabled = true
 text = "[color=#8ca2bd]等待第一条公开行动[/color]"
 fit_content = true
 scroll_active = false
+
+[node name="V076DeckLifecyclePresentation" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader" instance=ExtResource("7_deck_lifecycle")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
 
 [node name="HandCategoryTabs" type="HBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader"]
 unique_name_in_owner = true

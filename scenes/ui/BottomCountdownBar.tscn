@@ -29,9 +29,9 @@ tooltip_text = "Table sandglass: shorter bar means the current public window is 
 [node name="BottomCountdownMargin" type="MarginContainer" parent="BottomCountdownPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 5
+theme_override_constants/margin_top = 3
 theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 5
+theme_override_constants/margin_bottom = 3
 
 [node name="BottomCountdownRow" type="HBoxContainer" parent="BottomCountdownPanel/BottomCountdownMargin"]
 layout_mode = 2
@@ -39,7 +39,11 @@ theme_override_constants/separation = 10
 
 [node name="CardResolutionRevealTimerLabel" type="Label" parent="BottomCountdownPanel/BottomCountdownMargin/BottomCountdownRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 0)
+; Keep the full localized action label and two-digit seconds visible at the
+; production font size.  The host is wide enough that this does not consume
+; any gameplay surface; the previous 92 px minimum clipped the label to an
+; ellipsis in headed play.
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "牌桌计时"
 clip_text = true

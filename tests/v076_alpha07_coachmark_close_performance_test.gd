@@ -78,11 +78,11 @@ func _run() -> void:
 			if hidden_msec < 0 and not bool(coach_debug.get("active", true)) and (coach_root == null or not coach_root.visible):
 				hidden_msec = now
 			var pace := flow.call("pacing_snapshot") as Dictionary
-			if hidden_msec >= 0 and int(pace.get("effective_multiplier", -1)) == 2:
+			if hidden_msec >= 0 and int(pace.get("effective_multiplier", -1)) == 1:
 				interactive_msec = now
 				break
 		_expect(hidden_msec >= 0, "Coach closes visibly on sample %d" % (sample_index + 1))
-		_expect(interactive_msec >= 0, "world pace restores on sample %d" % (sample_index + 1))
+		_expect(interactive_msec >= 0, "world pace restores production 1x on sample %d" % (sample_index + 1))
 		if hidden_msec >= 0:
 			_samples.append(hidden_msec)
 		if interactive_msec >= 0:
