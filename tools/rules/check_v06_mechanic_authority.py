@@ -150,27 +150,43 @@ def _registry_retired_identifiers(mechanics: list[dict[str, object]]) -> tuple[s
     return tuple(identifiers)
 
 
-def _identifier_occurs(text: str, identifier: str) -> bool:
-    """Match ASCII symbol identifiers as whole symbols, not substrings.
+CURRENT_NON_RETIRED_IDENTIFIER_EXCEPTIONS = {
+    "_authorized_timer_contract_rejected",
+    "combat_telemetry_contract_rejected",
+    "domain_handler_purity_contract_rejected",
+}
 
-    Retired identifiers such as ``contract_reject`` are GDScript symbols.  A
-    raw substring scan incorrectly classified current symbols such as
-    ``combat_telemetry_contract_rejected`` as the retired mechanic.  Natural
-    language / punctuated markers keep their exact case-insensitive substring
-    semantics, while identifier-shaped markers use the same token boundary as
-    the field scanner below.
+
+def _identifier_occurs(text: str, identifier: str) -> bool:
+    """Keep fail-closed substring detection with three exact token exceptions.
+
+    Prefixes and suffixes can be deliberate retired-mechanic revivals, so
+    identifier-shaped markers must not be weakened to whole-symbol matching.
+    The only current collision is ``contract_reject`` inside three exact
+    ``*_contract_rejected`` status/reason tokens.  Ignore only that occurrence;
+    another retired marker on the same line must still be reported.
     """
     if not identifier:
         return False
-    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", identifier):
-        return bool(
-            re.search(
-                rf"(?<![A-Za-z0-9_]){re.escape(identifier)}(?![A-Za-z0-9_])",
-                text,
-                flags=re.IGNORECASE,
-            )
-        )
-    return identifier.casefold() in text.casefold()
+    folded_text = text.casefold()
+    folded_identifier = identifier.casefold()
+    offset = 0
+    while True:
+        hit = folded_text.find(folded_identifier, offset)
+        if hit < 0:
+            return False
+        end = hit + len(folded_identifier)
+        if folded_identifier == "contract_reject":
+            token_start = hit
+            while token_start > 0 and re.match(r"[A-Za-z0-9_]", text[token_start - 1]):
+                token_start -= 1
+            token_end = end
+            while token_end < len(text) and re.match(r"[A-Za-z0-9_]", text[token_end]):
+                token_end += 1
+            if text[token_start:token_end].casefold() in CURRENT_NON_RETIRED_IDENTIFIER_EXCEPTIONS:
+                offset = end
+                continue
+        return True
 
 
 def _concatenated_literal_hits(text: str, retired_identifiers: tuple[str, ...]) -> list[dict[str, object]]:
@@ -197,13 +213,14 @@ def _source_splitting_hits(text: str, retired_identifiers: tuple[str, ...]) -> l
 
 
 def _self_test() -> int:
-    retired = ("contract_response", "合同回应", "area_trade_contract")
+    retired = ("contract_response", "ContractResponse", "contract_reject", "合同回应", "area_trade_contract")
     evasions = [
         '"contract_" + "response"',
         '"contract_" +\n "response"',
         '"con" + "tract_res" + "ponse"',
         '"合同" +\n "回应"',
         '"area" + "_trade" + "_contract"',
+        '"contract_" + "reject_handler"',
         '"interaction_domain":\n "contract"',
         'DOMAINS = {\n "counter": 1,\n "contract": 2\n}',
     ]
@@ -217,8 +234,15 @@ def _self_test() -> int:
     failures += [sample for sample in controls if _source_splitting_hits(sample, retired)]
     identifier_cases = [
         ("contract_reject", "contract_reject", True),
+        ("_contract_reject", "contract_reject", True),
+        ("handle_contract_reject", "contract_reject", True),
+        ("contract_reject_handler", "contract_reject", True),
+        ("_contract_response_state", "contract_response", True),
+        ("LegacyContractResponseController", "ContractResponse", True),
         ("_authorized_timer_contract_rejected", "contract_reject", False),
         ("combat_telemetry_contract_rejected", "contract_reject", False),
+        ("domain_handler_purity_contract_rejected", "contract_reject", False),
+        ("_authorized_timer_contract_rejected contract_reject", "contract_reject", True),
         ("CONTRACT_REJECT", "contract_reject", True),
         ("合同回应窗口", "合同回应", True),
     ]
