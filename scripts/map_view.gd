@@ -1,4 +1,5 @@
 extends Control
+class_name SpaceSyndicateMapViewBase
 
 signal district_selected(index: int)
 signal district_double_clicked(index: int)
