@@ -5,7 +5,7 @@ sentinel, commercial presentation fixture, asset registry, and continuity lane
 are green in their explicitly bounded automated scopes. This is not a human
 pass, production-green claim, Commercial M1 Green, or STEP13 advancement.
 
-`STATUS=TRUE_HARD_STOP_REQUIRING_USER_DECISION`
+`STATUS=REUSE_GATE_CURRENT_SUBJECT_REVALIDATION_PENDING`
 
 `COMMERCIAL_M1_GREEN=false`
 
@@ -27,8 +27,12 @@ pass, production-green claim, Commercial M1 Green, or STEP13 advancement.
 
 No second screen, track, hand, catalog, card execution path, receipt owner,
 clock, RNG, map, tutorial, asset registry, animation director, or gameplay
-Owner was added. Stage 3 remains isolated green with current delta evidence;
-this checkpoint does not reclassify it as production or human green.
+Owner was added by the current-subject registration. Stage 3 remains isolated
+green with current delta evidence; this checkpoint does not reclassify it as
+production or human green. STEP09, STEP11, and STEP12 are
+REGRESSED_WITH_EVIDENCE pending current-subject production revalidation. Their
+prior production receipts remain immutable historical evidence only. No production
+cutover is authorized or claimed, and Human Green remains false.
 
 <!-- V076_STATUS_BEGIN -->
 stage_1_status=ISOLATED_GREEN
@@ -40,18 +44,22 @@ stage_3_ledger_status=CURRENT_DELTA_GREEN
 historical_reuse_status=ACTIVE
 point_inertia_status=ACTIVE
 golden_isolated_green_count=5
-golden_production_green_count=3
+golden_production_green_count=0
 golden_human_green_count=0
-production_cutover_status=true
-latest_completed_stage=V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR_READINESS
-next_stage=V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST
+production_cutover_status=false
+latest_completed_stage=V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_9F8659C8
+next_stage=V076_CURRENT_SUBJECT_PRODUCTION_REVALIDATION
 <!-- V076_STATUS_END -->
 
 ## Frozen inherited stage metadata
 
-latest_completed_atomic_step=V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR
-latest_completed_stage_head_sha=f8340207d785e7b35ea7451048e5d71d0325232c
-latest_completed_stage_tree_sha=3a142247c5cabd75a8ad92fbee6210ace5a7c9e5
+latest_completed_atomic_step=V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_9F8659C8
+latest_completed_stage_head_sha=9f8659c8e3745c4f0c6bc398030c289e4291db31
+latest_completed_stage_tree_sha=7a5f976fd09c4d4d69cf70b806760b7b2242ffff
+current_subject_head_sha=9f8659c8e3745c4f0c6bc398030c289e4291db31
+current_subject_tree_sha=7a5f976fd09c4d4d69cf70b806760b7b2242ffff
+current_subject_production_revalidation_status=PENDING
+production_cutover_authorized=false
 
 ## Historical STEP13 readiness block
 
@@ -78,8 +86,8 @@ production_green=false
 human_green=false
 alpha07_certified_card_count=0
 full_world_reproof_count=0
-latest_completed_atomic_step=V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR
-next_stage=V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST
+latest_completed_atomic_step=V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_9F8659C8
+next_stage=V076_CURRENT_SUBJECT_PRODUCTION_REVALIDATION
 <!-- V076_ALPHA07_STEP13_READINESS_STATUS_END -->
 
 ## Automated production-main Card-table sentinel
@@ -110,25 +118,34 @@ This is automated readiness evidence only; `human_evidence=false`.
   `20260826-034651-563-v076_alpha07_human_playability_readiness_test-ad67a5ed`.
 - Continuity: `105/105 PASS`, `PASS_STATIC`, zero failures.
 
-## Reuse/Point-Inertia hard stop
+## Reuse/Point-Inertia full-convergence in progress
 
-- Evaluated predecessor HEAD:
-  `362d65a1e03550800d68cb95b13f4425ee54e868`.
-- Selftest: `120/120 PASS`; false-green and valid-delta false-reject counts: 0.
-- Full committed-history validation: `FAIL`, 565 failures, 509 historical
-  failures, 62 transitions.
-- The previously proven minimum of 22 failures outside the existing append-only
-  correction mechanism remains a lower bound. No waiver, scan weakening,
-  fabricated correction, history rewrite, or new governance task is authorized.
+- Intermediate committed-only evaluated HEAD:
+  `96d4df39926bacb35a44d11df4dcb269cbb010cd`.
+- Gate selftest: `138/138 PASS`; false-green and valid-delta false-reject counts: 0.
+- Full-Convergence V2 selftest: `39/39 PASS`, including exact descendant-history
+  supplement requirements and fail-closed missing/drift negative cases.
+- Intermediate Raw Scanner snapshot: `FAIL`, 521 failures, 514 historical,
+  7 current-delta failures, and 84 history transitions.
+- Current raw SHA-256:
+  `1f7b89ec8baf21f49f3ad3cedae95a1803d70d7d1291fb0532d1bc5ce8bf7867`.
+- Portable frozen raw SHA-256:
+  `e968de7b2721074507f5e713333d481198aaa1a8c7f54012c860d8cd4e5527d4`.
+- Full convergence is authorized by
+  `USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827`.
+  No waiver, scan weakening, fabricated correction, wildcard, future
+  auto-correction, or history rewrite is authorized.
 
-The report/handoff commit follows the evaluated predecessor and does not pretend
-that its own transition was included in those counts. Final remote-head counts
-will be published in the append-only PR comment after the last rerun.
+These are explicit intermediate numbers, not final landing claims. Final
+committed-only counts will replace them after the canonical landing and
+non-self-referential successor evidence receipt are committed.
 
 ## Next allowed step
 
-Resolve the Reuse/Point-Inertia decision path. Do not start the consolidated
-human retest or STEP13–15 while the hard stop remains.
+Complete the authorized full-convergence path: close the seven current-delta
+failures, land the canonical evidence bundle, bind it with a successor receipt,
+then classify the remaining historical fingerprints in exact batches. Do not
+start the consolidated human retest or STEP13–15 while the hard stop remains.
 
 ## Historical Candidate 2 readiness evidence
 

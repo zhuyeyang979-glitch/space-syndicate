@@ -4,8 +4,8 @@
   "recorded_on": "2026-08-24",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
-    "tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+    "head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+    "tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
@@ -23,7 +23,8 @@
     "ISOLATED_GREEN",
     "PRODUCTION_GREEN",
     "PENDING",
-    "UNVERIFIED"
+    "UNVERIFIED",
+    "REGRESSED_WITH_EVIDENCE"
   ],
   "stages": [
     {
@@ -1530,6 +1531,66 @@
         "step15_feedback_clean_stop_human_pass",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_9F8659C8",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+      "tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Append-only registration of the latest exact product subject after the animation-director catalog-path repair. It preserves all earlier stage and receipt identities, claims no new Golden capability, and explicitly leaves current-subject production and cutover revalidation pending.",
+      "golden_step_ids": [],
+      "current_owner": "V075RuntimeOwner",
+      "reused_owners": [
+        "V075RuntimeOwner",
+        "V076Kernel",
+        "V076SharedHalfEdgePartition",
+        "V076PresentationAnimationDirector"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "v076-current-product-subject-manifest-9f8659c8",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/full_convergence/candidate_subject_manifest_9f8659c8.json",
+        "receipt_sha256": "edfbf306f37b25ad1b4daaece0e3b2eae0c4ab5e9340fef577f593b4e2e245d0",
+          "subject_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+          "subject_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+          "product_delta_path_count_to_evaluated_head": 0
+        },
+        {
+          "evidence_id": "v076-current-evidence-tree-manifest-9f8659c8",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/full_convergence/evidence_tree_manifest_9f8659c8.json",
+        "receipt_sha256": "fadad767bc6db511d12733d8676cd01e345294af76536cf1b36515b6174c1d43",
+          "subject_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+          "subject_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff"
+        },
+        {
+          "evidence_id": "v076-current-production-revalidation-pending-9f8659c8",
+          "result": "PENDING_REVALIDATION",
+          "receipt_path": "reports/reuse/full_convergence/production_revalidation_pending_9f8659c8.json",
+        "receipt_sha256": "e8ec5c9f91630a7a69b1e28a8b2a93662a4c414a866a823f9225c2629663d534",
+          "affected_golden_step_ids": ["STEP09", "STEP11", "STEP12"],
+          "production_green_claimed": false
+        },
+        {
+          "evidence_id": "v076-current-production-cutover-revalidation-pending-9f8659c8",
+          "result": "PENDING_REVALIDATION",
+          "receipt_path": "reports/reuse/full_convergence/production_cutover_revalidation_pending_9f8659c8.json",
+        "receipt_sha256": "b0a678c553db7ce766858e4ee2ab99dd3d4398fb485244d595f4d83acb28ab13",
+          "production_cutover_authorized": false
+        }
+      ],
+      "not_claimed": [
+        "step09_current_subject_production_green",
+        "step11_current_subject_production_green",
+        "step12_current_subject_production_green",
+        "production_cutover",
+        "human_playtest_pass",
+        "full_alpha07_production_green",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
@@ -1537,7 +1598,7 @@
     "test_bytes_changed_after_stage3": true,
     "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "STEP09, STEP11, and STEP12 remain distinct Golden step-level PRODUCTION_GREEN results. The append-only Human Playability layout revalidation stage is bound to candidate f8340207d785e7b35ea7451048e5d71d0325232c / 3a142247c5cabd75a8ad92fbee6210ace5a7c9e5 and proves automated readiness only: real main.tscn, one Human plus three AI, 169/169 readiness, seven production viewport cases at 144/144, pacing, wrapper, Coach, visual, and existing production evidence continuity. STEP13 remains PENDING because human execution/confirmation and observer attestation have not occurred. Full-product production green, STEP13-STEP15 human passes, per-card certification, and full-world reproof remain false or pending."
+    "current_claim": "STEP09, STEP11, and STEP12 are REGRESSED_WITH_EVIDENCE pending current-subject production revalidation at 9f8659c8e3745c4f0c6bc398030c289e4291db31 / 7a5f976fd09c4d4d69cf70b806760b7b2242ffff. Their prior receipts remain immutable historical evidence and are not current production claims. Production cutover is not authorized or claimed. STEP13 remains PENDING because human execution, human confirmation, observer attestation, and current-subject production revalidation have not occurred. Full-product production green, STEP13-STEP15 human passes, per-card certification, and full-world reproof remain false or pending."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -1551,13 +1612,13 @@
     "historical_reuse_status": "ACTIVE",
     "point_inertia_status": "ACTIVE",
     "golden_isolated_green_count": 5,
-    "golden_production_green_count": 3,
+    "golden_production_green_count": 0,
     "golden_human_green_count": 0,
-    "production_cutover_status": true,
-    "latest_completed_stage": "V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR_READINESS",
-    "latest_completed_stage_head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
-    "latest_completed_stage_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
-    "next_stage": "V076_ALPHA07_HUMAN_CANDIDATE_2_RETEST",
+    "production_cutover_status": false,
+    "latest_completed_stage": "V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_9F8659C8",
+    "latest_completed_stage_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+    "latest_completed_stage_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+    "next_stage": "V076_CURRENT_SUBJECT_PRODUCTION_REVALIDATION",
     "v075_pr90_dependency_boundary": "CURRENT_V075_OWNER_REUSED_NO_OWNER_SUPERSESSION"
   },
   "canonical_change_scope": {
@@ -1581,7 +1642,8 @@
       "current.military_unit_state",
       "v076.military_unit_profile_authority",
       "v076.military_physical_eta",
-      "future.v076_human_playtest_evidence"
+      "future.v076_human_playtest_evidence",
+      "current.card_codex_playerface_presentation"
     ],
     "affected_owners": [
       "component.v076.private_direct_action_input",
@@ -1603,7 +1665,8 @@
       "component.v076.human_golden_candidate_profile",
       "component.current.v075_application_bootstrap",
       "RuntimeCommandPipeline",
-      "MonsterRuntimeController"
+      "MonsterRuntimeController",
+      "component.current.card_codex_public_source"
     ],
     "focused_tests": [
       "v076_private_direct_action_input_owner_test",
@@ -1658,7 +1721,51 @@
       "v075_authoritative_card_identity_lifecycle_binding_test",
       "v076_reuse_point_inertia_gate_selftest",
       "v076_reuse_point_inertia_gate_validate",
-      "check_v06_mechanic_authority_selftest"
+      "check_v06_mechanic_authority_selftest",
+      "alpha01_content_manifest_test",
+      "alpha01_manifest_runtime_activation_test",
+      "alpha01_selected_role_consumer_test",
+      "art_identity_gate_test",
+      "bestiary_double_click_detail_navigation_test",
+      "card_codex_playerface_runtime_invariants_test",
+      "card_resolution_runtime_controller_test",
+      "codex_public_snapshot_service_test",
+      "commercial_audio_asset_contract_test",
+      "commercial_audio_production_wiring_test",
+      "commercial_audio_runtime_service_test",
+      "commercial_font_locale_runtime_test",
+      "commodity_sushi_track_runtime_test",
+      "compendium_readonly_navigation_cutover_test",
+      "compendium_v06_public_semantics_test",
+      "layout_scene_smoke_test",
+      "menu_lifecycle_application_flow_cutover_test",
+      "monster_codex_public_snapshot_service_test",
+      "planet_map_live_refresh_identity_test",
+      "player_rules_in_game_test",
+      "product_codex_public_snapshot_service_test",
+      "public_card_track_focus_selection_cutover_test",
+      "region_codex_public_source_privacy_acceptance_test",
+      "role_codex_public_contract_test",
+      "rules_quick_reference_snapshot_v06_test",
+      "runtime_pointer_input_layer_test",
+      "showcase_frame_capture",
+      "table_presentation_viewmodel_parity_test",
+      "v07_canonical_adapter_aggregate_test",
+      "v07_canonical_ai_observation_adapter_test",
+      "v07_canonical_player_projection_adapter_test",
+      "v07_unified_card_track_core_test",
+      "v073_planet_map_snapshot_connection_test",
+      "v074_planet_map_view_test",
+      "v074_sushi_track_authoritative_presentation_test",
+      "v076_bottom_countdown_production_binding_test",
+      "v076_commercial_shell_reachability_test",
+      "v076_deck_lifecycle_presentation_test",
+      "v076_new_game_loading_feedback_test",
+      "v076_presentation_animation_director_test",
+      "v076_public_action_arrangement_privacy_test",
+      "v076_public_action_arrangement_test",
+      "vertical_slice_showcase_test",
+      "visual_event_smoke_test"
     ],
     "inherited_sentinels": [
       "V076_KERNEL",
@@ -1673,16 +1780,19 @@
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "The Human Playability repair changes only existing production consumers and reducers: the V075 Game Screen scene/script, existing Coach scene/script, existing V075 Application Flow and Runtime Owner pacing input, and the existing V07 DBG receipt consumer. It creates no gameplay, presentation, tutorial, clock, tick, RNG, card-catalog, asset, map, hand, track, or receipt Owner. Human Playability Readiness passes 169/169 on real main.tscn with one Human plus three AI and zero fixture-state injection; pacing determinism passes 11/11; the wrapper passes 30/30; three responsive viewport cases pass at 1366x768, 1600x960, and 1920x1080; Coach placement passes 258/258; visual, acquisition, card-identity, projection/privacy, Private Direct Action, production military, AI/privacy, application, Runtime Owner, UI-text, and DBG sentinels are either rerun at the final head or remain bound by the existing focused-test union. The exact prior 2,000-replay, 2,000-map, full 348-card, and full 79-Gate proofs remain inherited because no rule, balance, map, Kernel ordering, RNG algorithm, card definition, or full-world boundary changed. STEP13 stays PENDING and human execution/confirmation, observer attestation, full-product production green, and full-world reproof remain unclaimed."
+    "why_focused_tests_are_sufficient": "The current full-convergence delta changes Gate tooling plus append-only governance, Registry, and evidence metadata around the exact unchanged 9f8659c8 product subject. The component inventory now classifies every production-closure path as an existing Owner-bound consumer, adapter, port, projection, presentation surface, or non-production test support; it creates no gameplay, presentation, tutorial, clock, tick, RNG, card-catalog, asset, map, hand, track, save, replay, or receipt Owner. The focused-test union covers every affected V075 production-composition and Card Codex/PlayerFace row together with the inherited Kernel, Half-Edge sphere, military, Monster, card lifecycle, AI/privacy, application, UI, commercial presentation, audio, map, deck, public-arrangement, and canonical-adapter sentinels. The exact prior 2,000-replay, 2,000-map, full 348-card, and full 79-Gate proofs remain inherited because no Godot product byte, rule, balance, topology, Kernel ordering, RNG algorithm, card definition, or full-world boundary changed. STEP09, STEP11, and STEP12 remain REGRESSED_WITH_EVIDENCE pending exact-subject production revalidation; production cutover, Human Green, STEP13-STEP15, and full-world reproof remain false or pending."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
   "point_inertia_gate_queued": true,
   "current_task_interrupted_by_gate": false,
   "current_task_result_preserved": true,
-  "product_development_resume_target": "V076_ALPHA07_HUMAN_GOLDEN_STEP13_TO_STEP15_EXECUTION",
+  "product_development_resume_target": "V076_PRODUCTION_NATURAL_DECK_DISCARD_PILE_COMMERCIAL_VISUALIZATION_QUALIFICATION",
   "production_composition_authorization_boundary": {
     "status": "CONSUMED",
+    "historical_only": true,
+    "prior_subject_only": true,
+    "current_cutover_authorized": false,
     "required_authorization": "PRODUCTION_CUTOVER_AUTHORIZED=true",
     "precheck_status": "PASS",
     "precheck_evidence_scope": "READ_ONLY_CURRENT_PRODUCTION_COMPOSITION",
@@ -1693,6 +1803,9 @@
   },
   "production_composition_precheck": {
     "status": "PASS",
+    "historical_only": true,
+    "prior_subject_only": true,
+    "current_cutover_authorized": false,
     "evidence_scope": "READ_ONLY_CURRENT_PRODUCTION_COMPOSITION",
     "test": "tests/v076_production_composition_precheck_test.gd",
     "runner": "tools/invoke_godot_test.ps1",
@@ -1721,6 +1834,9 @@
   },
   "production_cutover_receipt": {
     "status": "PASS",
+    "historical_only": true,
+    "prior_subject_only": true,
+    "current_cutover_authorized": false,
     "path": "reports/reuse/v076_victory_audit_readiness_production_binding_receipt.json",
     "sha256": "43197224112f7739cf8f1bfff2abc42f1da9f37309802909d94aedbb51d38d7c",
     "candidate_head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",

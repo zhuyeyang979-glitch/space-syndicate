@@ -1,0 +1,83 @@
+{
+  "schema_version": "space_syndicate.v076.candidate_subject_manifest.v1",
+  "manifest_id": "v076-candidate-subject-9f8659c8",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "recorded_at_utc": "2026-08-26T19:30:45.914Z",
+  "status": "EXACT_SUBJECT_REGISTERED_PRODUCTION_REVALIDATION_PENDING",
+  "subject": {
+    "head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+    "tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+    "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+    "is_head_ancestor_of_evaluated_head": true,
+    "is_descendant_of_point_inertia_base": true
+  },
+  "previous_subject": {
+    "head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
+    "tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+    "transition_kind": "APPEND_ONLY_SUBJECT_ADVANCE"
+  },
+  "evaluated_head": {
+    "head_sha": "96d4df39926bacb35a44d11df4dcb269cbb010cd",
+    "tree_sha": "79410a2e99791a534e596419851f7b87b3599f49",
+    "raw_report_path": "reports/reuse/full_convergence/raw_scans/96d4df39926bacb35a44d11df4dcb269cbb010cd/v076-reuse-point-inertia-raw.json",
+    "raw_report_sha256": "e968de7b2721074507f5e713333d481198aaa1a8c7f54012c860d8cd4e5527d4"
+  },
+  "subject_to_evaluated_head": {
+    "product_delta_path_count": 0,
+    "non_product_delta_path_count": 14,
+    "product_delta_definition": "Godot product paths, rule-authority paths, and registered production component paths",
+    "tree_binding_is_distinct_from_subject_tree": true,
+    "allowed_non_product_delta_classes": [
+      "GOVERNANCE_REGISTRY",
+      "GOVERNANCE_SCHEMA",
+      "EVIDENCE_MANIFEST",
+      "EVIDENCE_RECEIPT",
+      "MCP_RECEIPT",
+      "MCP_EVIDENCE",
+      "REPORT",
+      "TOOLING"
+    ]
+  },
+  "commit_binding": {
+    "commits_after_subject_before_evaluated_head": [
+      "3a4709b08c8b2950c25b3f32634340727501c7cc",
+      "086992ad4a7798c893de208b903555c04b27960b",
+      "53a4680ae0e22052b076f511af28e9066511c37f",
+      "719bf0877b3b151be67ed61c71bf86e138a2e970",
+      "c8d3aa99593e80cd9844e85192a97ff03234cade",
+      "96d4df39926bacb35a44d11df4dcb269cbb010cd"
+    ],
+    "product_bytes_changed_after_subject": false,
+    "governance_or_tooling_bytes_changed_after_subject": true
+  },
+  "mcp_source_receipts": [
+    {
+      "path": "reports/development/mcp_landing/9f8659c8e3745c4f0c6bc398030c289e4291db31/v076_presentation_animation_director.json",
+      "sha256": "e90f27144a81c45a4e63cc58659442800bab513dfde212fb5bd0b128ec12828e",
+      "validated_subject": true,
+      "direct_filesystem_product_edit_count": 0
+    },
+    {
+      "path": "reports/development/mcp_landing/9f8659c8e3745c4f0c6bc398030c289e4291db31/runtime_validation.json",
+      "sha256": "69c9dfb08fde116f2adc6636786f05008f236eac47821888f35d936eb0c0bbb1",
+      "validated_subject": true,
+      "player_visible_mcp_runtime_validation": "PASS",
+      "real_main_tscn_mcp_validation": "PASS"
+    }
+  ],
+  "claims": {
+    "current_subject_production_revalidation_complete": false,
+    "production_cutover_authorized": false,
+    "production_green": false,
+    "human_green": false,
+    "step13_status": "PENDING",
+    "step14_status": "PENDING",
+    "step15_status": "PENDING"
+  },
+  "immutability": {
+    "historical_receipts_overwritten": false,
+    "historical_receipts_deleted": false,
+    "append_only": true
+  }
+}

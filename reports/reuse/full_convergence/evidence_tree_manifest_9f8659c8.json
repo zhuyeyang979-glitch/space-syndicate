@@ -1,0 +1,51 @@
+{
+  "schema_version": "space_syndicate.v076.evidence_tree_manifest.v1",
+  "manifest_id": "v076-evidence-tree-9f8659c8",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "recorded_at_utc": "2026-08-26T19:30:45.914Z",
+  "subject_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+  "subject_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+  "evaluated_head_sha": "96d4df39926bacb35a44d11df4dcb269cbb010cd",
+  "evaluated_head_tree_sha": "79410a2e99791a534e596419851f7b87b3599f49",
+  "subject_tree_and_evaluated_head_tree_are_distinct_bindings": true,
+  "path_inventory": [
+    {"path":"docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json","classification":"GOVERNANCE_REGISTRY","git_blob_sha1":"b3e8ff4373376ec89b2051eaae10b205f9210983","sha256":"52472d87729ab167ab31b785a12b2be246ede798a03c9d3bee22bb740062ecd7","size_bytes":8839},
+    {"path":"docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json","classification":"GOVERNANCE_REGISTRY","git_blob_sha1":"0a52fcf3249054af7c1ddeafd8d7f994fe94fc44","sha256":"9982bd7418b2ae21d68f3fb0a90f98b1e8fe7830f0ad47387289e76918ef089b","size_bytes":187599},
+    {"path":"docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json","classification":"GOVERNANCE_SCHEMA","git_blob_sha1":"8d9d7ab989f8b7e74c9cf3a72a5aaecf56085f89","sha256":"12578feb719858f84283ecb06dd31735df2f8656c1c11202c9f7d8478867af14","size_bytes":4787},
+    {"path":"reports/development/mcp_landing/9f8659c8e3745c4f0c6bc398030c289e4291db31/main_runtime.png","classification":"MCP_EVIDENCE","git_blob_sha1":"1c6471031a083013ac5b0853ca181dfa0b1e001a","sha256":"3e66463cb523eb8eb7651cb1d2ddcf2327eca347ba218ee8ce09dd8e27cbbf7d","size_bytes":94284},
+    {"path":"reports/development/mcp_landing/9f8659c8e3745c4f0c6bc398030c289e4291db31/runtime_validation.json","classification":"MCP_RECEIPT","git_blob_sha1":"b360db71222dfb91beddc5e5c22d47df22dcb601","sha256":"69c9dfb08fde116f2adc6636786f05008f236eac47821888f35d936eb0c0bbb1","size_bytes":2722},
+    {"path":"reports/development/mcp_landing/9f8659c8e3745c4f0c6bc398030c289e4291db31/v076_presentation_animation_director.json","classification":"MCP_RECEIPT","git_blob_sha1":"2d01c771cfa716eba773d783407851172007ce60","sha256":"e90f27144a81c45a4e63cc58659442800bab513dfde212fb5bd0b128ec12828e","size_bytes":2292},
+    {"path":"reports/reuse/full_convergence/current_dynamic_reference_manifest_focused_test_receipt.json","classification":"EVIDENCE_RECEIPT","git_blob_sha1":"0d20f532c839dcf0324d4b086cfb737484ff3983","sha256":"a47f496685e615db8cecfce2df5ef31630f7322e1b4f21f316e662979fe59d8c","size_bytes":3090},
+    {"path":"tools/rules/check_v06_mechanic_authority.py","classification":"TOOLING","git_blob_sha1":"f5e4084b86de117b8f51a847e0beb5728023379f","sha256":"a7bdb3b4a5109439a61cafb6a4149373b220f80552a1e95a7fccb2caf84ae1ea","size_bytes":15572},
+    {"path":"tools/v076/v076_reuse_correction_v2_independent_audit.py","classification":"TOOLING","git_blob_sha1":"3b5880e4b449130d93749eaf0d478c44f1130db0","sha256":"af0ecaa42daa3919f58ffb010dc8f1d5d9fd584cd1ba0d1ada55a295c5989178","size_bytes":64734},
+    {"path":"tools/v076/v076_reuse_exact_failure_correction_v2.py","classification":"TOOLING","git_blob_sha1":"cbd219f0bc12479e7b53c93d911e898d5329906e","sha256":"9e552b1b3e0206a6825eada32b9b5cc3b643083897271e4e7bca1c54be87ae48","size_bytes":192259},
+    {"path":"tools/v076/v076_reuse_exact_failure_correction_v2_full_convergence.py","classification":"TOOLING","git_blob_sha1":"d2cfba3ee1f129ccbd0849ae9607f0a9758e136e","sha256":"15325a1089b9fbb83d37faa8dc033f8d39a2589e51b67b0edbaf20a798bec9ba","size_bytes":55134},
+    {"path":"tools/v076/v076_reuse_exact_failure_correction_v2_full_convergence_selftest.py","classification":"TOOLING","git_blob_sha1":"44d8b1f159977fddda3d74b44cc626517547cbb5","sha256":"9c841eafa3d62ee4e36196cad8518f846f5217040e9cf8ae92d59b81cdb8c49f","size_bytes":33018},
+    {"path":"tools/v076/v076_reuse_point_inertia_gate.py","classification":"TOOLING","git_blob_sha1":"af41d16cbb46d1beeecce100baa128722d2ce901","sha256":"022d08eb30e452f0ab8aa9983e0b7298e2971addcd1996bd927b75c50f47e476","size_bytes":299062},
+    {"path":"tools/v076/v076_reuse_point_inertia_gate_selftest.py","classification":"TOOLING","git_blob_sha1":"cf3256f07c33b8c00aedbe263754b2b966baf178","sha256":"39114c47d25beed57d8c6d8d57050388f092697014ead7c097a3070238c10c1c","size_bytes":163117}
+  ],
+  "classification_summary": {
+    "total_paths": 14,
+    "product_paths": 0,
+    "rule_authority_paths": 0,
+    "governance_paths": 3,
+    "evidence_paths": 4,
+    "tooling_paths": 7
+  },
+  "source_receipt_binding": {
+    "historical_receipts_retained": true,
+    "historical_receipt_mutation_count": 0,
+    "current_subject_requires_new_receipts": true
+  },
+  "portable_raw_report_binding": {
+    "path": "reports/reuse/full_convergence/raw_scans/96d4df39926bacb35a44d11df4dcb269cbb010cd/v076-reuse-point-inertia-raw.json",
+    "git_blob_sha1": "fb20d4834faf31a9d75282952e2af769f4b3dab4",
+    "sha256": "e968de7b2721074507f5e713333d481198aaa1a8c7f54012c860d8cd4e5527d4",
+    "size_bytes": 131851,
+    "evaluated_head_sha": "96d4df39926bacb35a44d11df4dcb269cbb010cd",
+    "evaluated_head_tree_sha": "79410a2e99791a534e596419851f7b87b3599f49",
+    "landing_commit_pending": true,
+    "append_only": true
+  }
+}

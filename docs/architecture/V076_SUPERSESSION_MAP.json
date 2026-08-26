@@ -1,14 +1,17 @@
 {
   "schema_version": "space_syndicate.v076.supersession_map.v2",
   "map_id": "v076-supersession-map-20260821",
-  "candidate_head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
-  "candidate_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+  "candidate_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+  "candidate_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
   "change_class": "PRODUCTION_COMPOSITION",
-  "production_cutover": true,
+  "production_cutover": false,
   "production_cutover_evidence": {
     "candidate_head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
     "candidate_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
     "atomic_cutover": true,
+    "historical_only": true,
+    "prior_subject_only": true,
+    "current_cutover_authorized": false,
     "production_scene_path": "scenes/main.tscn",
     "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
     "receipt_path": "reports/reuse/v076_narrow_viewport_production_cutover_revalidation_receipt.json",
@@ -38,6 +41,17 @@
     "new_privacy_owner_count": 0,
     "new_asset_owner_count": 0,
     "new_presentation_owner_count": 0,
+    "production_green": false,
+    "human_green": false
+  },
+  "production_cutover_revalidation": {
+    "status": "PENDING_CURRENT_SUBJECT_REVALIDATION",
+    "candidate_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+    "candidate_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+    "pending_manifest_path": "reports/reuse/full_convergence/production_cutover_revalidation_pending_9f8659c8.json",
+    "pending_manifest_sha256": "b0a678c553db7ce766858e4ee2ab99dd3d4398fb485244d595f4d83acb28ab13",
+    "prior_evidence_retained_immutable": true,
+    "production_cutover_authorized": false,
     "production_green": false,
     "human_green": false
   },
