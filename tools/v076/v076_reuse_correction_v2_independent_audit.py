@@ -144,8 +144,10 @@ def _common_context(root: Path) -> dict[str, Any]:
     v1_sha, v1_error = _sidecar(v1)
     return {
         "auditor_script_sha256": _sha_file(Path(__file__)),
-        "evaluated_local_head_sha": _git(root, "rev-parse", "HEAD"),
-        "evaluated_local_tree_sha": _git(root, "rev-parse", "HEAD^{tree}"),
+        "evaluated_authorized_head_sha": AUTHORIZED_HEAD,
+        "evaluated_authorized_tree_sha": _git(
+            root, "rev-parse", f"{AUTHORIZED_HEAD}^{{tree}}"
+        ),
         "authorization_id": AUTHORIZATION_ID,
         "authorized_head_sha": AUTHORIZED_HEAD,
         "baseline_report_sha256": raw_sha,
@@ -266,7 +268,7 @@ def audit_a(root: Path) -> dict[str, Any]:
     if inventory.get("corrected_failure_fingerprint_count") != len(all_fingerprints):
         findings.append(_finding("RECORD_INVENTORY_CARDINALITY_DRIFT", "P1", "record inventory fingerprint count is inaccurate", listed=inventory.get("corrected_failure_fingerprint_count"), actual=len(all_fingerprints)))
     return {
-        "schema_version": "space_syndicate.v076.reuse_correction_v2.audit_a.v1",
+        "schema_version": "space_syndicate.v076.reuse_correction_v2.audit_a.v2",
         **context,
         "raw_failure_count": len(baseline.get("failures", [])),
         "raw_historical_failure_count": len(historical),
@@ -356,7 +358,7 @@ def audit_b(root: Path) -> dict[str, Any]:
     no_blob_rows = [row for row in historical_rows if not row.get("path")]
     no_blob = len(no_blob_rows)
     return {
-        "schema_version": "space_syndicate.v076.reuse_correction_v2.audit_b.v1",
+        "schema_version": "space_syndicate.v076.reuse_correction_v2.audit_b.v2",
         **context,
         "raw_failure_count": len(raw_values),
         "raw_historical_failure_count": len(historical_rows),
