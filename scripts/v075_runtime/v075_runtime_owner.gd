@@ -4336,6 +4336,9 @@ func _request_private_monster_skill_with_request_id(
 	stable_request_id: String
 ) -> Dictionary:
 	_private_skill_submission_entry_count += 1
+	# Parameter validation may reject without any state publication. The entry
+	# audit is nevertheless authoritative and must be visible immediately.
+	_invalidate_v075_debug_snapshot_cache()
 	var validation := _validate_private_monster_skill_parameters(
 		actor_id,
 		parameters
@@ -4588,6 +4591,9 @@ func _record_private_skill_request_telemetry(
 		},
 		_batch_id()
 	)
+	# Telemetry owns its own mutable exact-once journal. It is nested inside the
+	# runtime debug observer, so its accepted write is also a cache boundary.
+	_invalidate_v075_debug_snapshot_cache()
 
 
 func resolve_next_action() -> Dictionary:
@@ -5431,7 +5437,25 @@ func debug_snapshot() -> Dictionary:
 func _invalidate_v075_snapshot_caches() -> void:
 	_v075_snapshot_generation += 1
 	_v075_player_snapshot_cache_by_viewer = {}
+	_invalidate_v075_debug_snapshot_cache()
+
+
+func _invalidate_v075_debug_snapshot_cache() -> void:
 	_v075_debug_snapshot_cache = {}
+
+
+func _reject_action(reason_code: String) -> Dictionary:
+	# Rejections update inherited audit counters without publishing a player
+	# projection. Keep the cached debug observer fail-closed at that boundary.
+	_invalidate_v075_debug_snapshot_cache()
+	return super._reject_action(reason_code)
+
+
+func _fail(reason_code: String, detail: Dictionary) -> Dictionary:
+	# Runtime faults also mutate inherited diagnostics before emitting their
+	# signal, so observers on that signal must not see a pre-fault cache entry.
+	_invalidate_v075_debug_snapshot_cache()
+	return super._fail(reason_code, detail)
 
 
 func _refresh_v075_player_snapshot_fields(snapshot: Dictionary) -> void:
@@ -5459,6 +5483,29 @@ func _refresh_v075_debug_snapshot_fields(snapshot: Dictionary) -> void:
 	snapshot["submission_seconds_total"] = float(SUBMISSION_WINDOW_MSEC) / 1000.0
 	snapshot["submission_seconds_remaining"] = submission_seconds_remaining()
 	snapshot["playtest_pace_multiplier"] = _playtest_pace_multiplier
+	# Fail-closed submission rollback is state-neutral and does not publish a
+	# new player projection, but its audit counter must never remain cached.
+	snapshot["submission_transaction_rollback_count"] = (
+		_v075_submission_rollback_count
+	)
+	snapshot["facility_combat_damage_receipt_count"] = (
+		_combat_facility_damage_receipt_count
+	)
+	snapshot["facility_combat_damage_fizzle_count"] = (
+		_combat_facility_damage_fizzle_count
+	)
+	snapshot["facility_damage_bridge_receipt_count"] = int(
+		(_facility_damage_bridge_state.get(
+			"receipt_journal",
+			{}
+		) as Dictionary).size()
+	)
+	snapshot["facility_damage_bridge_direct_write_count"] = int(
+		_facility_damage_bridge_state.get(
+			"combat_direct_facility_write_count",
+			0
+		)
+	)
 	var human_decision := snapshot.get("playtest_human_decision", {}) as Dictionary
 	if not human_decision.is_empty():
 		human_decision["match_started"] = not _match_id.is_empty()
@@ -7710,6 +7757,10 @@ func _apply_facility_damage_intents(
 	public_batch_state: Dictionary,
 	intents: Array
 ) -> Dictionary:
+	# This boundary owns facility-effect ledgers, replay counters, and damage
+	# receipts.  They can change without a player-state publication, so a prior
+	# debug observer snapshot must not survive the attempt.
+	_invalidate_v075_debug_snapshot_cache()
 	var existing_integrity := _facility_effect_integrity_report(
 		_processed_facility_damage_intents,
 		_facility_effect_commit_witness,
@@ -8468,6 +8519,10 @@ func _publish_combat_event(
 	source_authority_sequence: int,
 	presentation_ordinal: int = 0
 ) -> void:
+	# Public, presentation, and telemetry observers advance synchronously below
+	# without necessarily emitting a player snapshot.  Clear any prior debug
+	# aggregate before validation and again after all observers have consumed it.
+	_invalidate_v075_debug_snapshot_cache()
 	if (
 		event_kind.is_empty()
 		or observer_correlation_id.is_empty()
@@ -8518,6 +8573,7 @@ func _publish_combat_event(
 	combat_presentation_receipt_ready.emit(
 		presentation_receipt.duplicate(true)
 	)
+	_invalidate_v075_debug_snapshot_cache()
 
 
 func _publish_private_skill_public_results(
@@ -8717,6 +8773,10 @@ func _restore_combat_transaction_state(checkpoint: Dictionary) -> void:
 		"v076_monster_production_collision_count",
 		0
 	))
+	# Transaction checkpoints are also used by exact-once/fail-closed probes.
+	# Restoring authority must invalidate any aggregate built from the displaced
+	# ledgers, counters, public history, presentation, or telemetry state.
+	_invalidate_v075_debug_snapshot_cache()
 
 
 func _rollback_combat_transaction(
@@ -8780,6 +8840,9 @@ func _private_card_identity_leak_count(value: Variant) -> int:
 
 func _register_private_card_identity_rejection(count: int) -> void:
 	var positive_count := maxi(1, count)
+	# Privacy rejection is deliberately fail-closed and returns no projection,
+	# but its two audit counters must never remain hidden behind an old cache.
+	_invalidate_v075_debug_snapshot_cache()
 	_v075_public_card_identity_rejection_count += positive_count
 	_hidden_info_violation_count += positive_count
 

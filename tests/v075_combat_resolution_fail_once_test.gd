@@ -511,7 +511,11 @@ class FailingDbgOwner extends RefCounted:
 		"lock_count": 0,
 		"play_count": 0,
 	}
+	var hand: Array = []
+	var committed_escrow: Array = []
+	var discard: Array = []
 	var fail_play_once := false
+	var failure_zone_mutation_count := 0
 	var apply_count := 0
 	var play_apply_count := 0
 	var rollback_count := 0
@@ -519,7 +523,9 @@ class FailingDbgOwner extends RefCounted:
 
 	func _init(card_value: Dictionary, owner_value: String) -> void:
 		card = card_value.duplicate(true)
+		card["locked"] = false
 		owner_id = owner_value
+		hand = [card.duplicate(true)]
 
 
 	func authoritative_card_action_binding_v1(
@@ -533,6 +539,28 @@ class FailingDbgOwner extends RefCounted:
 			or expected_lifecycle != BINDING_LIFECYCLE_ID
 		):
 			return {}
+		var authoritative_zone := ""
+		var live_card: Dictionary = {}
+		for zone_name in ["hand", "committed_escrow"]:
+			var zone := hand if zone_name == "hand" else committed_escrow
+			var index := _card_index(zone, card_instance_id)
+			if index < 0:
+				continue
+			authoritative_zone = zone_name
+			live_card = (zone[index] as Dictionary).duplicate(true)
+			break
+		if (
+			live_card.is_empty()
+			or (
+				authoritative_zone == "hand"
+				and bool(live_card.get("locked", false))
+			)
+			or (
+				authoritative_zone == "committed_escrow"
+				and not bool(live_card.get("locked", false))
+			)
+		):
+			return {}
 		var authority_lineage := JSON.stringify({
 			"authority": "faithful.fail.once.dbg",
 			"owner": owner_id,
@@ -541,11 +569,11 @@ class FailingDbgOwner extends RefCounted:
 			"authority_lineage": authority_lineage,
 			"owner": owner_id,
 			"card_instance_id": card_instance_id,
-			"card_definition_id": str(card.get("definition_id", "")),
+			"card_definition_id": str(live_card.get("definition_id", "")),
 		}).sha256_text()
 		var lifecycle_evidence := JSON.stringify({
 			"immutable_identity": immutable_identity,
-			"zone": "hand",
+			"zone": authoritative_zone,
 			"zone_revision": 1,
 			"expected_lifecycle": expected_lifecycle,
 		}).sha256_text()
@@ -556,9 +584,9 @@ class FailingDbgOwner extends RefCounted:
 			"authority_lineage_fingerprint": authority_lineage,
 			"owner_player_id": owner_id,
 			"card_instance_id": card_instance_id,
-			"card_definition_id": str(card.get("definition_id", "")),
+			"card_definition_id": str(live_card.get("definition_id", "")),
 			"immutable_identity_fingerprint": immutable_identity,
-			"authoritative_zone": "hand",
+			"authoritative_zone": authoritative_zone,
 			"zone_revision": 1,
 			"lifecycle_evidence_fingerprint": lifecycle_evidence,
 			"expected_action_lifecycle": expected_lifecycle,
@@ -597,8 +625,9 @@ class FailingDbgOwner extends RefCounted:
 			"visibility_scope": "viewer_private",
 			"viewer_id": actor_id,
 			"facts": {
-				"hand": [card.duplicate(true)],
-				"discard": [],
+				"hand": hand.duplicate(true),
+				"committed_escrow": committed_escrow.duplicate(true),
+				"discard": discard.duplicate(true),
 				"deck": [],
 				"eligible_merge_pairs": [],
 			},
@@ -640,17 +669,66 @@ class FailingDbgOwner extends RefCounted:
 	func apply_intent(intent: Dictionary) -> Dictionary:
 		apply_count += 1
 		var intent_id := str(intent.get("intent_id", ""))
-		if intent_id.begins_with("intent.play."):
+		var action_kind := str(intent.get("action_kind", ""))
+		var payload := intent.get("payload", {}) as Dictionary
+		var card_instance_id := str(payload.get("instance_id", ""))
+		if action_kind == "reserve_card_submission":
+			var reserved := _move_card(
+				hand,
+				committed_escrow,
+				card_instance_id,
+				true
+			)
+			return {
+				"success": reserved,
+				"reason_code": "card_reserved_in_committed_escrow"
+					if reserved
+					else "card_reservation_not_in_hand",
+			}
+		if action_kind == "release_card_submission":
+			var released := _move_card(
+				committed_escrow,
+				hand,
+				card_instance_id,
+				false
+			)
+			return {
+				"success": released,
+				"reason_code": "card_released_from_escrow_to_hand"
+					if released
+					else "card_release_not_in_committed_escrow",
+			}
+		if action_kind == "play_card" or intent_id.begins_with("intent.play."):
 			play_apply_count += 1
 			authority_state["play_count"] = int(
 				authority_state.get("play_count", 0)
 			) + 1
 			if fail_play_once:
 				fail_play_once = false
+				var staged_failure_write := _move_card(
+					committed_escrow,
+					discard,
+					card_instance_id,
+					false
+				)
+				if staged_failure_write:
+					failure_zone_mutation_count += 1
 				return {
 					"success": false,
 					"reason_code": "injected_dbg_failure",
 				}
+			var played := _move_card(
+				committed_escrow,
+				discard,
+				card_instance_id,
+				false
+			)
+			return {
+				"success": played,
+				"reason_code": "card_resolved_from_escrow_to_discard"
+					if played
+					else "play_card_not_in_authoritative_source_zone",
+			}
 		else:
 			authority_state["lock_count"] = int(
 				authority_state.get("lock_count", 0)
@@ -658,13 +736,48 @@ class FailingDbgOwner extends RefCounted:
 		return {"success": true, "reason_code": "fake_dbg_committed"}
 
 
+	func _card_index(zone: Array, card_instance_id: String) -> int:
+		for index in range(zone.size()):
+			if str((zone[index] as Dictionary).get("instance_id", "")) == card_instance_id:
+				return index
+		return -1
+
+
+	func _move_card(
+		source: Array,
+		destination: Array,
+		card_instance_id: String,
+		locked: bool
+	) -> bool:
+		var index := _card_index(source, card_instance_id)
+		if index < 0:
+			return false
+		var moved := (source[index] as Dictionary).duplicate(true)
+		source.remove_at(index)
+		moved["locked"] = locked
+		destination.append(moved)
+		return true
+
+
 	func capture_checkpoint_v1() -> Dictionary:
-		return authority_state.duplicate(true)
+		return {
+			"authority_state": authority_state.duplicate(true),
+			"hand": hand.duplicate(true),
+			"committed_escrow": committed_escrow.duplicate(true),
+			"discard": discard.duplicate(true),
+		}
 
 
 	func rollback_v1(checkpoint: Dictionary) -> Dictionary:
 		rollback_count += 1
-		authority_state = checkpoint.duplicate(true)
+		authority_state = (
+			checkpoint.get("authority_state", {}) as Dictionary
+		).duplicate(true)
+		hand = (checkpoint.get("hand", []) as Array).duplicate(true)
+		committed_escrow = (
+			checkpoint.get("committed_escrow", []) as Array
+		).duplicate(true)
+		discard = (checkpoint.get("discard", []) as Array).duplicate(true)
 		return {"accepted": true, "reason_code": "fake_dbg_rolled_back"}
 
 
@@ -773,6 +886,10 @@ func _test_dbg_failure_rolls_back_once() -> void:
 	_expect(
 		not dbg.fail_play_once,
 		"DBG failure injection is consumed once"
+	)
+	_expect(
+		dbg.failure_zone_mutation_count == 1,
+		"DBG failure mutates committed escrow before transactional rollback"
 	)
 	_expect(
 		_transaction_snapshot(runtime, combat, dbg) == before,
@@ -1021,6 +1138,14 @@ func _transaction_snapshot(
 		"presentation_cues": presentation.call("recent_cues", 100) as Array,
 		"combat_state": combat.state_snapshot(),
 		"dbg_state": dbg.authority_state.duplicate(true),
+		"dbg_hand": dbg.hand.duplicate(true),
+		"dbg_committed_escrow": dbg.committed_escrow.duplicate(true),
+		"dbg_discard": dbg.discard.duplicate(true),
+		"dbg_binding": dbg.authoritative_card_action_binding_v1(
+			dbg.owner_id,
+			str(dbg.card.get("instance_id", "")),
+			FailingDbgOwner.BINDING_LIFECYCLE_ID
+		),
 	}
 
 
