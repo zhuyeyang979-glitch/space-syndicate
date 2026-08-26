@@ -134,6 +134,7 @@ def _record(fingerprints: list[str] | None = None) -> dict[str, Any]:
         ]),
         "created_at": "2026-08-27T00:00:00Z",
         "creator": "V076ReuseExactFailureCorrectionV2FullConvergence",
+        "descendant_history_supplement_sha256": "9" * 64,
         "domain_ids": ["domain.sample"],
         "domain_set_sha256": convergence._line_set_sha(["domain.sample"]),
         "failure_classes": ["HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"],
@@ -216,6 +217,7 @@ def _batch(count: int = 25, *, terminal: bool = False) -> dict[str, Any]:
         "binding_head_sha": "6" * 40,
         "binding_tree_sha": "7" * 40,
         "current_failure_false_accept_count": 0,
+        "descendant_history_supplement_sha256": "9" * 64,
         "failure_count": len(fingerprints),
         "failure_fingerprint_set_sha256": convergence._line_set_sha(fingerprints),
         "failure_fingerprints": fingerprints,
@@ -297,6 +299,85 @@ def _write_json(path: Path, payload: Any) -> None:
     path.write_bytes(convergence.canonical_bytes(payload))
 
 
+def _write_batch_artifacts(
+    directory: Path,
+    manifest: dict[str, Any],
+    identities: dict[str, dict[str, str]],
+) -> None:
+    fingerprints = [str(value) for value in manifest["failure_fingerprints"]]
+    documents = {
+        "inventory": {
+            "schema_version": convergence.BATCH_ARTIFACT_SPECS["batch_inventory_sha256"][1],
+            "batch_id": manifest["batch_id"],
+            "failure_fingerprints": fingerprints,
+            "failure_count": len(fingerprints),
+            "identity_coverage_percent": 100,
+            "unknown_count": 0,
+            "rows": {
+                fingerprint: {
+                    "failure_fingerprint": fingerprint,
+                    "raw_failure": identities[fingerprint]["raw_failure"],
+                    "rule_id": identities[fingerprint]["rule_id"],
+                }
+                for fingerprint in fingerprints
+            },
+        },
+        "classification": {
+            "schema_version": convergence.BATCH_ARTIFACT_SPECS["batch_classification_sha256"][1],
+            "batch_id": manifest["batch_id"],
+            "failure_fingerprints": fingerprints,
+            "failure_count": len(fingerprints),
+            "unknown_count": 0,
+            "wildcard_count": 0,
+            "classifications": {
+                fingerprint: {
+                    "failure_fingerprint": fingerprint,
+                    "status": "CLASSIFIED",
+                    "recommended_disposition": "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+                }
+                for fingerprint in fingerprints
+            },
+        },
+        "negative_checks": {
+            "schema_version": convergence.BATCH_ARTIFACT_SPECS["batch_negative_checks_sha256"][1],
+            "batch_id": manifest["batch_id"],
+            "failure_fingerprints": fingerprints,
+            "failure_count": len(fingerprints),
+            "status": "PASS",
+            "current_failure_false_accept_count": 0,
+            "future_failure_auto_correction_count": 0,
+            "wildcard_count": 0,
+            "checks": {"baseline_membership": True, "wildcard_rejection": True},
+        },
+        "review_a": {
+            "schema_version": convergence.BATCH_ARTIFACT_SPECS["batch_review_a_sha256"][1],
+            "batch_id": manifest["batch_id"],
+            "failure_fingerprints": fingerprints,
+            "failure_count": len(fingerprints),
+            "review_id": "A",
+            "status": "GO",
+            "p0_count": 0,
+            "p1_count": 0,
+            "findings": [],
+        },
+        "review_b": {
+            "schema_version": convergence.BATCH_ARTIFACT_SPECS["batch_review_b_sha256"][1],
+            "batch_id": manifest["batch_id"],
+            "failure_fingerprints": fingerprints,
+            "failure_count": len(fingerprints),
+            "review_id": "B",
+            "status": "GO",
+            "p0_count": 0,
+            "p1_count": 0,
+            "findings": [],
+        },
+    }
+    for hash_field, (filename, _, kind) in convergence.BATCH_ARTIFACT_SPECS.items():
+        path = directory / filename
+        _write_json(path, documents[kind])
+        manifest[hash_field] = convergence.sha256_file(path)
+
+
 def _legacy_overlap_case(root: Path) -> None:
     legacy = convergence.verify_legacy_anchor(root)
     _expect(legacy["status"] == "PASS", str(legacy))
@@ -357,6 +438,53 @@ def _baseline_membership_case(root: Path) -> None:
     )
 
 
+def _authorized_baseline_epoch_case(root: Path) -> None:
+    expected = Path(
+        "reports/reuse/correction_v2/epochs/full_convergence_20260827/"
+        "baseline_raw_failure_report.json"
+    )
+    _expect(convergence.BASELINE_REPORT_REL == expected, str(convergence.BASELINE_REPORT_REL))
+    _expect(
+        independent_audit.FULL_CONVERGENCE_BASELINE_REPORT == expected,
+        str(independent_audit.FULL_CONVERGENCE_BASELINE_REPORT),
+    )
+    result = convergence.validate_authorized_baseline(root / expected)
+    _expect(result["status"] == "PASS", json.dumps(result, sort_keys=True))
+    _expect(
+        result["baseline_report_sha256"]
+        == convergence.AUTHORIZED_BASELINE_REPORT_SHA256,
+        result["baseline_report_sha256"],
+    )
+    _expect(
+        result["baseline_failure_set_sha256"]
+        == convergence.AUTHORIZED_BASELINE_FAILURE_SET_SHA256,
+        result["baseline_failure_set_sha256"],
+    )
+    _expect(
+        (
+            result["authorization_base_head_sha"],
+            result["failure_count"],
+            result["historical_failure_count"],
+            result["current_failure_count"],
+        )
+        == (
+            convergence.AUTHORIZATION_BASE_HEAD_SHA,
+            convergence.AUTHORIZED_BASELINE_FAILURE_COUNT,
+            convergence.AUTHORIZED_BASELINE_HISTORICAL_COUNT,
+            convergence.AUTHORIZED_BASELINE_CURRENT_COUNT,
+        ),
+        json.dumps(result, sort_keys=True),
+    )
+
+
+def _legacy_baseline_rejected_by_new_epoch_case(root: Path) -> None:
+    legacy = root / "reports/reuse/correction_v2/baseline_raw_failure_report.json"
+    result = convergence.validate_authorized_baseline(legacy)
+    _expect(result["status"] == "FAIL", json.dumps(result, sort_keys=True))
+    _expect_failure(result["failures"], "BASELINE_SHA256_MISMATCH")
+    _expect_failure(result["failures"], "BASELINE_HEAD_MISMATCH")
+
+
 def _previous_batch_link_case() -> None:
     predecessor = _batch()
     current = _batch()
@@ -409,58 +537,535 @@ def _previous_fingerprint_reuse_case() -> None:
         )
 
 
+def _retarget_batch(
+    manifest: dict[str, Any],
+    batch_id: str,
+    fingerprints: list[str],
+    predecessor: dict[str, Any] | None = None,
+) -> None:
+    manifest["batch_id"] = batch_id
+    manifest["failure_fingerprints"] = sorted(fingerprints)
+    manifest["failure_count"] = len(fingerprints)
+    manifest["failure_fingerprint_set_sha256"] = convergence._line_set_sha(fingerprints)
+    manifest["record_bindings"][0]["failure_fingerprints"] = sorted(fingerprints)
+    manifest["record_bindings"][0]["path"] = manifest["record_bindings"][0]["path"].replace(
+        "batch-001", batch_id
+    )
+    if predecessor is not None:
+        terminal = predecessor["record_chain_terminal_sha256"]
+        manifest["record_chain_start_sha256"] = terminal
+        manifest["record_bindings"][0]["previous_correction_chain_sha256"] = terminal
+
+
+def _nonadjacent_fingerprint_reuse_case() -> None:
+    batch_001 = _batch()
+    batch_002 = _batch()
+    batch_003 = _batch()
+    _retarget_batch(batch_002, "batch-002", [_fingerprint(index) for index in range(26, 51)], batch_001)
+    _retarget_batch(batch_003, "batch-003", [_fingerprint(index) for index in range(1, 26)], batch_002)
+    with tempfile.TemporaryDirectory(prefix="v076-fc-global-overlap-") as temporary:
+        root = Path(temporary)
+        batch_001_path = root / "batch-001.json"
+        batch_002_path = root / "batch-002.json"
+        _write_json(batch_001_path, batch_001)
+        batch_002["previous_batch_append_sha256"] = convergence.sha256_file(batch_001_path)
+        _write_json(batch_002_path, batch_002)
+        batch_003["previous_batch_append_sha256"] = convergence.sha256_file(batch_002_path)
+        _expect_failure(
+            convergence.validate_previous_batch_link(batch_003, batch_002_path),
+            "BATCH_PRIOR_MANIFEST_FINGERPRINT_REUSE",
+        )
+
+
+def _batch_artifact_binding_case() -> None:
+    manifest = _batch()
+    identities = {
+        fingerprint: {
+            "raw_failure": f"HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:000000000000->111111111111:scripts/{index}.gd",
+            "rule_id": "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+        }
+        for index, fingerprint in enumerate(manifest["failure_fingerprints"])
+    }
+    with tempfile.TemporaryDirectory(prefix="v076-fc-artifacts-") as temporary:
+        directory = Path(temporary)
+        _write_batch_artifacts(directory, manifest, identities)
+        failures = convergence.validate_batch_artifacts(
+            directory / "batch_manifest.json",
+            manifest,
+            authorized_identities=identities,
+        )
+        _expect(not failures, str(failures))
+        review = directory / "batch_review_A.json"
+        document = convergence.load_json_strict(review)
+        document["status"] = "NO_GO"
+        _write_json(review, document)
+        _expect_failure(
+            convergence.validate_batch_artifacts(
+                directory / "batch_manifest.json",
+                manifest,
+                authorized_identities=identities,
+            ),
+            "BATCH_ARTIFACT_SHA256_MISMATCH:batch_review_A.json",
+        )
+        manifest["batch_review_a_sha256"] = convergence.sha256_file(review)
+        _expect_failure(
+            convergence.validate_batch_artifacts(
+                directory / "batch_manifest.json",
+                manifest,
+                authorized_identities=identities,
+            ),
+            "BATCH_ARTIFACT_REVIEW_A_STATUS_INVALID",
+        )
+
+
+def _baseline_raw_identity_binding_case(root: Path) -> None:
+    report = convergence.load_json_strict(root / convergence.BASELINE_REPORT_REL)
+    identities = convergence.authorized_failure_identity_by_fingerprint(report)
+    fingerprint, identity = next(
+        (fingerprint, identity)
+        for fingerprint, identity in identities.items()
+        if identity.get("bucket") == "HISTORICAL" and identity.get("subject_kind") == "path"
+    )
+    binding = _identity_binding()
+    failures = convergence._authorized_identity_binding_failures(
+        root,
+        fingerprint,
+        binding,
+        identity,
+        record_rule_ids=[identity["rule_id"]],
+    )
+    _expect_failure(failures, "IDENTITY_BASELINE_HISTORICAL_PATH_MISMATCH")
+    _expect_failure(failures, "IDENTITY_BASELINE_SOURCE_COMMIT_MISMATCH")
+
+
+def _record_manifest_binding_case(root: Path) -> None:
+    manifest = _batch()
+    record = _record(manifest["failure_fingerprints"])
+    record["failure_fingerprints"] = record["failure_fingerprints"][1:]
+    record["failure_count"] = len(record["failure_fingerprints"])
+    record["failure_fingerprint_set_sha256"] = convergence._line_set_sha(record["failure_fingerprints"])
+    record["identity_binding_by_failure"].pop(manifest["failure_fingerprints"][0])
+    record["record_payload_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(convergence._record_payload(record))
+    )
+    with tempfile.TemporaryDirectory(prefix="v076-fc-record-binding-") as temporary:
+        fixture = Path(temporary)
+        _git(fixture, "init", "--quiet")
+        _git(fixture, "config", "user.email", "selftest@example.invalid")
+        _git(fixture, "config", "user.name", "V076 Selftest")
+        for relative in convergence.AUTHORITY_SOURCE_PATHS:
+            path = fixture / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}" if path.suffix == ".json" else "owner\n", encoding="utf-8")
+        _git(fixture, "add", ".")
+        _git(fixture, "commit", "--quiet", "-m", "fixture")
+        head = _git(fixture, "rev-parse", "HEAD")
+        record["binding_head_sha"] = head
+        record["binding_tree_sha"] = _git(fixture, "rev-parse", "HEAD^{tree}")
+        record["record_payload_sha256"] = convergence.sha256_bytes(
+            convergence.canonical_bytes(convergence._record_payload(record))
+        )
+        record_path = fixture / convergence.RECORD_ROOT_REL / "batch-001" / "component.json"
+        _write_json(record_path, record)
+        manifest["binding_head_sha"] = head
+        manifest["binding_tree_sha"] = record["binding_tree_sha"]
+        manifest["record_bindings"][0]["record_payload_sha256"] = record["record_payload_sha256"]
+        manifest["record_bindings"][0]["record_sha256"] = convergence.sha256_file(record_path)
+        manifest["record_chain_terminal_sha256"] = record["record_payload_sha256"]
+        failures, _ = convergence._validate_manifest_records_against_repo(
+            fixture,
+            manifest,
+            evaluated_head=head,
+            authorized_fingerprints={"historical": set(manifest["failure_fingerprints"]), "current": set()},
+            authorized_identities={},
+            legacy_fingerprints=set(),
+        )
+        _expect_failure(failures, "BATCH_RECORD_FINGERPRINT_BINDING_MISMATCH")
+        _expect_failure(failures, "BATCH_RECORD_ACTUAL_FINGERPRINT_COVERAGE_MISMATCH")
+
+
+def _actual_record_chain_case(root: Path) -> None:
+    manifest = _batch()
+    record = _record(manifest["failure_fingerprints"])
+    record["previous_correction_chain_sha256"] = "8" * 64
+    record["record_payload_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(convergence._record_payload(record))
+    )
+    with tempfile.TemporaryDirectory(prefix="v076-fc-record-chain-") as temporary:
+        fixture = Path(temporary)
+        _git(fixture, "init", "--quiet")
+        _git(fixture, "config", "user.email", "selftest@example.invalid")
+        _git(fixture, "config", "user.name", "V076 Selftest")
+        for relative in convergence.AUTHORITY_SOURCE_PATHS:
+            path = fixture / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}" if path.suffix == ".json" else "owner\n", encoding="utf-8")
+        _git(fixture, "add", ".")
+        _git(fixture, "commit", "--quiet", "-m", "fixture")
+        head = _git(fixture, "rev-parse", "HEAD")
+        record["binding_head_sha"] = head
+        record["binding_tree_sha"] = _git(fixture, "rev-parse", "HEAD^{tree}")
+        record["record_payload_sha256"] = convergence.sha256_bytes(
+            convergence.canonical_bytes(convergence._record_payload(record))
+        )
+        record_path = fixture / convergence.RECORD_ROOT_REL / "batch-001" / "component.json"
+        _write_json(record_path, record)
+        manifest["binding_head_sha"] = head
+        manifest["binding_tree_sha"] = record["binding_tree_sha"]
+        manifest["record_bindings"][0]["record_payload_sha256"] = record["record_payload_sha256"]
+        manifest["record_bindings"][0]["record_sha256"] = convergence.sha256_file(record_path)
+        manifest["record_chain_terminal_sha256"] = record["record_payload_sha256"]
+        failures, _ = convergence._validate_manifest_records_against_repo(
+            fixture,
+            manifest,
+            evaluated_head=head,
+            authorized_fingerprints={"historical": set(manifest["failure_fingerprints"]), "current": set()},
+            authorized_identities={},
+            legacy_fingerprints=set(),
+        )
+        _expect_failure(failures, "BATCH_RECORD_ACTUAL_CHAIN_BREAK")
+
+
 def _copy_locked(root: Path, fixture: Path, relative: str) -> None:
     destination = fixture / relative
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(root / relative, destination)
 
 
+def _write_descendant_history_supplement_fixture(
+    fixture: Path,
+    baseline_report: dict[str, Any],
+) -> dict[str, Any]:
+    """Create one explicit sealed descendant-history edge in a temp clone."""
+
+    _git(fixture, "config", "user.email", "selftest@example.invalid")
+    _git(fixture, "config", "user.name", "V076 Selftest")
+    old_commit = _git(fixture, "rev-parse", "HEAD")
+    source_relative = "tools/v076/descendant_history_selftest_subject.txt"
+    source_path = fixture / source_relative
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    source_path.write_text("sealed descendant history source\n", encoding="utf-8")
+    _git(fixture, "add", "--", source_relative)
+    _git(fixture, "commit", "--quiet", "-m", "selftest descendant history edge")
+    report_head = _git(fixture, "rev-parse", "HEAD")
+    report_tree = _git(fixture, "rev-parse", "HEAD^{tree}")
+    raw_failure = (
+        "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:"
+        f"{old_commit[:12]}->{report_head[:12]}:{source_relative}"
+    )
+    frozen_raw = [
+        str(value)
+        for value in baseline_report["failures"]
+        if str(value).startswith("HISTORY_")
+    ]
+    final_report = copy.deepcopy(baseline_report)
+    final_report.update({
+        "status": "FAIL",
+        "head_sha": report_head,
+        "include_worktree": False,
+        "evaluated_source": "COMMITTED_HEAD",
+        "merge_base_sha": convergence.AUTHORIZATION_BASE_HEAD_SHA,
+        "failures": sorted(frozen_raw + [raw_failure]),
+    })
+    raw_report_relative = (
+        convergence.EPOCH_ROOT_REL / "descendant_history_final_raw_report.json"
+    )
+    raw_report_path = fixture / raw_report_relative
+    _write_json(raw_report_path, final_report)
+    final_identities = convergence.authorized_failure_identity_by_fingerprint(
+        final_report
+    )
+    descendant_fingerprint = next(
+        fingerprint
+        for fingerprint, identity in final_identities.items()
+        if identity["raw_failure"] == raw_failure
+    )
+    frozen_sets = convergence.authorized_failure_fingerprint_sets(baseline_report)
+    repaired = sorted(frozen_sets["current"])
+    source_bytes = convergence._git_bytes(
+        fixture, report_head, source_relative
+    )
+    _expect(source_bytes is not None, "descendant source blob missing")
+    scanner_path = fixture / convergence.DESCENDANT_HISTORY_SCANNER_REL
+    supplement = {
+        "authorization_base_head_sha": convergence.AUTHORIZATION_BASE_HEAD_SHA,
+        "authorization_id": convergence.AUTHORIZATION_ID,
+        "baseline_failure_set_sha256": convergence.AUTHORIZED_BASELINE_FAILURE_SET_SHA256,
+        "baseline_report_sha256": convergence.AUTHORIZED_BASELINE_REPORT_SHA256,
+        "committed_only": True,
+        "descendant_history_failure_count": 1,
+        "descendant_history_fingerprint_set_sha256": convergence._line_set_sha([
+            descendant_fingerprint
+        ]),
+        "descendant_history_fingerprints": [descendant_fingerprint],
+        "directory_discovery_allowed": False,
+        "future_failure_auto_membership_allowed": False,
+        "identity_binding_by_failure": {
+            descendant_fingerprint: {
+                "failure_fingerprint": descendant_fingerprint,
+                "raw_failure": raw_failure,
+                "repaired_frozen_current_fingerprints": repaired,
+                "rule_id": "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+                "source_blob_sha256": convergence.sha256_bytes(source_bytes),
+                "source_commit_sha": report_head,
+                "source_component_id": "",
+                "source_path": source_relative,
+                "transition_new_sha": report_head,
+                "transition_old_sha": old_commit,
+            }
+        },
+        "raw_current_delta_failure_count": 0,
+        "raw_failure_count": len(final_report["failures"]),
+        "raw_historical_failure_count": len(final_report["failures"]),
+        "raw_report_head_sha": report_head,
+        "raw_report_path": raw_report_relative.as_posix(),
+        "raw_report_sha256": convergence.sha256_file(raw_report_path),
+        "raw_report_tree_sha": report_tree,
+        "repaired_frozen_current_failure_count": len(repaired),
+        "repaired_frozen_current_fingerprint_set_sha256": convergence._line_set_sha(
+            repaired
+        ),
+        "repaired_frozen_current_fingerprints": repaired,
+        "scanner_tool_path": convergence.DESCENDANT_HISTORY_SCANNER_REL.as_posix(),
+        "scanner_tool_sha256": convergence.sha256_file(scanner_path),
+        "schema_version": convergence.DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION,
+        "supplement_id": convergence.DESCENDANT_HISTORY_SUPPLEMENT_ID,
+        "wildcard_membership_allowed": False,
+    }
+    supplement_relative = (
+        convergence.EPOCH_ROOT_REL / "descendant_history_supplement.json"
+    )
+    supplement_path = fixture / supplement_relative
+    _write_json(supplement_path, supplement)
+    return {
+        "descendant_fingerprint": descendant_fingerprint,
+        "raw_report_path": raw_report_path,
+        "report_head": report_head,
+        "report_tree": report_tree,
+        "scanner_path": scanner_path,
+        "supplement": supplement,
+        "supplement_path": supplement_path,
+        "supplement_sha256": convergence.sha256_file(supplement_path),
+    }
+
+
+def _new_descendant_fixture(
+    root: Path,
+    fixture: Path,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    clone = subprocess.run(
+        ["git", "clone", "--quiet", "--no-hardlinks", str(root), str(fixture)],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    _expect(clone.returncode == 0, clone.stderr)
+    _copy_locked(root, fixture, convergence.SCHEMA_REL.as_posix())
+    _copy_locked(root, fixture, convergence.BASELINE_REPORT_REL.as_posix())
+    baseline_report = convergence.load_json_strict(
+        fixture / convergence.BASELINE_REPORT_REL
+    )
+    supplement_fixture = _write_descendant_history_supplement_fixture(
+        fixture, baseline_report
+    )
+    return baseline_report, supplement_fixture
+
+
+def _descendant_supplement_primary_positive_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-descendant-positive-") as temporary:
+        fixture = Path(temporary)
+        _, sealed = _new_descendant_fixture(root, fixture)
+        result = convergence.validate_descendant_history_supplement(
+            fixture,
+            sealed["supplement_path"],
+            sealed["raw_report_path"],
+            sealed["scanner_path"],
+            evaluated_head=sealed["report_head"],
+            baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+        )
+        _expect(result["status"] == "PASS", str(result["failures"]))
+        _expect(
+            result["authorized_historical_fingerprints"]
+            == {sealed["descendant_fingerprint"]},
+            "exact descendant membership not returned",
+        )
+
+
+def _descendant_supplement_current_and_future_negative_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-descendant-current-") as temporary:
+        fixture = Path(temporary)
+        baseline_report, sealed = _new_descendant_fixture(root, fixture)
+        raw_report = convergence.load_json_strict(sealed["raw_report_path"])
+        frozen_current_raw = next(
+            str(value)
+            for value in baseline_report["failures"]
+            if not str(value).startswith("HISTORY_")
+        )
+        raw_report["failures"] = sorted(raw_report["failures"] + [frozen_current_raw])
+        _write_json(sealed["raw_report_path"], raw_report)
+        supplement = copy.deepcopy(sealed["supplement"])
+        supplement["raw_report_sha256"] = convergence.sha256_file(
+            sealed["raw_report_path"]
+        )
+        supplement["raw_failure_count"] += 1
+        supplement["raw_current_delta_failure_count"] = 1
+        _write_json(sealed["supplement_path"], supplement)
+        result = convergence.validate_descendant_history_supplement(
+            fixture,
+            sealed["supplement_path"],
+            sealed["raw_report_path"],
+            sealed["scanner_path"],
+            evaluated_head=sealed["report_head"],
+            baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+        )
+        _expect_failure(
+            result["failures"],
+            "DESCENDANT_HISTORY_FINAL_CURRENT_FAILURE_COUNT_NOT_ZERO",
+        )
+        # A later raw HISTORY row is not inherited automatically from the
+        # earlier seal, even if it resembles the same rule and transition.
+        raw_report["failures"] = [
+            value for value in raw_report["failures"] if value != frozen_current_raw
+        ]
+        raw_report["failures"].append(
+            "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:"
+            f"{sealed['supplement']['identity_binding_by_failure'][sealed['descendant_fingerprint']]['transition_old_sha'][:12]}"
+            f"->{sealed['report_head'][:12]}:tools/v076/unsealed_future_subject.txt"
+        )
+        raw_report["failures"] = sorted(raw_report["failures"])
+        _write_json(sealed["raw_report_path"], raw_report)
+        supplement = copy.deepcopy(sealed["supplement"])
+        supplement["raw_report_sha256"] = convergence.sha256_file(
+            sealed["raw_report_path"]
+        )
+        supplement["raw_failure_count"] += 1
+        supplement["raw_historical_failure_count"] += 1
+        _write_json(sealed["supplement_path"], supplement)
+        result = convergence.validate_descendant_history_supplement(
+            fixture,
+            sealed["supplement_path"],
+            sealed["raw_report_path"],
+            sealed["scanner_path"],
+            evaluated_head=sealed["report_head"],
+            baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+        )
+        _expect_failure(
+            result["failures"],
+            "DESCENDANT_HISTORY_FINGERPRINT_MEMBERSHIP_MISMATCH",
+        )
+
+
+def _descendant_supplement_binding_negative_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-descendant-binding-") as temporary:
+        fixture = Path(temporary)
+        baseline_report, sealed = _new_descendant_fixture(root, fixture)
+        missing = convergence.validate_descendant_history_supplement(
+            fixture,
+            None,
+            None,
+            None,
+            evaluated_head=sealed["report_head"],
+            baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+        )
+        _expect_failure(missing["failures"], "DESCENDANT_HISTORY_SUPPLEMENT_REQUIRED")
+        supplement = copy.deepcopy(sealed["supplement"])
+        supplement["identity_binding_by_failure"][sealed["descendant_fingerprint"]][
+            "source_blob_sha256"
+        ] = "0" * 64
+        _write_json(sealed["supplement_path"], supplement)
+        primary = convergence.validate_descendant_history_supplement(
+            fixture,
+            sealed["supplement_path"],
+            sealed["raw_report_path"],
+            sealed["scanner_path"],
+            evaluated_head=sealed["report_head"],
+            baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+        )
+        _expect_failure(
+            primary["failures"],
+            "DESCENDANT_HISTORY_SOURCE_BLOB_MISMATCH",
+        )
+        baseline_sets = convergence.authorized_failure_fingerprint_sets(
+            baseline_report
+        )
+        independent_findings, _, _, _, _ = (
+            independent_audit._descendant_history_supplement_findings(
+                fixture,
+                supplement_path=sealed["supplement_path"],
+                raw_report_path=sealed["raw_report_path"],
+                scanner_path=sealed["scanner_path"],
+                evaluated_head=sealed["report_head"],
+                baseline_report=baseline_report,
+                baseline_sets=baseline_sets,
+            )
+        )
+        _expect(
+            any(
+                item["code"]
+                == "FULL_CONVERGENCE_DESCENDANT_HISTORY_SOURCE_BLOB_MISMATCH"
+                for item in independent_findings
+            ),
+            json.dumps(independent_findings, sort_keys=True),
+        )
+
+
 def _independent_audit_fixture_case(root: Path) -> None:
     with tempfile.TemporaryDirectory(prefix="v076-fc-independent-") as temporary:
         fixture = Path(temporary)
-        _git(fixture, "init", "--quiet")
-        _git(fixture, "config", "user.email", "selftest@example.invalid")
-        _git(fixture, "config", "user.name", "V076 Selftest")
-        for relative in (
-            convergence.SCHEMA_REL.as_posix(),
-            convergence.BASELINE_REPORT_REL.as_posix(),
-            convergence.LEGACY_SEAL_MANIFEST_REL.as_posix(),
-            *(binding["path"] for binding in convergence.LEGACY_RECORD_BINDINGS),
-        ):
-            _copy_locked(root, fixture, relative)
-        docs = fixture / "docs/architecture"
-        registry = docs / "V076_HISTORICAL_REUSE_REGISTRY.json"
-        supersession = docs / "V076_SUPERSESSION_MAP.json"
-        owner_map = docs / "V076_OWNER_REUSE_MAP.md"
-        _write_json(registry, {"component_inventory": [{
-            "component_id": "component.history.sample",
-            "path": "scripts/history/sample.gd",
-            "owner_component_id": "component.current.owner",
-        }]})
-        _write_json(supersession, {"supersessions": [{
-            "supersession_id": "supersession.sample",
-            "old_component_id": "component.history.sample",
-            "new_component_id": "component.current.owner",
-        }]})
-        owner_map.write_text(
-            "component.history.sample -> component.current.owner\n",
+        clone = subprocess.run(
+            ["git", "clone", "--quiet", "--no-hardlinks", str(root), str(fixture)],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
             encoding="utf-8",
+            errors="replace",
         )
-        for relative, contents in (
-            ("scripts/history/sample.gd", "extends RefCounted\n"),
-            ("scripts/current/owner.gd", "extends RefCounted\n"),
-        ):
-            path = fixture / relative
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(contents, encoding="utf-8")
-        _git(fixture, "add", ".")
-        _git(fixture, "commit", "--quiet", "-m", "fixture authority")
-        head = _git(fixture, "rev-parse", "HEAD")
-        tree = _git(fixture, "rev-parse", "HEAD^{tree}")
+        _expect(clone.returncode == 0, clone.stderr)
+        # The epoch schema/baseline may intentionally still be task-owned;
+        # copy only these explicitly named byte-locked authority artifacts.
+        _copy_locked(root, fixture, convergence.SCHEMA_REL.as_posix())
+        _copy_locked(root, fixture, convergence.BASELINE_REPORT_REL.as_posix())
         baseline_report = convergence.load_json_strict(root / convergence.BASELINE_REPORT_REL)
-        fingerprints = sorted(
-            convergence.authorized_failure_fingerprint_sets(baseline_report)["historical"]
-        )[:25]
+        supplement_fixture = _write_descendant_history_supplement_fixture(
+            fixture, baseline_report
+        )
+        head = supplement_fixture["report_head"]
+        tree = supplement_fixture["report_tree"]
+        baseline_identities = convergence.authorized_failure_identity_by_fingerprint(
+            baseline_report
+        )
+        candidates: list[str] = []
+        for fingerprint, identity in sorted(baseline_identities.items()):
+            if (
+                identity.get("bucket") != "HISTORICAL"
+                or identity.get("rule_id") != "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"
+                or identity.get("subject_kind") != "path"
+            ):
+                continue
+            source_commit = convergence._resolve_commit_prefix(
+                fixture, identity.get("transition_new_prefix", "")
+            )
+            old_commit = convergence._resolve_commit_prefix(
+                fixture, identity.get("transition_old_prefix", "")
+            )
+            subject_path = convergence.normalize_path(identity.get("subject_value", ""))
+            if (
+                not source_commit
+                or not old_commit
+                or _git(fixture, "rev-parse", f"{source_commit}^1") != old_commit
+                or convergence._git_bytes(fixture, source_commit, subject_path) is None
+                or convergence._git_bytes(fixture, head, subject_path) is None
+            ):
+                continue
+            candidates.append(fingerprint)
+            if len(candidates) == 25:
+                break
+        _expect(len(candidates) == 25, f"only {len(candidates)} exact fixture identities")
+        fingerprints = sorted(candidates)
         fixture_baseline_sha = convergence.sha256_file(
             fixture / convergence.BASELINE_REPORT_REL
         )
@@ -468,17 +1073,115 @@ def _independent_audit_fixture_case(root: Path) -> None:
         record["binding_head_sha"] = head
         record["binding_tree_sha"] = tree
         record["baseline_report_sha256"] = fixture_baseline_sha
-        projection = independent_audit._subject_projection(
-            fixture,
-            head,
-            _identity_binding()["authority_selectors"],
+        record["descendant_history_supplement_sha256"] = supplement_fixture[
+            "supplement_sha256"
+        ]
+        manifest = _batch()
+        manifest["binding_head_sha"] = head
+        manifest["binding_tree_sha"] = tree
+        manifest["baseline_report_sha256"] = fixture_baseline_sha
+        manifest["descendant_history_supplement_sha256"] = supplement_fixture[
+            "supplement_sha256"
+        ]
+        manifest["failure_fingerprints"] = fingerprints
+        manifest["failure_count"] = len(fingerprints)
+        manifest["failure_fingerprint_set_sha256"] = convergence._line_set_sha(
+            fingerprints
         )
-        _expect(isinstance(projection, dict), "fixture subject projection unresolved")
-        for binding in record["identity_binding_by_failure"].values():
-            binding["subject_projection"] = copy.deepcopy(projection)
-            binding["subject_projection_sha256"] = convergence.sha256_bytes(
-                convergence.canonical_bytes(projection)
+        manifest_path = fixture / "batch-001-manifest.json"
+        _write_batch_artifacts(
+            manifest_path.parent,
+            manifest,
+            baseline_identities,
+        )
+        identity_bindings: dict[str, dict[str, Any]] = {}
+        for fingerprint in fingerprints:
+            identity = baseline_identities[fingerprint]
+            source_commit = convergence._resolve_commit_prefix(
+                fixture, identity["transition_new_prefix"]
             )
+            subject_path = convergence.normalize_path(identity["subject_value"])
+            historical_bytes = convergence._git_bytes(
+                fixture, source_commit, subject_path
+            )
+            current_bytes = convergence._git_bytes(fixture, head, subject_path)
+            _expect(historical_bytes is not None, f"missing source blob {subject_path}")
+            _expect(current_bytes is not None, f"missing current blob {subject_path}")
+            selector = {
+                "component_ids": [],
+                "paths": [subject_path],
+                "retirement_ids": [],
+                "supersession_ids": [],
+            }
+            projection = independent_audit._subject_projection(
+                fixture, head, selector
+            )
+            _expect(isinstance(projection, dict), "fixture subject projection unresolved")
+            identity_bindings[fingerprint] = {
+                "authority_selectors": selector,
+                "current_blob_sha256": convergence.sha256_bytes(current_bytes),
+                "current_component_id": "",
+                "domain_id": "domain.presentation",
+                "current_owner_id": "",
+                "current_path": subject_path,
+                "current_production_reachability": "PRODUCTION_REACHABLE",
+                "current_role": "PRESENTATION_ASSET",
+                "diagnostic_only_status": "NOT_DIAGNOSTIC_ONLY",
+                "documentation_only_status": "NOT_DOCUMENTATION_ONLY",
+                "dynamic_reference_status": "NOT_DYNAMIC_REFERENCE",
+                "generated_evidence_status": "NOT_GENERATED_EVIDENCE",
+                "first_seen_commit": source_commit,
+                "historical_blob_sha256": convergence.sha256_bytes(historical_bytes),
+                "historical_component_id": "",
+                "historical_owner_id": "",
+                "historical_path": subject_path,
+                "historical_production_reachability": "PRODUCTION_REACHABLE",
+                "historical_role": "PRESENTATION_ASSET",
+                "invalidation_policy": _touch_policy(),
+                "recommended_disposition": "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+                "retired_status": "ACTIVE_LINEAGE",
+                "subject_projection": projection,
+                "subject_projection_sha256": convergence.sha256_bytes(
+                    convergence.canonical_bytes(projection)
+                ),
+                "source_commit": source_commit,
+                "superseded_by": [],
+                "supersedes": [],
+                "test_only_status": "NOT_TEST_ONLY",
+                "last_seen_commit": convergence.AUTHORIZATION_BASE_HEAD_SHA,
+            }
+        record["identity_binding_by_failure"] = identity_bindings
+        record["paths"] = sorted({
+            value
+            for binding in identity_bindings.values()
+            for value in (binding["historical_path"], binding["current_path"])
+            if value
+        })
+        record["path_set_sha256"] = convergence._line_set_sha(record["paths"])
+        record["component_ids"] = []
+        record["component_set_sha256"] = convergence._line_set_sha([])
+        record["domain_ids"] = ["domain.presentation"]
+        record["domain_set_sha256"] = convergence._line_set_sha(record["domain_ids"])
+        record["owner_ids"] = []
+        record["owner_set_sha256"] = convergence._line_set_sha([])
+        record["supersession_ids"] = []
+        record["supersession_set_sha256"] = convergence._line_set_sha([])
+        record["retirement_ids"] = []
+        record["retirement_set_sha256"] = convergence._line_set_sha([])
+        record["source_commit_set"] = sorted({
+            binding["source_commit"] for binding in identity_bindings.values()
+        })
+        record["source_commit_set_sha256"] = convergence._line_set_sha(
+            record["source_commit_set"]
+        )
+        record["authority_source_sha256"] = {
+            relative: convergence.sha256_bytes(
+                convergence._git_bytes(fixture, head, relative) or b""
+            )
+            for relative in convergence.AUTHORITY_SOURCE_PATHS
+        }
+        for hash_field in convergence.BATCH_ARTIFACT_SPECS:
+            record[hash_field] = manifest[hash_field]
         record["record_payload_sha256"] = convergence.sha256_bytes(
             convergence.canonical_bytes(convergence._record_payload(record))
         )
@@ -489,22 +1192,12 @@ def _independent_audit_fixture_case(root: Path) -> None:
             / "component.json"
         )
         _write_json(record_path, record)
-        manifest = _batch()
-        manifest["binding_head_sha"] = head
-        manifest["binding_tree_sha"] = tree
-        manifest["baseline_report_sha256"] = fixture_baseline_sha
-        manifest["failure_fingerprints"] = fingerprints
-        manifest["failure_count"] = len(fingerprints)
-        manifest["failure_fingerprint_set_sha256"] = convergence._line_set_sha(
-            fingerprints
-        )
         manifest["record_bindings"][0].update({
             "failure_fingerprints": fingerprints,
             "record_payload_sha256": record["record_payload_sha256"],
             "record_sha256": convergence.sha256_file(record_path),
         })
         manifest["record_chain_terminal_sha256"] = record["record_payload_sha256"]
-        manifest_path = fixture / "batch-001-manifest.json"
         _write_json(manifest_path, manifest)
         original_baseline_sha = independent_audit.FULL_CONVERGENCE_BASELINE_SHA
         independent_audit.FULL_CONVERGENCE_BASELINE_SHA = fixture_baseline_sha
@@ -514,6 +1207,15 @@ def _independent_audit_fixture_case(root: Path) -> None:
                 manifest_path,
                 evaluated_head=head,
                 baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+                descendant_history_supplement_path=supplement_fixture[
+                    "supplement_path"
+                ],
+                descendant_history_raw_report_path=supplement_fixture[
+                    "raw_report_path"
+                ],
+                descendant_history_scanner_path=supplement_fixture[
+                    "scanner_path"
+                ],
             )
         finally:
             independent_audit.FULL_CONVERGENCE_BASELINE_SHA = original_baseline_sha
@@ -566,7 +1268,7 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("15", "batch review cannot be bypassed", lambda: (lambda manifest: (manifest.update({"batch_review_a_status": "NO_GO"}), _expect_failure(convergence.validate_batch_manifest_document(manifest), "BATCH_MANIFEST_BATCH_REVIEW_A_STATUS_MISMATCH")))(_batch())))
     cases.append(Case("16", "subject projection ignores unrelated append and changes on matched owner mutation", _projection_invalidation_case))
     cases.append(Case("17", "duplicate JSON keys are rejected", lambda: (lambda path: (_expect_failure(_duplicate_key_result(path), "DUPLICATE_JSON_KEY")))(root / "unused")))
-    cases.append(Case("18", "d701 and legacy raw reports share the exact failure identity set", lambda: (lambda report: _expect(convergence.failure_set_sha(report) == convergence.AUTHORIZED_BASELINE_FAILURE_SET_SHA256, convergence.failure_set_sha(report)))(json.loads((root / "reports/reuse/correction_v2/baseline_raw_failure_report.json").read_text(encoding="utf-8-sig")))))
+    cases.append(Case("18", "d701 baseline is byte, Head, count, failure-set, and epoch-path locked", lambda: _authorized_baseline_epoch_case(root)))
     cases.append(Case("19", "aggregate owner set cannot drift from per-fingerprint identities", lambda: (lambda record: (record.update({"owner_ids": []}), _expect_failure(convergence.validate_extension_record_document(record), "EXTENSION_RECORD_OWNER_IDS_MISMATCH")))(_record())))
     cases.append(Case("20", "historical source commit binding is mandatory", lambda: (lambda record: (record["identity_binding_by_failure"][_fingerprint(1)].update({"source_commit": "bad"}), _expect_failure(convergence.validate_extension_record_document(record), "IDENTITY_BINDING_COMMIT_INVALID:source_commit")))(_record())))
     cases.append(Case("21", "current blob identity must be an exact SHA-256 or MISSING", lambda: (lambda record: (record["identity_binding_by_failure"][_fingerprint(1)].update({"current_blob_sha256": "bad"}), _expect_failure(convergence.validate_extension_record_document(record), "IDENTITY_BINDING_BLOB_INVALID:current_blob_sha256")))(_record())))
@@ -578,6 +1280,16 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("27", "independent full-convergence audit runs against a real Git fixture", lambda: _independent_audit_fixture_case(root)))
     cases.append(Case("28", "only frozen historical fingerprints can enter a new correction batch", lambda: _baseline_membership_case(root)))
     cases.append(Case("29", "non-object JSON documents fail closed without an exception", lambda: _non_object_documents_fail_closed_case(root)))
+    cases.append(Case("30", "the legacy V2 baseline is rejected by the new epoch", lambda: _legacy_baseline_rejected_by_new_epoch_case(root)))
+    cases.append(Case("31", "a batch cannot reuse any nonadjacent predecessor fingerprint", _nonadjacent_fingerprint_reuse_case))
+    cases.append(Case("32", "batch artifacts are byte-bound and their review status is parsed", _batch_artifact_binding_case))
+    cases.append(Case("33", "each fingerprint binds its own frozen raw path and source transition", lambda: _baseline_raw_identity_binding_case(root)))
+    cases.append(Case("34", "actual record fingerprints must equal their manifest binding", lambda: _record_manifest_binding_case(root)))
+    cases.append(Case("35", "the actual record predecessor must continue the manifest chain", lambda: _actual_record_chain_case(root)))
+    cases.append(Case("36", "an exact committed-only descendant HISTORY supplement is accepted", lambda: _descendant_supplement_primary_positive_case(root)))
+    cases.append(Case("37", "current failures and unsealed future HISTORY rows cannot enter the supplement", lambda: _descendant_supplement_current_and_future_negative_case(root)))
+    cases.append(Case("38", "primary and independent audits reject missing inputs and source blob drift", lambda: _descendant_supplement_binding_negative_case(root)))
+    cases.append(Case("39", "batch and record schemas require the exact supplement byte digest", lambda: (lambda record, manifest: (record.pop("descendant_history_supplement_sha256"), manifest.pop("descendant_history_supplement_sha256"), _expect_failure(convergence.validate_extension_record_document(record), "EXTENSION_RECORD_FIELD_SET_MISMATCH"), _expect_failure(convergence.validate_batch_manifest_document(manifest), "BATCH_MANIFEST_FIELD_SET_MISMATCH")))(_record(), _batch())))
     return cases
 
 

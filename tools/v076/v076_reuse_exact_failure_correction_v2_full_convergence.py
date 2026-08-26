@@ -42,11 +42,17 @@ LEGACY_SEAL_PLAN_SHA256 = "abb283532cea5b344de680152caeb413522469464ab7d6c4d4e2e
 SCHEMA_VERSION = "space_syndicate.v076.reuse_exact_failure_correction.v2.full_convergence_record.v1"
 BATCH_MANIFEST_SCHEMA_VERSION = "space_syndicate.v076.reuse_exact_failure_correction.v2.full_convergence_batch.v1"
 EPOCH_SCHEMA_VERSION = "space_syndicate.v076.reuse_exact_failure_correction.v2.full_convergence_schema.v1"
+DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION = (
+    "space_syndicate.v076.reuse_exact_failure_correction.v2."
+    "descendant_history_supplement.v1"
+)
+DESCENDANT_HISTORY_SUPPLEMENT_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_001"
 
 SCHEMA_REL = Path("docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json")
-BASELINE_REPORT_REL = Path("reports/reuse/correction_v2/baseline_raw_failure_report.json")
 RECORD_ROOT_REL = Path("docs/architecture/reuse_corrections/v2/records/full_convergence_20260827")
 EPOCH_ROOT_REL = Path("reports/reuse/correction_v2/epochs/full_convergence_20260827")
+BASELINE_REPORT_REL = EPOCH_ROOT_REL / "baseline_raw_failure_report.json"
+DESCENDANT_HISTORY_SCANNER_REL = Path("tools/v076/v076_reuse_point_inertia_gate.py")
 LEGACY_SEAL_MANIFEST_REL = Path(
     "reports/reuse/correction_v2/seals/ci_portability_v2/correction_authorization_manifest.json"
 )
@@ -57,13 +63,83 @@ LEGACY_SCHEMA_REL = Path("docs/architecture/reuse_corrections/v2/schema.json")
 
 # Filled from the committed schema artifact.  Keeping it in code prevents a
 # schema plus freshly rewritten sidecar from silently broadening authority.
-AUTHORIZED_SCHEMA_SHA256 = "12578feb719858f84283ecb06dd31735df2f8656c1c11202c9f7d8478867af14"
+AUTHORIZED_SCHEMA_SHA256 = "474c4864fd72ad1761fbbaae90f31791e9c6ee7d9dcb0e4de53ef47240cb1b12"
 
 AUTHORITY_SOURCE_PATHS = (
     "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
     "docs/architecture/V076_SUPERSESSION_MAP.json",
     "docs/architecture/V076_OWNER_REUSE_MAP.md",
 )
+
+DESCENDANT_HISTORY_IDENTITY_FIELDS = tuple(sorted((
+    "failure_fingerprint",
+    "raw_failure",
+    "repaired_frozen_current_fingerprints",
+    "rule_id",
+    "source_blob_sha256",
+    "source_commit_sha",
+    "source_component_id",
+    "source_path",
+    "transition_new_sha",
+    "transition_old_sha",
+)))
+
+DESCENDANT_HISTORY_SUPPLEMENT_FIELDS = tuple(sorted((
+    "authorization_base_head_sha",
+    "authorization_id",
+    "baseline_failure_set_sha256",
+    "baseline_report_sha256",
+    "committed_only",
+    "descendant_history_failure_count",
+    "descendant_history_fingerprint_set_sha256",
+    "descendant_history_fingerprints",
+    "directory_discovery_allowed",
+    "future_failure_auto_membership_allowed",
+    "identity_binding_by_failure",
+    "raw_current_delta_failure_count",
+    "raw_failure_count",
+    "raw_historical_failure_count",
+    "raw_report_head_sha",
+    "raw_report_path",
+    "raw_report_sha256",
+    "raw_report_tree_sha",
+    "repaired_frozen_current_failure_count",
+    "repaired_frozen_current_fingerprint_set_sha256",
+    "repaired_frozen_current_fingerprints",
+    "scanner_tool_path",
+    "scanner_tool_sha256",
+    "schema_version",
+    "supplement_id",
+    "wildcard_membership_allowed",
+)))
+
+BATCH_ARTIFACT_SPECS = {
+    "batch_inventory_sha256": (
+        "batch_inventory.json",
+        "space_syndicate.v076.reuse_full_convergence.batch_inventory.v1",
+        "inventory",
+    ),
+    "batch_classification_sha256": (
+        "batch_classification.json",
+        "space_syndicate.v076.reuse_full_convergence.batch_classification.v1",
+        "classification",
+    ),
+    "batch_negative_checks_sha256": (
+        "batch_negative_checks.json",
+        "space_syndicate.v076.reuse_full_convergence.batch_negative_checks.v1",
+        "negative_checks",
+    ),
+    "batch_review_a_sha256": (
+        "batch_review_A.json",
+        "space_syndicate.v076.reuse_full_convergence.batch_review.v1",
+        "review_a",
+    ),
+    "batch_review_b_sha256": (
+        "batch_review_B.json",
+        "space_syndicate.v076.reuse_full_convergence.batch_review.v1",
+        "review_b",
+    ),
+}
 
 LEGACY_RECORD_BINDINGS = (
     {
@@ -161,6 +237,7 @@ EXTENSION_RECORD_FIELDS = tuple(sorted((
     "component_set_sha256",
     "created_at",
     "creator",
+    "descendant_history_supplement_sha256",
     "domain_ids",
     "domain_set_sha256",
     "failure_classes",
@@ -213,6 +290,7 @@ BATCH_MANIFEST_FIELDS = tuple(sorted((
     "binding_head_sha",
     "binding_tree_sha",
     "current_failure_false_accept_count",
+    "descendant_history_supplement_sha256",
     "failure_count",
     "failure_fingerprint_set_sha256",
     "failure_fingerprints",
@@ -362,6 +440,81 @@ def authorized_failure_fingerprint_sets(report: dict[str, Any]) -> dict[str, set
     return result
 
 
+def _raw_historical_identity(raw: str) -> dict[str, str]:
+    """Project one frozen raw row into the identity facts a record must bind.
+
+    The scanner has two historical subject shapes.  Component-metadata rows
+    name a component id immediately after the transition; every other
+    historical row names the historical path immediately after the transition.
+    Dynamic-reference rows carry method/key tokens before that transition, so
+    the transition is located structurally rather than by a fixed index.
+    """
+
+    parts = raw.split(":")
+    rule_id = parts[0] if parts else ""
+    transition_index = next(
+        (
+            index
+            for index, value in enumerate(parts)
+            if re.fullmatch(r"[0-9a-f]{12}->[0-9a-f]{12}", value)
+        ),
+        -1,
+    )
+    result = {
+        "raw_failure": raw,
+        "rule_id": rule_id,
+        "transition_old_prefix": "",
+        "transition_new_prefix": "",
+        "subject_kind": "",
+        "subject_value": "",
+    }
+    if transition_index < 0:
+        return result
+    old_prefix, new_prefix = parts[transition_index].split("->", 1)
+    result["transition_old_prefix"] = old_prefix
+    result["transition_new_prefix"] = new_prefix
+    if transition_index + 1 >= len(parts):
+        return result
+    metadata_rules = {
+        "HISTORY_COMPONENT_CHANGE_CLASS_NOT_DECLARED",
+        "HISTORY_PRODUCT_AFFECTED_DOMAIN_MISSING",
+        "HISTORY_PRODUCT_AFFECTED_OWNER_MISSING",
+        "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING",
+        "HISTORY_PRODUCT_REUSE_SCAN_INVALID",
+    }
+    result["subject_kind"] = "component_id" if rule_id in metadata_rules else "path"
+    result["subject_value"] = normalize_path(parts[transition_index + 1])
+    return result
+
+
+def authorized_failure_identity_by_fingerprint(
+    report: dict[str, Any],
+) -> dict[str, dict[str, str]]:
+    if not isinstance(report, dict) or not isinstance(report.get("failures"), list):
+        raise ValueError("BASELINE_FAILURE_LIST_INVALID")
+    result: dict[str, dict[str, str]] = {}
+    for value in report["failures"]:
+        raw = str(value)
+        rule_id = raw.split(":", 1)[0]
+        bucket = "HISTORICAL" if rule_id.startswith("HISTORY_") else "CURRENT_DELTA_FAILURE"
+        payload = f"V076_RAW_FAILURE_V2\n{bucket}\n{rule_id}\n{raw}\n".encode("utf-8")
+        fingerprint = "V2F-" + sha256_bytes(payload)
+        if fingerprint in result:
+            raise ValueError("BASELINE_FAILURE_FINGERPRINT_DUPLICATE")
+        identity = _raw_historical_identity(raw) if bucket == "HISTORICAL" else {
+            "raw_failure": raw,
+            "rule_id": rule_id,
+            "transition_old_prefix": "",
+            "transition_new_prefix": "",
+            "subject_kind": "",
+            "subject_value": "",
+        }
+        identity["bucket"] = bucket
+        identity["failure_fingerprint"] = fingerprint
+        result[fingerprint] = identity
+    return result
+
+
 def validate_authorized_baseline(path: Path) -> dict[str, Any]:
     failures: list[str] = []
     if not path.is_file():
@@ -409,6 +562,468 @@ def validate_authorized_baseline(path: Path) -> dict[str, Any]:
     }
 
 
+def _exact_repo_relative(root: Path, path: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return ""
+
+
+def validate_descendant_history_supplement(
+    root: Path,
+    supplement_path: Path | None,
+    raw_report_path: Path | None,
+    scanner_path: Path | None,
+    *,
+    evaluated_head: str,
+    baseline_report_path: Path,
+) -> dict[str, Any]:
+    """Validate one explicit, byte-sealed descendant HISTORY membership set.
+
+    The supplement is not discovered.  Its three files must be passed by the
+    caller, and the raw report must evaluate one committed Head with zero
+    current failures.  Membership is the exact set difference between that
+    report's historical fingerprints and the frozen d701 historical set.
+    """
+
+    failures: list[str] = []
+    empty = {
+        "status": "FAIL",
+        "failures": failures,
+        "supplement_sha256": "",
+        "authorized_historical_fingerprints": set(),
+        "authorized_identity_by_fingerprint": {},
+        "raw_report_head_sha": "",
+    }
+    if supplement_path is None:
+        failures.append("DESCENDANT_HISTORY_SUPPLEMENT_REQUIRED")
+    if raw_report_path is None:
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_REQUIRED")
+    if scanner_path is None:
+        failures.append("DESCENDANT_HISTORY_SCANNER_REQUIRED")
+    if failures:
+        return empty
+    assert supplement_path is not None
+    assert raw_report_path is not None
+    assert scanner_path is not None
+    supplement_relative = _exact_repo_relative(root, supplement_path)
+    raw_report_relative = _exact_repo_relative(root, raw_report_path)
+    scanner_relative = _exact_repo_relative(root, scanner_path)
+    epoch_prefix = EPOCH_ROOT_REL.as_posix() + "/"
+    if not supplement_relative.startswith(epoch_prefix):
+        failures.append("DESCENDANT_HISTORY_SUPPLEMENT_PATH_OUTSIDE_EPOCH")
+    if not raw_report_relative.startswith(epoch_prefix):
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_PATH_OUTSIDE_EPOCH")
+    if scanner_relative != DESCENDANT_HISTORY_SCANNER_REL.as_posix():
+        failures.append("DESCENDANT_HISTORY_SCANNER_PATH_MISMATCH")
+    try:
+        supplement = load_json_strict(supplement_path)
+        supplement_sha = sha256_file(supplement_path)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        supplement = {}
+        supplement_sha = ""
+        failures.append("DESCENDANT_HISTORY_SUPPLEMENT_JSON_INVALID")
+    if not isinstance(supplement, dict):
+        supplement = {}
+        failures.append("DESCENDANT_HISTORY_SUPPLEMENT_NOT_OBJECT")
+    if set(supplement) != set(DESCENDANT_HISTORY_SUPPLEMENT_FIELDS):
+        failures.append("DESCENDANT_HISTORY_SUPPLEMENT_FIELD_SET_MISMATCH")
+    for field, expected in (
+        ("schema_version", DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION),
+        ("supplement_id", DESCENDANT_HISTORY_SUPPLEMENT_ID),
+        ("authorization_id", AUTHORIZATION_ID),
+        ("authorization_base_head_sha", AUTHORIZATION_BASE_HEAD_SHA),
+        ("baseline_report_sha256", AUTHORIZED_BASELINE_REPORT_SHA256),
+        ("baseline_failure_set_sha256", AUTHORIZED_BASELINE_FAILURE_SET_SHA256),
+        ("committed_only", True),
+        ("directory_discovery_allowed", False),
+        ("wildcard_membership_allowed", False),
+        ("future_failure_auto_membership_allowed", False),
+        ("raw_current_delta_failure_count", 0),
+        ("scanner_tool_path", DESCENDANT_HISTORY_SCANNER_REL.as_posix()),
+        ("raw_report_path", raw_report_relative),
+    ):
+        if supplement.get(field) != expected:
+            failures.append(f"DESCENDANT_HISTORY_SUPPLEMENT_{field.upper()}_MISMATCH")
+    try:
+        baseline_report = load_json_strict(baseline_report_path)
+        frozen_sets = authorized_failure_fingerprint_sets(baseline_report)
+        frozen_identities = authorized_failure_identity_by_fingerprint(baseline_report)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        frozen_sets = {"historical": set(), "current": set()}
+        frozen_identities = {}
+        failures.append("DESCENDANT_HISTORY_BASELINE_UNRESOLVED")
+    if (
+        len(frozen_sets["historical"]) != AUTHORIZED_BASELINE_HISTORICAL_COUNT
+        or len(frozen_sets["current"]) != AUTHORIZED_BASELINE_CURRENT_COUNT
+    ):
+        failures.append("DESCENDANT_HISTORY_BASELINE_SET_INVALID")
+    try:
+        raw_report = load_json_strict(raw_report_path)
+        raw_report_sha = sha256_file(raw_report_path)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        raw_report = {}
+        raw_report_sha = ""
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_JSON_INVALID")
+    if not isinstance(raw_report, dict):
+        raw_report = {}
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_NOT_OBJECT")
+    if supplement.get("raw_report_sha256") != raw_report_sha:
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_SHA256_MISMATCH")
+    raw_values = raw_report.get("failures")
+    if not isinstance(raw_values, list):
+        raw_values = []
+        failures.append("DESCENDANT_HISTORY_RAW_FAILURE_LIST_INVALID")
+    raw_rendered = [str(value) for value in raw_values]
+    if len(raw_rendered) != len(set(raw_rendered)):
+        failures.append("DESCENDANT_HISTORY_RAW_FAILURE_DUPLICATE")
+    try:
+        final_sets = authorized_failure_fingerprint_sets(raw_report)
+        final_identities = authorized_failure_identity_by_fingerprint(raw_report)
+    except ValueError as exc:
+        final_sets = {"historical": set(), "current": set()}
+        final_identities = {}
+        failures.append(f"DESCENDANT_HISTORY_RAW_FINGERPRINT_SET_INVALID:{exc}")
+    if final_sets["current"]:
+        failures.append("DESCENDANT_HISTORY_FINAL_CURRENT_FAILURE_COUNT_NOT_ZERO")
+    if not frozen_sets["historical"].issubset(final_sets["historical"]):
+        failures.append("DESCENDANT_HISTORY_FROZEN_HISTORICAL_SET_NOT_PRESERVED")
+    descendant_fingerprints = final_sets["historical"] - frozen_sets["historical"]
+    if not descendant_fingerprints:
+        failures.append("DESCENDANT_HISTORY_SUPPLEMENT_EMPTY")
+    declared_descendant = supplement.get("descendant_history_fingerprints")
+    if not isinstance(declared_descendant, list):
+        declared_descendant = []
+        failures.append("DESCENDANT_HISTORY_FINGERPRINT_LIST_INVALID")
+    declared_descendant_rendered = [str(value) for value in declared_descendant]
+    if (
+        declared_descendant_rendered != sorted(declared_descendant_rendered)
+        or len(declared_descendant_rendered) != len(set(declared_descendant_rendered))
+        or any(not re.fullmatch(r"V2F-[0-9a-f]{64}", value) for value in declared_descendant_rendered)
+    ):
+        failures.append("DESCENDANT_HISTORY_FINGERPRINT_SET_INVALID")
+    if set(declared_descendant_rendered) != descendant_fingerprints:
+        failures.append("DESCENDANT_HISTORY_FINGERPRINT_MEMBERSHIP_MISMATCH")
+    if supplement.get("descendant_history_failure_count") != len(descendant_fingerprints):
+        failures.append("DESCENDANT_HISTORY_FAILURE_COUNT_MISMATCH")
+    if supplement.get("descendant_history_fingerprint_set_sha256") != _line_set_sha(
+        declared_descendant_rendered
+    ):
+        failures.append("DESCENDANT_HISTORY_FINGERPRINT_SET_SHA256_MISMATCH")
+    if supplement.get("raw_failure_count") != len(raw_rendered):
+        failures.append("DESCENDANT_HISTORY_RAW_FAILURE_COUNT_MISMATCH")
+    if supplement.get("raw_historical_failure_count") != len(final_sets["historical"]):
+        failures.append("DESCENDANT_HISTORY_RAW_HISTORICAL_COUNT_MISMATCH")
+    if supplement.get("raw_current_delta_failure_count") != len(final_sets["current"]):
+        failures.append("DESCENDANT_HISTORY_RAW_CURRENT_COUNT_MISMATCH")
+    report_head = str(raw_report.get("head_sha", ""))
+    if supplement.get("raw_report_head_sha") != report_head or not _is_commit(report_head):
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_HEAD_MISMATCH")
+    if raw_report.get("include_worktree") is not False:
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_NOT_COMMITTED_ONLY")
+    if raw_report.get("evaluated_source") != "COMMITTED_HEAD":
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_SOURCE_MISMATCH")
+    if raw_report.get("merge_base_sha") != AUTHORIZATION_BASE_HEAD_SHA:
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_BASE_MISMATCH")
+    report_tree = ""
+    if _is_commit(report_head):
+        try:
+            report_tree = _git(root, "rev-parse", f"{report_head}^{{tree}}")
+        except ValueError:
+            report_tree = ""
+    if supplement.get("raw_report_tree_sha") != report_tree or not _is_commit(report_tree):
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_TREE_MISMATCH")
+    if (
+        not _is_ancestor(root, AUTHORIZATION_BASE_HEAD_SHA, report_head)
+        or not _is_ancestor(root, report_head, evaluated_head)
+    ):
+        failures.append("DESCENDANT_HISTORY_RAW_REPORT_HEAD_ANCESTRY_INVALID")
+    try:
+        scanner_sha = sha256_file(scanner_path)
+    except OSError:
+        scanner_sha = ""
+        failures.append("DESCENDANT_HISTORY_SCANNER_UNREADABLE")
+    scanner_at_report = _git_bytes(
+        root, report_head, DESCENDANT_HISTORY_SCANNER_REL.as_posix()
+    ) if _is_commit(report_head) else None
+    scanner_at_report_sha = (
+        sha256_bytes(scanner_at_report) if scanner_at_report is not None else ""
+    )
+    if (
+        supplement.get("scanner_tool_sha256") != scanner_sha
+        or scanner_sha != scanner_at_report_sha
+    ):
+        failures.append("DESCENDANT_HISTORY_SCANNER_SHA256_MISMATCH")
+    repaired = supplement.get("repaired_frozen_current_fingerprints")
+    if not isinstance(repaired, list):
+        repaired = []
+        failures.append("DESCENDANT_HISTORY_REPAIRED_CURRENT_LIST_INVALID")
+    repaired_rendered = [str(value) for value in repaired]
+    if (
+        repaired_rendered != sorted(repaired_rendered)
+        or len(repaired_rendered) != len(set(repaired_rendered))
+        or set(repaired_rendered) != frozen_sets["current"]
+    ):
+        failures.append("DESCENDANT_HISTORY_REPAIRED_CURRENT_SET_MISMATCH")
+    if supplement.get("repaired_frozen_current_failure_count") != len(frozen_sets["current"]):
+        failures.append("DESCENDANT_HISTORY_REPAIRED_CURRENT_COUNT_MISMATCH")
+    if supplement.get("repaired_frozen_current_fingerprint_set_sha256") != _line_set_sha(
+        repaired_rendered
+    ):
+        failures.append("DESCENDANT_HISTORY_REPAIRED_CURRENT_SET_SHA256_MISMATCH")
+    bindings = supplement.get("identity_binding_by_failure")
+    if not isinstance(bindings, dict) or set(bindings) != descendant_fingerprints:
+        failures.append("DESCENDANT_HISTORY_IDENTITY_BINDING_SET_MISMATCH")
+        bindings = bindings if isinstance(bindings, dict) else {}
+    mapped_current: set[str] = set()
+    authorized_identities: dict[str, dict[str, str]] = {}
+    for fingerprint in sorted(descendant_fingerprints):
+        binding = bindings.get(fingerprint)
+        raw_identity = final_identities.get(fingerprint)
+        if not isinstance(binding, dict) or set(binding) != set(DESCENDANT_HISTORY_IDENTITY_FIELDS):
+            failures.append(f"DESCENDANT_HISTORY_IDENTITY_FIELD_SET_MISMATCH:{fingerprint}")
+            continue
+        if not isinstance(raw_identity, dict) or raw_identity.get("bucket") != "HISTORICAL":
+            failures.append(f"DESCENDANT_HISTORY_RAW_IDENTITY_UNRESOLVED:{fingerprint}")
+            continue
+        for field, expected in (
+            ("failure_fingerprint", fingerprint),
+            ("raw_failure", raw_identity.get("raw_failure")),
+            ("rule_id", raw_identity.get("rule_id")),
+        ):
+            if binding.get(field) != expected:
+                failures.append(f"DESCENDANT_HISTORY_IDENTITY_{field.upper()}_MISMATCH:{fingerprint}")
+        old_commit = _resolve_commit_prefix(
+            root, str(raw_identity.get("transition_old_prefix", ""))
+        )
+        new_commit = _resolve_commit_prefix(
+            root, str(raw_identity.get("transition_new_prefix", ""))
+        )
+        if (
+            not old_commit
+            or not new_commit
+            or _git(root, "rev-parse", f"{new_commit}^1") != old_commit
+        ):
+            failures.append(f"DESCENDANT_HISTORY_TRANSITION_NOT_DIRECT_PARENT:{fingerprint}")
+        if binding.get("transition_old_sha") != old_commit:
+            failures.append(f"DESCENDANT_HISTORY_TRANSITION_OLD_MISMATCH:{fingerprint}")
+        if binding.get("transition_new_sha") != new_commit:
+            failures.append(f"DESCENDANT_HISTORY_TRANSITION_NEW_MISMATCH:{fingerprint}")
+        if binding.get("source_commit_sha") != new_commit:
+            failures.append(f"DESCENDANT_HISTORY_SOURCE_COMMIT_MISMATCH:{fingerprint}")
+        if (
+            not _is_ancestor(root, AUTHORIZATION_BASE_HEAD_SHA, new_commit)
+            or not _is_ancestor(root, new_commit, report_head)
+        ):
+            failures.append(f"DESCENDANT_HISTORY_SOURCE_COMMIT_ANCESTRY_INVALID:{fingerprint}")
+        source_path = normalize_path(str(binding.get("source_path", "")))
+        if (
+            not source_path
+            or source_path != binding.get("source_path")
+            or source_path.startswith(("/", "../"))
+            or source_path.endswith("/")
+            or "/../" in source_path
+            or any(char in source_path for char in "*?[]")
+        ):
+            failures.append(f"DESCENDANT_HISTORY_SOURCE_PATH_INVALID:{fingerprint}")
+        subject_kind = str(raw_identity.get("subject_kind", ""))
+        subject_value = normalize_path(str(raw_identity.get("subject_value", "")))
+        if subject_kind == "path":
+            if source_path != subject_value:
+                failures.append(f"DESCENDANT_HISTORY_SOURCE_PATH_RAW_MISMATCH:{fingerprint}")
+            if binding.get("source_component_id") != "":
+                failures.append(f"DESCENDANT_HISTORY_SOURCE_COMPONENT_UNEXPECTED:{fingerprint}")
+        elif subject_kind == "component_id":
+            if binding.get("source_component_id") != subject_value:
+                failures.append(f"DESCENDANT_HISTORY_SOURCE_COMPONENT_MISMATCH:{fingerprint}")
+            try:
+                changed_paths = {
+                    normalize_path(value)
+                    for value in _git(root, "diff", "--name-only", old_commit, new_commit).splitlines()
+                    if value.strip()
+                }
+            except ValueError:
+                changed_paths = set()
+            if source_path not in changed_paths:
+                failures.append(f"DESCENDANT_HISTORY_COMPONENT_SOURCE_PATH_NOT_TOUCHED:{fingerprint}")
+        else:
+            failures.append(f"DESCENDANT_HISTORY_RAW_SUBJECT_UNRESOLVED:{fingerprint}")
+        source_bytes = _git_bytes(root, new_commit, source_path) if new_commit else None
+        source_sha = sha256_bytes(source_bytes) if source_bytes is not None else ""
+        if source_bytes is None or binding.get("source_blob_sha256") != source_sha:
+            failures.append(f"DESCENDANT_HISTORY_SOURCE_BLOB_MISMATCH:{fingerprint}")
+        mapped = binding.get("repaired_frozen_current_fingerprints")
+        if not isinstance(mapped, list):
+            mapped = []
+        mapped_rendered = [str(value) for value in mapped]
+        if (
+            not mapped_rendered
+            or mapped_rendered != sorted(mapped_rendered)
+            or len(mapped_rendered) != len(set(mapped_rendered))
+            or not set(mapped_rendered).issubset(frozen_sets["current"])
+        ):
+            failures.append(f"DESCENDANT_HISTORY_REPAIR_BINDING_INVALID:{fingerprint}")
+        mapped_current.update(mapped_rendered)
+        authorized_identity = dict(raw_identity)
+        authorized_identity.update({
+            "authority_origin": "DESCENDANT_HISTORY_SUPPLEMENT",
+            "source_path": source_path,
+            "supplement_raw_report_head_sha": report_head,
+        })
+        authorized_identities[fingerprint] = authorized_identity
+    if mapped_current != frozen_sets["current"] or mapped_current != set(repaired_rendered):
+        failures.append("DESCENDANT_HISTORY_REPAIR_BINDING_COVERAGE_MISMATCH")
+    failures = sorted(set(failures))
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "failures": failures,
+        "supplement_sha256": supplement_sha,
+        "authorized_historical_fingerprints": descendant_fingerprints,
+        "authorized_identity_by_fingerprint": authorized_identities,
+        "raw_report_head_sha": report_head,
+        "frozen_current_identity_count": len(frozen_identities) - len(frozen_sets["historical"]),
+    }
+
+
+def _artifact_common_failures(
+    document: Any,
+    manifest: dict[str, Any],
+    *,
+    expected_schema: str,
+    label: str,
+) -> list[str]:
+    prefix = f"BATCH_ARTIFACT_{label.upper()}"
+    if not isinstance(document, dict):
+        return [f"{prefix}_NOT_OBJECT"]
+    failures: list[str] = []
+    expected_fingerprints = [str(value) for value in manifest.get("failure_fingerprints", [])]
+    fingerprints = document.get("failure_fingerprints")
+    rendered = [str(value) for value in fingerprints] if isinstance(fingerprints, list) else []
+    if document.get("schema_version") != expected_schema:
+        failures.append(f"{prefix}_SCHEMA_MISMATCH")
+    if document.get("batch_id") != manifest.get("batch_id"):
+        failures.append(f"{prefix}_BATCH_ID_MISMATCH")
+    if rendered != expected_fingerprints:
+        failures.append(f"{prefix}_FINGERPRINT_SET_MISMATCH")
+    if document.get("failure_count") != len(expected_fingerprints):
+        failures.append(f"{prefix}_FAILURE_COUNT_MISMATCH")
+    return failures
+
+
+def _validate_batch_artifact_document(
+    document: Any,
+    manifest: dict[str, Any],
+    *,
+    expected_schema: str,
+    kind: str,
+    authorized_identities: dict[str, dict[str, str]],
+) -> list[str]:
+    failures = _artifact_common_failures(
+        document,
+        manifest,
+        expected_schema=expected_schema,
+        label=kind,
+    )
+    if not isinstance(document, dict):
+        return failures
+    fingerprints = [str(value) for value in manifest.get("failure_fingerprints", [])]
+    prefix = f"BATCH_ARTIFACT_{kind.upper()}"
+    if kind == "inventory":
+        if document.get("identity_coverage_percent") != 100 or document.get("unknown_count") != 0:
+            failures.append(f"{prefix}_COVERAGE_INVALID")
+        rows = document.get("rows")
+        if not isinstance(rows, dict) or set(rows) != set(fingerprints):
+            failures.append(f"{prefix}_ROW_SET_MISMATCH")
+        else:
+            for fingerprint, row in rows.items():
+                identity = authorized_identities.get(fingerprint, {})
+                if not isinstance(row, dict):
+                    failures.append(f"{prefix}_ROW_INVALID:{fingerprint}")
+                    continue
+                if row.get("failure_fingerprint") != fingerprint:
+                    failures.append(f"{prefix}_ROW_FINGERPRINT_MISMATCH:{fingerprint}")
+                if row.get("raw_failure") != identity.get("raw_failure"):
+                    failures.append(f"{prefix}_ROW_RAW_FAILURE_MISMATCH:{fingerprint}")
+                if row.get("rule_id") != identity.get("rule_id"):
+                    failures.append(f"{prefix}_ROW_RULE_MISMATCH:{fingerprint}")
+    elif kind == "classification":
+        if document.get("unknown_count") != 0 or document.get("wildcard_count") != 0:
+            failures.append(f"{prefix}_COUNTS_INVALID")
+        classifications = document.get("classifications")
+        if not isinstance(classifications, dict) or set(classifications) != set(fingerprints):
+            failures.append(f"{prefix}_ROW_SET_MISMATCH")
+        else:
+            for fingerprint, row in classifications.items():
+                if not isinstance(row, dict):
+                    failures.append(f"{prefix}_ROW_INVALID:{fingerprint}")
+                    continue
+                if row.get("failure_fingerprint") != fingerprint:
+                    failures.append(f"{prefix}_ROW_FINGERPRINT_MISMATCH:{fingerprint}")
+                if row.get("status") != "CLASSIFIED":
+                    failures.append(f"{prefix}_ROW_STATUS_INVALID:{fingerprint}")
+                if row.get("recommended_disposition") not in ALLOWED_DISPOSITIONS:
+                    failures.append(f"{prefix}_ROW_DISPOSITION_INVALID:{fingerprint}")
+    elif kind == "negative_checks":
+        required_counts = {
+            "current_failure_false_accept_count": 0,
+            "future_failure_auto_correction_count": 0,
+            "wildcard_count": 0,
+        }
+        if document.get("status") != "PASS":
+            failures.append(f"{prefix}_STATUS_INVALID")
+        for field, expected in required_counts.items():
+            if document.get(field) != expected:
+                failures.append(f"{prefix}_{field.upper()}_INVALID")
+        checks = document.get("checks")
+        if not isinstance(checks, dict) or not checks or any(value is not True for value in checks.values()):
+            failures.append(f"{prefix}_CHECK_SET_INVALID")
+    else:
+        review_id = "A" if kind == "review_a" else "B"
+        if document.get("review_id") != review_id:
+            failures.append(f"{prefix}_REVIEW_ID_INVALID")
+        if document.get("status") != "GO":
+            failures.append(f"{prefix}_STATUS_INVALID")
+        if document.get("p0_count") != 0 or document.get("p1_count") != 0:
+            failures.append(f"{prefix}_FINDING_COUNT_INVALID")
+        if document.get("findings") != []:
+            failures.append(f"{prefix}_FINDINGS_NOT_EMPTY")
+    return sorted(set(failures))
+
+
+def validate_batch_artifacts(
+    manifest_path: Path,
+    manifest: dict[str, Any],
+    *,
+    authorized_identities: dict[str, dict[str, str]],
+) -> list[str]:
+    failures: list[str] = []
+    for hash_field, (filename, schema_version, kind) in BATCH_ARTIFACT_SPECS.items():
+        path = manifest_path.parent / filename
+        if not path.is_file():
+            failures.append(f"BATCH_ARTIFACT_MISSING:{filename}")
+            continue
+        expected_hash = manifest.get(hash_field)
+        actual_hash = sha256_file(path)
+        if actual_hash != expected_hash:
+            failures.append(f"BATCH_ARTIFACT_SHA256_MISMATCH:{filename}")
+            continue
+        try:
+            document = load_json_strict(path)
+        except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+            failures.append(f"BATCH_ARTIFACT_JSON_INVALID:{filename}")
+            continue
+        failures.extend(
+            _validate_batch_artifact_document(
+                document,
+                manifest,
+                expected_schema=schema_version,
+                kind=kind,
+                authorized_identities=authorized_identities,
+            )
+        )
+    return sorted(set(failures))
+
+
 def validate_schema(root: Path) -> list[str]:
     path = root / SCHEMA_REL
     if not path.is_file():
@@ -448,6 +1063,19 @@ def validate_schema(root: Path) -> list[str]:
         failures.append("FULL_CONVERGENCE_SCHEMA_BASELINE_MEMBERSHIP_POLICY_MISMATCH")
     if schema.get("current_failure_correction_allowed") is not False:
         failures.append("FULL_CONVERGENCE_SCHEMA_CURRENT_CORRECTION_POLICY_MISMATCH")
+    if schema.get("descendant_history_supplement_required") is not True:
+        failures.append("FULL_CONVERGENCE_SCHEMA_DESCENDANT_SUPPLEMENT_REQUIREMENT_MISMATCH")
+    if schema.get("descendant_history_supplement_discovery_allowed") is not False:
+        failures.append("FULL_CONVERGENCE_SCHEMA_DESCENDANT_DISCOVERY_POLICY_MISMATCH")
+    if schema.get("descendant_history_wildcard_membership_allowed") is not False:
+        failures.append("FULL_CONVERGENCE_SCHEMA_DESCENDANT_WILDCARD_POLICY_MISMATCH")
+    if schema.get("descendant_history_future_auto_membership_allowed") is not False:
+        failures.append("FULL_CONVERGENCE_SCHEMA_DESCENDANT_FUTURE_POLICY_MISMATCH")
+    if (
+        schema.get("descendant_history_supplement_schema_version")
+        != DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION
+    ):
+        failures.append("FULL_CONVERGENCE_SCHEMA_DESCENDANT_VERSION_MISMATCH")
     return sorted(set(failures))
 
 
@@ -815,6 +1443,7 @@ def validate_extension_record_document(record: Any) -> list[str]:
     for field in (
         "batch_inventory_sha256", "batch_classification_sha256", "batch_negative_checks_sha256",
         "batch_review_a_sha256", "batch_review_b_sha256",
+        "descendant_history_supplement_sha256",
     ):
         if not _is_sha256(record.get(field)):
             failures.append(f"EXTENSION_RECORD_{field.upper()}_INVALID")
@@ -825,11 +1454,118 @@ def validate_extension_record_document(record: Any) -> list[str]:
     return sorted(set(failures))
 
 
+def _resolve_commit_prefix(root: Path, prefix: str) -> str:
+    if not re.fullmatch(r"[0-9a-f]{12}", prefix):
+        return ""
+    try:
+        resolved = _git(root, "rev-parse", f"{prefix}^{{commit}}")
+    except ValueError:
+        return ""
+    return resolved if _is_commit(resolved) and resolved.startswith(prefix) else ""
+
+
+def _authorized_identity_binding_failures(
+    root: Path,
+    fingerprint: str,
+    binding: dict[str, Any],
+    identity: dict[str, str] | None,
+    *,
+    record_rule_ids: list[str],
+) -> list[str]:
+    failures: list[str] = []
+    if not isinstance(identity, dict) or identity.get("bucket") != "HISTORICAL":
+        return [f"IDENTITY_BASELINE_RAW_UNRESOLVED:{fingerprint}"]
+    rule_id = str(identity.get("rule_id", ""))
+    if record_rule_ids != [rule_id]:
+        failures.append(f"IDENTITY_BASELINE_RULE_MISMATCH:{fingerprint}")
+    source_commit = _resolve_commit_prefix(root, str(identity.get("transition_new_prefix", "")))
+    old_commit = _resolve_commit_prefix(root, str(identity.get("transition_old_prefix", "")))
+    if not source_commit or not old_commit:
+        failures.append(f"IDENTITY_BASELINE_TRANSITION_UNRESOLVED:{fingerprint}")
+    else:
+        try:
+            parent = _git(root, "rev-parse", f"{source_commit}^1")
+        except ValueError:
+            parent = ""
+        if parent != old_commit:
+            failures.append(f"IDENTITY_BASELINE_TRANSITION_NOT_DIRECT_PARENT:{fingerprint}")
+        if binding.get("source_commit") != source_commit:
+            failures.append(f"IDENTITY_BASELINE_SOURCE_COMMIT_MISMATCH:{fingerprint}")
+        if binding.get("first_seen_commit") != source_commit:
+            failures.append(f"IDENTITY_BASELINE_FIRST_SEEN_COMMIT_MISMATCH:{fingerprint}")
+        last_seen = str(binding.get("last_seen_commit", ""))
+        if identity.get("authority_origin") == "DESCENDANT_HISTORY_SUPPLEMENT":
+            supplement_head = str(identity.get("supplement_raw_report_head_sha", ""))
+            if (
+                not _is_commit(last_seen)
+                or not _is_ancestor(root, source_commit, last_seen)
+                or not _is_ancestor(root, last_seen, supplement_head)
+            ):
+                failures.append(f"IDENTITY_SUPPLEMENT_LAST_SEEN_COMMIT_INVALID:{fingerprint}")
+        elif (
+            not _is_commit(last_seen)
+            or not _is_ancestor(root, source_commit, last_seen)
+            or not _is_ancestor(root, last_seen, AUTHORIZATION_BASE_HEAD_SHA)
+        ):
+            failures.append(f"IDENTITY_BASELINE_LAST_SEEN_COMMIT_INVALID:{fingerprint}")
+    subject_kind = identity.get("subject_kind")
+    subject_value = normalize_path(str(identity.get("subject_value", "")))
+    selector = binding.get("authority_selectors")
+    selector_paths = set(selector.get("paths", [])) if isinstance(selector, dict) else set()
+    selector_components = set(selector.get("component_ids", [])) if isinstance(selector, dict) else set()
+    if subject_kind == "path":
+        if normalize_path(str(binding.get("historical_path", ""))) != subject_value:
+            failures.append(f"IDENTITY_BASELINE_HISTORICAL_PATH_MISMATCH:{fingerprint}")
+        if subject_value not in selector_paths:
+            failures.append(f"IDENTITY_BASELINE_PATH_SELECTOR_MISSING:{fingerprint}")
+    elif subject_kind == "component_id":
+        component_values = {
+            str(binding.get("historical_component_id", "")),
+            str(binding.get("current_component_id", "")),
+        }
+        if subject_value not in component_values:
+            failures.append(f"IDENTITY_BASELINE_COMPONENT_ID_MISMATCH:{fingerprint}")
+        if subject_value not in selector_components:
+            failures.append(f"IDENTITY_BASELINE_COMPONENT_SELECTOR_MISSING:{fingerprint}")
+    else:
+        failures.append(f"IDENTITY_BASELINE_SUBJECT_UNRESOLVED:{fingerprint}")
+    if identity.get("authority_origin") == "DESCENDANT_HISTORY_SUPPLEMENT":
+        supplement_source_path = normalize_path(str(identity.get("source_path", "")))
+        if normalize_path(str(binding.get("historical_path", ""))) != supplement_source_path:
+            failures.append(f"IDENTITY_SUPPLEMENT_SOURCE_PATH_MISMATCH:{fingerprint}")
+        if supplement_source_path not in selector_paths:
+            failures.append(f"IDENTITY_SUPPLEMENT_SOURCE_PATH_SELECTOR_MISSING:{fingerprint}")
+    binding_paths = {
+        normalize_path(str(binding.get(key, "")))
+        for key in ("historical_path", "current_path")
+        if binding.get(key)
+    }
+    binding_components = {
+        str(binding.get(key, ""))
+        for key in ("historical_component_id", "current_component_id")
+        if binding.get(key)
+    }
+    if not binding_paths.issubset(selector_paths):
+        failures.append(f"IDENTITY_BINDING_PATH_SELECTOR_COVERAGE_MISMATCH:{fingerprint}")
+    if not binding_components.issubset(selector_components):
+        failures.append(f"IDENTITY_BINDING_COMPONENT_SELECTOR_COVERAGE_MISMATCH:{fingerprint}")
+    current_path = normalize_path(str(binding.get("current_path", "")))
+    current_blob = binding.get("current_blob_sha256")
+    disposition = str(binding.get("recommended_disposition", ""))
+    if not current_path:
+        if current_blob != "MISSING":
+            failures.append(f"IDENTITY_MISSING_CURRENT_PATH_BLOB_NOT_MISSING:{fingerprint}")
+        if disposition == "HISTORICAL_ACTIVE_LINEAGE_REGISTERED":
+            failures.append(f"IDENTITY_ACTIVE_LINEAGE_CURRENT_PATH_MISSING:{fingerprint}")
+    return sorted(set(failures))
+
+
 def validate_extension_record_against_repo(
     root: Path,
     record: dict[str, Any],
     *,
     evaluated_head: str,
+    authorized_identities: dict[str, dict[str, str]] | None = None,
 ) -> list[str]:
     failures = validate_extension_record_document(record)
     if not isinstance(record, dict):
@@ -868,9 +1604,31 @@ def validate_extension_record_against_repo(
             if not isinstance(binding, dict):
                 continue
             selector = binding.get("authority_selectors")
+            failures.extend(
+                _authorized_identity_binding_failures(
+                    root,
+                    str(fingerprint),
+                    binding,
+                    (authorized_identities or {}).get(str(fingerprint)),
+                    record_rule_ids=[str(value) for value in record.get("rule_ids", [])],
+                )
+            )
             source_commit = str(binding.get("source_commit", ""))
-            if _is_commit(source_commit) and not _is_ancestor(root, source_commit, AUTHORIZATION_BASE_HEAD_SHA):
-                failures.append(f"IDENTITY_SOURCE_COMMIT_NOT_AUTHORIZED_ANCESTOR:{fingerprint}")
+            authorized_identity = (authorized_identities or {}).get(str(fingerprint), {})
+            if _is_commit(source_commit):
+                if authorized_identity.get("authority_origin") == "DESCENDANT_HISTORY_SUPPLEMENT":
+                    supplement_head = str(
+                        authorized_identity.get("supplement_raw_report_head_sha", "")
+                    )
+                    if (
+                        not _is_ancestor(root, AUTHORIZATION_BASE_HEAD_SHA, source_commit)
+                        or not _is_ancestor(root, source_commit, supplement_head)
+                    ):
+                        failures.append(
+                            f"IDENTITY_SOURCE_COMMIT_NOT_AUTHORIZED_SUPPLEMENT_DESCENDANT:{fingerprint}"
+                        )
+                elif not _is_ancestor(root, source_commit, AUTHORIZATION_BASE_HEAD_SHA):
+                    failures.append(f"IDENTITY_SOURCE_COMMIT_NOT_AUTHORIZED_ANCESTOR:{fingerprint}")
             historical_path = normalize_path(str(binding.get("historical_path", "")))
             current_path = normalize_path(str(binding.get("current_path", "")))
             if historical_path and _is_commit(source_commit):
@@ -955,7 +1713,7 @@ def validate_batch_manifest_document(manifest: Any) -> list[str]:
     for field in (
         "batch_inventory_sha256", "batch_classification_sha256", "batch_negative_checks_sha256",
         "batch_review_a_sha256", "batch_review_b_sha256", "record_chain_start_sha256",
-        "record_chain_terminal_sha256",
+        "record_chain_terminal_sha256", "descendant_history_supplement_sha256",
     ):
         if not _is_sha256(manifest.get(field)):
             failures.append(f"BATCH_MANIFEST_{field.upper()}_INVALID")
@@ -1004,122 +1762,161 @@ def validate_batch_manifest_document(manifest: Any) -> list[str]:
     return sorted(set(failures))
 
 
+def _derive_prior_manifest_path(
+    current_path: Path,
+    current_batch_id: str,
+    prior_batch_id: str,
+) -> Path | None:
+    if current_path.parent.name == current_batch_id:
+        return current_path.parent.parent / prior_batch_id / current_path.name
+    if current_batch_id in current_path.name:
+        return current_path.with_name(current_path.name.replace(current_batch_id, prior_batch_id, 1))
+    return None
+
+
+def _load_previous_batch_chain(
+    manifest: Any,
+    previous_batch_manifest_path: Path | None,
+) -> tuple[list[str], list[tuple[Path, dict[str, Any]]]]:
+    """Load every explicit predecessor by a sequence-bound path derivation.
+
+    Only the immediate predecessor path is supplied by the caller.  Older
+    paths are derived exactly from that path's ``batch-NNN`` segment; no
+    directory enumeration or filename discovery grants authority.
+    """
+
+    if not isinstance(manifest, dict):
+        return ["BATCH_MANIFEST_NOT_OBJECT"], []
+    failures: list[str] = []
+    chain: list[tuple[Path, dict[str, Any]]] = []
+    expected_sha = manifest.get("previous_batch_append_sha256")
+    if previous_batch_manifest_path is None:
+        if expected_sha:
+            failures.append("BATCH_PREVIOUS_MANIFEST_REQUIRED")
+        return failures, chain
+    if not expected_sha:
+        return ["BATCH_PREVIOUS_MANIFEST_UNEXPECTED_FOR_INITIAL_BATCH"], chain
+    current_manifest = manifest
+    current_path = previous_batch_manifest_path
+    all_fingerprints = {
+        str(value) for value in manifest.get("failure_fingerprints", [])
+    }
+    depth = 0
+    while True:
+        depth += 1
+        if depth > AUTHORIZED_BASELINE_HISTORICAL_COUNT:
+            failures.append("BATCH_PREVIOUS_MANIFEST_CHAIN_DEPTH_EXCEEDED")
+            break
+        try:
+            previous_manifest = load_json_strict(current_path)
+        except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+            failures.append("BATCH_PREVIOUS_MANIFEST_JSON_INVALID")
+            break
+        if not isinstance(previous_manifest, dict):
+            failures.append("BATCH_PREVIOUS_MANIFEST_NOT_OBJECT")
+            break
+        for failure in validate_batch_manifest_document(previous_manifest):
+            failures.append(f"BATCH_PREVIOUS_MANIFEST_INVALID:{failure}")
+        if sha256_file(current_path) != expected_sha:
+            failures.append("BATCH_PREVIOUS_MANIFEST_SHA256_MISMATCH")
+        if current_manifest.get("record_chain_start_sha256") != previous_manifest.get("record_chain_terminal_sha256"):
+            failures.append("BATCH_PREVIOUS_MANIFEST_CHAIN_TERMINAL_MISMATCH")
+        current_match = re.fullmatch(r"batch-([0-9]{3})", str(current_manifest.get("batch_id", "")))
+        previous_match = re.fullmatch(r"batch-([0-9]{3})", str(previous_manifest.get("batch_id", "")))
+        if (
+            current_match is None
+            or previous_match is None
+            or int(current_match.group(1)) != int(previous_match.group(1)) + 1
+        ):
+            failures.append("BATCH_PREVIOUS_MANIFEST_SEQUENCE_MISMATCH")
+        if previous_manifest.get("terminal_remainder_batch") is True:
+            failures.append("BATCH_PREVIOUS_MANIFEST_ALREADY_TERMINAL")
+        previous_fingerprints = {
+            str(value) for value in previous_manifest.get("failure_fingerprints", [])
+        }
+        overlap = all_fingerprints & previous_fingerprints
+        for fingerprint in sorted(overlap):
+            label = (
+                "BATCH_PREVIOUS_MANIFEST_FINGERPRINT_REUSE"
+                if depth == 1
+                else "BATCH_PRIOR_MANIFEST_FINGERPRINT_REUSE"
+            )
+            failures.append(f"{label}:{fingerprint}")
+        all_fingerprints.update(previous_fingerprints)
+        chain.append((current_path, previous_manifest))
+        prior_sha = previous_manifest.get("previous_batch_append_sha256")
+        if not prior_sha:
+            if previous_manifest.get("batch_id") != "batch-001":
+                failures.append("BATCH_PREVIOUS_MANIFEST_CHAIN_DID_NOT_REACH_BATCH_001")
+            if previous_manifest.get("record_chain_start_sha256") != LEGACY_RECORD_CHAIN_TERMINAL_SHA256:
+                failures.append("BATCH_PREVIOUS_MANIFEST_LEGACY_CHAIN_ANCHOR_MISMATCH")
+            break
+        previous_id = str(previous_manifest.get("batch_id", ""))
+        match = re.fullmatch(r"batch-([0-9]{3})", previous_id)
+        if match is None or int(match.group(1)) <= 1:
+            failures.append("BATCH_PREVIOUS_MANIFEST_SEQUENCE_MISMATCH")
+            break
+        prior_id = f"batch-{int(match.group(1)) - 1:03d}"
+        prior_path = _derive_prior_manifest_path(current_path, previous_id, prior_id)
+        if prior_path is None:
+            failures.append("BATCH_PREVIOUS_MANIFEST_PATH_NOT_SEQUENCE_BOUND")
+            break
+        current_manifest = previous_manifest
+        current_path = prior_path
+        expected_sha = prior_sha
+    return sorted(set(failures)), chain
+
+
 def validate_previous_batch_link(
     manifest: Any,
     previous_batch_manifest_path: Path | None,
 ) -> list[str]:
-    """Validate only the explicitly supplied immediate predecessor manifest.
+    failures, _ = _load_previous_batch_chain(manifest, previous_batch_manifest_path)
+    return failures
 
-    No directory enumeration is permitted to infer authority.  The first
-    batch has no predecessor manifest and must continue the legacy terminal;
-    every later batch must name the exact predecessor bytes via
-    ``previous_batch_append_sha256`` and continue its record terminal.
-    """
-    if not isinstance(manifest, dict):
-        return ["BATCH_MANIFEST_NOT_OBJECT"]
+
+def _validate_manifest_binding_against_repo(
+    root: Path,
+    manifest: dict[str, Any],
+    *,
+    evaluated_head: str,
+) -> list[str]:
     failures: list[str] = []
-    previous_append_sha = manifest.get("previous_batch_append_sha256")
-    if previous_batch_manifest_path is None:
-        if previous_append_sha:
-            failures.append("BATCH_PREVIOUS_MANIFEST_REQUIRED")
-        return failures
-    if not previous_append_sha:
-        return ["BATCH_PREVIOUS_MANIFEST_UNEXPECTED_FOR_INITIAL_BATCH"]
+    binding_head = str(manifest.get("binding_head_sha", ""))
+    if not _is_commit(binding_head):
+        return ["BATCH_MANIFEST_BINDING_HEAD_INVALID"]
+    if not _is_ancestor(root, AUTHORIZATION_BASE_HEAD_SHA, binding_head):
+        failures.append("BATCH_MANIFEST_BINDING_HEAD_NOT_AUTHORIZED_DESCENDANT")
+    if not _is_ancestor(root, binding_head, evaluated_head):
+        failures.append("BATCH_MANIFEST_EVALUATED_HEAD_NOT_BINDING_DESCENDANT")
     try:
-        previous_manifest = load_json_strict(previous_batch_manifest_path)
-    except (OSError, ValueError, json.JSONDecodeError):
-        return ["BATCH_PREVIOUS_MANIFEST_JSON_INVALID"]
-    if not isinstance(previous_manifest, dict):
-        return ["BATCH_PREVIOUS_MANIFEST_NOT_OBJECT"]
-    for failure in validate_batch_manifest_document(previous_manifest):
-        failures.append(f"BATCH_PREVIOUS_MANIFEST_INVALID:{failure}")
-    if sha256_file(previous_batch_manifest_path) != previous_append_sha:
-        failures.append("BATCH_PREVIOUS_MANIFEST_SHA256_MISMATCH")
-    if manifest.get("record_chain_start_sha256") != previous_manifest.get("record_chain_terminal_sha256"):
-        failures.append("BATCH_PREVIOUS_MANIFEST_CHAIN_TERMINAL_MISMATCH")
-    current_match = re.fullmatch(r"batch-([0-9]{3})", str(manifest.get("batch_id", "")))
-    previous_match = re.fullmatch(r"batch-([0-9]{3})", str(previous_manifest.get("batch_id", "")))
-    if (
-        current_match is None
-        or previous_match is None
-        or int(current_match.group(1)) != int(previous_match.group(1)) + 1
-    ):
-        failures.append("BATCH_PREVIOUS_MANIFEST_SEQUENCE_MISMATCH")
-    if previous_manifest.get("terminal_remainder_batch") is True:
-        failures.append("BATCH_PREVIOUS_MANIFEST_ALREADY_TERMINAL")
-    current_fingerprints = {
-        str(value) for value in manifest.get("failure_fingerprints", [])
-    }
-    previous_fingerprints = {
-        str(value) for value in previous_manifest.get("failure_fingerprints", [])
-    }
-    for fingerprint in sorted(current_fingerprints & previous_fingerprints):
-        failures.append(f"BATCH_PREVIOUS_MANIFEST_FINGERPRINT_REUSE:{fingerprint}")
+        tree = _git(root, "rev-parse", f"{binding_head}^{{tree}}")
+    except ValueError:
+        tree = ""
+        failures.append("BATCH_MANIFEST_BINDING_HEAD_UNRESOLVED")
+    if manifest.get("binding_tree_sha") != tree:
+        failures.append("BATCH_MANIFEST_BINDING_TREE_MISMATCH")
     return sorted(set(failures))
 
 
-def validate_batch_manifest_against_repo(
+def _validate_manifest_records_against_repo(
     root: Path,
-    manifest_path: Path,
+    manifest: dict[str, Any],
     *,
     evaluated_head: str,
-    baseline_report_path: Path | None = None,
-    previous_batch_manifest_path: Path | None = None,
-) -> dict[str, Any]:
-    failures = validate_schema(root)
-    legacy = verify_legacy_anchor(root)
-    failures.extend(legacy["failures"])
-    try:
-        manifest = load_json_strict(manifest_path)
-    except (OSError, ValueError, json.JSONDecodeError):
-        manifest = {}
-        failures.append("BATCH_MANIFEST_JSON_INVALID")
-    failures.extend(validate_batch_manifest_document(manifest))
-    if not isinstance(manifest, dict):
-        manifest = {}
-    failures.extend(validate_previous_batch_link(manifest, previous_batch_manifest_path))
-    manifest_binding_head = str(manifest.get("binding_head_sha", ""))
-    if _is_commit(manifest_binding_head):
-        if not _is_ancestor(root, AUTHORIZATION_BASE_HEAD_SHA, manifest_binding_head):
-            failures.append("BATCH_MANIFEST_BINDING_HEAD_NOT_AUTHORIZED_DESCENDANT")
-        if not _is_ancestor(root, manifest_binding_head, evaluated_head):
-            failures.append("BATCH_MANIFEST_EVALUATED_HEAD_NOT_BINDING_DESCENDANT")
-        try:
-            manifest_tree = _git(root, "rev-parse", f"{manifest_binding_head}^{{tree}}")
-        except ValueError:
-            manifest_tree = ""
-            failures.append("BATCH_MANIFEST_BINDING_HEAD_UNRESOLVED")
-        if manifest.get("binding_tree_sha") != manifest_tree:
-            failures.append("BATCH_MANIFEST_BINDING_TREE_MISMATCH")
-    legacy_fingerprints = set(legacy.get("legacy_corrected_fingerprints", []))
-    new_fingerprints = {
-        str(value)
-        for value in manifest.get("failure_fingerprints", [])
-    }
-    for fingerprint in sorted(legacy_fingerprints & new_fingerprints):
-        failures.append(f"BATCH_LEGACY_FINGERPRINT_REUSE:{fingerprint}")
-    if baseline_report_path is None:
-        authorized_fingerprints = {"historical": set(), "current": set()}
-        failures.append("BATCH_BASELINE_REPORT_REQUIRED")
-    else:
-        baseline = validate_authorized_baseline(baseline_report_path)
-        failures.extend(
-            f"BATCH_BASELINE_INVALID:{failure}" for failure in baseline.get("failures", [])
-        )
-        try:
-            baseline_report = load_json_strict(baseline_report_path)
-            authorized_fingerprints = authorized_failure_fingerprint_sets(baseline_report)
-        except (OSError, ValueError, json.JSONDecodeError):
-            authorized_fingerprints = {"historical": set(), "current": set()}
-            failures.append("BATCH_BASELINE_FINGERPRINT_SET_UNRESOLVED")
-    for fingerprint in sorted(new_fingerprints):
-        if fingerprint in authorized_fingerprints["current"]:
-            failures.append(f"BATCH_CURRENT_FAILURE_CORRECTION_FALSE_ACCEPT:{fingerprint}")
-        elif fingerprint not in authorized_fingerprints["historical"]:
-            failures.append(f"BATCH_FINGERPRINT_NOT_AUTHORIZED_HISTORICAL:{fingerprint}")
+    authorized_fingerprints: dict[str, set[str]],
+    authorized_identities: dict[str, dict[str, str]],
+    legacy_fingerprints: set[str],
+) -> tuple[list[str], set[str]]:
+    failures: list[str] = []
     seen: set[str] = set()
+    expected_previous = str(manifest.get("record_chain_start_sha256", ""))
+    artifact_hash_fields = set(BATCH_ARTIFACT_SPECS) | {
+        "descendant_history_supplement_sha256"
+    }
     for index, binding in enumerate(manifest.get("record_bindings", [])):
         if not isinstance(binding, dict):
+            failures.append(f"BATCH_RECORD_BINDING_NOT_OBJECT:{index}")
             continue
         relative = normalize_path(str(binding.get("path", "")))
         path = root / relative
@@ -1131,25 +1928,53 @@ def validate_batch_manifest_against_repo(
             continue
         try:
             record = load_json_strict(path)
-        except (OSError, ValueError, json.JSONDecodeError):
+        except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
             failures.append(f"BATCH_RECORD_JSON_INVALID:{index}")
             continue
         if not isinstance(record, dict):
             failures.append(f"BATCH_RECORD_NOT_OBJECT:{index}")
             continue
-        failures.extend(validate_extension_record_against_repo(root, record, evaluated_head=evaluated_head))
+        failures.extend(
+            validate_extension_record_against_repo(
+                root,
+                record,
+                evaluated_head=evaluated_head,
+                authorized_identities=authorized_identities,
+            )
+        )
+        if record.get("batch_id") != manifest.get("batch_id"):
+            failures.append(f"BATCH_RECORD_BATCH_ID_MISMATCH:{index}")
         if record.get("binding_head_sha") != manifest.get("binding_head_sha"):
             failures.append(f"BATCH_RECORD_BINDING_HEAD_MISMATCH:{index}")
         if record.get("binding_tree_sha") != manifest.get("binding_tree_sha"):
             failures.append(f"BATCH_RECORD_BINDING_TREE_MISMATCH:{index}")
+        for field in artifact_hash_fields:
+            if record.get(field) != manifest.get(field):
+                failures.append(f"BATCH_RECORD_{field.upper()}_MISMATCH:{index}")
         if record.get("correction_id") != binding.get("correction_id"):
             failures.append(f"BATCH_RECORD_ID_MISMATCH:{index}")
         if record.get("record_payload_sha256") != binding.get("record_payload_sha256"):
             failures.append(f"BATCH_RECORD_PAYLOAD_MISMATCH:{index}")
-        for fingerprint in record.get("failure_fingerprints", []):
+        if binding.get("previous_correction_chain_sha256") != expected_previous:
+            failures.append(f"BATCH_RECORD_BINDING_CHAIN_BREAK:{index}")
+        if record.get("previous_correction_chain_sha256") != expected_previous:
+            failures.append(f"BATCH_RECORD_ACTUAL_CHAIN_BREAK:{index}")
+        binding_fingerprints = [str(value) for value in binding.get("failure_fingerprints", [])]
+        record_fingerprints = [str(value) for value in record.get("failure_fingerprints", [])]
+        if record_fingerprints != binding_fingerprints:
+            failures.append(f"BATCH_RECORD_FINGERPRINT_BINDING_MISMATCH:{index}")
+        expected_previous = str(record.get("record_payload_sha256", ""))
+        for fingerprint in record_fingerprints:
             if fingerprint in seen:
                 failures.append(f"BATCH_RECORD_FINGERPRINT_DUPLICATE:{fingerprint}")
-            seen.add(str(fingerprint))
+            seen.add(fingerprint)
+    if expected_previous != manifest.get("record_chain_terminal_sha256"):
+        failures.append("BATCH_RECORD_ACTUAL_CHAIN_TERMINAL_MISMATCH")
+    manifest_fingerprints = {
+        str(value) for value in manifest.get("failure_fingerprints", [])
+    }
+    if seen != manifest_fingerprints:
+        failures.append("BATCH_RECORD_ACTUAL_FINGERPRINT_COVERAGE_MISMATCH")
     for fingerprint in sorted(seen & legacy_fingerprints):
         failures.append(f"BATCH_RECORD_LEGACY_FINGERPRINT_REUSE:{fingerprint}")
     for fingerprint in sorted(seen):
@@ -1157,6 +1982,130 @@ def validate_batch_manifest_against_repo(
             failures.append(f"BATCH_RECORD_CURRENT_FAILURE_CORRECTION_FALSE_ACCEPT:{fingerprint}")
         elif fingerprint not in authorized_fingerprints["historical"]:
             failures.append(f"BATCH_RECORD_FINGERPRINT_NOT_AUTHORIZED_HISTORICAL:{fingerprint}")
+    return sorted(set(failures)), seen
+
+
+def validate_batch_manifest_against_repo(
+    root: Path,
+    manifest_path: Path,
+    *,
+    evaluated_head: str,
+    baseline_report_path: Path | None = None,
+    previous_batch_manifest_path: Path | None = None,
+    descendant_history_supplement_path: Path | None = None,
+    descendant_history_raw_report_path: Path | None = None,
+    descendant_history_scanner_path: Path | None = None,
+) -> dict[str, Any]:
+    failures = validate_schema(root)
+    legacy = verify_legacy_anchor(root)
+    failures.extend(legacy["failures"])
+    try:
+        manifest = load_json_strict(manifest_path)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        manifest = {}
+        failures.append("BATCH_MANIFEST_JSON_INVALID")
+    failures.extend(validate_batch_manifest_document(manifest))
+    if not isinstance(manifest, dict):
+        manifest = {}
+    chain_failures, previous_chain = _load_previous_batch_chain(
+        manifest,
+        previous_batch_manifest_path,
+    )
+    failures.extend(chain_failures)
+    if baseline_report_path is None:
+        authorized_fingerprints = {"historical": set(), "current": set()}
+        authorized_identities: dict[str, dict[str, str]] = {}
+        failures.append("BATCH_BASELINE_REPORT_REQUIRED")
+    else:
+        baseline = validate_authorized_baseline(baseline_report_path)
+        failures.extend(
+            f"BATCH_BASELINE_INVALID:{failure}" for failure in baseline.get("failures", [])
+        )
+        try:
+            baseline_report = load_json_strict(baseline_report_path)
+            authorized_fingerprints = authorized_failure_fingerprint_sets(baseline_report)
+            authorized_identities = authorized_failure_identity_by_fingerprint(baseline_report)
+        except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+            authorized_fingerprints = {"historical": set(), "current": set()}
+            authorized_identities = {}
+            failures.append("BATCH_BASELINE_FINGERPRINT_SET_UNRESOLVED")
+    if baseline_report_path is None:
+        supplement = {
+            "status": "FAIL",
+            "failures": ["DESCENDANT_HISTORY_BASELINE_REQUIRED"],
+            "supplement_sha256": "",
+            "authorized_historical_fingerprints": set(),
+            "authorized_identity_by_fingerprint": {},
+        }
+    else:
+        supplement = validate_descendant_history_supplement(
+            root,
+            descendant_history_supplement_path,
+            descendant_history_raw_report_path,
+            descendant_history_scanner_path,
+            evaluated_head=evaluated_head,
+            baseline_report_path=baseline_report_path,
+        )
+    failures.extend(
+        f"BATCH_DESCENDANT_HISTORY_INVALID:{failure}"
+        for failure in supplement.get("failures", [])
+    )
+    authorized_fingerprints["historical"].update(
+        supplement.get("authorized_historical_fingerprints", set())
+    )
+    authorized_identities.update(
+        supplement.get("authorized_identity_by_fingerprint", {})
+    )
+    expected_supplement_sha = supplement.get("supplement_sha256", "")
+    legacy_fingerprints = set(legacy.get("legacy_corrected_fingerprints", []))
+    all_manifests = list(reversed(previous_chain)) + [(manifest_path, manifest)]
+    global_fingerprints: set[str] = set()
+    correction_ids: set[str] = set()
+    current_seen: set[str] = set()
+    for path, document in all_manifests:
+        if document.get("descendant_history_supplement_sha256") != expected_supplement_sha:
+            failures.append(
+                f"BATCH_DESCENDANT_HISTORY_SUPPLEMENT_SHA256_MISMATCH:{document.get('batch_id', '')}"
+            )
+        failures.extend(_validate_manifest_binding_against_repo(root, document, evaluated_head=evaluated_head))
+        failures.extend(
+            validate_batch_artifacts(
+                path,
+                document,
+                authorized_identities=authorized_identities,
+            )
+        )
+        fingerprints = {
+            str(value) for value in document.get("failure_fingerprints", [])
+        }
+        for fingerprint in sorted(global_fingerprints & fingerprints):
+            failures.append(f"BATCH_GLOBAL_FINGERPRINT_REUSE:{fingerprint}")
+        global_fingerprints.update(fingerprints)
+        for fingerprint in sorted(fingerprints & legacy_fingerprints):
+            failures.append(f"BATCH_LEGACY_FINGERPRINT_REUSE:{fingerprint}")
+        for fingerprint in sorted(fingerprints):
+            if fingerprint in authorized_fingerprints["current"]:
+                failures.append(f"BATCH_CURRENT_FAILURE_CORRECTION_FALSE_ACCEPT:{fingerprint}")
+            elif fingerprint not in authorized_fingerprints["historical"]:
+                failures.append(f"BATCH_FINGERPRINT_NOT_AUTHORIZED_HISTORICAL:{fingerprint}")
+        for binding in document.get("record_bindings", []):
+            if not isinstance(binding, dict):
+                continue
+            correction_id = str(binding.get("correction_id", ""))
+            if correction_id in correction_ids:
+                failures.append(f"BATCH_GLOBAL_CORRECTION_ID_REUSE:{correction_id}")
+            correction_ids.add(correction_id)
+        record_failures, seen = _validate_manifest_records_against_repo(
+            root,
+            document,
+            evaluated_head=evaluated_head,
+            authorized_fingerprints=authorized_fingerprints,
+            authorized_identities=authorized_identities,
+            legacy_fingerprints=legacy_fingerprints,
+        )
+        failures.extend(record_failures)
+        if path == manifest_path:
+            current_seen = seen
     failures = sorted(set(failures))
     return {
         "schema_version": f"{BATCH_MANIFEST_SCHEMA_VERSION}.verification",
@@ -1164,7 +2113,10 @@ def validate_batch_manifest_against_repo(
         "authorization_base_head_sha": AUTHORIZATION_BASE_HEAD_SHA,
         "evaluated_head_sha": evaluated_head,
         "batch_id": manifest.get("batch_id", ""),
-        "failure_count": len(seen),
+        "failure_count": len(current_seen),
+        "validated_batch_count": len(all_manifests),
+        "validated_global_fingerprint_count": len(global_fingerprints),
+        "descendant_history_supplement_sha256": expected_supplement_sha,
         "legacy_record_chain_terminal_sha256": LEGACY_RECORD_CHAIN_TERMINAL_SHA256,
         "status": "PASS" if not failures else "FAIL",
         "failures": failures,

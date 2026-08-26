@@ -39,16 +39,23 @@ FULL_CONVERGENCE_AUTHORIZATION_ID = (
 FULL_CONVERGENCE_BASE_HEAD = "d701a81dce693b584d52fbfca3e0e78b521ad775"
 FULL_CONVERGENCE_BASELINE_SHA = "cfb84c08abacb294ea54ffc975f691869b33ac47a5d6a9f28377c54534f19166"
 FULL_CONVERGENCE_FAILURE_SET_SHA = "dd3b9f88319ba008dafa0de8be14d4e7427a3cb02d7b3e11ed6d50e2c80893ef"
-FULL_CONVERGENCE_SCHEMA_SHA = "12578feb719858f84283ecb06dd31735df2f8656c1c11202c9f7d8478867af14"
+FULL_CONVERGENCE_SCHEMA_SHA = "474c4864fd72ad1761fbbaae90f31791e9c6ee7d9dcb0e4de53ef47240cb1b12"
 FULL_CONVERGENCE_SCHEMA = Path(
     "docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json"
 )
 FULL_CONVERGENCE_BASELINE_REPORT = Path(
-    "reports/reuse/correction_v2/baseline_raw_failure_report.json"
+    "reports/reuse/correction_v2/epochs/full_convergence_20260827/"
+    "baseline_raw_failure_report.json"
 )
 FULL_CONVERGENCE_RECORD_ROOT = (
     "docs/architecture/reuse_corrections/v2/records/full_convergence_20260827/"
 )
+DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION = (
+    "space_syndicate.v076.reuse_exact_failure_correction.v2."
+    "descendant_history_supplement.v1"
+)
+DESCENDANT_HISTORY_SUPPLEMENT_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_001"
+DESCENDANT_HISTORY_SCANNER = Path("tools/v076/v076_reuse_point_inertia_gate.py")
 LEGACY_CHAIN_TERMINAL_SHA = "99f051cd23c250e0282db1708e49e2625d0e82279753a846a00a713614fed67d"
 LEGACY_SEAL_PATH = Path(
     "reports/reuse/correction_v2/seals/ci_portability_v2/correction_authorization_manifest.json"
@@ -61,6 +68,75 @@ LEGACY_RECORD_SHA_BY_PATH = {
     "docs/architecture/reuse_corrections/v2/records/historical_untouched_dynamic_reference_debt.json": "d66d75d42761fd1f6274ca9ea61b1af703d68816738f1d485ab50afacf4bb2db",
     "docs/architecture/reuse_corrections/v2/records/historical_untouched_focused_test_scope_debt.json": "654f021e14be59b690033d7667f9c3bd6324b85f8a3c3ba824785d18361ef042",
     "docs/architecture/reuse_corrections/v2/records/historical_untouched_reuse_scan_debt.json": "2e1c7ee76aff7dec57f1634be3a1913334ee282e2019ba09e97ae2b0396cac20",
+}
+BATCH_ARTIFACT_SPECS = {
+    "batch_inventory_sha256": (
+        "batch_inventory.json",
+        "space_syndicate.v076.reuse_full_convergence.batch_inventory.v1",
+        "inventory",
+    ),
+    "batch_classification_sha256": (
+        "batch_classification.json",
+        "space_syndicate.v076.reuse_full_convergence.batch_classification.v1",
+        "classification",
+    ),
+    "batch_negative_checks_sha256": (
+        "batch_negative_checks.json",
+        "space_syndicate.v076.reuse_full_convergence.batch_negative_checks.v1",
+        "negative_checks",
+    ),
+    "batch_review_a_sha256": (
+        "batch_review_A.json",
+        "space_syndicate.v076.reuse_full_convergence.batch_review.v1",
+        "review_a",
+    ),
+    "batch_review_b_sha256": (
+        "batch_review_B.json",
+        "space_syndicate.v076.reuse_full_convergence.batch_review.v1",
+        "review_b",
+    ),
+}
+
+DESCENDANT_HISTORY_IDENTITY_FIELDS = {
+    "failure_fingerprint",
+    "raw_failure",
+    "repaired_frozen_current_fingerprints",
+    "rule_id",
+    "source_blob_sha256",
+    "source_commit_sha",
+    "source_component_id",
+    "source_path",
+    "transition_new_sha",
+    "transition_old_sha",
+}
+
+DESCENDANT_HISTORY_SUPPLEMENT_FIELDS = {
+    "authorization_base_head_sha",
+    "authorization_id",
+    "baseline_failure_set_sha256",
+    "baseline_report_sha256",
+    "committed_only",
+    "descendant_history_failure_count",
+    "descendant_history_fingerprint_set_sha256",
+    "descendant_history_fingerprints",
+    "directory_discovery_allowed",
+    "future_failure_auto_membership_allowed",
+    "identity_binding_by_failure",
+    "raw_current_delta_failure_count",
+    "raw_failure_count",
+    "raw_historical_failure_count",
+    "raw_report_head_sha",
+    "raw_report_path",
+    "raw_report_sha256",
+    "raw_report_tree_sha",
+    "repaired_frozen_current_failure_count",
+    "repaired_frozen_current_fingerprint_set_sha256",
+    "repaired_frozen_current_fingerprints",
+    "scanner_tool_path",
+    "scanner_tool_sha256",
+    "schema_version",
+    "supplement_id",
+    "wildcard_membership_allowed",
 }
 
 
@@ -109,6 +185,37 @@ def _git_bytes(root: Path, commit: str, relative: str) -> bytes | None:
         stderr=subprocess.PIPE,
     )
     return bytes(result.stdout) if result.returncode == 0 else None
+
+
+def _is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
+def _is_commit(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value) is not None
+
+
+def _normalize_path(value: str) -> str:
+    return value.removeprefix("res://").replace("\\", "/")
+
+
+def _is_ancestor(root: Path, ancestor: str, descendant: str) -> bool:
+    if not _is_commit(ancestor) or not _is_commit(descendant):
+        return False
+    result = subprocess.run(
+        ["git", "-C", str(root), "merge-base", "--is-ancestor", ancestor, descendant],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return result.returncode == 0
+
+
+def _resolve_commit_prefix(root: Path, prefix: str) -> str:
+    if re.fullmatch(r"[0-9a-f]{12}", prefix) is None:
+        return ""
+    resolved = _git(root, "rev-parse", f"{prefix}^{{commit}}")
+    return resolved if _is_commit(resolved) and resolved.startswith(prefix) else ""
 
 
 def _walk_dicts(value: Any):
@@ -219,6 +326,401 @@ def _authorized_failure_fingerprint_sets(report: dict[str, Any]) -> dict[str, se
     return result
 
 
+def _authorized_failure_identity_by_fingerprint(
+    report: dict[str, Any],
+) -> dict[str, dict[str, str]]:
+    result: dict[str, dict[str, str]] = {}
+    values = report.get("failures") if isinstance(report, dict) else None
+    if not isinstance(values, list):
+        return result
+    metadata_rules = {
+        "HISTORY_COMPONENT_CHANGE_CLASS_NOT_DECLARED",
+        "HISTORY_PRODUCT_AFFECTED_DOMAIN_MISSING",
+        "HISTORY_PRODUCT_AFFECTED_OWNER_MISSING",
+        "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING",
+        "HISTORY_PRODUCT_REUSE_SCAN_INVALID",
+    }
+    for value in values:
+        raw = str(value)
+        rule_id = raw.split(":", 1)[0]
+        historical = rule_id.startswith(HISTORY_PREFIX)
+        bucket = "HISTORICAL" if historical else "CURRENT_DELTA_FAILURE"
+        payload = f"V076_RAW_FAILURE_V2\n{bucket}\n{rule_id}\n{raw}\n".encode("utf-8")
+        fingerprint = "V2F-" + _sha_bytes(payload)
+        parts = raw.split(":")
+        transition_index = next(
+            (
+                index
+                for index, token in enumerate(parts)
+                if re.fullmatch(r"[0-9a-f]{12}->[0-9a-f]{12}", token)
+            ),
+            -1,
+        )
+        old_prefix = ""
+        new_prefix = ""
+        subject_kind = ""
+        subject_value = ""
+        if historical and transition_index >= 0:
+            old_prefix, new_prefix = parts[transition_index].split("->", 1)
+            if transition_index + 1 < len(parts):
+                subject_kind = "component_id" if rule_id in metadata_rules else "path"
+                subject_value = parts[transition_index + 1].removeprefix("res://").replace("\\", "/")
+        result[fingerprint] = {
+            "bucket": bucket,
+            "failure_fingerprint": fingerprint,
+            "raw_failure": raw,
+            "rule_id": rule_id,
+            "transition_old_prefix": old_prefix,
+            "transition_new_prefix": new_prefix,
+            "subject_kind": subject_kind,
+            "subject_value": subject_value,
+        }
+    return result
+
+
+def _exact_repo_relative(root: Path, path: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return ""
+
+
+def _descendant_history_supplement_findings(
+    root: Path,
+    *,
+    supplement_path: Path | None,
+    raw_report_path: Path | None,
+    scanner_path: Path | None,
+    evaluated_head: str,
+    baseline_report: dict[str, Any],
+    baseline_sets: dict[str, set[str]],
+) -> tuple[
+    list[dict[str, Any]],
+    set[str],
+    dict[str, dict[str, str]],
+    str,
+    str,
+]:
+    """Independently duplicate the one-shot descendant HISTORY seal checks."""
+
+    findings: list[dict[str, Any]] = []
+
+    def add(code: str, message: str, **evidence: Any) -> None:
+        findings.append(_finding(code, "P0", message, **evidence))
+
+    if supplement_path is None or raw_report_path is None or scanner_path is None:
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_EXPLICIT_INPUT_REQUIRED",
+            "supplement, raw report, and scanner paths must all be supplied explicitly",
+        )
+        return findings, set(), {}, "", ""
+    supplement_relative = _exact_repo_relative(root, supplement_path)
+    raw_report_relative = _exact_repo_relative(root, raw_report_path)
+    scanner_relative = _exact_repo_relative(root, scanner_path)
+    epoch_prefix = FULL_CONVERGENCE_BASELINE_REPORT.parent.as_posix() + "/"
+    if not supplement_relative.startswith(epoch_prefix):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_SUPPLEMENT_PATH_INVALID",
+            "supplement path is outside the explicit full-convergence epoch",
+        )
+    if not raw_report_relative.startswith(epoch_prefix):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_REPORT_PATH_INVALID",
+            "raw report path is outside the explicit full-convergence epoch",
+        )
+    if scanner_relative != DESCENDANT_HISTORY_SCANNER.as_posix():
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_SCANNER_PATH_INVALID",
+            "scanner path is not the one exact V076 gate implementation",
+        )
+    try:
+        supplement = _json(supplement_path)
+        supplement_sha = _sha_file(supplement_path)
+    except (OSError, ValueError):
+        supplement = None
+        supplement_sha = ""
+    if not isinstance(supplement, dict):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_SUPPLEMENT_INVALID",
+            "supplement is not one strict JSON object",
+        )
+        return findings, set(), {}, supplement_sha, ""
+    if set(supplement) != DESCENDANT_HISTORY_SUPPLEMENT_FIELDS:
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_SUPPLEMENT_FIELD_SET_INVALID",
+            "supplement field set differs from the closed contract",
+        )
+    for field, expected in (
+        ("schema_version", DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION),
+        ("supplement_id", DESCENDANT_HISTORY_SUPPLEMENT_ID),
+        ("authorization_id", FULL_CONVERGENCE_AUTHORIZATION_ID),
+        ("authorization_base_head_sha", FULL_CONVERGENCE_BASE_HEAD),
+        ("baseline_report_sha256", FULL_CONVERGENCE_BASELINE_SHA),
+        ("baseline_failure_set_sha256", FULL_CONVERGENCE_FAILURE_SET_SHA),
+        ("committed_only", True),
+        ("directory_discovery_allowed", False),
+        ("wildcard_membership_allowed", False),
+        ("future_failure_auto_membership_allowed", False),
+        ("raw_current_delta_failure_count", 0),
+        ("raw_report_path", raw_report_relative),
+        ("scanner_tool_path", DESCENDANT_HISTORY_SCANNER.as_posix()),
+    ):
+        if supplement.get(field) != expected:
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_AUTHORITY_MISMATCH",
+                "supplement authority or fail-closed policy differs from the contract",
+                field=field,
+                expected=expected,
+                actual=supplement.get(field),
+            )
+    try:
+        raw_report = _json(raw_report_path)
+        raw_report_sha = _sha_file(raw_report_path)
+    except (OSError, ValueError):
+        raw_report = None
+        raw_report_sha = ""
+    if not isinstance(raw_report, dict):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_REPORT_INVALID",
+            "the explicit final raw report is not one strict JSON object",
+        )
+        return findings, set(), {}, supplement_sha, ""
+    if supplement.get("raw_report_sha256") != raw_report_sha:
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_REPORT_HASH_MISMATCH",
+            "final raw report bytes differ from the supplement digest",
+        )
+    raw_values = raw_report.get("failures")
+    raw_rendered = [str(value) for value in raw_values] if isinstance(raw_values, list) else []
+    if not isinstance(raw_values, list) or len(raw_rendered) != len(set(raw_rendered)):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_FAILURE_SET_INVALID",
+            "final raw report failures are missing or duplicated",
+        )
+    final_sets = _authorized_failure_fingerprint_sets(raw_report)
+    final_identities = _authorized_failure_identity_by_fingerprint(raw_report)
+    if final_sets["current"]:
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_FINAL_CURRENT_NOT_ZERO",
+            "the sealed final raw report still contains current failures",
+            current_failure_count=len(final_sets["current"]),
+        )
+    if not baseline_sets["historical"].issubset(final_sets["historical"]):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_FROZEN_HISTORY_HIDDEN",
+            "the final raw report omits one or more frozen historical failures",
+        )
+    descendants = final_sets["historical"] - baseline_sets["historical"]
+    declared = supplement.get("descendant_history_fingerprints")
+    rendered_declared = [str(value) for value in declared] if isinstance(declared, list) else []
+    if (
+        not descendants
+        or rendered_declared != sorted(rendered_declared)
+        or len(rendered_declared) != len(set(rendered_declared))
+        or set(rendered_declared) != descendants
+    ):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_MEMBERSHIP_MISMATCH",
+            "declared membership is not the exact nonempty final-minus-d701 historical set",
+        )
+    if (
+        supplement.get("descendant_history_failure_count") != len(descendants)
+        or supplement.get("descendant_history_fingerprint_set_sha256")
+        != _line_set_sha(rendered_declared)
+    ):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_MEMBERSHIP_DIGEST_MISMATCH",
+            "descendant membership count or digest is not canonical",
+        )
+    if (
+        supplement.get("raw_failure_count") != len(raw_rendered)
+        or supplement.get("raw_historical_failure_count") != len(final_sets["historical"])
+        or supplement.get("raw_current_delta_failure_count") != len(final_sets["current"])
+    ):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_COUNTS_MISMATCH",
+            "supplement raw counts differ from the parsed final report",
+        )
+    report_head = str(raw_report.get("head_sha", ""))
+    report_tree = _git(root, "rev-parse", f"{report_head}^{{tree}}")
+    if (
+        supplement.get("raw_report_head_sha") != report_head
+        or not _is_commit(report_head)
+        or supplement.get("raw_report_tree_sha") != report_tree
+        or not _is_commit(report_tree)
+        or raw_report.get("include_worktree") is not False
+        or raw_report.get("evaluated_source") != "COMMITTED_HEAD"
+        or raw_report.get("merge_base_sha") != FULL_CONVERGENCE_BASE_HEAD
+        or not _is_ancestor(root, FULL_CONVERGENCE_BASE_HEAD, report_head)
+        or not _is_ancestor(root, report_head, evaluated_head)
+    ):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_COMMITTED_HEAD_BINDING_INVALID",
+            "raw report is not bound to one authorized committed Head and tree",
+        )
+    try:
+        scanner_sha = _sha_file(scanner_path)
+    except OSError:
+        scanner_sha = ""
+    scanner_at_head = _git_bytes(root, report_head, DESCENDANT_HISTORY_SCANNER.as_posix())
+    scanner_at_head_sha = _sha_bytes(scanner_at_head) if scanner_at_head is not None else ""
+    if (
+        supplement.get("scanner_tool_sha256") != scanner_sha
+        or scanner_sha != scanner_at_head_sha
+    ):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_SCANNER_HASH_MISMATCH",
+            "scanner bytes differ from the exact tool committed at the report Head",
+        )
+    repaired = supplement.get("repaired_frozen_current_fingerprints")
+    rendered_repaired = [str(value) for value in repaired] if isinstance(repaired, list) else []
+    if (
+        rendered_repaired != sorted(rendered_repaired)
+        or len(rendered_repaired) != len(set(rendered_repaired))
+        or set(rendered_repaired) != baseline_sets["current"]
+        or supplement.get("repaired_frozen_current_failure_count") != len(baseline_sets["current"])
+        or supplement.get("repaired_frozen_current_fingerprint_set_sha256")
+        != _line_set_sha(rendered_repaired)
+    ):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_REPAIRED_CURRENT_SET_INVALID",
+            "repaired current set is not the exact frozen 56-fingerprint set",
+        )
+    bindings = supplement.get("identity_binding_by_failure")
+    if not isinstance(bindings, dict) or set(bindings) != descendants:
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_IDENTITY_SET_INVALID",
+            "supplement does not bind one exact identity for every descendant fingerprint",
+        )
+        bindings = bindings if isinstance(bindings, dict) else {}
+    mapped_current: set[str] = set()
+    authorized_identities: dict[str, dict[str, str]] = {}
+    for fingerprint in sorted(descendants):
+        binding = bindings.get(fingerprint)
+        raw_identity = final_identities.get(fingerprint)
+        if not isinstance(binding, dict) or set(binding) != DESCENDANT_HISTORY_IDENTITY_FIELDS:
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_IDENTITY_FIELDS_INVALID",
+                "one descendant identity field set differs from the closed contract",
+                fingerprint=fingerprint,
+            )
+            continue
+        if not isinstance(raw_identity, dict):
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_IDENTITY_UNRESOLVED",
+                "one descendant fingerprint has no exact final raw identity",
+                fingerprint=fingerprint,
+            )
+            continue
+        if (
+            binding.get("failure_fingerprint") != fingerprint
+            or binding.get("raw_failure") != raw_identity.get("raw_failure")
+            or binding.get("rule_id") != raw_identity.get("rule_id")
+        ):
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_IDENTITY_MISMATCH",
+                "identity raw text, rule, or fingerprint differs from the final report",
+                fingerprint=fingerprint,
+            )
+        old_commit = _resolve_commit_prefix(root, str(raw_identity.get("transition_old_prefix", "")))
+        new_commit = _resolve_commit_prefix(root, str(raw_identity.get("transition_new_prefix", "")))
+        if (
+            not old_commit
+            or not new_commit
+            or _git(root, "rev-parse", f"{new_commit}^1") != old_commit
+            or binding.get("transition_old_sha") != old_commit
+            or binding.get("transition_new_sha") != new_commit
+            or binding.get("source_commit_sha") != new_commit
+            or not _is_ancestor(root, FULL_CONVERGENCE_BASE_HEAD, new_commit)
+            or not _is_ancestor(root, new_commit, report_head)
+        ):
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_TRANSITION_BINDING_INVALID",
+                "descendant transition is not one exact direct authorized parent edge",
+                fingerprint=fingerprint,
+            )
+        source_path = _normalize_path(str(binding.get("source_path", "")))
+        source_path_exact = (
+            source_path
+            and source_path == binding.get("source_path")
+            and not source_path.startswith(("/", "../"))
+            and not source_path.endswith("/")
+            and "/../" not in source_path
+            and not any(char in source_path for char in "*?[]")
+        )
+        subject_kind = str(raw_identity.get("subject_kind", ""))
+        subject_value = _normalize_path(str(raw_identity.get("subject_value", "")))
+        if not source_path_exact:
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_SOURCE_PATH_INVALID",
+                "descendant source path is not exact and wildcard-free",
+                fingerprint=fingerprint,
+            )
+        if subject_kind == "path":
+            if source_path != subject_value or binding.get("source_component_id") != "":
+                add(
+                    "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_SUBJECT_MISMATCH",
+                    "source path/component differs from the exact raw path subject",
+                    fingerprint=fingerprint,
+                )
+        elif subject_kind == "component_id":
+            changed_paths = {
+                _normalize_path(value)
+                for value in _git(root, "diff", "--name-only", old_commit, new_commit).splitlines()
+                if value.strip()
+            }
+            if (
+                binding.get("source_component_id") != subject_value
+                or source_path not in changed_paths
+            ):
+                add(
+                    "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_SUBJECT_MISMATCH",
+                    "component subject or its exact touched source path is not bound",
+                    fingerprint=fingerprint,
+                )
+        else:
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_SUBJECT_UNRESOLVED",
+                "descendant raw row has no exact path or component subject",
+                fingerprint=fingerprint,
+            )
+        source_bytes = _git_bytes(root, new_commit, source_path) if new_commit else None
+        source_sha = _sha_bytes(source_bytes) if source_bytes is not None else ""
+        if source_bytes is None or binding.get("source_blob_sha256") != source_sha:
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_SOURCE_BLOB_MISMATCH",
+                "descendant source blob differs from the exact new commit",
+                fingerprint=fingerprint,
+            )
+        mapped = binding.get("repaired_frozen_current_fingerprints")
+        rendered_mapped = [str(value) for value in mapped] if isinstance(mapped, list) else []
+        if (
+            not rendered_mapped
+            or rendered_mapped != sorted(rendered_mapped)
+            or len(rendered_mapped) != len(set(rendered_mapped))
+            or not set(rendered_mapped).issubset(baseline_sets["current"])
+        ):
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_REPAIR_BINDING_INVALID",
+                "descendant identity lacks a nonempty exact frozen-current repair binding",
+                fingerprint=fingerprint,
+            )
+        mapped_current.update(rendered_mapped)
+        identity = dict(raw_identity)
+        identity.update({
+            "authority_origin": "DESCENDANT_HISTORY_SUPPLEMENT",
+            "source_path": source_path,
+            "supplement_raw_report_head_sha": report_head,
+        })
+        authorized_identities[fingerprint] = identity
+    if mapped_current != baseline_sets["current"] or mapped_current != set(rendered_repaired):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_REPAIR_COVERAGE_INVALID",
+            "per-descendant repair bindings do not cover the exact frozen current set",
+        )
+    return findings, descendants, authorized_identities, supplement_sha, report_head
+
+
 def _selector_is_exact(selector: Any) -> bool:
     expected_fields = {
         "component_ids", "paths", "retirement_ids", "supersession_ids",
@@ -252,6 +754,184 @@ def _selector_is_exact(selector: Any) -> bool:
                 ):
                     return False
     return total > 0
+
+
+def _raw_identity_findings(
+    root: Path,
+    *,
+    fingerprint: str,
+    subject: dict[str, Any],
+    identity: dict[str, str] | None,
+    record_rule_ids: list[str],
+    path: str,
+) -> list[dict[str, Any]]:
+    """Bind a correction subject back to its one exact frozen raw row."""
+
+    findings: list[dict[str, Any]] = []
+
+    def add(code: str, message: str, **evidence: Any) -> None:
+        findings.append(_finding(
+            code,
+            "P0",
+            message,
+            path=path,
+            fingerprint=fingerprint,
+            **evidence,
+        ))
+
+    if not isinstance(identity, dict) or identity.get("bucket") != "HISTORICAL":
+        add(
+            "FULL_CONVERGENCE_BASELINE_RAW_IDENTITY_UNRESOLVED",
+            "the record fingerprint does not resolve to one frozen historical raw row",
+        )
+        return findings
+    rule_id = str(identity.get("rule_id", ""))
+    if record_rule_ids != [rule_id]:
+        add(
+            "FULL_CONVERGENCE_BASELINE_RAW_RULE_MISMATCH",
+            "the record rule differs from the exact frozen raw rule",
+            expected_rule_id=rule_id,
+        )
+    old_commit = _resolve_commit_prefix(
+        root, str(identity.get("transition_old_prefix", ""))
+    )
+    source_commit = _resolve_commit_prefix(
+        root, str(identity.get("transition_new_prefix", ""))
+    )
+    if not old_commit or not source_commit:
+        add(
+            "FULL_CONVERGENCE_BASELINE_RAW_TRANSITION_UNRESOLVED",
+            "the frozen raw transition cannot be resolved to exact commits",
+        )
+    else:
+        if _git(root, "rev-parse", f"{source_commit}^1") != old_commit:
+            add(
+                "FULL_CONVERGENCE_BASELINE_RAW_TRANSITION_NOT_DIRECT_PARENT",
+                "the frozen raw transition is not a direct parent transition",
+                old_commit=old_commit,
+                source_commit=source_commit,
+            )
+        if subject.get("source_commit") != source_commit:
+            add(
+                "FULL_CONVERGENCE_BASELINE_RAW_SOURCE_COMMIT_MISMATCH",
+                "the identity binding source commit differs from the raw transition",
+                expected_source_commit=source_commit,
+            )
+        if subject.get("first_seen_commit") != source_commit:
+            add(
+                "FULL_CONVERGENCE_BASELINE_RAW_FIRST_SEEN_MISMATCH",
+                "the identity binding first-seen commit differs from the raw transition",
+                expected_first_seen_commit=source_commit,
+            )
+        last_seen = str(subject.get("last_seen_commit", ""))
+        if identity.get("authority_origin") == "DESCENDANT_HISTORY_SUPPLEMENT":
+            supplement_head = str(identity.get("supplement_raw_report_head_sha", ""))
+            last_seen_invalid = (
+                not _is_commit(last_seen)
+                or not _is_ancestor(root, source_commit, last_seen)
+                or not _is_ancestor(root, last_seen, supplement_head)
+            )
+        else:
+            last_seen_invalid = (
+                not _is_commit(last_seen)
+                or not _is_ancestor(root, source_commit, last_seen)
+                or not _is_ancestor(root, last_seen, FULL_CONVERGENCE_BASE_HEAD)
+            )
+        if last_seen_invalid:
+            add(
+                "FULL_CONVERGENCE_BASELINE_RAW_LAST_SEEN_INVALID",
+                "last_seen_commit is outside its exact authorized history interval",
+            )
+    selector = subject.get("authority_selectors")
+    selector_paths = {
+        _normalize_path(str(value))
+        for value in selector.get("paths", [])
+    } if isinstance(selector, dict) else set()
+    selector_components = {
+        str(value) for value in selector.get("component_ids", [])
+    } if isinstance(selector, dict) else set()
+    subject_kind = str(identity.get("subject_kind", ""))
+    subject_value = _normalize_path(str(identity.get("subject_value", "")))
+    if subject_kind == "path":
+        if _normalize_path(str(subject.get("historical_path", ""))) != subject_value:
+            add(
+                "FULL_CONVERGENCE_BASELINE_RAW_HISTORICAL_PATH_MISMATCH",
+                "historical_path differs from the frozen raw path",
+                expected_historical_path=subject_value,
+            )
+        if subject_value not in selector_paths:
+            add(
+                "FULL_CONVERGENCE_BASELINE_RAW_PATH_SELECTOR_MISSING",
+                "the exact frozen raw path is absent from the authority selector",
+                expected_path=subject_value,
+            )
+    elif subject_kind == "component_id":
+        bound_components = {
+            str(subject.get("historical_component_id", "")),
+            str(subject.get("current_component_id", "")),
+        }
+        if subject_value not in bound_components:
+            add(
+                "FULL_CONVERGENCE_BASELINE_RAW_COMPONENT_MISMATCH",
+                "the frozen raw component id is absent from the identity binding",
+                expected_component_id=subject_value,
+            )
+        if subject_value not in selector_components:
+            add(
+                "FULL_CONVERGENCE_BASELINE_RAW_COMPONENT_SELECTOR_MISSING",
+                "the exact frozen raw component id is absent from the authority selector",
+                expected_component_id=subject_value,
+            )
+    else:
+        add(
+            "FULL_CONVERGENCE_BASELINE_RAW_SUBJECT_UNRESOLVED",
+            "the frozen raw row does not expose an exact path or component subject",
+        )
+    if identity.get("authority_origin") == "DESCENDANT_HISTORY_SUPPLEMENT":
+        supplement_source_path = _normalize_path(str(identity.get("source_path", "")))
+        if _normalize_path(str(subject.get("historical_path", ""))) != supplement_source_path:
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_RECORD_SOURCE_PATH_MISMATCH",
+                "record historical path differs from the sealed descendant source path",
+            )
+        if supplement_source_path not in selector_paths:
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_RECORD_SOURCE_SELECTOR_MISSING",
+                "sealed descendant source path is absent from the record selector",
+            )
+    binding_paths = {
+        _normalize_path(str(subject.get(field, "")))
+        for field in ("historical_path", "current_path")
+        if subject.get(field)
+    }
+    binding_components = {
+        str(subject.get(field, ""))
+        for field in ("historical_component_id", "current_component_id")
+        if subject.get(field)
+    }
+    if not binding_paths.issubset(selector_paths):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_PATH_SELECTOR_COVERAGE_MISMATCH",
+            "not every bound path is covered by the exact authority selector",
+        )
+    if not binding_components.issubset(selector_components):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_COMPONENT_SELECTOR_COVERAGE_MISMATCH",
+            "not every bound component is covered by the exact authority selector",
+        )
+    current_path = _normalize_path(str(subject.get("current_path", "")))
+    if not current_path:
+        if subject.get("current_blob_sha256") != "MISSING":
+            add(
+                "FULL_CONVERGENCE_IDENTITY_MISSING_CURRENT_PATH_BLOB_NOT_MISSING",
+                "an empty current path must bind the exact MISSING blob state",
+            )
+        if subject.get("recommended_disposition") == "HISTORICAL_ACTIVE_LINEAGE_REGISTERED":
+            add(
+                "FULL_CONVERGENCE_IDENTITY_ACTIVE_LINEAGE_CURRENT_PATH_MISSING",
+                "an active lineage disposition requires an exact current path",
+            )
+    return findings
 
 
 def _record_payload(record: dict[str, Any]) -> dict[str, Any]:
@@ -323,6 +1003,800 @@ def _record_paths(root: Path) -> list[Path]:
 
 def _finding(code: str, severity: str, message: str, **evidence: Any) -> dict[str, Any]:
     return {"code": code, "severity": severity, "message": message, "evidence": evidence}
+
+
+def _batch_artifact_findings(
+    manifest_path: Path,
+    manifest: dict[str, Any],
+    identities: dict[str, dict[str, str]],
+) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    expected_fingerprints = [str(value) for value in manifest.get("failure_fingerprints", [])]
+    for hash_field, (filename, schema_version, kind) in BATCH_ARTIFACT_SPECS.items():
+        path = manifest_path.parent / filename
+        if not path.is_file():
+            findings.append(_finding(
+                "FULL_CONVERGENCE_BATCH_ARTIFACT_MISSING",
+                "P0",
+                "a required batch evidence artifact is missing",
+                artifact=filename,
+            ))
+            continue
+        if _sha_file(path) != manifest.get(hash_field):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_BATCH_ARTIFACT_HASH_MISMATCH",
+                "P0",
+                "batch evidence bytes differ from the manifest digest",
+                artifact=filename,
+            ))
+            continue
+        try:
+            document = _json(path)
+        except (OSError, ValueError):
+            document = None
+        if not isinstance(document, dict):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_BATCH_ARTIFACT_INVALID",
+                "P0",
+                "a required batch evidence artifact is not a strict JSON object",
+                artifact=filename,
+            ))
+            continue
+        common_valid = (
+            document.get("schema_version") == schema_version
+            and document.get("batch_id") == manifest.get("batch_id")
+            and [str(value) for value in document.get("failure_fingerprints", [])]
+            == expected_fingerprints
+            and document.get("failure_count") == len(expected_fingerprints)
+        )
+        if not common_valid:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_BATCH_ARTIFACT_SCHEMA_MISMATCH",
+                "P0",
+                "batch evidence schema, batch id, or fingerprint coverage is not exact",
+                artifact=filename,
+            ))
+            continue
+        if kind == "inventory":
+            rows = document.get("rows")
+            if (
+                document.get("identity_coverage_percent") != 100
+                or document.get("unknown_count") != 0
+                or not isinstance(rows, dict)
+                or set(rows) != set(expected_fingerprints)
+            ):
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_BATCH_INVENTORY_COVERAGE_INVALID",
+                    "P0",
+                    "inventory does not bind every fingerprint with zero unknowns",
+                    artifact=filename,
+                ))
+            elif any(
+                not isinstance(row, dict)
+                or row.get("failure_fingerprint") != fingerprint
+                or row.get("raw_failure") != identities.get(fingerprint, {}).get("raw_failure")
+                or row.get("rule_id") != identities.get(fingerprint, {}).get("rule_id")
+                for fingerprint, row in rows.items()
+            ):
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_BATCH_INVENTORY_RAW_IDENTITY_MISMATCH",
+                    "P0",
+                    "inventory rows do not match their frozen raw identities",
+                    artifact=filename,
+                ))
+        elif kind == "classification":
+            rows = document.get("classifications")
+            if (
+                document.get("unknown_count") != 0
+                or document.get("wildcard_count") != 0
+                or not isinstance(rows, dict)
+                or set(rows) != set(expected_fingerprints)
+                or any(
+                    not isinstance(row, dict)
+                    or row.get("failure_fingerprint") != fingerprint
+                    or row.get("status") != "CLASSIFIED"
+                    or not str(row.get("recommended_disposition", "")).startswith("HISTORICAL_")
+                    for fingerprint, row in (rows.items() if isinstance(rows, dict) else [])
+                )
+            ):
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_BATCH_CLASSIFICATION_INVALID",
+                    "P0",
+                    "classification does not cover every fingerprint with exact closed status",
+                    artifact=filename,
+                ))
+        elif kind == "negative_checks":
+            checks = document.get("checks")
+            if (
+                document.get("status") != "PASS"
+                or document.get("current_failure_false_accept_count") != 0
+                or document.get("future_failure_auto_correction_count") != 0
+                or document.get("wildcard_count") != 0
+                or not isinstance(checks, dict)
+                or not checks
+                or any(value is not True for value in checks.values())
+            ):
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_BATCH_NEGATIVE_CHECKS_INVALID",
+                    "P0",
+                    "negative checks are not an actual all-pass zero-waiver document",
+                    artifact=filename,
+                ))
+        else:
+            review_id = "A" if kind == "review_a" else "B"
+            if (
+                document.get("review_id") != review_id
+                or document.get("status") != "GO"
+                or document.get("p0_count") != 0
+                or document.get("p1_count") != 0
+                or document.get("findings") != []
+            ):
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_BATCH_REVIEW_INVALID",
+                    "P0",
+                    "review GO is not supported by a zero-P0/P1 review document",
+                    artifact=filename,
+                ))
+    return findings
+
+
+def _manifest_record_findings(
+    root: Path,
+    manifest: dict[str, Any],
+    *,
+    evaluated_head: str,
+    baseline_identities: dict[str, dict[str, str]],
+) -> tuple[list[dict[str, Any]], set[str], set[str], int]:
+    """Revalidate the exact records named by one manifest.
+
+    This is intentionally used for every predecessor as well as the current
+    manifest.  Merely re-reading predecessor manifest bindings is not enough:
+    their record bytes, payloads, chain, fingerprints, frozen raw identities,
+    blobs, and projections must still be valid at the evaluated Head.
+    """
+
+    findings: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    correction_ids: set[str] = set()
+    bindings = manifest.get("record_bindings")
+    if not isinstance(bindings, list) or not bindings:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_RECORD_BINDINGS_MISSING",
+            "P0",
+            "the batch does not enumerate an explicit record set",
+            batch_id=manifest.get("batch_id"),
+        ))
+        return findings, seen, correction_ids, 0
+    expected_previous = str(manifest.get("record_chain_start_sha256", ""))
+    for index, binding in enumerate(bindings):
+        if not isinstance(binding, dict):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_BINDING_INVALID",
+                "P0",
+                "record binding is not an object",
+                batch_id=manifest.get("batch_id"),
+                index=index,
+            ))
+            continue
+        relative = _normalize_path(str(binding.get("path", "")))
+        expected_prefix = (
+            FULL_CONVERGENCE_RECORD_ROOT
+            + str(manifest.get("batch_id", ""))
+            + "/"
+        )
+        if (
+            not relative.startswith(expected_prefix)
+            or any(char in relative for char in "*?[]")
+            or relative.endswith("/")
+            or relative.startswith("/")
+            or "/../" in relative
+        ):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_PATH_NOT_EXACT",
+                "P0",
+                "record path is outside its exact batch root or contains selector syntax",
+                path=relative,
+                index=index,
+            ))
+            continue
+        if binding.get("previous_correction_chain_sha256") != expected_previous:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_CHAIN_BREAK",
+                "P0",
+                "manifest record predecessor does not match the prior payload",
+                path=relative,
+            ))
+        path = root / relative
+        if not path.is_file() or _sha_file(path) != binding.get("record_sha256"):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_BYTE_DRIFT",
+                "P0",
+                "record bytes do not match the explicit binding",
+                path=relative,
+            ))
+            continue
+        try:
+            record = _json(path)
+        except (OSError, ValueError):
+            record = None
+        if not isinstance(record, dict):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_UNREADABLE",
+                "P0",
+                "record is not one strict JSON object",
+                path=relative,
+            ))
+            continue
+        for field, expected in (
+            ("authorization_id", FULL_CONVERGENCE_AUTHORIZATION_ID),
+            ("authorization_base_head_sha", FULL_CONVERGENCE_BASE_HEAD),
+            ("baseline_report_sha256", FULL_CONVERGENCE_BASELINE_SHA),
+            ("baseline_failure_set_sha256", FULL_CONVERGENCE_FAILURE_SET_SHA),
+            ("batch_id", manifest.get("batch_id")),
+            ("binding_head_sha", manifest.get("binding_head_sha")),
+            ("binding_tree_sha", manifest.get("binding_tree_sha")),
+        ):
+            if record.get(field) != expected:
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_RECORD_AUTHORITY_MISMATCH",
+                    "P0",
+                    "record authority or batch binding differs from its manifest",
+                    path=relative,
+                    field=field,
+                    expected=expected,
+                    actual=record.get(field),
+                ))
+        for hash_field in BATCH_ARTIFACT_SPECS:
+            if record.get(hash_field) != manifest.get(hash_field):
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_RECORD_ARTIFACT_BINDING_MISMATCH",
+                    "P0",
+                    "record evidence digest differs from its manifest",
+                    path=relative,
+                    field=hash_field,
+                ))
+        if (
+            record.get("descendant_history_supplement_sha256")
+            != manifest.get("descendant_history_supplement_sha256")
+        ):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_DESCENDANT_SUPPLEMENT_BINDING_MISMATCH",
+                "P0",
+                "record descendant-history seal differs from its manifest",
+                path=relative,
+            ))
+        expected_payload_sha = _sha_bytes(_canonical(_record_payload(record)))
+        if record.get("record_payload_sha256") != expected_payload_sha:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_PAYLOAD_HASH_MISMATCH",
+                "P0",
+                "record payload digest does not bind its canonical content",
+                path=relative,
+            ))
+        if record.get("record_payload_sha256") != binding.get("record_payload_sha256"):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_PAYLOAD_BINDING_MISMATCH",
+                "P0",
+                "record payload digest differs from the manifest binding",
+                path=relative,
+            ))
+        if record.get("previous_correction_chain_sha256") != expected_previous:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_PREDECESSOR_BINDING_MISMATCH",
+                "P0",
+                "actual record predecessor does not continue the manifest chain",
+                path=relative,
+            ))
+        if record.get("correction_id") != binding.get("correction_id"):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_ID_BINDING_MISMATCH",
+                "P0",
+                "record correction id differs from the manifest binding",
+                path=relative,
+            ))
+        correction_id = str(record.get("correction_id", ""))
+        if correction_id in correction_ids:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_CORRECTION_ID_REUSE",
+                "P0",
+                "one manifest repeats a correction id",
+                path=relative,
+                correction_id=correction_id,
+            ))
+        correction_ids.add(correction_id)
+        if record.get("future_failure_policy") != {
+            "FUTURE_FAILURE_AUTO_CORRECTION_COUNT": 0,
+            "NEW_FAILURE_REQUIRES_NEW_RECORD": True,
+        }:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_FUTURE_AUTO_CORRECTION_ENABLED",
+                "P0",
+                "record future-failure policy is not exact and fail-closed",
+                path=relative,
+            ))
+        rules = record.get("rule_ids")
+        rendered_rules = [str(value) for value in rules] if isinstance(rules, list) else []
+        if len(rendered_rules) != 1 or not rendered_rules[0].startswith(HISTORY_PREFIX):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_CURRENT_FAILURE_CORRECTION",
+                "P0",
+                "a new record is not restricted to one historical rule",
+                path=relative,
+            ))
+        binding_fingerprints = [
+            str(value) for value in binding.get("failure_fingerprints", [])
+        ] if isinstance(binding.get("failure_fingerprints"), list) else []
+        record_fingerprints = [
+            str(value) for value in record.get("failure_fingerprints", [])
+        ] if isinstance(record.get("failure_fingerprints"), list) else []
+        if record_fingerprints != binding_fingerprints:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_FINGERPRINT_BINDING_MISMATCH",
+                "P0",
+                "actual record fingerprints differ from the manifest binding",
+                path=relative,
+            ))
+        subjects = record.get("identity_binding_by_failure")
+        if not isinstance(subjects, dict) or set(subjects) != set(record_fingerprints):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_IDENTITY_BINDING_SET_MISMATCH",
+                "P0",
+                "record must bind one exact identity projection per fingerprint",
+                path=relative,
+            ))
+            subjects = subjects if isinstance(subjects, dict) else {}
+        binding_head = str(record.get("binding_head_sha", ""))
+        for fingerprint in record_fingerprints:
+            if fingerprint in seen:
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_RECORD_FINGERPRINT_DUPLICATE",
+                    "P0",
+                    "one manifest repeats a record fingerprint",
+                    path=relative,
+                    fingerprint=fingerprint,
+                ))
+            seen.add(fingerprint)
+            subject = subjects.get(fingerprint)
+            if not isinstance(subject, dict):
+                continue
+            findings.extend(_raw_identity_findings(
+                root,
+                fingerprint=fingerprint,
+                subject=subject,
+                identity=baseline_identities.get(fingerprint),
+                record_rule_ids=rendered_rules,
+                path=relative,
+            ))
+            selector = subject.get("authority_selectors")
+            projection = subject.get("subject_projection")
+            if (
+                not isinstance(projection, dict)
+                or subject.get("subject_projection_sha256") != _sha_bytes(_canonical(projection))
+            ):
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_SUBJECT_PROJECTION_HASH_MISMATCH",
+                    "P0",
+                    "subject projection is not bound by its canonical digest",
+                    path=relative,
+                    fingerprint=fingerprint,
+                ))
+                continue
+            if not _selector_is_exact(selector):
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_SUBJECT_SELECTOR_NOT_EXACT",
+                    "P0",
+                    "subject projection lacks an exact wildcard-free selector",
+                    path=relative,
+                    fingerprint=fingerprint,
+                ))
+                continue
+            source_commit = str(subject.get("source_commit", ""))
+            historical_path = _normalize_path(str(subject.get("historical_path", "")))
+            current_path = _normalize_path(str(subject.get("current_path", "")))
+            if historical_path and _is_commit(source_commit):
+                historical_bytes = _git_bytes(root, source_commit, historical_path)
+                historical_sha = _sha_bytes(historical_bytes) if historical_bytes is not None else "MISSING"
+                if historical_sha != subject.get("historical_blob_sha256"):
+                    findings.append(_finding(
+                        "FULL_CONVERGENCE_HISTORICAL_BLOB_BINDING_MISMATCH",
+                        "P0",
+                        "historical blob differs from the exact source commit",
+                        path=relative,
+                        fingerprint=fingerprint,
+                    ))
+            if current_path:
+                binding_bytes = _git_bytes(root, binding_head, current_path)
+                evaluated_bytes = _git_bytes(root, evaluated_head, current_path)
+                binding_sha = _sha_bytes(binding_bytes) if binding_bytes is not None else "MISSING"
+                evaluated_sha = _sha_bytes(evaluated_bytes) if evaluated_bytes is not None else "MISSING"
+                if binding_sha != subject.get("current_blob_sha256"):
+                    findings.append(_finding(
+                        "FULL_CONVERGENCE_CURRENT_BLOB_BINDING_MISMATCH",
+                        "P0",
+                        "current blob differs from the record binding Head",
+                        path=relative,
+                        fingerprint=fingerprint,
+                    ))
+                if evaluated_sha != subject.get("current_blob_sha256"):
+                    findings.append(_finding(
+                        "FULL_CONVERGENCE_CURRENT_BLOB_CHANGED",
+                        "P0",
+                        "current blob changed after correction binding",
+                        path=relative,
+                        fingerprint=fingerprint,
+                    ))
+            binding_projection = _subject_projection(root, binding_head, selector)
+            current_projection = _subject_projection(root, evaluated_head, selector)
+            if binding_projection != projection:
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_SUBJECT_BINDING_MISMATCH",
+                    "P0",
+                    "subject projection differs from its binding Head",
+                    path=relative,
+                    fingerprint=fingerprint,
+                ))
+            if current_projection != projection:
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_SUBJECT_PROJECTION_CHANGED",
+                    "P0",
+                    "subject projection changed at the evaluated Head",
+                    path=relative,
+                    fingerprint=fingerprint,
+                ))
+        expected_previous = str(record.get("record_payload_sha256", ""))
+    if expected_previous != manifest.get("record_chain_terminal_sha256"):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_CHAIN_TERMINAL_MISMATCH",
+            "P0",
+            "batch terminal does not equal the final actual record payload",
+            batch_id=manifest.get("batch_id"),
+        ))
+    manifest_fingerprints = {
+        str(value) for value in manifest.get("failure_fingerprints", [])
+    }
+    if seen != manifest_fingerprints:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_BATCH_COVERAGE_MISMATCH",
+            "P0",
+            "actual records do not cover each manifest fingerprint exactly once",
+            batch_id=manifest.get("batch_id"),
+        ))
+    return findings, seen, correction_ids, len(bindings)
+
+
+def _derive_prior_manifest_path(
+    current_path: Path,
+    current_batch_id: str,
+    prior_batch_id: str,
+) -> Path | None:
+    if current_path.parent.name == current_batch_id:
+        return current_path.parent.parent / prior_batch_id / current_path.name
+    if current_batch_id in current_path.name:
+        return current_path.with_name(current_path.name.replace(current_batch_id, prior_batch_id, 1))
+    return None
+
+
+def _manifest_contract_findings(
+    root: Path,
+    manifest_path: Path,
+    manifest: dict[str, Any],
+    *,
+    evaluated_head: str,
+    baseline_identities: dict[str, dict[str, str]],
+) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    fingerprints = [
+        str(value) for value in manifest.get("failure_fingerprints", [])
+    ] if isinstance(manifest.get("failure_fingerprints"), list) else []
+    if (
+        fingerprints != sorted(fingerprints)
+        or len(fingerprints) != len(set(fingerprints))
+        or any(re.fullmatch(r"V2F-[0-9a-f]{64}", value) is None for value in fingerprints)
+    ):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_MANIFEST_FINGERPRINT_SET_INVALID",
+            "P0",
+            "manifest fingerprints must be unique sorted exact V2 identities",
+            manifest_path=str(manifest_path),
+        ))
+    if manifest.get("failure_count") != len(fingerprints):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_MANIFEST_FINGERPRINT_COUNT_MISMATCH",
+            "P0",
+            "manifest failure_count differs from its explicit fingerprint list",
+            manifest_path=str(manifest_path),
+        ))
+    if manifest.get("failure_fingerprint_set_sha256") != _line_set_sha(fingerprints):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_MANIFEST_FINGERPRINT_HASH_MISMATCH",
+            "P0",
+            "manifest fingerprint set digest is not canonical",
+            manifest_path=str(manifest_path),
+        ))
+    if not 1 <= len(fingerprints) <= 50:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_MANIFEST_BATCH_SIZE_INVALID",
+            "P0",
+            "a batch must contain between one and fifty exact fingerprints",
+            manifest_path=str(manifest_path),
+        ))
+    if len(fingerprints) < 25 and manifest.get("terminal_remainder_batch") is not True:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_MANIFEST_NONTERMINAL_BELOW_TARGET",
+            "P0",
+            "a nonterminal batch cannot contain fewer than twenty-five fingerprints",
+            manifest_path=str(manifest_path),
+        ))
+    for field, expected in (
+        ("authorization_id", FULL_CONVERGENCE_AUTHORIZATION_ID),
+        ("authorization_base_head_sha", FULL_CONVERGENCE_BASE_HEAD),
+        ("baseline_report_sha256", FULL_CONVERGENCE_BASELINE_SHA),
+        ("baseline_failure_set_sha256", FULL_CONVERGENCE_FAILURE_SET_SHA),
+        ("batch_review_a_status", "GO"),
+        ("batch_review_b_status", "GO"),
+        ("identity_coverage_percent", 100),
+        ("batch_unknown_count", 0),
+        ("batch_wildcard_count", 0),
+        ("current_failure_false_accept_count", 0),
+    ):
+        if manifest.get(field) != expected:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_BATCH_AUTHORITY_MISMATCH",
+                "P0",
+                "batch authority or review assertion differs from the closed contract",
+                manifest_path=str(manifest_path),
+                field=field,
+                expected=expected,
+                actual=manifest.get(field),
+            ))
+    binding_head = str(manifest.get("binding_head_sha", ""))
+    binding_tree = _git(root, "rev-parse", f"{binding_head}^{{tree}}")
+    if not _is_commit(binding_head) or not binding_tree:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_MANIFEST_BINDING_HEAD_UNRESOLVED",
+            "P0",
+            "manifest binding Head is not a resolvable commit",
+            manifest_path=str(manifest_path),
+        ))
+    else:
+        if manifest.get("binding_tree_sha") != binding_tree:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_MANIFEST_BINDING_TREE_MISMATCH",
+                "P0",
+                "manifest binding tree differs from its exact Git Head",
+                manifest_path=str(manifest_path),
+            ))
+        if not _is_ancestor(root, FULL_CONVERGENCE_BASE_HEAD, binding_head):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_MANIFEST_BINDING_HEAD_NOT_AUTHORIZED_DESCENDANT",
+                "P0",
+                "manifest binding Head is not a descendant of d701",
+                manifest_path=str(manifest_path),
+            ))
+        if not _is_ancestor(root, binding_head, evaluated_head):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_MANIFEST_EVALUATED_HEAD_NOT_DESCENDANT",
+                "P0",
+                "evaluated Head does not descend from the manifest binding Head",
+                manifest_path=str(manifest_path),
+            ))
+    bindings = manifest.get("record_bindings")
+    chain = str(manifest.get("record_chain_start_sha256", ""))
+    covered: list[str] = []
+    if not isinstance(bindings, list) or not bindings:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_RECORD_BINDINGS_MISSING",
+            "P0",
+            "the batch does not enumerate an explicit record set",
+            manifest_path=str(manifest_path),
+        ))
+        bindings = []
+    for index, binding in enumerate(bindings):
+        if not isinstance(binding, dict):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_BINDING_INVALID",
+                "P0",
+                "record binding is not an object",
+                manifest_path=str(manifest_path),
+                index=index,
+            ))
+            continue
+        if binding.get("previous_correction_chain_sha256") != chain:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_CHAIN_BREAK",
+                "P0",
+                "manifest record chain is discontinuous",
+                manifest_path=str(manifest_path),
+                index=index,
+            ))
+        payload_sha = binding.get("record_payload_sha256")
+        if not _is_sha256(payload_sha) or not _is_sha256(binding.get("record_sha256")):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_BINDING_HASH_INVALID",
+                "P0",
+                "manifest record binding lacks exact byte and payload hashes",
+                manifest_path=str(manifest_path),
+                index=index,
+            ))
+        chain = str(payload_sha)
+        values = binding.get("failure_fingerprints")
+        if isinstance(values, list):
+            covered.extend(str(value) for value in values)
+    if chain != manifest.get("record_chain_terminal_sha256"):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_MANIFEST_CHAIN_TERMINAL_MISMATCH",
+            "P0",
+            "manifest terminal differs from its final record binding payload",
+            manifest_path=str(manifest_path),
+        ))
+    if sorted(covered) != fingerprints or len(covered) != len(set(covered)):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_MANIFEST_COVERAGE_MISMATCH",
+            "P0",
+            "manifest bindings do not cover each fingerprint exactly once",
+            manifest_path=str(manifest_path),
+        ))
+    findings.extend(_batch_artifact_findings(
+        manifest_path,
+        manifest,
+        baseline_identities,
+    ))
+    if manifest.get("descendant_history_supplement_sha256") != descendant_supplement_sha:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_MANIFEST_HASH_MISMATCH",
+            "P0",
+            "current manifest does not bind the exact explicit supplement bytes",
+            manifest_path=str(manifest_path),
+        ))
+    return findings
+
+
+def _predecessor_chain_findings(
+    root: Path,
+    current_manifest: dict[str, Any],
+    immediate_path: Path | None,
+    *,
+    evaluated_head: str,
+    baseline_identities: dict[str, dict[str, str]],
+) -> tuple[list[dict[str, Any]], list[tuple[Path, dict[str, Any]]]]:
+    """Load the whole sequence-bound predecessor chain without discovery."""
+
+    findings: list[dict[str, Any]] = []
+    chain: list[tuple[Path, dict[str, Any]]] = []
+    expected_sha = current_manifest.get("previous_batch_append_sha256")
+    if not expected_sha:
+        if immediate_path is not None:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PREVIOUS_MANIFEST_UNEXPECTED",
+                "P0",
+                "an initial batch supplied a predecessor path",
+            ))
+        return findings, chain
+    if immediate_path is None:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_PREVIOUS_MANIFEST_REQUIRED",
+            "P0",
+            "a non-initial batch did not supply its explicit immediate predecessor manifest",
+        ))
+        return findings, chain
+    current = current_manifest
+    path = immediate_path
+    seen_fingerprints = {
+        str(value) for value in current_manifest.get("failure_fingerprints", [])
+    }
+    for depth in range(1, 512):
+        try:
+            previous = _json(path)
+        except (OSError, ValueError):
+            previous = None
+        if not isinstance(previous, dict):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PREVIOUS_MANIFEST_UNREADABLE",
+                "P0",
+                "the sequence-bound predecessor is not one strict JSON object",
+                manifest_path=str(path),
+            ))
+            break
+        if _sha_file(path) != expected_sha:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PREVIOUS_MANIFEST_SHA_MISMATCH",
+                "P0",
+                "predecessor bytes do not match previous_batch_append_sha256",
+                manifest_path=str(path),
+            ))
+        findings.extend(_manifest_contract_findings(
+            root,
+            path,
+            previous,
+            evaluated_head=evaluated_head,
+            baseline_identities=baseline_identities,
+        ))
+        if current.get("record_chain_start_sha256") != previous.get("record_chain_terminal_sha256"):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PREVIOUS_MANIFEST_TERMINAL_MISMATCH",
+                "P0",
+                "the current batch does not continue its predecessor record terminal",
+                manifest_path=str(path),
+            ))
+        current_match = re.fullmatch(r"batch-([0-9]{3})", str(current.get("batch_id", "")))
+        previous_match = re.fullmatch(r"batch-([0-9]{3})", str(previous.get("batch_id", "")))
+        if (
+            current_match is None
+            or previous_match is None
+            or int(current_match.group(1)) != int(previous_match.group(1)) + 1
+        ):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PREVIOUS_MANIFEST_SEQUENCE_MISMATCH",
+                "P0",
+                "batch ids are not an exact descending sequence",
+                manifest_path=str(path),
+            ))
+        if previous.get("terminal_remainder_batch") is True:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PREVIOUS_MANIFEST_ALREADY_TERMINAL",
+                "P0",
+                "a batch follows a declared terminal remainder",
+                manifest_path=str(path),
+            ))
+        previous_fingerprints = {
+            str(value) for value in previous.get("failure_fingerprints", [])
+        }
+        for fingerprint in sorted(seen_fingerprints & previous_fingerprints):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PRIOR_MANIFEST_FINGERPRINT_REUSE",
+                "P0",
+                "a fingerprint is reused anywhere in the predecessor chain",
+                fingerprint=fingerprint,
+                manifest_path=str(path),
+            ))
+        seen_fingerprints.update(previous_fingerprints)
+        chain.append((path, previous))
+        prior_sha = previous.get("previous_batch_append_sha256")
+        if not prior_sha:
+            if previous.get("batch_id") != "batch-001":
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_PREVIOUS_CHAIN_DID_NOT_REACH_BATCH_001",
+                    "P0",
+                    "predecessor chain ended before batch-001",
+                    manifest_path=str(path),
+                ))
+            if previous.get("record_chain_start_sha256") != LEGACY_CHAIN_TERMINAL_SHA:
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_LEGACY_CHAIN_NOT_CONTINUED",
+                    "P0",
+                    "batch-001 does not continue the frozen six-record terminal",
+                    manifest_path=str(path),
+                ))
+            break
+        previous_id = str(previous.get("batch_id", ""))
+        if previous_match is None or int(previous_match.group(1)) <= 1:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PREVIOUS_MANIFEST_SEQUENCE_MISMATCH",
+                "P0",
+                "predecessor link underflows batch-001",
+                manifest_path=str(path),
+            ))
+            break
+        prior_id = f"batch-{int(previous_match.group(1)) - 1:03d}"
+        prior_path = _derive_prior_manifest_path(path, previous_id, prior_id)
+        if prior_path is None:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PREVIOUS_MANIFEST_PATH_NOT_SEQUENCE_BOUND",
+                "P0",
+                "older predecessor path cannot be derived from the explicit immediate path",
+                manifest_path=str(path),
+            ))
+            break
+        current = previous
+        path = prior_path
+        expected_sha = prior_sha
+    else:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_PREVIOUS_MANIFEST_CHAIN_DEPTH_EXCEEDED",
+            "P0",
+            "predecessor chain exceeded its frozen historical upper bound",
+        ))
+    return findings, chain
 
 
 def _common_context(root: Path) -> dict[str, Any]:
@@ -572,6 +2046,9 @@ def audit_full_convergence_batch(
     evaluated_head: str,
     baseline_report_path: Path | None = None,
     previous_batch_manifest_path: Path | None = None,
+    descendant_history_supplement_path: Path | None = None,
+    descendant_history_raw_report_path: Path | None = None,
+    descendant_history_scanner_path: Path | None = None,
 ) -> dict[str, Any]:
     """Independently verify one explicit new-epoch batch and its legacy anchor.
 
@@ -581,6 +2058,8 @@ def audit_full_convergence_batch(
     """
     findings: list[dict[str, Any]] = []
     baseline_fingerprints = {"historical": set(), "current": set()}
+    baseline_identities: dict[str, dict[str, str]] = {}
+    baseline_report: dict[str, Any] = {}
     if baseline_report_path is None:
         findings.append(_finding(
             "FULL_CONVERGENCE_BASELINE_REQUIRED",
@@ -604,6 +2083,9 @@ def audit_full_convergence_batch(
                 "the authorized raw failure report is not valid JSON",
             ))
         baseline_fingerprints = _authorized_failure_fingerprint_sets(baseline_report)
+        baseline_identities = _authorized_failure_identity_by_fingerprint(
+            baseline_report
+        )
         if (
             len(baseline_fingerprints["historical"]) != 510
             or len(baseline_fingerprints["current"]) != 56
@@ -613,6 +2095,24 @@ def audit_full_convergence_batch(
                 "P0",
                 "the frozen report does not derive the exact 510 historical and 56 current fingerprints",
             ))
+    (
+        supplement_findings,
+        descendant_fingerprints,
+        descendant_identities,
+        descendant_supplement_sha,
+        descendant_report_head,
+    ) = _descendant_history_supplement_findings(
+        root,
+        supplement_path=descendant_history_supplement_path,
+        raw_report_path=descendant_history_raw_report_path,
+        scanner_path=descendant_history_scanner_path,
+        evaluated_head=evaluated_head,
+        baseline_report=baseline_report,
+        baseline_sets=baseline_fingerprints,
+    )
+    findings.extend(supplement_findings)
+    baseline_fingerprints["historical"].update(descendant_fingerprints)
+    baseline_identities.update(descendant_identities)
     schema_path = root / FULL_CONVERGENCE_SCHEMA
     if not schema_path.is_file() or _sha_file(schema_path) != FULL_CONVERGENCE_SCHEMA_SHA:
         findings.append(_finding(
@@ -756,139 +2256,86 @@ def audit_full_convergence_batch(
                 expected=expected,
                 actual=manifest.get(field),
             ))
-    previous_append_sha = manifest.get("previous_batch_append_sha256")
-    if previous_append_sha:
-        if previous_batch_manifest_path is None:
+    findings.extend(_batch_artifact_findings(
+        manifest_path,
+        manifest,
+        baseline_identities,
+    ))
+    chain_findings, predecessor_chain = _predecessor_chain_findings(
+        root,
+        manifest,
+        previous_batch_manifest_path,
+        evaluated_head=evaluated_head,
+        baseline_identities=baseline_identities,
+    )
+    findings.extend(chain_findings)
+    predecessor_fingerprints: set[str] = set()
+    predecessor_correction_ids: set[str] = set()
+    predecessor_record_count = 0
+    for predecessor_path, predecessor_manifest in reversed(predecessor_chain):
+        if (
+            predecessor_manifest.get("descendant_history_supplement_sha256")
+            != descendant_supplement_sha
+        ):
             findings.append(_finding(
-                "FULL_CONVERGENCE_PREVIOUS_MANIFEST_REQUIRED",
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_MANIFEST_HASH_MISMATCH",
                 "P0",
-                "a non-initial batch did not supply its explicit immediate predecessor manifest",
+                "predecessor manifest does not bind the same explicit supplement bytes",
+                manifest_path=str(predecessor_path),
             ))
-        else:
-            try:
-                previous_manifest = _json(previous_batch_manifest_path)
-            except (OSError, ValueError):
-                previous_manifest = {}
+        record_findings, record_fingerprints, correction_ids, record_count = (
+            _manifest_record_findings(
+                root,
+                predecessor_manifest,
+                evaluated_head=evaluated_head,
+                baseline_identities=baseline_identities,
+            )
+        )
+        findings.extend(record_findings)
+        for fingerprint in sorted(record_fingerprints):
+            if fingerprint in baseline_fingerprints["current"]:
                 findings.append(_finding(
-                    "FULL_CONVERGENCE_PREVIOUS_MANIFEST_UNREADABLE",
+                    "FULL_CONVERGENCE_RECORD_CURRENT_FAILURE_CORRECTION",
                     "P0",
-                    "the explicit predecessor manifest is missing or invalid JSON",
+                    "a predecessor record fingerprint belongs to the frozen current set",
+                    manifest_path=str(predecessor_path),
+                    fingerprint=fingerprint,
                 ))
-            if not isinstance(previous_manifest, dict):
+            elif fingerprint not in baseline_fingerprints["historical"]:
                 findings.append(_finding(
-                    "FULL_CONVERGENCE_PREVIOUS_MANIFEST_NOT_OBJECT",
+                    "FULL_CONVERGENCE_RECORD_FINGERPRINT_NOT_AUTHORIZED_HISTORICAL",
                     "P0",
-                    "the explicit predecessor manifest must be a JSON object",
+                    "a predecessor record fingerprint is absent from the frozen historical set",
+                    manifest_path=str(predecessor_path),
+                    fingerprint=fingerprint,
                 ))
-                previous_manifest = {}
-            if previous_manifest:
-                if _sha_file(previous_batch_manifest_path) != previous_append_sha:
-                    findings.append(_finding(
-                        "FULL_CONVERGENCE_PREVIOUS_MANIFEST_SHA_MISMATCH",
-                        "P0",
-                        "the predecessor manifest bytes do not match previous_batch_append_sha256",
-                    ))
-                for field, expected in (
-                    ("authorization_id", FULL_CONVERGENCE_AUTHORIZATION_ID),
-                    ("authorization_base_head_sha", FULL_CONVERGENCE_BASE_HEAD),
-                    ("baseline_report_sha256", FULL_CONVERGENCE_BASELINE_SHA),
-                    ("baseline_failure_set_sha256", FULL_CONVERGENCE_FAILURE_SET_SHA),
-                ):
-                    if previous_manifest.get(field) != expected:
-                        findings.append(_finding(
-                            "FULL_CONVERGENCE_PREVIOUS_MANIFEST_AUTHORITY_MISMATCH",
-                            "P0",
-                            "the predecessor manifest belongs to a different authority epoch",
-                            field=field,
-                        ))
-                if manifest.get("record_chain_start_sha256") != previous_manifest.get("record_chain_terminal_sha256"):
-                    findings.append(_finding(
-                        "FULL_CONVERGENCE_PREVIOUS_MANIFEST_TERMINAL_MISMATCH",
-                        "P0",
-                        "the current batch does not continue the predecessor record terminal",
-                    ))
-                current_id = re.fullmatch(r"batch-([0-9]{3})", str(manifest.get("batch_id", "")))
-                previous_id = re.fullmatch(r"batch-([0-9]{3})", str(previous_manifest.get("batch_id", "")))
-                if (
-                    current_id is None
-                    or previous_id is None
-                    or int(current_id.group(1)) != int(previous_id.group(1)) + 1
-                ):
-                    findings.append(_finding(
-                        "FULL_CONVERGENCE_PREVIOUS_MANIFEST_SEQUENCE_MISMATCH",
-                        "P0",
-                        "batch id does not immediately follow the explicit predecessor",
-                    ))
-                if previous_manifest.get("terminal_remainder_batch") is True:
-                    findings.append(_finding(
-                        "FULL_CONVERGENCE_PREVIOUS_MANIFEST_ALREADY_TERMINAL",
-                        "P0",
-                        "a batch cannot follow a declared terminal remainder",
-                    ))
-                predecessor_chain = str(previous_manifest.get("record_chain_start_sha256", ""))
-                predecessor_covered: list[str] = []
-                predecessor_bindings = previous_manifest.get("record_bindings")
-                if not isinstance(predecessor_bindings, list) or not predecessor_bindings:
-                    findings.append(_finding(
-                        "FULL_CONVERGENCE_PREVIOUS_MANIFEST_BINDINGS_INVALID",
-                        "P0",
-                        "the predecessor manifest has no explicit record bindings",
-                    ))
-                    predecessor_bindings = []
-                for index, binding in enumerate(predecessor_bindings):
-                    if not isinstance(binding, dict):
-                        findings.append(_finding(
-                            "FULL_CONVERGENCE_PREVIOUS_MANIFEST_BINDING_INVALID",
-                            "P0",
-                            "a predecessor record binding is not an object",
-                            index=index,
-                        ))
-                        continue
-                    if binding.get("previous_correction_chain_sha256") != predecessor_chain:
-                        findings.append(_finding(
-                            "FULL_CONVERGENCE_PREVIOUS_MANIFEST_CHAIN_BREAK",
-                            "P0",
-                            "the predecessor manifest record chain is discontinuous",
-                            index=index,
-                        ))
-                    predecessor_chain = str(binding.get("record_payload_sha256", ""))
-                    values = binding.get("failure_fingerprints")
-                    if isinstance(values, list):
-                        predecessor_covered.extend(str(value) for value in values)
-                if predecessor_chain != previous_manifest.get("record_chain_terminal_sha256"):
-                    findings.append(_finding(
-                        "FULL_CONVERGENCE_PREVIOUS_MANIFEST_CHAIN_TERMINAL_MISMATCH",
-                        "P0",
-                        "the predecessor manifest terminal differs from its final record payload",
-                    ))
-                predecessor_fingerprints = [
-                    str(value) for value in previous_manifest.get("failure_fingerprints", [])
-                ]
-                if (
-                    sorted(predecessor_covered) != predecessor_fingerprints
-                    or len(predecessor_covered) != len(set(predecessor_covered))
-                ):
-                    findings.append(_finding(
-                        "FULL_CONVERGENCE_PREVIOUS_MANIFEST_COVERAGE_MISMATCH",
-                        "P0",
-                        "the predecessor manifest does not cover each fingerprint exactly once",
-                    ))
-                current_fingerprints = {
-                    str(value) for value in manifest.get("failure_fingerprints", [])
-                }
-                for fingerprint in sorted(current_fingerprints & set(predecessor_fingerprints)):
-                    findings.append(_finding(
-                        "FULL_CONVERGENCE_PREVIOUS_MANIFEST_FINGERPRINT_REUSE",
-                        "P0",
-                        "the current batch repeats a predecessor fingerprint",
-                        fingerprint=fingerprint,
-                    ))
-    elif previous_batch_manifest_path is not None:
-        findings.append(_finding(
-            "FULL_CONVERGENCE_PREVIOUS_MANIFEST_UNEXPECTED",
-            "P0",
-            "an initial batch supplied a predecessor manifest despite an empty predecessor hash",
-        ))
+            if fingerprint in legacy_fingerprints:
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_LEGACY_FINGERPRINT_REUSE",
+                    "P0",
+                    "a predecessor record repeats a frozen legacy correction fingerprint",
+                    manifest_path=str(predecessor_path),
+                    fingerprint=fingerprint,
+                ))
+        for fingerprint in sorted(predecessor_fingerprints & record_fingerprints):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PRIOR_RECORD_FINGERPRINT_REUSE",
+                "P0",
+                "actual predecessor records reuse a nonadjacent fingerprint",
+                manifest_path=str(predecessor_path),
+                fingerprint=fingerprint,
+            ))
+        predecessor_fingerprints.update(record_fingerprints)
+        for correction_id in sorted(predecessor_correction_ids & correction_ids):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_PRIOR_RECORD_CORRECTION_ID_REUSE",
+                "P0",
+                "actual predecessor records reuse a correction id",
+                manifest_path=str(predecessor_path),
+                correction_id=correction_id,
+            ))
+        predecessor_correction_ids.update(correction_ids)
+        predecessor_record_count += record_count
     bindings = manifest.get("record_bindings")
     if not isinstance(bindings, list) or not bindings:
         findings.append(_finding(
@@ -1000,6 +2447,25 @@ def audit_full_convergence_batch(
                 "record and batch manifest bind different trees",
                 path=relative,
             ))
+        for hash_field in BATCH_ARTIFACT_SPECS:
+            if record.get(hash_field) != manifest.get(hash_field):
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_RECORD_ARTIFACT_BINDING_MISMATCH",
+                    "P0",
+                    "record evidence digest differs from its manifest",
+                    path=relative,
+                    field=hash_field,
+                ))
+        if (
+            record.get("descendant_history_supplement_sha256")
+            != manifest.get("descendant_history_supplement_sha256")
+        ):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_RECORD_DESCENDANT_SUPPLEMENT_BINDING_MISMATCH",
+                "P0",
+                "record descendant-history seal differs from its manifest",
+                path=relative,
+            ))
         expected_payload_sha = _sha_bytes(_canonical(_record_payload(record)))
         if record.get("record_payload_sha256") != expected_payload_sha:
             findings.append(_finding(
@@ -1066,6 +2532,18 @@ def audit_full_convergence_batch(
                         fingerprint=fingerprint,
                     ))
                     continue
+                findings.extend(_raw_identity_findings(
+                    root,
+                    fingerprint=str(fingerprint),
+                    subject=subject,
+                    identity=baseline_identities.get(str(fingerprint)),
+                    record_rule_ids=(
+                        [str(value) for value in rules]
+                        if isinstance(rules, list)
+                        else []
+                    ),
+                    path=relative,
+                ))
                 projection = subject.get("subject_projection")
                 if (
                     not isinstance(projection, dict)
@@ -1136,6 +2614,25 @@ def audit_full_convergence_batch(
             "P0",
             "record bindings do not cover each manifest fingerprint exactly once",
         ))
+    for fingerprint in sorted(set(all_fingerprints) & predecessor_fingerprints):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_PRIOR_RECORD_FINGERPRINT_REUSE",
+            "P0",
+            "the current actual records reuse a fingerprint from any predecessor",
+            fingerprint=fingerprint,
+        ))
+    current_correction_ids = {
+        str(binding.get("correction_id", ""))
+        for binding in bindings
+        if isinstance(binding, dict)
+    }
+    for correction_id in sorted(current_correction_ids & predecessor_correction_ids):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_PRIOR_RECORD_CORRECTION_ID_REUSE",
+            "P0",
+            "the current batch reuses a correction id from a predecessor",
+            correction_id=correction_id,
+        ))
     for fingerprint in sorted(set(manifest_fingerprints)):
         if fingerprint in baseline_fingerprints["current"]:
             findings.append(_finding(
@@ -1184,8 +2681,12 @@ def audit_full_convergence_batch(
         "raw_current_delta_failure_count": 56,
         "manifest_path": str(manifest_path),
         "legacy_record_count": len(LEGACY_RECORD_SHA_BY_PATH),
-        "new_record_count": len(bindings),
-        "new_fingerprint_count": len(all_fingerprints),
+        "new_record_count": predecessor_record_count + len(bindings),
+        "new_fingerprint_count": len(predecessor_fingerprints | set(all_fingerprints)),
+        "validated_batch_count": len(predecessor_chain) + 1,
+        "descendant_history_supplement_sha256": descendant_supplement_sha,
+        "descendant_history_raw_report_head_sha": descendant_report_head,
+        "descendant_history_authorized_fingerprint_count": len(descendant_fingerprints),
         "p0": [item for item in findings if item["severity"] == "P0"],
         "p1": [item for item in findings if item["severity"] == "P1"],
         "status": "GO" if not findings else "NO_GO",
@@ -1243,6 +2744,24 @@ def main(argv: list[str] | None = None) -> int:
         help="explicit d701 raw report bound by the full-convergence authorization",
     )
     parser.add_argument(
+        "--descendant-history-supplement",
+        type=Path,
+        default=None,
+        help="explicit one-shot byte-sealed descendant HISTORY membership manifest",
+    )
+    parser.add_argument(
+        "--descendant-history-raw-report",
+        type=Path,
+        default=None,
+        help="explicit committed-only final raw report with current failure count zero",
+    )
+    parser.add_argument(
+        "--descendant-history-scanner",
+        type=Path,
+        default=None,
+        help="explicit scanner file whose bytes must match the report Head",
+    )
+    parser.add_argument(
         "--evaluated-head-ref",
         default="HEAD",
         help="Head used for subject-projection invalidation in full-convergence mode",
@@ -1253,10 +2772,18 @@ def main(argv: list[str] | None = None) -> int:
     out = output_root / OUT_DIR
     out.mkdir(parents=True, exist_ok=True)
     if args.full_convergence_batch_manifest is not None:
-        if args.full_convergence_baseline_report is None:
+        if (
+            args.full_convergence_baseline_report is None
+            or args.descendant_history_supplement is None
+            or args.descendant_history_raw_report is None
+            or args.descendant_history_scanner is None
+        ):
             raise SystemExit(
                 "--full-convergence-batch-manifest requires "
-                "--full-convergence-baseline-report"
+                "--full-convergence-baseline-report, "
+                "--descendant-history-supplement, "
+                "--descendant-history-raw-report, and "
+                "--descendant-history-scanner"
             )
         report = audit_full_convergence_batch(
             root,
@@ -1267,6 +2794,15 @@ def main(argv: list[str] | None = None) -> int:
                 args.previous_batch_manifest.resolve()
                 if args.previous_batch_manifest is not None
                 else None
+            ),
+            descendant_history_supplement_path=(
+                args.descendant_history_supplement.resolve()
+            ),
+            descendant_history_raw_report_path=(
+                args.descendant_history_raw_report.resolve()
+            ),
+            descendant_history_scanner_path=(
+                args.descendant_history_scanner.resolve()
             ),
         )
         (out / "audit_full_convergence_batch.json").write_bytes(_canonical(report))

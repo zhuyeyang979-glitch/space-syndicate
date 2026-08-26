@@ -4109,6 +4109,24 @@ def _parser() -> argparse.ArgumentParser:
             "FULL_CONVERGENCE batch; never inferred by directory discovery"
         ),
     )
+    parser.add_argument(
+        "--descendant-history-supplement",
+        type=Path,
+        default=None,
+        help="explicit sealed descendant-history supplement; never discovered implicitly",
+    )
+    parser.add_argument(
+        "--descendant-history-raw-report",
+        type=Path,
+        default=None,
+        help="explicit raw scanner report bound by the descendant-history supplement",
+    )
+    parser.add_argument(
+        "--descendant-history-scanner",
+        type=Path,
+        default=None,
+        help="explicit scanner implementation bound by the descendant-history supplement",
+    )
     parser.add_argument("--head-ref", default=AUTHORIZED_HEAD_SHA)
     parser.add_argument(
         "--verify-only",
@@ -4140,6 +4158,18 @@ def main(argv: list[str] | None = None) -> int:
                 raise SystemExit("verify-full-convergence-batch requires --batch-manifest")
             if not args.raw_report:
                 raise SystemExit("verify-full-convergence-batch requires --raw-report")
+            if not args.descendant_history_supplement:
+                raise SystemExit(
+                    "verify-full-convergence-batch requires --descendant-history-supplement"
+                )
+            if not args.descendant_history_raw_report:
+                raise SystemExit(
+                    "verify-full-convergence-batch requires --descendant-history-raw-report"
+                )
+            if not args.descendant_history_scanner:
+                raise SystemExit(
+                    "verify-full-convergence-batch requires --descendant-history-scanner"
+                )
             result = convergence.validate_batch_manifest_against_repo(
                 root,
                 args.batch_manifest.resolve(),
@@ -4149,6 +4179,15 @@ def main(argv: list[str] | None = None) -> int:
                     args.previous_batch_manifest.resolve()
                     if args.previous_batch_manifest is not None
                     else None
+                ),
+                descendant_history_supplement_path=(
+                    args.descendant_history_supplement.resolve()
+                ),
+                descendant_history_raw_report_path=(
+                    args.descendant_history_raw_report.resolve()
+                ),
+                descendant_history_scanner_path=(
+                    args.descendant_history_scanner.resolve()
                 ),
             )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
