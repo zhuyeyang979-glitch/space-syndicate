@@ -211,6 +211,7 @@ def _authorities() -> dict[str, dict[str, Any]]:
                 ),
             },
             "canonical_pr_status": _status(),
+            "gate_activation_boundary_commit": gate.ACTIVATION_BOUNDARY_COMMIT,
             "point_inertia_baseline_sha": gate.V076_GATE_BASE_SHA,
             "agent_merge_requires_reuse_gate": True,
             "required_check_name": gate.CHECK_NAME,
@@ -1720,6 +1721,8 @@ print('not-json'); raise SystemExit(2)
     def regression(prior_status: str, suffix: str) -> dict[str, str]:
         return {
             "failure_evidence": f"failure-{suffix}",
+            "origin_commit": "c" * 40,
+            "promotion_metadata_commit": "e" * 40,
             "affected_commit": "d" * 40,
             "affected_owner": BASE_OWNER_ID,
             "repair_plan": f"repair-{suffix}",
@@ -3983,6 +3986,650 @@ print('not-json'); raise SystemExit(2)
         "PASS",
         "PASS" if not manifest_future_negative_failures else "FAIL",
         manifest_future_negative_failures,
+    )
+
+    # Rule-authority documents stay visible to the rule-change stream, but are
+    # not Godot components.  A runtime-loadable card resource remains eligible
+    # for component classification so this boundary cannot become a scope
+    # reduction in disguise.
+    rule_boundary = _valid_input()
+    rule_boundary.gate_changed_paths = [
+        {"status": "M", "path": "docs/rules/v06_mechanic_status_registry.json"},
+    ]
+    rule_boundary_report = gate.validate_model(rule_boundary)
+    rule_path = "docs/rules/v06_mechanic_status_registry.json"
+    runtime_rule_path = "resources/cards/runtime/v076_stage4.tres"
+    rule_boundary_failures = [
+        str(value) for value in rule_boundary_report.get("failures", [])
+    ]
+    rule_boundary_green = bool(
+        gate._is_rule_authority_path(rule_path)
+        and gate._is_non_component_rule_authority_path(rule_path)
+        and not gate._is_non_component_rule_authority_path(runtime_rule_path)
+        and rule_boundary_report.get("metrics", {}).get("PRODUCT_RULE_CHANGE_COUNT") == 1
+        and any(
+            value.startswith("TOOLING_GATE_PRODUCT_RULE_CHANGE:")
+            for value in rule_boundary_failures
+        )
+        and not any(
+            value in {
+                "PRODUCT_DELTA_COMPONENT_CLASSIFICATION_INCOMPLETE",
+                "PRODUCT_DELTA_FOCUSED_TESTS_INCOMPLETE",
+            }
+            for value in rule_boundary_failures
+        )
+    )
+    append_direct_case(
+        "125",
+        "non-component rule authorities remain scanned while runtime rule resources stay component-eligible",
+        "PASS",
+        "PASS" if rule_boundary_green else "FAIL",
+        rule_boundary_failures,
+    )
+
+    provenance_valid_failures: list[str] = []
+    provenance_identity_negative_failures: list[str] = []
+    provenance_ancestry_negative_failures: list[str] = []
+    provenance_anchor_negative_failures: list[str] = []
+    provenance_head_ancestry_negative_failures: list[str] = []
+    provenance_candidate_negative_failures: list[str] = []
+    promotion_top_level_negative_failures: list[str] = []
+    promotion_step_evidence_negative_failures: list[str] = []
+    try:
+        with tempfile.TemporaryDirectory(prefix="v076-golden-provenance-") as temp_path:
+            provenance_root = Path(temp_path)
+            golden_relative = "docs/architecture/V076_ALPHA07_GOLDEN_PLAYTEST_SCENARIO.json"
+            golden_path = provenance_root / golden_relative
+            golden_path.parent.mkdir(parents=True, exist_ok=True)
+
+            def write_golden(
+                candidate: str,
+                status: str,
+                evidence_candidate: str,
+                evidence_tree: str,
+            ) -> None:
+                golden_path.write_text(
+                    json.dumps(
+                        {
+                            "candidate_head_sha": candidate,
+                            "candidate_tree_sha": evidence_tree,
+                            "steps": [
+                                {
+                                    "step_id": "STEP09",
+                                    "status": status,
+                                    "production_evidence": {
+                                        "candidate_head_sha": evidence_candidate,
+                                        "candidate_tree_sha": evidence_tree,
+                                    },
+                                }
+                            ],
+                        },
+                        sort_keys=True,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+            _git_fixture(provenance_root, "init", "-b", "main")
+            _git_fixture(provenance_root, "config", "user.name", "V076 Gate Selftest")
+            _git_fixture(
+                provenance_root, "config", "user.email", "v076-gate@example.invalid"
+            )
+            write_golden("0" * 40, "PENDING", "0" * 40, "0" * 40)
+            _git_fixture(provenance_root, "add", ".")
+            _git_fixture(provenance_root, "commit", "-m", "activation")
+            activation = _git_fixture(provenance_root, "rev-parse", "HEAD")
+
+            write_golden("0" * 40, "PRODUCTION_GREEN", "0" * 40, "0" * 40)
+            _git_fixture(provenance_root, "add", golden_relative)
+            _git_fixture(provenance_root, "commit", "-m", "green origin")
+            origin = _git_fixture(provenance_root, "rev-parse", "HEAD")
+            origin_tree = _git_fixture(provenance_root, "show", "-s", "--format=%T", origin)
+
+            write_golden(origin, "PRODUCTION_GREEN", origin, origin_tree)
+            _git_fixture(provenance_root, "add", golden_relative)
+            _git_fixture(provenance_root, "commit", "-m", "promotion metadata")
+            promotion = _git_fixture(provenance_root, "rev-parse", "HEAD")
+            promotion_tree = _git_fixture(
+                provenance_root, "show", "-s", "--format=%T", promotion
+            )
+
+            marker = provenance_root / "affected.txt"
+            marker.write_text("affected\n", encoding="utf-8")
+            _git_fixture(provenance_root, "add", "affected.txt")
+            _git_fixture(provenance_root, "commit", "-m", "affected product change")
+            affected = _git_fixture(provenance_root, "rev-parse", "HEAD")
+            affected_tree = _git_fixture(
+                provenance_root, "show", "-s", "--format=%T", affected
+            )
+
+            current_golden = json.loads(golden_path.read_text(encoding="utf-8"))
+            current_step = current_golden["steps"][0]
+            current_step["status"] = "REGRESSED_WITH_EVIDENCE"
+            current_step["regression"] = {
+                "failure_evidence": "current-subject revalidation pending",
+                "origin_commit": origin,
+                "promotion_metadata_commit": promotion,
+                "affected_commit": affected,
+                "affected_owner": BASE_OWNER_ID,
+                "repair_plan": "revalidate the exact subject",
+                "prior_status": "PRODUCTION_GREEN",
+            }
+
+            def evaluate_provenance(
+                value: dict[str, Any], evaluated_head: str = affected
+            ) -> tuple[dict[str, Any], list[str]]:
+                return gate.golden_regression_provenance(
+                    provenance_root,
+                    evaluated_head,
+                    golden_relative,
+                    value,
+                    provenance_ancestry_anchor=activation,
+                )
+
+            valid_provenance, valid_failures = evaluate_provenance(current_golden)
+            if valid_failures or valid_provenance.get("STEP09", {}).get("valid") is not True:
+                provenance_valid_failures.extend(valid_failures or ["VALID_PROVENANCE_REJECTED"])
+
+            wrong_step = copy.deepcopy(current_golden)
+            wrong_step["steps"][0]["step_id"] = "STEP_WRONG"
+            _, wrong_step_failures = evaluate_provenance(wrong_step)
+            if not any("ORIGIN_STEP_NOT_GREEN" in value for value in wrong_step_failures):
+                provenance_identity_negative_failures.append("WRONG_STEP_ACCEPTED")
+
+            wrong_prior = copy.deepcopy(current_golden)
+            wrong_prior["steps"][0]["regression"]["prior_status"] = "ISOLATED_GREEN"
+            _, wrong_prior_failures = evaluate_provenance(wrong_prior)
+            if not any("PRIOR_STATUS_MISMATCH" in value for value in wrong_prior_failures):
+                provenance_identity_negative_failures.append("WRONG_PRIOR_ACCEPTED")
+
+            late_origin = copy.deepcopy(current_golden)
+            late_origin["steps"][0]["regression"]["origin_commit"] = affected
+            _, late_origin_failures = evaluate_provenance(late_origin)
+            if not any("ORIGIN_NOT_STRICT_ANCESTOR" in value for value in late_origin_failures):
+                provenance_ancestry_negative_failures.append("LATE_ORIGIN_ACCEPTED")
+
+            late_promotion = copy.deepcopy(current_golden)
+            late_promotion["steps"][0]["regression"][
+                "promotion_metadata_commit"
+            ] = affected
+            _, late_promotion_failures = evaluate_provenance(late_promotion)
+            if not any(
+                "PROMOTION_NOT_STRICTLY_BETWEEN" in value
+                for value in late_promotion_failures
+            ):
+                provenance_ancestry_negative_failures.append("LATE_PROMOTION_ACCEPTED")
+
+            _git_fixture(provenance_root, "switch", "-c", "side", activation)
+            write_golden("0" * 40, "PRODUCTION_GREEN", "0" * 40, "0" * 40)
+            _git_fixture(provenance_root, "add", golden_relative)
+            _git_fixture(provenance_root, "commit", "-m", "non ancestor origin")
+            side_origin = _git_fixture(provenance_root, "rev-parse", "HEAD")
+            side_tree = _git_fixture(
+                provenance_root, "show", "-s", "--format=%T", side_origin
+            )
+            _git_fixture(provenance_root, "switch", "main")
+            non_ancestor = copy.deepcopy(current_golden)
+            non_ancestor_step = non_ancestor["steps"][0]
+            non_ancestor_step["regression"]["origin_commit"] = side_origin
+            non_ancestor_step["production_evidence"]["candidate_head_sha"] = side_origin
+            non_ancestor_step["production_evidence"]["candidate_tree_sha"] = side_tree
+            _, non_ancestor_failures = evaluate_provenance(non_ancestor)
+            if not any("ORIGIN_NOT_STRICT_ANCESTOR" in value for value in non_ancestor_failures):
+                provenance_ancestry_negative_failures.append("NON_ANCESTOR_ACCEPTED")
+
+            outside_anchor_origin = _git_fixture(
+                provenance_root,
+                "commit-tree",
+                origin_tree,
+                "-m",
+                "origin outside branch-local ancestry anchor",
+            )
+            outside_anchor = copy.deepcopy(current_golden)
+            outside_anchor_step = outside_anchor["steps"][0]
+            outside_anchor_step["regression"]["origin_commit"] = outside_anchor_origin
+            outside_anchor_step["production_evidence"][
+                "candidate_head_sha"
+            ] = outside_anchor_origin
+            _, outside_anchor_failures = evaluate_provenance(outside_anchor)
+            if not any(
+                "ORIGIN_NOT_PROVENANCE_ANCHOR_DESCENDANT" in value
+                for value in outside_anchor_failures
+            ):
+                provenance_anchor_negative_failures.append(
+                    "OUTSIDE_ANCHOR_ORIGIN_ACCEPTED"
+                )
+
+            side_promotion = _git_fixture(
+                provenance_root,
+                "commit-tree",
+                promotion_tree,
+                "-p",
+                origin,
+                "-m",
+                "promotion outside evaluated Head ancestry",
+            )
+            promotion_outside_head = copy.deepcopy(current_golden)
+            promotion_outside_head["steps"][0]["regression"][
+                "promotion_metadata_commit"
+            ] = side_promotion
+            _, promotion_outside_head_failures = evaluate_provenance(
+                promotion_outside_head
+            )
+            if not any(
+                "PROMOTION_NOT_PROVENANCE_ANCHOR_TO_HEAD_ANCESTRY" in value
+                for value in promotion_outside_head_failures
+            ):
+                provenance_head_ancestry_negative_failures.append(
+                    "PROMOTION_OUTSIDE_HEAD_ACCEPTED"
+                )
+
+            side_affected = _git_fixture(
+                provenance_root,
+                "commit-tree",
+                affected_tree,
+                "-p",
+                promotion,
+                "-m",
+                "affected commit outside evaluated Head ancestry",
+            )
+            affected_outside_head = copy.deepcopy(current_golden)
+            affected_outside_head["steps"][0]["regression"][
+                "affected_commit"
+            ] = side_affected
+            _, affected_outside_head_failures = evaluate_provenance(
+                affected_outside_head
+            )
+            if not any(
+                "AFFECTED_COMMIT_NOT_HEAD_ANCESTOR" in value
+                for value in affected_outside_head_failures
+            ):
+                provenance_head_ancestry_negative_failures.append(
+                    "AFFECTED_OUTSIDE_HEAD_ACCEPTED"
+                )
+
+            stale_sha = copy.deepcopy(current_golden)
+            stale_sha["steps"][0]["production_evidence"]["candidate_head_sha"] = "f" * 40
+            _, stale_sha_failures = evaluate_provenance(stale_sha)
+            if not any("STALE_CANDIDATE_SHA" in value for value in stale_sha_failures):
+                provenance_candidate_negative_failures.append("STALE_SHA_ACCEPTED")
+
+            stale_tree = copy.deepcopy(current_golden)
+            stale_tree["steps"][0]["production_evidence"]["candidate_tree_sha"] = "f" * 40
+            _, stale_tree_failures = evaluate_provenance(stale_tree)
+            if not any("STALE_CANDIDATE_TREE" in value for value in stale_tree_failures):
+                provenance_candidate_negative_failures.append("STALE_TREE_ACCEPTED")
+
+            _git_fixture(provenance_root, "switch", "-c", "wrong-top-tree", origin)
+            write_golden(origin, "PRODUCTION_GREEN", origin, origin_tree)
+            wrong_top_tree_snapshot = json.loads(
+                golden_path.read_text(encoding="utf-8")
+            )
+            wrong_top_tree_snapshot["candidate_tree_sha"] = "f" * 40
+            golden_path.write_text(
+                json.dumps(wrong_top_tree_snapshot, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            _git_fixture(provenance_root, "add", golden_relative)
+            _git_fixture(
+                provenance_root, "commit", "-m", "wrong promotion top-level tree"
+            )
+            wrong_top_tree_promotion = _git_fixture(
+                provenance_root, "rev-parse", "HEAD"
+            )
+            wrong_top_tree_marker = provenance_root / "wrong-top-tree-affected.txt"
+            wrong_top_tree_marker.write_text("affected\n", encoding="utf-8")
+            _git_fixture(
+                provenance_root, "add", "wrong-top-tree-affected.txt"
+            )
+            _git_fixture(
+                provenance_root, "commit", "-m", "wrong top tree affected change"
+            )
+            wrong_top_tree_affected = _git_fixture(
+                provenance_root, "rev-parse", "HEAD"
+            )
+            wrong_top_tree_current = copy.deepcopy(wrong_top_tree_snapshot)
+            wrong_top_tree_current_step = wrong_top_tree_current["steps"][0]
+            wrong_top_tree_current_step["status"] = "REGRESSED_WITH_EVIDENCE"
+            wrong_top_tree_current_step["regression"] = {
+                "failure_evidence": "wrong top-level tree fixture",
+                "origin_commit": origin,
+                "promotion_metadata_commit": wrong_top_tree_promotion,
+                "affected_commit": wrong_top_tree_affected,
+                "affected_owner": BASE_OWNER_ID,
+                "repair_plan": "reject the malformed promotion snapshot",
+                "prior_status": "PRODUCTION_GREEN",
+            }
+            _, wrong_top_tree_failures = evaluate_provenance(
+                wrong_top_tree_current, wrong_top_tree_affected
+            )
+            if not any(
+                "PROMOTION_TOP_LEVEL_CANDIDATE_TREE_MISMATCH" in value
+                for value in wrong_top_tree_failures
+            ):
+                promotion_top_level_negative_failures.append(
+                    "WRONG_PROMOTION_TOP_LEVEL_TREE_ACCEPTED"
+                )
+
+            _git_fixture(provenance_root, "switch", "main")
+            _git_fixture(
+                provenance_root, "switch", "-c", "wrong-step-evidence", origin
+            )
+            write_golden(origin, "PRODUCTION_GREEN", origin, origin_tree)
+            wrong_step_evidence_snapshot = json.loads(
+                golden_path.read_text(encoding="utf-8")
+            )
+            wrong_step_promotion_evidence = wrong_step_evidence_snapshot["steps"][0][
+                "production_evidence"
+            ]
+            wrong_step_promotion_evidence["candidate_head_sha"] = "f" * 40
+            wrong_step_promotion_evidence["candidate_tree_sha"] = "e" * 40
+            golden_path.write_text(
+                json.dumps(wrong_step_evidence_snapshot, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            _git_fixture(provenance_root, "add", golden_relative)
+            _git_fixture(
+                provenance_root, "commit", "-m", "wrong promotion step evidence"
+            )
+            wrong_step_evidence_promotion = _git_fixture(
+                provenance_root, "rev-parse", "HEAD"
+            )
+            wrong_step_evidence_marker = (
+                provenance_root / "wrong-step-evidence-affected.txt"
+            )
+            wrong_step_evidence_marker.write_text("affected\n", encoding="utf-8")
+            _git_fixture(
+                provenance_root, "add", "wrong-step-evidence-affected.txt"
+            )
+            _git_fixture(
+                provenance_root, "commit", "-m", "wrong step evidence affected change"
+            )
+            wrong_step_evidence_affected = _git_fixture(
+                provenance_root, "rev-parse", "HEAD"
+            )
+            wrong_step_evidence_current = copy.deepcopy(
+                wrong_step_evidence_snapshot
+            )
+            wrong_step_evidence_current_step = wrong_step_evidence_current["steps"][0]
+            wrong_step_evidence_current_step["status"] = "REGRESSED_WITH_EVIDENCE"
+            wrong_step_evidence_current_step["production_evidence"] = {
+                "candidate_head_sha": origin,
+                "candidate_tree_sha": origin_tree,
+            }
+            wrong_step_evidence_current_step["regression"] = {
+                "failure_evidence": "wrong step evidence fixture",
+                "origin_commit": origin,
+                "promotion_metadata_commit": wrong_step_evidence_promotion,
+                "affected_commit": wrong_step_evidence_affected,
+                "affected_owner": BASE_OWNER_ID,
+                "repair_plan": "reject the malformed promotion snapshot",
+                "prior_status": "PRODUCTION_GREEN",
+            }
+            _, wrong_step_evidence_failures = evaluate_provenance(
+                wrong_step_evidence_current, wrong_step_evidence_affected
+            )
+            if not any(
+                "PROMOTION_STEP_EVIDENCE_SHA_MISMATCH" in value
+                for value in wrong_step_evidence_failures
+            ):
+                promotion_step_evidence_negative_failures.append(
+                    "WRONG_PROMOTION_STEP_EVIDENCE_SHA_ACCEPTED"
+                )
+            if not any(
+                "PROMOTION_STEP_EVIDENCE_TREE_MISMATCH" in value
+                for value in wrong_step_evidence_failures
+            ):
+                promotion_step_evidence_negative_failures.append(
+                    "WRONG_PROMOTION_STEP_EVIDENCE_TREE_ACCEPTED"
+                )
+            _git_fixture(provenance_root, "switch", "main")
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        rendered = f"GOLDEN_PROVENANCE_FIXTURE_ERROR:{error}"
+        provenance_valid_failures.append(rendered)
+        provenance_identity_negative_failures.append(rendered)
+        provenance_ancestry_negative_failures.append(rendered)
+        provenance_anchor_negative_failures.append(rendered)
+        provenance_head_ancestry_negative_failures.append(rendered)
+        provenance_candidate_negative_failures.append(rendered)
+        promotion_top_level_negative_failures.append(rendered)
+        promotion_step_evidence_negative_failures.append(rendered)
+
+    real_chain_failures: list[str] = []
+    try:
+        repository_root = SCRIPT_DIR.parents[1]
+        real_golden_path = (
+            "docs/architecture/V076_ALPHA07_GOLDEN_PLAYTEST_SCENARIO.json"
+        )
+        real_origin = "f8340207d785e7b35ea7451048e5d71d0325232c"
+        real_promotion = "3bf9e9b2468e4a279af47cd3be36d0660abcfe91"
+        real_affected = "ce3b644dedaa752b09e97fadf3c7880889ea7e9f"
+        real_promotion_snapshot = gate._git_json_at(
+            repository_root, real_promotion, real_golden_path
+        )
+        if not isinstance(real_promotion_snapshot, dict):
+            real_chain_failures.append("REAL_PROMOTION_SNAPSHOT_MISSING")
+        else:
+            real_current = copy.deepcopy(real_promotion_snapshot)
+            real_steps = gate._index(real_current.get("steps", []), "step_id")
+            for real_step_id in ("STEP09", "STEP11", "STEP12"):
+                real_step = real_steps.get(real_step_id)
+                if not isinstance(real_step, dict):
+                    real_chain_failures.append(
+                        f"REAL_PROMOTION_STEP_MISSING:{real_step_id}"
+                    )
+                    continue
+                real_step["status"] = "REGRESSED_WITH_EVIDENCE"
+                real_step["regression"] = {
+                    "failure_evidence": "real-chain selftest revalidation",
+                    "origin_commit": real_origin,
+                    "promotion_metadata_commit": real_promotion,
+                    "affected_commit": real_affected,
+                    "affected_owner": BASE_OWNER_ID,
+                    "repair_plan": "retain exact historical provenance",
+                    "prior_status": "PRODUCTION_GREEN",
+                }
+            real_result, real_failures = gate.golden_regression_provenance(
+                repository_root,
+                "HEAD",
+                real_golden_path,
+                real_current,
+                provenance_ancestry_anchor=gate.V076_GATE_BASE_SHA,
+                label="REAL_F834_3BF_CE3",
+            )
+            real_chain_failures.extend(real_failures)
+            for real_step_id in ("STEP09", "STEP11", "STEP12"):
+                if real_result.get(real_step_id, {}).get("valid") is not True:
+                    real_chain_failures.append(
+                        f"REAL_CHAIN_STEP_REJECTED:{real_step_id}"
+                    )
+            if gate._is_ancestor(
+                repository_root, gate.ACTIVATION_BOUNDARY_COMMIT, real_origin
+            ):
+                real_chain_failures.append(
+                    "EXTERNAL_ACTIVATION_MISTAKEN_FOR_BRANCH_ANCESTRY"
+                )
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        real_chain_failures.append(f"REAL_GOLDEN_PROVENANCE_ERROR:{error}")
+
+    append_direct_case(
+        "126",
+        "Golden regression binds distinct green-origin and promotion-metadata commits",
+        "PASS",
+        "PASS" if not provenance_valid_failures else "FAIL",
+        provenance_valid_failures,
+    )
+    append_direct_case(
+        "127",
+        "wrong Golden step and wrong prior status fail closed",
+        "FAIL",
+        "FAIL" if not provenance_identity_negative_failures else "PASS",
+        provenance_identity_negative_failures,
+    )
+    append_direct_case(
+        "128",
+        "late or non-ancestor origin and promotion commits fail closed",
+        "FAIL",
+        "FAIL" if not provenance_ancestry_negative_failures else "PASS",
+        provenance_ancestry_negative_failures,
+    )
+    append_direct_case(
+        "129",
+        "stale Golden candidate SHA and tree fail closed",
+        "FAIL",
+        "FAIL" if not provenance_candidate_negative_failures else "PASS",
+        provenance_candidate_negative_failures,
+    )
+
+    quoted_extends_failures: list[str] = []
+    try:
+        with tempfile.TemporaryDirectory(prefix="v076-quoted-extends-") as temp_path:
+            closure_root = Path(temp_path)
+            _git_fixture(closure_root, "init", "-b", "main")
+            _git_fixture(closure_root, "config", "user.name", "V076 Gate Selftest")
+            _git_fixture(
+                closure_root, "config", "user.email", "v076-gate@example.invalid"
+            )
+            scripts = closure_root / "scripts"
+            scripts.mkdir(parents=True, exist_ok=True)
+            (scripts / "base.gd").write_text("extends RefCounted\n", encoding="utf-8")
+            (scripts / "child.gd").write_text(
+                'extends "res://scripts/base.gd"\n# extends "res://scripts/ignored.gd"\n',
+                encoding="utf-8",
+            )
+            _git_fixture(closure_root, "add", ".")
+            _git_fixture(closure_root, "commit", "-m", "quoted extends fixture")
+            closure = gate._snapshot_reference_closure(
+                closure_root, "HEAD", ["scripts/child.gd"], False
+            )["reachable"]
+            if not {"scripts/child.gd", "scripts/base.gd"}.issubset(set(closure)):
+                quoted_extends_failures.append(f"QUOTED_EXTENDS_MISSING:{sorted(closure)}")
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        quoted_extends_failures.append(f"QUOTED_EXTENDS_FIXTURE_ERROR:{error}")
+    append_direct_case(
+        "130",
+        "quoted GDScript extends participates in the production reference closure",
+        "PASS",
+        "PASS" if not quoted_extends_failures else "FAIL",
+        quoted_extends_failures,
+    )
+
+    anonymous_path = BASE_OWNER_PATH
+    anonymous_identity = gate._anonymous_path_bound_identity(anonymous_path)
+
+    def configure_component_identity(
+        data: gate.ValidationInput, class_identity: str, declared_identity: str
+    ) -> None:
+        for authority_set in (data.authorities, data.baseline_authorities):
+            component = authority_set["historical_reuse"]["component_inventory"][0]
+            component["class_name"] = class_identity
+            authority_set["historical_reuse"]["unique_owner_domains"][0][
+                "unique_owner"
+            ] = class_identity
+        data.component_declared_classes = {anonymous_path: declared_identity}
+
+    anonymous_valid = _valid_input()
+    configure_component_identity(anonymous_valid, anonymous_identity, anonymous_identity)
+    anonymous_valid_report = gate.validate_model(anonymous_valid)
+    append_direct_case(
+        "131",
+        "an anonymous GDScript uses an explicit normalized path-bound identity",
+        "PASS",
+        str(anonymous_valid_report["status"]),
+        [str(value) for value in anonymous_valid_report.get("failures", [])],
+    )
+
+    anonymous_negative_failures: list[str] = []
+    declared_as_anonymous = _valid_input()
+    configure_component_identity(
+        declared_as_anonymous, anonymous_identity, "V076SelftestOwner"
+    )
+    declared_report = gate.validate_model(declared_as_anonymous)
+    if not any(
+        value.startswith("COMPONENT_CLASS_DECLARATION_MISMATCH:")
+        for value in declared_report.get("failures", [])
+    ):
+        anonymous_negative_failures.append("DECLARED_CLASS_ACCEPTED_SENTINEL")
+
+    fabricated_class = _valid_input()
+    configure_component_identity(fabricated_class, "MonsterArtView", anonymous_identity)
+    fabricated_report = gate.validate_model(fabricated_class)
+    if not any(
+        value.startswith("COMPONENT_CLASS_DECLARATION_MISMATCH:")
+        for value in fabricated_report.get("failures", [])
+    ):
+        anonymous_negative_failures.append("ANONYMOUS_SCRIPT_ACCEPTED_FAKE_CLASS")
+
+    for label, wrong_identity in (
+        ("WRONG_PATH", gate._anonymous_path_bound_identity("scripts/wrong.gd")),
+        ("CASE_DRIFT", anonymous_identity.replace("scripts/", "Scripts/", 1)),
+    ):
+        wrong_path_bound = _valid_input()
+        configure_component_identity(
+            wrong_path_bound, wrong_identity, anonymous_identity
+        )
+        wrong_report = gate.validate_model(wrong_path_bound)
+        if not any(
+            "ANONYMOUS_PATH_IDENTITY_INVALID" in value
+            for value in wrong_report.get("failures", [])
+        ):
+            anonymous_negative_failures.append(f"{label}_SENTINEL_ACCEPTED")
+    append_direct_case(
+        "132",
+        "declared, fabricated, wrong-path, and case-drift anonymous identities fail closed",
+        "FAIL",
+        "FAIL" if not anonymous_negative_failures else "PASS",
+        anonymous_negative_failures,
+    )
+    append_direct_case(
+        "133",
+        "a promotion snapshot with the wrong top-level candidate tree fails closed",
+        "FAIL",
+        "FAIL" if not promotion_top_level_negative_failures else "PASS",
+        promotion_top_level_negative_failures,
+    )
+    append_direct_case(
+        "134",
+        "a promotion snapshot with wrong step production-evidence SHA and tree fails closed",
+        "FAIL",
+        "FAIL" if not promotion_step_evidence_negative_failures else "PASS",
+        promotion_step_evidence_negative_failures,
+    )
+    external_activation_drift = _valid_input()
+    external_activation_drift.authorities["inherited_green"][
+        "gate_activation_boundary_commit"
+    ] = "f" * 40
+    external_activation_drift_report = gate.validate_model(external_activation_drift)
+    append_direct_case(
+        "135",
+        "the external PR90 activation evidence identity remains exact",
+        "FAIL",
+        str(external_activation_drift_report["status"]),
+        [
+            str(value)
+            for value in external_activation_drift_report.get("failures", [])
+        ],
+    )
+    append_direct_case(
+        "136",
+        "a Golden origin outside the branch-local provenance anchor fails closed",
+        "FAIL",
+        "FAIL" if not provenance_anchor_negative_failures else "PASS",
+        provenance_anchor_negative_failures,
+    )
+    append_direct_case(
+        "137",
+        "promotion and affected commits outside the evaluated Head ancestry fail closed",
+        "FAIL",
+        "FAIL" if not provenance_head_ancestry_negative_failures else "PASS",
+        provenance_head_ancestry_negative_failures,
+    )
+    append_direct_case(
+        "138",
+        "the real f834 origin, 3bf promotion, and ce3 affected chain uses the branch-local Gate base",
+        "PASS",
+        "PASS" if not real_chain_failures else "FAIL",
+        real_chain_failures,
     )
 
     pass_count = sum(result["status"] == "PASS" for result in results)

@@ -168,6 +168,8 @@ ALLOWED_CHANGE_CLASSES = {
 
 ALLOWED_COMPONENT_CHANGE_CLASSES = ALLOWED_CHANGE_CLASSES | {"INHERITED"}
 
+ANONYMOUS_PATH_BOUND_PREFIX = "ANONYMOUS_PATH_BOUND:"
+
 COMPONENT_AUTHORITY_INERTIA_FIELDS = (
     "production_reachable",
     "writes_authority",
@@ -587,6 +589,14 @@ RULE_AUTHORITY_PATHS = {
     "docs/rules_v06_runtime_directive.md",
 }
 
+# These files are authoritative rule inputs, but they are not Godot
+# components.  Keep them in the rule-change stream below while preventing the
+# component-delta classifier from requiring fabricated Owner/Consumer rows.
+NON_COMPONENT_RULE_AUTHORITY_PATHS = {
+    "docs/rules/v06_mechanic_status_registry.json",
+    "docs/tabletop_rulebook_v06.md",
+}
+
 RULE_AUTHORITY_PREFIXES = (
     "docs/rules/",
     "resources/rules/",
@@ -750,6 +760,14 @@ def _is_rule_authority_path(path: str) -> bool:
     )
 
 
+def _is_non_component_rule_authority_path(path: str) -> bool:
+    """Return true for rule authorities that must not be fake components."""
+    binding = _component_binding_path(path).casefold()
+    return binding in {
+        value.casefold() for value in NON_COMPONENT_RULE_AUTHORITY_PATHS
+    }
+
+
 def _json(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8-sig"))
     if not isinstance(value, dict):
@@ -782,6 +800,26 @@ def _git(root: Path, *args: str, check: bool = True) -> str:
             f"{completed.stderr.strip()}"
         )
     return completed.stdout.strip()
+
+
+def _is_ancestor(root: Path, ancestor: str, descendant: str) -> bool:
+    return (
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "merge-base",
+                "--is-ancestor",
+                ancestor,
+                descendant,
+            ],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode
+        == 0
+    )
 
 
 def _git_bytes(root: Path, *args: str, check: bool = True) -> bytes:
@@ -944,6 +982,33 @@ def _is_hex(value: Any, length: int) -> bool:
     return isinstance(value, str) and re.fullmatch(rf"[0-9a-f]{{{length}}}", value) is not None
 
 
+def _anonymous_path_bound_identity(path: Any) -> str:
+    return f"{ANONYMOUS_PATH_BOUND_PREFIX}{_component_binding_path(str(path))}"
+
+
+def _declared_script_class_identity(source: str, path: Any) -> str:
+    """Return the declared global class or the exact path-bound sentinel.
+
+    Godot scripts do not need ``class_name`` to be valid production scripts.
+    The registry must not force a product edit merely to manufacture one, so
+    declaration checks use an explicit anonymous identity whose uniqueness is
+    completed by the registered path.
+    """
+    match = re.search(
+        r"^\s*class_name\s+([A-Za-z_][A-Za-z0-9_]*)\b",
+        source,
+        flags=re.MULTILINE,
+    )
+    return match.group(1) if match else _anonymous_path_bound_identity(path)
+
+
+def _component_class_identity_key(class_name: Any, path: Any) -> str:
+    rendered_class = str(class_name)
+    if rendered_class.startswith(ANONYMOUS_PATH_BOUND_PREFIX):
+        return rendered_class
+    return rendered_class
+
+
 def _regression_evidence_complete(
     value: Any, expected_prior_status: str | None = None
 ) -> bool:
@@ -962,6 +1027,27 @@ def _regression_evidence_complete(
     return complete and _is_hex(value.get("affected_commit"), 40) and (
         expected_prior_status is None
         or value.get("prior_status") == expected_prior_status
+    )
+
+
+def _golden_regression_has_green_origin(
+    regression: Any,
+    provenance: Any,
+) -> bool:
+    """Require a Git-proven exact green origin for a Golden regression."""
+    expected_prior_status = (
+        provenance.get("origin_status") if isinstance(provenance, dict) else None
+    )
+    return bool(
+        isinstance(regression, dict)
+        and isinstance(provenance, dict)
+        and provenance.get("valid") is True
+        and expected_prior_status
+        in {"ISOLATED_GREEN", "PRODUCTION_GREEN", "HUMAN_GREEN"}
+        and _is_hex(regression.get("origin_commit"), 40)
+        and _regression_evidence_complete(
+            regression, str(expected_prior_status)
+        )
     )
 
 
@@ -2465,6 +2551,16 @@ def _component_row_contract_failures(
     for key in COMPONENT_STRING_FIELDS:
         if not isinstance(component.get(key), str) or not component.get(key).strip():
             failures.append(f"{prefix}_STRING_FIELD:{rendered_id}:{key}")
+    component_path = component.get("path")
+    class_name = component.get("class_name")
+    if (
+        isinstance(component_path, str)
+        and component_path.casefold().endswith(".gd")
+        and isinstance(class_name, str)
+        and class_name.startswith("ANONYMOUS_PATH_BOUND")
+        and class_name != _anonymous_path_bound_identity(component_path)
+    ):
+        failures.append(f"{prefix}_ANONYMOUS_PATH_IDENTITY_INVALID:{rendered_id}")
     for key in COMPONENT_BOOL_FIELDS:
         if not _is_bool(component.get(key)):
             failures.append(f"{prefix}_BOOL_TYPE:{rendered_id}:{key}")
@@ -2607,7 +2703,9 @@ def _authority_snapshot_contract_failures(
     ]
     component_paths = [row.get("path") for row in components if isinstance(row, dict)]
     component_classes = [
-        row.get("class_name") for row in components if isinstance(row, dict)
+        _component_class_identity_key(row.get("class_name"), row.get("path"))
+        for row in components
+        if isinstance(row, dict)
     ]
     domain_ids = [row.get("domain_id") for row in domains if isinstance(row, dict)]
     reuse_ids_list = [row.get("reuse_id") for row in reuse_rows if isinstance(row, dict)]
@@ -3483,6 +3581,7 @@ class ValidationInput:
     evidence_artifact_bindings: dict[str, dict[str, Any]] | None = None
     git_commit_tree_bindings: dict[str, str] | None = None
     regression_commit_bindings: set[str] | None = None
+    golden_regression_provenance: dict[str, dict[str, Any]] | None = None
     evidence_subject_is_baseline_descendant: bool = True
     evidence_subject_is_head_ancestor: bool = True
     evidence_subject_product_tree_matches_head: bool = True
@@ -3638,6 +3737,8 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
             failures.append(f"SCANNER_MISSING:{scanner['scanner_id']}")
     if data.retired_scanner_status != "PASS":
         failures.append("REUSED_RETIRED_MECHANIC_SCANNER_FAILED")
+    if inherited.get("gate_activation_boundary_commit") != ACTIVATION_BOUNDARY_COMMIT:
+        failures.append("EXTERNAL_GATE_ACTIVATION_BOUNDARY_IDENTITY_MISMATCH")
     if inherited.get("point_inertia_baseline_sha") != V076_GATE_BASE_SHA:
         failures.append("POINT_INERTIA_BASELINE_IDENTITY_MISMATCH")
 
@@ -3655,7 +3756,9 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
     if not _unique(component_paths) or "" in component_paths:
         failures.append("COMPONENT_PATH_NOT_UNIQUE")
     component_classes = [
-        str(x.get("class_name", "")) for x in components if isinstance(x, dict)
+        _component_class_identity_key(x.get("class_name"), x.get("path"))
+        for x in components
+        if isinstance(x, dict)
     ]
     if not _unique(component_classes) or "" in component_classes:
         failures.append("COMPONENT_CLASS_NAME_NOT_UNIQUE")
@@ -4503,9 +4606,16 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
         if old_status in rank and new_status in rank and rank[new_status] < rank[old_status]:
             metrics["GOLDEN_SCENARIO_STEP_DELETE_COUNT"] += 1
             failures.append(f"GOLDEN_SCENARIO_STEP_DOWNGRADE:{step_id}")
-        if new_status == "REGRESSED_WITH_EVIDENCE" and (
-            old_status == "PENDING"
-            or not _regression_evidence_complete(new.get("regression"), str(old_status))
+        regression_provenance = (
+            data.golden_regression_provenance.get(step_id)
+            if isinstance(data.golden_regression_provenance, dict)
+            else None
+        )
+        if new_status == "REGRESSED_WITH_EVIDENCE" and not (
+            _golden_regression_has_green_origin(
+                new.get("regression"),
+                regression_provenance,
+            )
         ):
             metrics["GOLDEN_SCENARIO_STEP_DELETE_COUNT"] += 1
             failures.append(f"GOLDEN_SCENARIO_REGRESSION_EVIDENCE_MISSING:{step_id}")
@@ -4757,11 +4867,14 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
             )
             or _component_binding_path(str(row.get("path", ""))) in by_path
         )
+        and not _is_non_component_rule_authority_path(str(row.get("path", "")))
     ]
     product_gate_paths = [
         path
         for path in gate_component_candidate_paths
         if (
+            not _is_non_component_rule_authority_path(path)
+            and (
             _component_binding_path(path) not in by_path
             or by_path[_component_binding_path(path)].get("production_reachable") is True
             or _is_forced_production_path(path)
@@ -4772,6 +4885,7 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
                     or row.get("production_reachable_before") is True
                 )
                 for row in data.gate_changed_paths
+            )
             )
         )
     ]
@@ -6123,6 +6237,20 @@ def _snapshot_reference_closure(
                         dependencies.update(descendants)
                     else:
                         missing_refs.add((path, referenced))
+            # ``extends \"res://...\"`` is a native GDScript inheritance edge,
+            # not a loader call.  It must participate in the same production
+            # closure so a quoted base script cannot remain unclassified.
+            for extends_match in re.finditer(
+                r"(?m)^\s*extends\s+(?P<quote>[\"'])(?P<path>res://[^\"'\r\n]+)(?P=quote)",
+                comment_clean,
+            ):
+                referenced = _normalize_res_reference(extends_match.group("path"))
+                if referenced is None:
+                    continue
+                if referenced in paths:
+                    dependencies.add(referenced)
+                else:
+                    missing_refs.add((path, referenced))
             for match in loader_pattern.finditer(comment_clean):
                 argument = _first_call_argument(comment_clean, match.end() - 1)
                 if argument is None:
@@ -6318,13 +6446,219 @@ def load_baseline_authorities(root: Path, ref: str, current_paths: dict[str, lis
     return result
 
 
+def golden_regression_provenance(
+    root: Path,
+    evaluated_head: str,
+    golden_path: str,
+    current_golden: Any,
+    *,
+    provenance_ancestry_anchor: str,
+    failure_prefix: str = "GOLDEN_REGRESSION_PROVENANCE",
+    label: str = "HEAD",
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """Resolve exact Git provenance for every current Golden regression.
+
+    ``origin_commit`` is the committed snapshot where the same step is green.
+    A later promotion snapshot must bind its top-level candidate to that exact
+    origin while retaining the same status; this models the real f834 -> 3bf
+    history without pretending the promotion metadata commit is the product
+    subject.  ``provenance_ancestry_anchor`` is the branch-local V076 Gate base,
+    not the external PR90 activation evidence commit.  The origin must descend
+    from that local anchor and strictly precede the affected commit, and the
+    affected commit must be in the evaluated Head ancestry.
+    """
+    results: dict[str, dict[str, Any]] = {}
+    failures: list[str] = []
+    if not isinstance(current_golden, dict):
+        return results, [f"{failure_prefix}_GOLDEN_NOT_OBJECT:{label}"]
+    current_steps = current_golden.get("steps")
+    if not isinstance(current_steps, list):
+        return results, [f"{failure_prefix}_STEPS_NOT_LIST:{label}"]
+    green_statuses = {"ISOLATED_GREEN", "PRODUCTION_GREEN", "HUMAN_GREEN"}
+
+    def commit_exists(ref: Any) -> bool:
+        return bool(
+            _is_hex(ref, 40)
+            and _is_hex(
+                _git(root, "show", "-s", "--format=%T", str(ref), check=False),
+                40,
+            )
+        )
+
+    for step in current_steps:
+        if not (
+            isinstance(step, dict)
+            and step.get("status") == "REGRESSED_WITH_EVIDENCE"
+        ):
+            continue
+        step_id = str(step.get("step_id", ""))
+        regression = step.get("regression")
+        local_failures: list[str] = []
+
+        def reject(code: str) -> None:
+            local_failures.append(f"{failure_prefix}_{code}:{label}:{step_id}")
+
+        if not isinstance(regression, dict):
+            reject("RECORD_INVALID")
+            regression = {}
+        origin_commit = regression.get("origin_commit")
+        promotion_commit = regression.get("promotion_metadata_commit")
+        affected_commit = regression.get("affected_commit")
+        if not commit_exists(origin_commit):
+            reject("ORIGIN_COMMIT_INVALID")
+        if not commit_exists(affected_commit):
+            reject("AFFECTED_COMMIT_INVALID")
+        if not commit_exists(promotion_commit):
+            reject("PROMOTION_COMMIT_INVALID")
+        if commit_exists(origin_commit) and not _is_ancestor(
+            root, provenance_ancestry_anchor, str(origin_commit)
+        ):
+            reject("ORIGIN_NOT_PROVENANCE_ANCHOR_DESCENDANT")
+        if commit_exists(promotion_commit) and not (
+            _is_ancestor(root, provenance_ancestry_anchor, str(promotion_commit))
+            and _is_ancestor(root, str(promotion_commit), evaluated_head)
+        ):
+            reject("PROMOTION_NOT_PROVENANCE_ANCHOR_TO_HEAD_ANCESTRY")
+        if commit_exists(affected_commit) and not _is_ancestor(
+            root, str(affected_commit), evaluated_head
+        ):
+            reject("AFFECTED_COMMIT_NOT_HEAD_ANCESTOR")
+        strict_origin_chain = bool(
+            commit_exists(origin_commit)
+            and commit_exists(affected_commit)
+            and origin_commit != affected_commit
+            and _is_ancestor(root, str(origin_commit), str(affected_commit))
+        )
+        if not strict_origin_chain:
+            reject("ORIGIN_NOT_STRICT_ANCESTOR")
+        strict_promotion_chain = bool(
+            strict_origin_chain
+            and commit_exists(promotion_commit)
+            and origin_commit != promotion_commit
+            and promotion_commit != affected_commit
+            and _is_ancestor(root, str(origin_commit), str(promotion_commit))
+            and _is_ancestor(root, str(promotion_commit), str(affected_commit))
+        )
+        if not strict_promotion_chain:
+            reject("PROMOTION_NOT_STRICTLY_BETWEEN")
+
+        origin_status = ""
+        origin_tree = ""
+        if commit_exists(origin_commit):
+            origin_golden = _git_json_at(root, str(origin_commit), golden_path)
+            origin_step = _index(
+                origin_golden.get("steps", []) if isinstance(origin_golden, dict) else [],
+                "step_id",
+            ).get(step_id)
+            origin_status = str(origin_step.get("status", "")) if origin_step else ""
+            origin_tree = _git(
+                root, "show", "-s", "--format=%T", str(origin_commit), check=False
+            )
+            if origin_status not in green_statuses:
+                reject("ORIGIN_STEP_NOT_GREEN")
+        if regression.get("prior_status") != origin_status:
+            reject("PRIOR_STATUS_MISMATCH")
+
+        promotion_commits: list[str] = []
+        if strict_origin_chain:
+            ancestry = _git(
+                root,
+                "rev-list",
+                "--reverse",
+                "--topo-order",
+                "--ancestry-path",
+                f"{origin_commit}..{affected_commit}",
+            ).splitlines()
+            for ref in ancestry:
+                promotion_golden = _git_json_at(root, ref, golden_path)
+                if not isinstance(promotion_golden, dict):
+                    continue
+                promotion_step = _index(
+                    promotion_golden.get("steps", []), "step_id"
+                ).get(step_id)
+                promotion_evidence = (
+                    promotion_step.get("production_evidence")
+                    if isinstance(promotion_step, dict)
+                    else None
+                )
+                if (
+                    promotion_golden.get("candidate_head_sha") == origin_commit
+                    and promotion_golden.get("candidate_tree_sha") == origin_tree
+                    and isinstance(promotion_step, dict)
+                    and promotion_step.get("status") == origin_status
+                    and isinstance(promotion_evidence, dict)
+                    and promotion_evidence.get("candidate_head_sha") == origin_commit
+                    and promotion_evidence.get("candidate_tree_sha") == origin_tree
+                ):
+                    promotion_commits.append(ref)
+        if not promotion_commits:
+            reject("PROMOTION_METADATA_NOT_FOUND")
+        if promotion_commit not in promotion_commits:
+            reject("PROMOTION_METADATA_MISMATCH")
+
+        if commit_exists(promotion_commit):
+            declared_promotion = _git_json_at(
+                root, str(promotion_commit), golden_path
+            )
+            if not isinstance(declared_promotion, dict):
+                reject("PROMOTION_SNAPSHOT_INVALID")
+            else:
+                if declared_promotion.get("candidate_head_sha") != origin_commit:
+                    reject("PROMOTION_TOP_LEVEL_CANDIDATE_SHA_MISMATCH")
+                if declared_promotion.get("candidate_tree_sha") != origin_tree:
+                    reject("PROMOTION_TOP_LEVEL_CANDIDATE_TREE_MISMATCH")
+                declared_promotion_step = _index(
+                    declared_promotion.get("steps", []), "step_id"
+                ).get(step_id)
+                if not isinstance(declared_promotion_step, dict) or (
+                    declared_promotion_step.get("status") != origin_status
+                ):
+                    reject("PROMOTION_STEP_STATUS_MISMATCH")
+                    declared_promotion_evidence = None
+                else:
+                    declared_promotion_evidence = declared_promotion_step.get(
+                        "production_evidence"
+                    )
+                if not isinstance(declared_promotion_evidence, dict) or (
+                    declared_promotion_evidence.get("candidate_head_sha")
+                    != origin_commit
+                ):
+                    reject("PROMOTION_STEP_EVIDENCE_SHA_MISMATCH")
+                if not isinstance(declared_promotion_evidence, dict) or (
+                    declared_promotion_evidence.get("candidate_tree_sha")
+                    != origin_tree
+                ):
+                    reject("PROMOTION_STEP_EVIDENCE_TREE_MISMATCH")
+
+        if origin_status in {"PRODUCTION_GREEN", "HUMAN_GREEN"}:
+            production_evidence = step.get("production_evidence")
+            if not isinstance(production_evidence, dict) or (
+                production_evidence.get("candidate_head_sha") != origin_commit
+            ):
+                reject("STALE_CANDIDATE_SHA")
+            if not isinstance(production_evidence, dict) or (
+                production_evidence.get("candidate_tree_sha") != origin_tree
+            ):
+                reject("STALE_CANDIDATE_TREE")
+
+        results[step_id] = {
+            "valid": not local_failures,
+            "origin_commit": str(origin_commit or ""),
+            "origin_status": origin_status,
+            "promotion_metadata_commit": str(promotion_commit or ""),
+            "affected_commit": str(affected_commit or ""),
+        }
+        failures.extend(local_failures)
+    return results, sorted(set(failures))
+
+
 def committed_history_failures(
     root: Path,
-    activation_ref: str,
+    history_ancestry_anchor: str,
     head_ref: str,
     implementation_paths: dict[str, list[str]],
 ) -> tuple[list[str], int]:
-    """Validate every adjacent committed transition from activation through Head."""
+    """Validate every adjacent transition from the branch-local Gate base."""
     head_authorities = load_baseline_authorities(root, head_ref, implementation_paths)
     corrections, correction_failures = _history_classification_corrections(
         root, head_ref, head_authorities
@@ -6360,13 +6694,26 @@ def committed_history_failures(
         "--reverse",
         "--topo-order",
         "--ancestry-path",
-        f"{activation_ref}..{head_ref}",
+        f"{history_ancestry_anchor}..{head_ref}",
     ).splitlines()
+    golden_paths = implementation_paths.get("golden", [])
+    golden_path = golden_paths[0] if len(golden_paths) == 1 else ""
     transition_count = 0
     for commit in commits:
         current_authorities = load_baseline_authorities(
             root, commit, implementation_paths
         )
+        if golden_path:
+            _, golden_provenance_failures = golden_regression_provenance(
+                root,
+                commit,
+                golden_path,
+                current_authorities.get("golden"),
+                provenance_ancestry_anchor=history_ancestry_anchor,
+                failure_prefix="HISTORY_GOLDEN_REGRESSION_PROVENANCE",
+                label=commit[:12],
+            )
+            failures.extend(golden_provenance_failures)
         current_components = current_authorities.get("historical_reuse", {}).get(
             "component_inventory", []
         )
@@ -6388,12 +6735,7 @@ def committed_history_failures(
                 source = _git(
                     root, "show", f"{commit}:{component_path}", check=False
                 )
-                class_match = re.search(
-                    r"^\s*class_name\s+([A-Za-z_][A-Za-z0-9_]*)\s*$",
-                    source,
-                    flags=re.MULTILINE,
-                )
-                if not class_match or class_match.group(1) != component.get(
+                if _declared_script_class_identity(source, component_path) != component.get(
                     "class_name"
                 ):
                     failures.append(
@@ -6437,14 +6779,14 @@ def committed_history_failures(
             root, "rev-list", "--parents", "-n", "1", commit
         ).split()
         for parent_ref in commit_and_parents[1:]:
-            parent_is_in_scope = parent_ref == activation_ref or subprocess.run(
+            parent_is_in_scope = parent_ref == history_ancestry_anchor or subprocess.run(
                 [
                     "git",
                     "-C",
                     str(root),
                     "merge-base",
                     "--is-ancestor",
-                    activation_ref,
+                    history_ancestry_anchor,
                     parent_ref,
                 ],
                 check=False,
@@ -6733,15 +7075,11 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
         ):
             continue
         source_path = root / component_path
-        declared = ""
+        declared = _anonymous_path_bound_identity(component_path)
         if source_path.is_file():
-            match = re.search(
-                r"^\s*class_name\s+([A-Za-z_][A-Za-z0-9_]*)\s*$",
-                source_path.read_text(encoding="utf-8-sig"),
-                flags=re.MULTILINE,
+            declared = _declared_script_class_identity(
+                source_path.read_text(encoding="utf-8-sig"), component_path
             )
-            if match:
-                declared = match.group(1)
         component_declared_classes[component_path] = declared
     component_presence = {
         str(row.get("path", "")): (root / str(row.get("path", ""))).is_file()
@@ -6804,6 +7142,19 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
             _git(root, "show", "-s", "--format=%T", affected_commit, check=False), 40
         ):
             regression_commit_bindings.add(str(affected_commit))
+    golden_provenance: dict[str, dict[str, Any]] = {}
+    golden_provenance_failures: list[str] = []
+    golden_paths = implementation_paths.get("golden", [])
+    if len(golden_paths) == 1:
+        golden_provenance, golden_provenance_failures = (
+            golden_regression_provenance(
+                root,
+                args.head_ref,
+                golden_paths[0],
+                authorities.get("golden"),
+                provenance_ancestry_anchor=V076_GATE_BASE_SHA,
+            )
+        )
     baseline_subject_sha = str(
         baseline.get("historical_reuse", {}).get("candidate_head_sha", "")
     )
@@ -6954,6 +7305,7 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
             evidence_artifact_bindings=evidence_artifact_bindings,
             git_commit_tree_bindings=git_commit_tree_bindings,
             regression_commit_bindings=regression_commit_bindings,
+            golden_regression_provenance=golden_provenance,
             evidence_subject_is_baseline_descendant=evidence_subject_is_baseline_descendant,
             evidence_subject_is_head_ancestor=evidence_subject_is_head_ancestor,
             evidence_subject_product_tree_matches_head=(
@@ -6962,6 +7314,10 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
             retired_scanner_status=status,
         )
     )
+    if golden_provenance_failures:
+        report["status"] = "FAIL"
+        report.setdefault("failures", []).extend(golden_provenance_failures)
+        report["failures"] = sorted(set(report["failures"]))
     history_failures: list[str] = []
     history_transition_count = 0
     if args.inertia_base_ref != V076_GATE_BASE_SHA or args.gate_base_ref != V076_GATE_BASE_SHA:
@@ -7029,6 +7385,7 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
             "point_inertia_history_base_sha": V076_GATE_BASE_SHA,
             "point_inertia_history_transition_count": history_transition_count,
             "point_inertia_history_failure_count": len(history_failures),
+            "golden_regression_provenance": golden_provenance,
             "scanner_inventory": scanner_inventory,
             "retired_mechanic_scanner": retired_report,
             "gate_selftest": selftest_report,
