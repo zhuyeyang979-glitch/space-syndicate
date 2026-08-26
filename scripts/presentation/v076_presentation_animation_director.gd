@@ -64,7 +64,9 @@ func _process(delta: float) -> void:
 
 
 func load_cue_catalog(path: String = CUE_CATALOG_PATH) -> bool:
-	var text := FileAccess.get_file_as_string(path)
+	if path != CUE_CATALOG_PATH:
+		return false
+	var text := FileAccess.get_file_as_string(CUE_CATALOG_PATH)
 	var parsed: Variant = JSON.parse_string(text)
 	if not (parsed is Dictionary):
 		return false
