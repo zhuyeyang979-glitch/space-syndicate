@@ -1,0 +1,112 @@
+{
+  "schema_version": "space_syndicate.v076.evidence_tree_successor_manifest.v1",
+  "manifest_id": "v076-evidence-tree-successor-fa3fcda0",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "recorded_at_utc": "2026-08-26T20:44:33.045Z",
+  "status": "PRIOR_LANDING_COMMIT_ATTESTED_CURRENT_RAW_SCAN_PENDING",
+  "attested_landing": {
+    "head_sha": "fa3fcda082e876a66f485de530dfa7a1c370d30d",
+    "tree_sha": "9aa30c62d520d2cab8274039b1770eaf8c3302ef",
+    "parent_head_sha": "6a0560a54816c7ae0841df1684a75e47bcc468fb",
+    "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+    "committed_at": "2026-08-27T05:43:48+09:00",
+    "attested_commit_precedes_manifest_commit": true
+  },
+  "path_inventory": [
+    {
+      "path": "docs/architecture/V076_ALPHA07_GOLDEN_PLAYTEST_SCENARIO.json",
+      "git_blob_sha1": "f8e52af79413d0d39a34a8e05be864ad6bbbaa4d",
+      "sha256": "748814512f2c318850493bbe80a21734c46855795d1032ba92c450f8e95ebcb5",
+      "size_bytes": 33127
+    },
+    {
+      "path": "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+      "git_blob_sha1": "02651d240fdeb44f6d5a3c8beec65fe4d02423a4",
+      "sha256": "ae5fb2b7138edac14d85f4e64c4028ab83f73262f4ad411b1602d29290d61449",
+      "size_bytes": 273534
+    },
+    {
+      "path": "docs/architecture/V076_INHERITED_GREEN_LEDGER.json",
+      "git_blob_sha1": "9c02159ab7ae06ba4179b335b37430b4eee1429d",
+      "sha256": "730a5a61c5658e76d047d77af922228e6ea872a8d9f848d020b2e6fafdf45a5e",
+      "size_bytes": 92195
+    },
+    {
+      "path": "docs/architecture/V076_SUPERSESSION_MAP.json",
+      "git_blob_sha1": "8d5af2147d5f6313caf593a04f60340ea9ceeb1d",
+      "sha256": "2b262536cc9dd9cedb34ec4578210fb57c737e1e4735675cebcac73623ea0451",
+      "size_bytes": 11467
+    },
+    {
+      "path": "reports/coordination/pr93_body_gate_preflight.md",
+      "git_blob_sha1": "1b64ca34622882301b98e6172b9fbc75af9e4b93",
+      "sha256": "951ddd22cdd0a25d2073517f3334587d8d528c6559888c680a0f38992cf8623a",
+      "size_bytes": 8187
+    },
+    {
+      "path": "reports/reuse/full_convergence/candidate_subject_manifest_9f8659c8.json",
+      "git_blob_sha1": "fff24029fb0c15dcf769274a4b98ed02d276519b",
+      "sha256": "edfbf306f37b25ad1b4daaece0e3b2eae0c4ab5e9340fef577f593b4e2e245d0",
+      "size_bytes": 3462
+    },
+    {
+      "path": "reports/reuse/full_convergence/evidence_tree_manifest_9f8659c8.json",
+      "git_blob_sha1": "81d0b69704329e08548c29efdec3e77febe62801",
+      "sha256": "fadad767bc6db511d12733d8676cd01e345294af76536cf1b36515b6174c1d43",
+      "size_bytes": 5440
+    },
+    {
+      "path": "reports/reuse/full_convergence/production_cutover_revalidation_pending_9f8659c8.json",
+      "git_blob_sha1": "d1c2374d39852967bcb844f9e0b0155f4a9f216d",
+      "sha256": "b0a678c553db7ce766858e4ee2ab99dd3d4398fb485244d595f4d83acb28ab13",
+      "size_bytes": 2941
+    },
+    {
+      "path": "reports/reuse/full_convergence/production_revalidation_pending_9f8659c8.json",
+      "git_blob_sha1": "81bd95853e84a3bd5ee3fb3523a7c7ea79be76b9",
+      "sha256": "e8ec5c9f91630a7a69b1e28a8b2a93662a4c414a866a823f9225c2629663d534",
+      "size_bytes": 5956
+    }
+  ],
+  "source_manifest_bindings": [
+    {
+      "path": "reports/reuse/full_convergence/candidate_subject_manifest_9f8659c8.json",
+      "sha256": "edfbf306f37b25ad1b4daaece0e3b2eae0c4ab5e9340fef577f593b4e2e245d0"
+    },
+    {
+      "path": "reports/reuse/full_convergence/evidence_tree_manifest_9f8659c8.json",
+      "sha256": "fadad767bc6db511d12733d8676cd01e345294af76536cf1b36515b6174c1d43"
+    },
+    {
+      "path": "reports/reuse/full_convergence/production_revalidation_pending_9f8659c8.json",
+      "sha256": "e8ec5c9f91630a7a69b1e28a8b2a93662a4c414a866a823f9225c2629663d534"
+    },
+    {
+      "path": "reports/reuse/full_convergence/production_cutover_revalidation_pending_9f8659c8.json",
+      "sha256": "b0a678c553db7ce766858e4ee2ab99dd3d4398fb485244d595f4d83acb28ab13"
+    }
+  ],
+  "claims": {
+    "canonical_landing_bytes_attested": true,
+    "committed_only_current_raw_scan_complete": false,
+    "current_active_violation_count_zero": false,
+    "production_cutover_authorized": false,
+    "production_green": false,
+    "human_green": false,
+    "step13_status": "PENDING",
+    "step14_status": "PENDING",
+    "step15_status": "PENDING"
+  },
+  "non_self_reference": {
+    "manifest_path_present_in_attested_tree": false,
+    "manifest_commit_pending": true,
+    "attests_its_own_commit_or_tree": false,
+    "future_successor_required_if_this_manifest_is_used_as_a_subject": true
+  },
+  "immutability": {
+    "historical_manifest_mutation_count": 0,
+    "historical_receipt_mutation_count": 0,
+    "append_only": true
+  }
+}
