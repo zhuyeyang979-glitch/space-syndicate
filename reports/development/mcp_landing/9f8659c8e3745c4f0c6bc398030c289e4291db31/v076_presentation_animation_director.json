@@ -1,0 +1,37 @@
+{
+  "schema_version": "space_syndicate.mcp_product_landing_receipt.v1",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "base_head": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "base_tree": "3f78cdbb64d5764b16aa65c0cd470e56285efc0b",
+  "product_delta_base_head": "de520b646930cb1464a14b9ad59566639cbf755c",
+  "product_delta_base_tree": "b4bd880af6016f68255f7a2aeae0949dcbacd469",
+  "landing_commit": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+  "landing_tree": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+  "file_path": "res://scripts/presentation/v076_presentation_animation_director.gd",
+  "file_type": "gdscript",
+  "mcp_tool": "patch_script",
+  "mcp_operation": "reject every non-canonical cue-catalog path before reading the canonical V076 animation cue catalog",
+  "before_sha256": "9ee31d72fe70efe2330d80a7a240b6f874cdae3940794a120971d18ab5c3a7ee",
+  "after_sha256": "cb78e456122288392f16606bfa259bda682f094eb3d1a13c468393a351aaa300",
+  "mcp_mutation_response_sha256": "7098033063ff5d823d970299170cacbcb4cce0ada96ad30e33e664c9b12e301d",
+  "mcp_validate_operation": "validate_script",
+  "mcp_validate_result": "PASS: isolated GDScript validator returned zero diagnostics",
+  "mcp_validate_response_sha256": "20508a16f5edd2ca87dabfcd0cbbff49b4a881e2b2784aa06074b12791b9af1d",
+  "runtime_probe": {
+    "invalid_path_rejected": true,
+    "canonical_path_loaded": true,
+    "final_probe_response_sha256": "3706fa187d75ecb213f8c2ecaa23672db321a47bdea409aeb26dc2ee147cd895",
+    "development_probe_retry_count": 1,
+    "initial_probe_compile_failure_response_sha256": "7369641376831a4f3e5f94d5aac5ac76ef6ab0b00dd339e6e569b4adcc453ebc"
+  },
+  "real_scene_validation_required": true,
+  "real_scene_paths": [
+    "res://scenes/main.tscn"
+  ],
+  "real_scene_validation_result": "PASS",
+  "runtime_node_path": "/root/Main/V075GameScreen/V076PresentationAnimationDirector",
+  "runtime_capture_path": "res://reports/development/mcp_landing/9f8659c8e3745c4f0c6bc398030c289e4291db31/main_runtime.png",
+  "runtime_capture_sha256": "3e66463cb523eb8eb7651cb1d2ddcf2327eca347ba218ee8ce09dd8e27cbbf7d",
+  "direct_filesystem_product_edit_count": 0
+}

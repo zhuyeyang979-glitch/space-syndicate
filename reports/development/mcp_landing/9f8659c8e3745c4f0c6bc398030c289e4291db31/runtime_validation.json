@@ -1,0 +1,55 @@
+{
+  "schema_version": "space_syndicate.mcp_runtime_validation_receipt.v1",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "validated_commit": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+  "validated_tree": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+  "godot_version": "4.7-stable (official)",
+  "mcp_role": "Supervisor",
+  "mcp_port": 8845,
+  "project_root": "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice/",
+  "scene_path": "res://scenes/main.tscn",
+  "runtime_scene_path": "/root/Main",
+  "runtime_scene_script": "res://scripts/v075_runtime/v075_application_bootstrap.gd",
+  "runtime_status": "running",
+  "runtime_fps": 60,
+  "runtime_node_count": 958,
+  "runtime_viewport": {
+    "width": 1600,
+    "height": 960
+  },
+  "validated_product_node": {
+    "path": "/root/Main/V075GameScreen/V076PresentationAnimationDirector",
+    "script_path": "res://scripts/presentation/v076_presentation_animation_director.gd",
+    "production_reachable": true
+  },
+  "runtime_bridge_initial_stale_status_observed": true,
+  "runtime_bridge_retry_result": "PASS: running main scene at 60 FPS with 958 nodes",
+  "console_error_count": 0,
+  "capture_path": "res://reports/development/mcp_landing/9f8659c8e3745c4f0c6bc398030c289e4291db31/main_runtime.png",
+  "capture_sha256": "3e66463cb523eb8eb7651cb1d2ddcf2327eca347ba218ee8ce09dd8e27cbbf7d",
+  "mcp_raw_response_sha256": {
+    "get_project_info": "afdbedc005aec9deeccea31f159982f6facf44978094835fa9e76ecfe42b934f",
+    "open_main_scene": "061fb96c37d6ee497e06f882e267a3c6d01ad54697dcdf8436cc4484f0da1f15",
+    "play_main_scene": "bd0876dc640d6d3fbc0fa000ee164c5c64b1a20beed34e9558cf6d075ef958c8",
+    "runtime_bridge_status_retry": "b76ab4d727f527a62c944ae136e0cfb6cd012ad76c3730496e51012f47e0990d",
+    "capture_runtime_view": "c9592f334305548785c934f0d4d3a75e22c0e9599b95ad2ed17b3ee8025206e2",
+    "console_errors": "0b8c45158e5f6a988950d14532e5e9447d64ee79ea59a5262a7687f944f904c0",
+    "exit_play_mode": "2e7a614beec760a27bfec5ecea74c6f71b8b621a0baf09ff763812bda8f4cfc1",
+    "play_state_stopped": "d69ddea060ab4be833ad89af4a3c84af660e4f227f8b31cb70d7bc30b2f82e"
+  },
+  "clean_stop": {
+    "stopped": true,
+    "identity_verified": true,
+    "normal_close_requested": true,
+    "forced_stop": false,
+    "process_count_after": 0,
+    "endpoint_count_after": 0,
+    "listener_8845_after": 0,
+    "role_identity_metadata_count_after": 0
+  },
+  "mcp_product_file_mutation_coverage": "100_PERCENT",
+  "mcp_post_edit_validation_coverage": "100_PERCENT",
+  "direct_filesystem_product_edit_count": 0,
+  "player_visible_mcp_runtime_validation": "PASS",
+  "real_main_tscn_mcp_validation": "PASS"
+}
