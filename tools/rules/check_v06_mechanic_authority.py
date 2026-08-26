@@ -150,17 +150,40 @@ def _registry_retired_identifiers(mechanics: list[dict[str, object]]) -> tuple[s
     return tuple(identifiers)
 
 
+def _identifier_occurs(text: str, identifier: str) -> bool:
+    """Match ASCII symbol identifiers as whole symbols, not substrings.
+
+    Retired identifiers such as ``contract_reject`` are GDScript symbols.  A
+    raw substring scan incorrectly classified current symbols such as
+    ``combat_telemetry_contract_rejected`` as the retired mechanic.  Natural
+    language / punctuated markers keep their exact case-insensitive substring
+    semantics, while identifier-shaped markers use the same token boundary as
+    the field scanner below.
+    """
+    if not identifier:
+        return False
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", identifier):
+        return bool(
+            re.search(
+                rf"(?<![A-Za-z0-9_]){re.escape(identifier)}(?![A-Za-z0-9_])",
+                text,
+                flags=re.IGNORECASE,
+            )
+        )
+    return identifier.casefold() in text.casefold()
+
+
 def _concatenated_literal_hits(text: str, retired_identifiers: tuple[str, ...]) -> list[dict[str, object]]:
     hits: list[dict[str, object]] = []
-    folded_identifiers = [(identifier, identifier.casefold()) for identifier in retired_identifiers]
     for match in CONCATENATED_LITERAL_CHAIN.finditer(text):
         fragments = [fragment.group("body") for fragment in STRING_LITERAL_CAPTURE.finditer(match.group(0))]
         if len(fragments) < 2:
             continue
-        combined = "".join(fragments).casefold()
-        folded_fragments = [fragment.casefold() for fragment in fragments]
-        for identifier, folded in folded_identifiers:
-            if folded and folded in combined and not any(folded in fragment for fragment in folded_fragments):
+        combined = "".join(fragments)
+        for identifier in retired_identifiers:
+            if _identifier_occurs(combined, identifier) and not any(
+                _identifier_occurs(fragment, identifier) for fragment in fragments
+            ):
                 hits.append({"line": _line_number(text, match.start()), "identifier": identifier, "pattern": "concatenated_string_literals"})
     return hits
 
@@ -192,7 +215,23 @@ def _self_test() -> int:
     ]
     failures = [sample for sample in evasions if not _source_splitting_hits(sample, retired)]
     failures += [sample for sample in controls if _source_splitting_hits(sample, retired)]
-    report = {"status": "PASS" if not failures else "FAIL", "case_count": len(evasions) + len(controls), "failures": failures}
+    identifier_cases = [
+        ("contract_reject", "contract_reject", True),
+        ("_authorized_timer_contract_rejected", "contract_reject", False),
+        ("combat_telemetry_contract_rejected", "contract_reject", False),
+        ("CONTRACT_REJECT", "contract_reject", True),
+        ("合同回应窗口", "合同回应", True),
+    ]
+    failures += [
+        f"identifier_boundary:{text}:{identifier}:{expected}"
+        for text, identifier, expected in identifier_cases
+        if _identifier_occurs(text, identifier) is not expected
+    ]
+    report = {
+        "status": "PASS" if not failures else "FAIL",
+        "case_count": len(evasions) + len(controls) + len(identifier_cases),
+        "failures": failures,
+    }
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0 if not failures else 1
 
@@ -232,9 +271,8 @@ def main() -> int:
         text = path.read_text(encoding="utf-8", errors="replace")
         category = category_for(rel)
         for line_number, line in enumerate(text.splitlines(), 1):
-            folded_line = line.casefold()
             for identifier in retired_identifiers:
-                if identifier.casefold() in folded_line:
+                if _identifier_occurs(line, identifier):
                     hit = {"path": rel, "line": line_number, "identifier": identifier}
                     if category:
                         hit["category"] = category
