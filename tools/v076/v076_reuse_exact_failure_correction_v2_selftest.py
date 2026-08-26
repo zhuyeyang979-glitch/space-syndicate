@@ -1092,6 +1092,32 @@ def _integration_cases(project: Path) -> tuple[list[Case], Callable[[], None]]:
         _assert(required.issubset(report), f"missing report fields: {required - set(report)}")
         _assert(report["raw_and_effective_counts_both_reported"] is True, str(report))
         _assert(report["raw_scanner_executes_before_correction"] is True, str(report))
+        live_report = correction.validate_records(
+            f.root,
+            f.output,
+            current_head=f.base_head,
+            live_raw_report_path=f.baseline_path,
+        )
+        expected_relative_source = f.baseline_path.resolve().relative_to(
+            f.root.resolve()
+        ).as_posix()
+        _assert(
+            live_report["raw_report_source"] == expected_relative_source,
+            str(live_report["raw_report_source"]),
+        )
+        external_raw = f.base_dir / "external-live-raw.json"
+        shutil.copyfile(f.baseline_path, external_raw)
+        external_report = correction.validate_records(
+            f.root,
+            f.output,
+            current_head=f.base_head,
+            live_raw_report_path=external_raw,
+        )
+        _assert(
+            external_report["raw_report_source"]
+            == "EXTERNAL_LIVE_RAW_REPORT:external-live-raw.json",
+            str(external_report["raw_report_source"]),
+        )
 
     cases.append(Case("84", "report projection carries raw and effective counts", "PASS", with_fixture(report_contract)))
 

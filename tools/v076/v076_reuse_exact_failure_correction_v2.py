@@ -74,11 +74,24 @@ RECORD_DIR_REL = CORRECTION_DIR_REL / "records"
 CORRECTION_SCHEMA_REL = CORRECTION_DIR_REL / "schema.json"
 SELFTEST_REPORT_REL = Path("reports/reuse/correction_v2/correction_v2_selftest.json")
 SELFTEST_REPORT_SHA_REL = Path("reports/reuse/correction_v2/correction_v2_selftest.sha256")
+PREVIOUS_AUTHORIZATION_MANIFEST_REL = Path(
+    "reports/reuse/correction_v2/correction_authorization_manifest.json"
+)
+PREVIOUS_AUTHORIZATION_MANIFEST_SHA_REL = Path(
+    "reports/reuse/correction_v2/correction_authorization_manifest.sha256"
+)
+PREVIOUS_AUTHORIZATION_MANIFEST_SHA256 = (
+    "ada661f73a81d53586d3b50b3a964f66e2ed9baa00073472ddbf2a5573aad15c"
+)
+SEAL_REVISION_ID = "CI_PORTABILITY_V2"
+SEAL_REVISION_DIR_REL = Path(
+    "reports/reuse/correction_v2/seals/ci_portability_v2"
+)
 EXISTING_SELFTEST_REPORT_REL = Path(
-    "reports/reuse/correction_v2/existing_reuse_selftest.json"
+    SEAL_REVISION_DIR_REL / "existing_reuse_selftest.json"
 )
 EXISTING_SELFTEST_REPORT_SHA_REL = Path(
-    "reports/reuse/correction_v2/existing_reuse_selftest.sha256"
+    SEAL_REVISION_DIR_REL / "existing_reuse_selftest.sha256"
 )
 RECORD_INVENTORY_REL = Path("reports/reuse/correction_v2/correction_record_inventory.json")
 AUDIT_A_REL = Path("reports/reuse/correction_v2/audit_a_mechanism_safety.json")
@@ -88,15 +101,15 @@ AUDIT_B_MD_REL = Path("reports/reuse/correction_v2/audit_b_failure_classificatio
 FINAL_RESOLVE_REL = Path("reports/reuse/correction_v2/v2_final_resolve.json")
 FINAL_RESOLVE_MD_REL = Path("reports/reuse/correction_v2/v2_final_resolve.md")
 AUTHORIZATION_MANIFEST_REL = Path(
-    "reports/reuse/correction_v2/correction_authorization_manifest.json"
+    SEAL_REVISION_DIR_REL / "correction_authorization_manifest.json"
 )
-APPLICATION_PLAN_REL = Path("reports/reuse/correction_v2/correction_application_plan.json")
+APPLICATION_PLAN_REL = Path(SEAL_REVISION_DIR_REL / "correction_application_plan.json")
 
 EVIDENCE_MANIFEST_SCHEMA_VERSION = (
-    "space_syndicate.v076.reuse_correction_authorization_manifest.v2"
+    "space_syndicate.v076.reuse_correction_authorization_manifest.v3"
 )
 APPLICATION_PLAN_SCHEMA_VERSION = (
-    "space_syndicate.v076.reuse_correction_application_plan.v2"
+    "space_syndicate.v076.reuse_correction_application_plan.v3"
 )
 CORRECTION_SCHEMA_VERSION = "space_syndicate.v076.reuse_exact_failure_correction_schema.v2"
 
@@ -2869,7 +2882,11 @@ def validate_records(
     raw_report_source = "FROZEN_BASELINE"
     raw_failure_set_parity = True
     if live_raw_report_path is not None:
-        raw_report_source = str(live_raw_report_path)
+        resolved_live_raw = live_raw_report_path.resolve()
+        try:
+            raw_report_source = resolved_live_raw.relative_to(root.resolve()).as_posix()
+        except ValueError:
+            raw_report_source = f"EXTERNAL_LIVE_RAW_REPORT:{resolved_live_raw.name}"
         try:
             live_report = load_json(live_raw_report_path)
         except (FileNotFoundError, OSError, json.JSONDecodeError):
@@ -3428,6 +3445,11 @@ def _collect_seal_evidence(
         sidecar_relative=EXISTING_CORRECTIONS_SHA_REL,
         expected_sha256=AUTHORIZED_EXISTING_CORRECTIONS_MANIFEST_SHA256,
     )
+    previous_authorization_manifest_binding = bind_output(
+        PREVIOUS_AUTHORIZATION_MANIFEST_REL,
+        sidecar_relative=PREVIOUS_AUTHORIZATION_MANIFEST_SHA_REL,
+        expected_sha256=PREVIOUS_AUTHORIZATION_MANIFEST_SHA256,
+    )
     schema_binding = bind_output(
         CORRECTION_SCHEMA_REL,
         expected_sha256=AUTHORIZED_CORRECTION_SCHEMA_SHA256,
@@ -3777,6 +3799,9 @@ def _collect_seal_evidence(
             "RAW_REPORT_SHA256": raw_binding["sha256"],
             "SCANNER_MANIFEST_SHA256": scanner_binding["sha256"],
             "EXISTING_CORRECTION_MANIFEST_SHA256": v1_binding["sha256"],
+            "SUPERSEDES_AUTHORIZATION_MANIFEST_SHA256": (
+                previous_authorization_manifest_binding["sha256"]
+            ),
             "NEW_CORRECTION_SCHEMA_SHA256": schema_binding["sha256"],
             "NEW_RESOLVER_SHA256": resolver_binding["sha256"],
             "SELFTEST_TOOL_SHA256": selftest_tool_binding["sha256"],
@@ -3833,6 +3858,10 @@ def _manifest_from_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": EVIDENCE_MANIFEST_SCHEMA_VERSION,
         "authorization_id": AUTHORIZATION_ID,
+        "seal_revision_id": SEAL_REVISION_ID,
+        "supersedes_authorization_manifest_path": (
+            PREVIOUS_AUTHORIZATION_MANIFEST_REL.as_posix()
+        ),
         "AUTHORIZED_HEAD_SHA": AUTHORIZED_HEAD_SHA,
         "PR_NUMBER": PR_NUMBER,
         **evidence["hashes"],
@@ -3864,6 +3893,10 @@ def _plan_from_manifest(manifest_sha256: str, evidence: dict[str, Any]) -> dict[
     return {
         "schema_version": APPLICATION_PLAN_SCHEMA_VERSION,
         "authorization_id": AUTHORIZATION_ID,
+        "seal_revision_id": SEAL_REVISION_ID,
+        "SUPERSEDES_AUTHORIZATION_MANIFEST_SHA256": evidence["hashes"][
+            "SUPERSEDES_AUTHORIZATION_MANIFEST_SHA256"
+        ],
         "AUTHORIZED_HEAD_SHA": AUTHORIZED_HEAD_SHA,
         "PR_NUMBER": PR_NUMBER,
         "CORRECTION_AUTHORIZATION_MANIFEST_SHA256": manifest_sha256,
