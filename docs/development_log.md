@@ -10055,3 +10055,40 @@ deleted. Evidence and the remaining action inventory are recorded in
   failures, including 509 committed-history failures across 65 transitions.
   Therefore Draft PR #93 stays at `TRUE_HARD_STOP_REQUIRING_USER_DECISION`;
   no Ready, merge, tag, cutover, or Human Green transition is authorized.
+
+## 2026-08-26 — Exact-receipt headed evidence finality checkpoint
+
+- Continued the same task-owned Draft PR #93 line at product/evidence source
+  head `12019fdf5ff78733a36b3f0e889fecd1fcfb227c`, tree
+  `c5710c978fee111b33b265b2e5ad4ea6cebcba38`. The existing GameScreen and
+  unique Presentation Director now retain event-time Card-table evidence by
+  receipt identity; no gameplay, catalog, map, asset, Victory, or other Owner
+  was added or reimplemented.
+- Focused gates pass at `1043/1043` for Showcase and `1067/1067` for the real
+  production-main Card-table flow. The independent natural four-Cue proof is
+  `243/243 PASS`: Card-table run
+  `20260826-081712-139-v076_alpha07_card_table_flow_readiness_test-a5c91e41`
+  and Victory run
+  `20260826-081921-586-v076_production_victory_audit_readiness_test-e1a48a75`,
+  both with zero diagnostics, script errors, task-introduced errors, or residual
+  project processes.
+- Sealed production headed bundle
+  `production_natural_headed/20260826-081006-934-12bb685a3d67`: 4 natural Cues,
+  12 declared frames, zero fixture receipts, exact capture/queue/finish receipt
+  identity for all three Card-table Cues, Director queue=1 and finish=1 per
+  receipt, and 12/12 non-empty 1600x960 frame hashes matching the manifest.
+  Sealed fixture finality bundle
+  `showcase_headed_finality/20260826-081645-855-ae71c1dc5841`: run
+  `20260826-081646-474-showcase_frame_capture-5963edd5`, 13/13 episode evidence
+  final `PASS`, 39/39 frame hashes, and zero runner diagnostics or residuals.
+  It remains explicitly `PRESENTATION_FIXTURE`, not natural or human evidence.
+- Godot MCP ran and cleanly stopped the real `res://scenes/main.tscn` under
+  `4.7.stable.official.5b4e0cb0f`; no task-introduced hard runtime error was
+  observed. Existing unrelated GDScript warnings remain disclosed.
+- The clean committed-source Reuse/Point-Inertia selftest remains `120/120
+  PASS` with false-green count 0, but full validation at `12019fdf` with explicit
+  PR base `770d741f` and inertia/gate base `f6fe547e` is `FAIL`: 569 total
+  failures, 510 historical failures, and 67 transitions. Therefore
+  `STATUS=TRUE_HARD_STOP_REQUIRING_USER_DECISION`, `COMMERCIAL_M1_GREEN=false`,
+  `READY_FOR_NEXT_CONSOLIDATED_HUMAN_PLAYTEST=false`, `HUMAN_GREEN=false`, and
+  STEP13-15 remain `PENDING`; no Ready, merge, tag, or cutover is authorized.

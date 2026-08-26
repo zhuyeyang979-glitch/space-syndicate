@@ -1,0 +1,634 @@
+{
+	"canonical_showcase_scene": "res://scenes/tools/CommercialPresentationShowcase.tscn",
+	"capture_size": {
+		"height": 960,
+		"width": 1600
+	},
+	"captured_at_utc": "2026-08-26 08:17:02",
+	"episode_count": 13,
+	"episodes": [
+		{
+			"actual_cue_id": "PRODUCT_SHELL_MAIN_MENU",
+			"episode_id": "main_menu",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/menu_capture/evidence.json",
+			"evidence_sha256": "0186ad12df0f4c00c4b6ac1886fcf4c51f3c75b8650b6731de26496f1b4f3063",
+			"expected_cue_id": "PRODUCT_SHELL_MAIN_MENU",
+			"frame_count": 3,
+			"output_dir": "menu_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "PRODUCT_SHELL_LOADING",
+			"episode_id": "loading",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/loading_capture/evidence.json",
+			"evidence_sha256": "22628dac444e46ae01117bf5d6cd8532f984b4cd34f53e655fd63ea5a2d3c86d",
+			"expected_cue_id": "PRODUCT_SHELL_LOADING",
+			"frame_count": 3,
+			"output_dir": "loading_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "CARD_ENTER_DECK",
+			"episode_id": "acquire_to_deck",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/deck_acquire_capture/evidence.json",
+			"evidence_sha256": "d888bd31ac515ffb273166204eb83884442ed121fe41e4c549a68dd185145288",
+			"expected_cue_id": "CARD_ENTER_DECK",
+			"frame_count": 3,
+			"output_dir": "deck_acquire_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "DECK_SHUFFLE",
+			"episode_id": "shuffle",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/shuffle_capture/evidence.json",
+			"evidence_sha256": "d5149d9c059585570f81d85bb742ec8d2d045584d1954abdac355676f9f36f66",
+			"expected_cue_id": "DECK_SHUFFLE",
+			"frame_count": 3,
+			"output_dir": "shuffle_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "CARD_DRAW",
+			"episode_id": "draw",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/draw_capture/evidence.json",
+			"evidence_sha256": "c9c021e86e0adaddd95bb412974334d1b188a721f21667e2808f1061bf587e49",
+			"expected_cue_id": "CARD_DRAW",
+			"frame_count": 3,
+			"output_dir": "draw_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "CARD_SELECT",
+			"episode_id": "hand_hover",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/hand_hover_capture/evidence.json",
+			"evidence_sha256": "c54694c8638462561d9657c085df7b733b4086a54e75e0e4bff33f272588a416",
+			"expected_cue_id": "CARD_SELECT",
+			"frame_count": 3,
+			"output_dir": "hand_hover_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "CARD_PLAY_PUBLIC",
+			"episode_id": "public_play",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/card_play_capture/evidence.json",
+			"evidence_sha256": "57aa11441a63cd081d3669f4259c35a84f13277217c8b8edda16ecc668c64477",
+			"expected_cue_id": "CARD_PLAY_PUBLIC",
+			"frame_count": 3,
+			"output_dir": "card_play_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "CARD_RESOLUTION_FOCUS",
+			"episode_id": "public_resolution",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/public_resolution_capture/evidence.json",
+			"evidence_sha256": "4eb8814ae95f961b7dc8efd8bf92a901d938e70f6768a43b631b64ddae588844",
+			"expected_cue_id": "CARD_RESOLUTION_FOCUS",
+			"frame_count": 3,
+			"output_dir": "public_resolution_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "FACILITY_BUILD",
+			"episode_id": "facility",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/facility_capture/evidence.json",
+			"evidence_sha256": "ab19afaf26ea9a070a09caf3cd91ed1cc408cbb86684afd3df8a689338dc5f39",
+			"expected_cue_id": "FACILITY_BUILD",
+			"frame_count": 3,
+			"output_dir": "facility_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "MONSTER_MELEE",
+			"episode_id": "monster",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/monster_combat_capture/evidence.json",
+			"evidence_sha256": "f810268a54838847a8ab54dae6f3b9c5f9e77c277edd5cc83555cbfcba82dc42",
+			"expected_cue_id": "MONSTER_MELEE",
+			"frame_count": 3,
+			"output_dir": "monster_combat_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "MILITARY_ASSAULT_REGION",
+			"episode_id": "military",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/military_combat_capture/evidence.json",
+			"evidence_sha256": "fcdfc795c789fa8b3fa49e3118e2d359f017222c37ecb33039a19dac2f085fdc",
+			"expected_cue_id": "MILITARY_ASSAULT_REGION",
+			"frame_count": 3,
+			"output_dir": "military_combat_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "TRACK_HANDOFF",
+			"episode_id": "track_handoff",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/sushi_track_capture/evidence.json",
+			"evidence_sha256": "937e25de842eb50e614bbbb096cdc24d5d67b6820ca50a53503ef6e27b3a89d5",
+			"expected_cue_id": "TRACK_HANDOFF",
+			"frame_count": 3,
+			"output_dir": "sushi_track_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "FINAL_SETTLEMENT",
+			"episode_id": "final_settlement",
+			"evidence_path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/final_settlement_capture/evidence.json",
+			"evidence_sha256": "73a0bda93f90313acc47a309ba16ef275f7be02a389a4974c3c7aba8a6113080",
+			"expected_cue_id": "FINAL_SETTLEMENT",
+			"frame_count": 3,
+			"output_dir": "final_settlement_capture",
+			"status": "PASS"
+		}
+	],
+	"fixture_banner_text": "PRESENTATION_FIXTURE — NOT NATURAL GAMEPLAY / NOT HUMAN GREEN",
+	"fixture_bridge": {
+		"authority_receipt": false,
+		"bridge_instance_count": 1,
+		"bridge_method": "VerticalSliceShowcase.submit_presentation_fixture",
+		"duplicate_suppressed_count": 13,
+		"finish_count": 13,
+		"fixture_class": "PRESENTATION_FIXTURE",
+		"fixture_created_session_count": 0,
+		"fixture_rng_draw_count": 0,
+		"fixture_save_request_count": 0,
+		"fixture_tick_advance_count": 0,
+		"gameplay_green": false,
+		"host_lifecycle_unchanged": true,
+		"human_green": false,
+		"last_result": {
+			"accepted": true,
+			"authority_receipt": false,
+			"bridge_instance_count": 1,
+			"bridge_method": "VerticalSliceShowcase.submit_presentation_fixture",
+			"fixture_class": "PRESENTATION_FIXTURE",
+			"gameplay_green": false,
+			"host_lifecycle_unchanged": true,
+			"human_green": false,
+			"natural_gameplay": false,
+			"production_green": false,
+			"production_main_role": "PRODUCTION_PRESENTATION_HOST_ONLY",
+			"reason_code": "showcase_fixture_bridge_finished",
+			"route": "CARD_TABLE_FIXTURE",
+			"schema": "V076CommercialPresentationFixtureBridgeV1"
+		},
+		"last_route": "CARD_TABLE_FIXTURE",
+		"lifecycle_after": {
+			"authority_snapshot_sha256": "09d14248b7311d1903b6e50becce2ceacf4fd95d48a2fb5913001eb5de02d65c",
+			"kernel_current_tick": 0,
+			"kernel_next_authority_sequence": 1,
+			"kernel_rng_state_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+			"last_published_session_id": "",
+			"load_request_count": 0,
+			"new_game_publication_count": 0,
+			"new_game_transaction_in_progress": false,
+			"production_save_slot_write_count": 0,
+			"save_request_count": 0,
+			"schema": "V076CommercialShowcaseHostLifecycleSnapshotV1",
+			"session_sequence": 0
+		},
+		"lifecycle_before": {
+			"authority_snapshot_sha256": "332400e92d359b9a4557e8a91f35f008691eabfb77548425aebf91fdb9c0a07e",
+			"kernel_current_tick": 0,
+			"kernel_next_authority_sequence": 1,
+			"kernel_rng_state_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+			"last_published_session_id": "",
+			"load_request_count": 0,
+			"new_game_publication_count": 0,
+			"new_game_transaction_in_progress": false,
+			"production_save_slot_write_count": 0,
+			"save_request_count": 0,
+			"schema": "V076CommercialShowcaseHostLifecycleSnapshotV1",
+			"session_sequence": 0
+		},
+		"natural_gameplay": false,
+		"production_green": false,
+		"production_main_role": "PRODUCTION_PRESENTATION_HOST_ONLY",
+		"rejection_count": 0,
+		"replay_count": 13,
+		"route_counts": {
+			"CARD_TABLE_FIXTURE": {
+				"duplicate_suppressed_count": 4,
+				"finish_count": 4,
+				"replay_count": 4,
+				"submit_count": 4
+			},
+			"GENERIC_DIRECTOR_FIXTURE": {
+				"duplicate_suppressed_count": 7,
+				"finish_count": 7,
+				"replay_count": 7,
+				"submit_count": 7
+			},
+			"PRODUCT_SHELL_FIXTURE": {
+				"duplicate_suppressed_count": 2,
+				"finish_count": 2,
+				"replay_count": 2,
+				"submit_count": 2
+			}
+		},
+		"schema": "V076CommercialPresentationFixtureBridgeV1",
+		"submit_count": 13
+	},
+	"fixture_class": "PRESENTATION_FIXTURE",
+	"frame_count": 39,
+	"frames": [
+		{
+			"byte_length": 75689,
+			"episode_id": "main_menu",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/menu_capture/start.png",
+			"sha256": "235b5af5c2617ddb7d8cccb00d6138786ab4efaf88a22dc7875b95ce394ac2f2",
+			"width": 1600
+		},
+		{
+			"byte_length": 72274,
+			"episode_id": "main_menu",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/menu_capture/mid.png",
+			"sha256": "cf1963b4ef929abe141e20a33906fa73ddca7d791c03e877611d77916428cefd",
+			"width": 1600
+		},
+		{
+			"byte_length": 70123,
+			"episode_id": "main_menu",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/menu_capture/end.png",
+			"sha256": "e8e8bd140d69e622d5a77b998f15d858750457425d7f440644a532d47ad4fa67",
+			"width": 1600
+		},
+		{
+			"byte_length": 81064,
+			"episode_id": "loading",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/loading_capture/start.png",
+			"sha256": "22f5639b06708ff36ab7810af1a0b90440486bc63a3ab46cb4eba16b0a0e09c8",
+			"width": 1600
+		},
+		{
+			"byte_length": 80716,
+			"episode_id": "loading",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/loading_capture/mid.png",
+			"sha256": "b88e6ad3118c3cd0bc1a3bf059fc6fb665b3b715decbf2003b92296d55358e5a",
+			"width": 1600
+		},
+		{
+			"byte_length": 78722,
+			"episode_id": "loading",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/loading_capture/end.png",
+			"sha256": "cac0fbc6c335cce787e3e4532424235411d963a4548714e1db7517a52593e2ea",
+			"width": 1600
+		},
+		{
+			"byte_length": 105939,
+			"episode_id": "acquire_to_deck",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/deck_acquire_capture/start.png",
+			"sha256": "b629b2db80c8b1cfe6a40dc32c50c780ce999337dd926abf74f6052e3ec1863b",
+			"width": 1600
+		},
+		{
+			"byte_length": 106904,
+			"episode_id": "acquire_to_deck",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/deck_acquire_capture/mid.png",
+			"sha256": "a65cf38510c4b8ea01a9362cf3477f2f374d1ded782454337d946c3e7dec18ef",
+			"width": 1600
+		},
+		{
+			"byte_length": 104373,
+			"episode_id": "acquire_to_deck",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/deck_acquire_capture/end.png",
+			"sha256": "9b20d9715371c7eaefe5485b665bdda35573aa6205249af0dd211f11b5203444",
+			"width": 1600
+		},
+		{
+			"byte_length": 96363,
+			"episode_id": "shuffle",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/shuffle_capture/start.png",
+			"sha256": "292fc61eca521d52aceaf0a8603a97ff530c54f62e5f3615be2c1d02e6c4998f",
+			"width": 1600
+		},
+		{
+			"byte_length": 93622,
+			"episode_id": "shuffle",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/shuffle_capture/mid.png",
+			"sha256": "81c6c3d245618f3f35bf48e2d6b5d0ef3672e66998de15ea6b74bb9a90aa6184",
+			"width": 1600
+		},
+		{
+			"byte_length": 99371,
+			"episode_id": "shuffle",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/shuffle_capture/end.png",
+			"sha256": "8ca369a605336fa70cb451ff8727a27bbcad158e20f9a085f4a06bb35c097b57",
+			"width": 1600
+		},
+		{
+			"byte_length": 101021,
+			"episode_id": "draw",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/draw_capture/start.png",
+			"sha256": "c8ef8cde693f0936a845963e94ecd832ee107886539978f047f4ffac10331a78",
+			"width": 1600
+		},
+		{
+			"byte_length": 101497,
+			"episode_id": "draw",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/draw_capture/mid.png",
+			"sha256": "8cc598c8b6e59499f6b90330c7b29e9c5ce7350227c22a81827bfa7a5d0610bc",
+			"width": 1600
+		},
+		{
+			"byte_length": 104208,
+			"episode_id": "draw",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/draw_capture/end.png",
+			"sha256": "1366256a6f2ccb56f10bedb66d1efccd56522da02b4ae32485892d658ab44ae0",
+			"width": 1600
+		},
+		{
+			"byte_length": 116651,
+			"episode_id": "hand_hover",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/hand_hover_capture/start.png",
+			"sha256": "1552385a02c202e8d46adb622c433511d9aee3a6e72ddcefc9c9a8a6a79d72ee",
+			"width": 1600
+		},
+		{
+			"byte_length": 117008,
+			"episode_id": "hand_hover",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/hand_hover_capture/mid.png",
+			"sha256": "ba81a14366259076627af7dcc3f417326d248765af373f48b821f4d87ed39496",
+			"width": 1600
+		},
+		{
+			"byte_length": 117043,
+			"episode_id": "hand_hover",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/hand_hover_capture/end.png",
+			"sha256": "10a01139bcc0772dec51b697980a31b233ad6fd2f49834490e8cdd2fd5caa58c",
+			"width": 1600
+		},
+		{
+			"byte_length": 97232,
+			"episode_id": "public_play",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/card_play_capture/start.png",
+			"sha256": "fc5811dac7622d207f1dd92707484c67d6ce4d0a28e32c4867d118c31c453ac9",
+			"width": 1600
+		},
+		{
+			"byte_length": 97185,
+			"episode_id": "public_play",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/card_play_capture/mid.png",
+			"sha256": "b3924dc5336ed2beb362a3fef7dd94919bbe2414b99ba0e08da84882305b2689",
+			"width": 1600
+		},
+		{
+			"byte_length": 97029,
+			"episode_id": "public_play",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/card_play_capture/end.png",
+			"sha256": "590315ba65c12b72f06942c9d53ac5f5b704c2f13dda3bb9e7e666aacd510fdf",
+			"width": 1600
+		},
+		{
+			"byte_length": 107191,
+			"episode_id": "public_resolution",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/public_resolution_capture/start.png",
+			"sha256": "747c7083081fe877772808cbc94923ba7b9978eb1262c71547f4a7002fa385c5",
+			"width": 1600
+		},
+		{
+			"byte_length": 108154,
+			"episode_id": "public_resolution",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/public_resolution_capture/mid.png",
+			"sha256": "d3d9331b941b280c5e526958b1a628458ea1091fe1c03744cb6925bd5e399ddd",
+			"width": 1600
+		},
+		{
+			"byte_length": 105415,
+			"episode_id": "public_resolution",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/public_resolution_capture/end.png",
+			"sha256": "dd578e57fbbd336a5656649b6a5f2e74d58e480344baeb3d416ac01245e369fc",
+			"width": 1600
+		},
+		{
+			"byte_length": 122672,
+			"episode_id": "facility",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/facility_capture/start.png",
+			"sha256": "8c50faa49ab813bb98eb1d96074ec3520a8cc14aae265f6457da065289d03d74",
+			"width": 1600
+		},
+		{
+			"byte_length": 122718,
+			"episode_id": "facility",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/facility_capture/mid.png",
+			"sha256": "d707c611b58ed33ec54697100e2b6b302bbb935931029cecf961091b5987917c",
+			"width": 1600
+		},
+		{
+			"byte_length": 122293,
+			"episode_id": "facility",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/facility_capture/end.png",
+			"sha256": "305fcc04653dc3f3d87754e0095af10d4f731a51dfdefd74f8b27dcd7bd58509",
+			"width": 1600
+		},
+		{
+			"byte_length": 96821,
+			"episode_id": "monster",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/monster_combat_capture/start.png",
+			"sha256": "286bb1d3e23c6f502965340ac6980517aafe86929cd8572a4dd4207998eaaa15",
+			"width": 1600
+		},
+		{
+			"byte_length": 103327,
+			"episode_id": "monster",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/monster_combat_capture/mid.png",
+			"sha256": "ac67d99fda84a32df38e049545124b2fad21c8da8e2303da66d8400aade330d3",
+			"width": 1600
+		},
+		{
+			"byte_length": 95819,
+			"episode_id": "monster",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/monster_combat_capture/end.png",
+			"sha256": "241eff368dbcf997ca23072ecba783d7be5ffce5c43810931f062bce64842f75",
+			"width": 1600
+		},
+		{
+			"byte_length": 120973,
+			"episode_id": "military",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/military_combat_capture/start.png",
+			"sha256": "4d65ba0cca67ab1a2b4cd16adaef5809d07740eff53d84008355caed6e22bd05",
+			"width": 1600
+		},
+		{
+			"byte_length": 122962,
+			"episode_id": "military",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/military_combat_capture/mid.png",
+			"sha256": "f5138a95dcd0df96577d7378f8e44ce0f04b15c99e12b022203cf32de61f6397",
+			"width": 1600
+		},
+		{
+			"byte_length": 125139,
+			"episode_id": "military",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/military_combat_capture/end.png",
+			"sha256": "5777ca1e5113b54a76ed290ffe0bce21a23065b66a39b28a727ecf3610fdaffa",
+			"width": 1600
+		},
+		{
+			"byte_length": 89964,
+			"episode_id": "track_handoff",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/sushi_track_capture/start.png",
+			"sha256": "a01df4a653e865f290a688b51fc48e337789d6ab14122e2f281a0fe8d8b0cc02",
+			"width": 1600
+		},
+		{
+			"byte_length": 95853,
+			"episode_id": "track_handoff",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/sushi_track_capture/mid.png",
+			"sha256": "3bfd8517826f6f99fc544556bd8c77253822924d61d89d797e32d5e4ed2267c3",
+			"width": 1600
+		},
+		{
+			"byte_length": 89241,
+			"episode_id": "track_handoff",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/sushi_track_capture/end.png",
+			"sha256": "76418707754dbf411f6a82bb31a249e2f25bc74df29be21dac5464ac050e549e",
+			"width": 1600
+		},
+		{
+			"byte_length": 65671,
+			"episode_id": "final_settlement",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/final_settlement_capture/start.png",
+			"sha256": "c06109ae9e3ed4fc2e524e04ef316840bad8591b93defbd03952abf8e34f8003",
+			"width": 1600
+		},
+		{
+			"byte_length": 68415,
+			"episode_id": "final_settlement",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/final_settlement_capture/mid.png",
+			"sha256": "d8301f5ca56a2bef2cdf537b80e952866ff9f3ea20e51f9ae4ca9145d4fa0f75",
+			"width": 1600
+		},
+		{
+			"byte_length": 68071,
+			"episode_id": "final_settlement",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/final_settlement_capture/end.png",
+			"sha256": "04ecffb9f1944f8b535ca4111a841499e91d0711a15c625352dea3bee82a6a69",
+			"width": 1600
+		}
+	],
+	"gameplay_green": false,
+	"headed_client_capture_path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\showcase_headed_client_final.png",
+	"headed_client_probe_requested": true,
+	"human_green": false,
+	"human_retest_deferred": true,
+	"natural_gameplay": false,
+	"production_green": false,
+	"production_main_scene": "res://scenes/main.tscn",
+	"schema": "V076CommercialPresentationCaptureManifestV1",
+	"status": "AUTOMATION_GREEN_PENDING_VISUAL_REVIEW",
+	"step13_status": "PENDING"
+}

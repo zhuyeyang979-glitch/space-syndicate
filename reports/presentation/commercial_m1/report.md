@@ -9,8 +9,8 @@
 Asset-license, static-continuity, formal Phase 7 performance, production-main
 Card-table automation, headed-capture automation, and independent fixture
 visual review are green in their own scopes. Commercial Presentation M1 as a
-whole is **not green**: the latest evaluated committed-history
-Reuse/Point-Inertia validation has 620 failures, and the currently authorized
+whole is **not green**: the latest evaluated committed-product-head
+Reuse/Point-Inertia validation has 569 failures, and the currently authorized
 correction mechanisms still cannot resolve the previously proven lower bound
 of at least 22 failures without a new decision.
 
@@ -40,10 +40,12 @@ of at least 22 failures without a new decision.
 ## Presentation fixture and visual review
 
 - Focused showcase test: `1043/1043 PASS`, latest run
-  `20260826-073214-749-vertical_slice_showcase_test-6bddc8c5`.
-- Headed capture: run
-  `20260826-030019-680-showcase_frame_capture-db746429`, 13 episodes, 39 PNGs,
-  1600x960, with zero runner errors, diagnostics, or residual processes.
+  `20260826-080153-777-vertical_slice_showcase_test-83ecb20c`.
+- Latest headed finality capture: run
+  `20260826-081646-474-showcase_frame_capture-5963edd5`, 13 episodes, 39 PNGs,
+  1600x960. All 13 episode evidence files reached final `PASS`; process exit,
+  runner exit, script errors, diagnostics, task-introduced errors, and residual
+  project processes are all zero.
 - Independent frame-by-frame review: `13/13 PASS`, `39/39` frame hashes match
   the manifest, and `VISUAL_REVIEW=PASS_FIXTURE_ONLY`.
 - The fixture banner `PRESENTATION_FIXTURE — NOT NATURAL GAMEPLAY / NOT HUMAN GREEN`
@@ -60,15 +62,16 @@ of at least 22 failures without a new decision.
 - The 30/18/06 countdown values remain explicitly identified as fixture samples.
 - Scoped result: `PASS_FIXTURE_ONLY`; it is not natural gameplay, Human Green,
   production green, or Commercial M1 Green.
-- Evidence: [showcase_capture_manifest.json](showcase_capture_manifest.json),
-  [capture_runner_report.json](capture_runner_report.json), and
-  [visual_review.json](visual_review.json).
+- Evidence: [showcase_headed_finality/20260826-081645-855-ae71c1dc5841/showcase_capture_manifest.json](showcase_headed_finality/20260826-081645-855-ae71c1dc5841/showcase_capture_manifest.json),
+  [showcase_headed_finality/20260826-081645-855-ae71c1dc5841/capture_runner_report.json](showcase_headed_finality/20260826-081645-855-ae71c1dc5841/capture_runner_report.json),
+  and the independent [visual_review.json](visual_review.json). The finality
+  bundle remains `PRESENTATION_FIXTURE` and does not replace visual review.
 
 ## Automated production-main Card-table sentinel
 
-- `892/892 PASS`, run
-  `20260826-072626-974-v076_alpha07_card_table_flow_readiness_test-ac2ea97e`.
-- Startup: 2.446 seconds; first AI Action Feed visibility: 3.724 seconds.
+- `1067/1067 PASS`, run
+  `20260826-081712-139-v076_alpha07_card_table_flow_readiness_test-a5c91e41`.
+- Runtime duration: 126.266 seconds; both runner and Godot exited zero.
 - Three authoritative track handoffs, four action windows, a second commodity
   acquisition, and 43 public resolutions complete through the existing
   production composition.
@@ -87,8 +90,9 @@ production green, or Commercial M1 Green.
 
 ## Runtime and performance evidence
 
-- Godot MCP ran the final showcase scene with Godot 4.7, observed zero hard
-  runtime errors, retained 155 existing warning headers, and stopped cleanly.
+- Godot MCP ran the real `res://scenes/main.tscn` with
+  `4.7.stable.official.5b4e0cb0f`, observed no task-introduced hard runtime
+  error, retained the disclosed existing warnings, and stopped cleanly.
   This direct MCP run emitted no runner run ID and does not establish Human or
   production green.
 - Production-main human-playability readiness automation: `266/266 PASS`, run
@@ -105,36 +109,47 @@ production green, or Commercial M1 Green.
 - Version continuity selftest: `105/105 PASS`; gate: `PASS_STATIC` with zero
   failures.
 - Four natural production Cue proof: `243/243 PASS`, zero failures; card-table
-  run `20260826-072626-974-v076_alpha07_card_table_flow_readiness_test-ac2ea97e`
+  run `20260826-081712-139-v076_alpha07_card_table_flow_readiness_test-a5c91e41`
   and Victory run
-  `20260826-072836-255-v076_production_victory_audit_readiness_test-4313fd95`.
+  `20260826-081921-586-v076_production_victory_audit_readiness_test-e1a48a75`.
+  Both runs have zero script errors, diagnostics, task-introduced errors, and
+  residual project processes.
 
 ## Natural production headed bundle
 
 - `PASS_AUTOMATED_NATURAL_PRODUCTION_HEADED_ONLY`, recorded_at_utc
-  `2026-08-26T07:25:08.0332615Z`.
+  `2026-08-26T08:14:26.6190418Z`, evidence head
+  `12019fdf5ff78733a36b3f0e889fecd1fcfb227c`.
 - Headed card-table run:
-  `20260826-072049-300-v076_production_natural_card_table_headed_capture-273179c8`,
+  `20260826-081007-297-v076_production_natural_card_table_headed_capture-f92cd67f`,
   9 frames, `exact_window_match=true`, `diagnostic_count=0`,
   `task_introduced_error_count=0`, `residual_process_count=0`.
 - Headed final-settlement run:
-  `20260826-072301-691-v076_production_natural_final_settlement_headed_capture-8d8d46a6`,
+  `20260826-081220-684-v076_production_natural_final_settlement_headed_capture-d1f35eb5`,
   3 frames, `exact_window_match=true`, `diagnostic_count=0`,
   `task_introduced_error_count=0`, `residual_process_count=0`.
+- For each of `CARD_SELECT`, `CARD_PLAY_PUBLIC`, and
+  `CARD_RESOLUTION_FOCUS`, the capture, queued cue, finished cue, queue/finish
+  envelopes, and start/finish bridge evidence bind to the same non-empty
+  receipt; Director queue and finish counts are exactly one. All 12 frame PNGs
+  are non-empty 1600x960 files whose SHA-256 values match the manifest.
 - The bundle is `natural_gameplay_automation=true`, `human_executed=false`,
   `human_confirmed=false`, `human_green=false`, `production_green=false`,
   `commercial_m1_green=false`, with `STEP13_STATUS=PENDING`,
   `STEP14_STATUS=PENDING`, and `STEP15_STATUS=PENDING`.
 - Evidence: [natural_production_cue_proof.json](natural_production_cue_proof.json),
-  [production_natural_headed/20260826-072048-956-1cfe8c443d7f/manifest.json](production_natural_headed/20260826-072048-956-1cfe8c443d7f/manifest.json),
-  and [production_natural_headed/20260826-072048-956-1cfe8c443d7f/runner_report.json](production_natural_headed/20260826-072048-956-1cfe8c443d7f/runner_report.json).
+  [production_natural_headed/20260826-081006-934-12bb685a3d67/manifest.json](production_natural_headed/20260826-081006-934-12bb685a3d67/manifest.json),
+  and [production_natural_headed/20260826-081006-934-12bb685a3d67/runner_report.json](production_natural_headed/20260826-081006-934-12bb685a3d67/runner_report.json).
 
 ## Reuse/Point-Inertia hard stop
 
 - Selftest: `120/120 PASS`, false-green count 0.
-- Full committed-HEAD validation at
-  `6e1825a34070de043a03bcff0af6b1a1587bed65`: `FAIL`, 620 failures, 509
-  historical failures, 65 transitions.
+- Full clean-worktree validation at product/evidence source HEAD
+  `12019fdf5ff78733a36b3f0e889fecd1fcfb227c`, using explicit PR base
+  `770d741f05964facda4afcbddcdeb3e7f40571d5` and inertia/gate base
+  `f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5`: `FAIL`, 569 failures, 510
+  historical failures, 67 transitions. The first failure is
+  `DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.get_file_as_string:path:scripts/presentation/v076_presentation_animation_director.gd`.
 - The prior 445/407 audit established a lower bound of at least 22 failures that
   cannot be resolved by the existing append-only correction mechanisms. The
   new grouped commits do not create an authorized correction path, so that
@@ -144,9 +159,10 @@ production green, or Commercial M1 Green.
 - No new governance task is authorized by this checkpoint. The correct status
   is therefore `TRUE_HARD_STOP_REQUIRING_USER_DECISION`.
 
-The report/handoff files remain an uncommitted worktree delta above that
-evaluated HEAD, so the 620/509/65 counts describe the committed HEAD only. A
-post-commit current-HEAD rerun remains mandatory before any release action.
+The report/handoff and evidence files remain an uncommitted worktree delta above
+that evaluated source HEAD, so the 569/510/67 counts describe the committed
+product/evidence source only. A post-commit exact-HEAD rerun remains mandatory
+before any release action.
 
 ## Next allowed step
 

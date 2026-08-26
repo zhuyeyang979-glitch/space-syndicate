@@ -27,8 +27,10 @@
 - Worktree:
   `D:\SpaceSyndicateWorktrees\v076\770d741f\continuous-playable-vertical-slice`
 - Branch: `codex/v076-continuous-playable-vertical-slice-770d741f`
-- Current committed HEAD: `6e1825a34070de043a03bcff0af6b1a1587bed65`
-- Current committed tree: `d4e53342527d1f7a9bfcb6cf6225f69654713b87`
+- Current product/evidence source HEAD:
+  `12019fdf5ff78733a36b3f0e889fecd1fcfb227c`
+- Current product/evidence source tree:
+  `c5710c978fee111b33b265b2e5ad4ea6cebcba38`
 - The report/handoff files remain an uncommitted worktree delta above that
   evaluated HEAD; final remote-head Reuse totals must come from the post-commit
   rerun.
@@ -42,15 +44,18 @@
   35 direct-commercial verified, 9 attribution-required;
   `ASSET_LICENSE_GATE=PASS` and query selftest `PASS`.
 - Showcase focused test: `1043/1043 PASS`, latest run
-  `20260826-073214-749-vertical_slice_showcase_test-6bddc8c5`.
-- Headed fixture capture: run
-  `20260826-030019-680-showcase_frame_capture-db746429`, 13 episodes / 39 PNG,
-  1600x960, zero errors, diagnostics, and residual processes.
+  `20260826-080153-777-vertical_slice_showcase_test-83ecb20c`.
+- Headed fixture finality capture: run
+  `20260826-081646-474-showcase_frame_capture-5963edd5`, 13 episodes / 39 PNG,
+  1600x960; all 13 episode reports finish `PASS`, with zero process/runner
+  failures, script errors, diagnostics, task-introduced errors, or residual
+  project processes.
 - Independent visual review: `13/13 PASS`, `39/39` hashes match, fixture banner
   `39/39`, and `VISUAL_REVIEW=PASS_FIXTURE_ONLY`.
-- Final Godot MCP showcase run: Godot 4.7, zero hard runtime errors, 155 existing
-  warning headers retained, and a clean stop. This direct run has no runner run
-  ID.
+- Final Godot MCP production-main run: real `res://scenes/main.tscn`, Godot
+  `4.7.stable.official.5b4e0cb0f`, no task-introduced hard runtime error,
+  disclosed existing warnings retained, and a clean stop. This direct run has
+  no runner run ID.
 - Formal Phase 7 performance: `949/949 PASS`, run
   `20260826-014734-735-v076_phase7_sound_motion_performance_gate-4f9136fb`;
   p95 idle 9.442 ms, animation 6.901 ms, card 0.576 ms, menu 25.204 ms,
@@ -59,9 +64,10 @@
 
 ## Production-main automated Card-table sentinel
 
-- `892/892 PASS`, run
-  `20260826-072626-974-v076_alpha07_card_table_flow_readiness_test-ac2ea97e`.
-- Startup: 2.446 seconds; first AI Action Feed: 3.724 seconds.
+- `1067/1067 PASS`, run
+  `20260826-081712-139-v076_alpha07_card_table_flow_readiness_test-a5c91e41`.
+- Runtime duration: 126.266 seconds; runner/Godot exits, diagnostics, script
+  errors, task-introduced errors, and residual processes are all zero.
 - Three authoritative track handoffs, four action windows, second commodity
   exact-once acquisition, and 43 public resolutions are covered.
 - Presentation source/queue/start/finish is `102/102/102/102`; the unique
@@ -76,9 +82,13 @@
 These results are automated production-main evidence only. They do not permit
 Human Green or resume the consolidated human retest.
 
-The four natural production Cue proof is `243/243 PASS` with zero failures;
+The four natural production Cue proof is `243/243 PASS` with zero failures. Its
+Card-table run is
+`20260826-081712-139-v076_alpha07_card_table_flow_readiness_test-a5c91e41` and
 its Victory run is
-`20260826-072836-255-v076_production_victory_audit_readiness_test-4313fd95`.
+`20260826-081921-586-v076_production_victory_audit_readiness_test-e1a48a75`;
+both have zero diagnostics, script errors, task-introduced errors, and residual
+project processes.
 
 The showcase capture p95 includes screenshot I/O and is informational only. Do
 not substitute it for the formal Phase 7 performance gate.
@@ -86,23 +96,28 @@ not substitute it for the formal Phase 7 performance gate.
 ## Natural production headed bundle
 
 - `PASS_AUTOMATED_NATURAL_PRODUCTION_HEADED_ONLY`, recorded_at_utc
-  `2026-08-26T07:25:08.0332615Z`.
+  `2026-08-26T08:14:26.6190418Z`, evidence head
+  `12019fdf5ff78733a36b3f0e889fecd1fcfb227c`.
 - Headed card-table run:
-  `20260826-072049-300-v076_production_natural_card_table_headed_capture-273179c8`,
+  `20260826-081007-297-v076_production_natural_card_table_headed_capture-f92cd67f`,
   9 frames, `exact_window_match=true`, `diagnostic_count=0`,
   `task_introduced_error_count=0`, `residual_process_count=0`.
 - Headed final-settlement run:
-  `20260826-072301-691-v076_production_natural_final_settlement_headed_capture-8d8d46a6`,
+  `20260826-081220-684-v076_production_natural_final_settlement_headed_capture-d1f35eb5`,
   3 frames, `exact_window_match=true`, `diagnostic_count=0`,
   `task_introduced_error_count=0`, `residual_process_count=0`.
+- The three Card-table capture identities are non-empty and exact across
+  capture, queue, finish, envelopes, and bridge start/finish evidence; each has
+  Director queue=1 and finish=1. All 12 declared frame PNGs are non-empty
+  1600x960 images with matching manifest SHA-256 values.
 - The bundle is `natural_gameplay_automation=true`, `human_executed=false`,
   `human_confirmed=false`, `human_green=false`, `production_green=false`,
   `commercial_m1_green=false`, with `STEP13_STATUS=PENDING`,
   `STEP14_STATUS=PENDING`, and `STEP15_STATUS=PENDING`.
 - Canonical evidence:
   `reports/presentation/commercial_m1/natural_production_cue_proof.json`,
-  `reports/presentation/commercial_m1/production_natural_headed/20260826-072048-956-1cfe8c443d7f/manifest.json`,
-  and `reports/presentation/commercial_m1/production_natural_headed/20260826-072048-956-1cfe8c443d7f/runner_report.json`.
+  `reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/manifest.json`,
+  and `reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/runner_report.json`.
   The headed bundle is natural-production automation only and does not support
   fixture claims.
 
@@ -126,9 +141,12 @@ Commercial M1 Green, production green, or Human Green.
 ## Hard stop
 
 The Reuse/Point-Inertia selftest is `120/120 PASS` with false-green count 0,
-but the full committed-HEAD validation at
-`6e1825a34070de043a03bcff0af6b1a1587bed65` is `FAIL` with 620 failures, 509
-historical failures, and 65 transitions.
+but the clean-worktree validation at product/evidence source HEAD
+`12019fdf5ff78733a36b3f0e889fecd1fcfb227c`, explicit PR base
+`770d741f05964facda4afcbddcdeb3e7f40571d5`, and inertia/gate base
+`f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5` is `FAIL` with 569 failures,
+510 historical failures, and 67 transitions. The first failure is
+`DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.get_file_as_string:path:scripts/presentation/v076_presentation_animation_director.gd`.
 
 The prior 445/407 classification established a lower bound of at least 22
 failures outside the existing append-only correction mechanisms. The current
@@ -165,6 +183,9 @@ After an authorized path exists:
 - `reports/presentation/commercial_m1/asset_registry_report.json`
 - `reports/presentation/commercial_m1/performance_report.json`
 - `reports/presentation/commercial_m1/automated_card_table_flow_receipt.json`
+- `reports/presentation/commercial_m1/natural_production_cue_proof.json`
+- `reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/`
+- `reports/presentation/commercial_m1/showcase_headed_finality/20260826-081645-855-ae71c1dc5841/`
 
 ## Preserved but not committed in this commercial sprint
 

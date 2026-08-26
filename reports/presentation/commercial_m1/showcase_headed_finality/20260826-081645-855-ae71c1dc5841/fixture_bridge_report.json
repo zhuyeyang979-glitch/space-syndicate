@@ -1,0 +1,95 @@
+{
+	"bridge": {
+		"authority_receipt": false,
+		"bridge_instance_count": 1,
+		"bridge_method": "VerticalSliceShowcase.submit_presentation_fixture",
+		"duplicate_suppressed_count": 13,
+		"finish_count": 13,
+		"fixture_class": "PRESENTATION_FIXTURE",
+		"fixture_created_session_count": 0,
+		"fixture_rng_draw_count": 0,
+		"fixture_save_request_count": 0,
+		"fixture_tick_advance_count": 0,
+		"gameplay_green": false,
+		"host_lifecycle_unchanged": true,
+		"human_green": false,
+		"last_result": {
+			"accepted": true,
+			"authority_receipt": false,
+			"bridge_instance_count": 1,
+			"bridge_method": "VerticalSliceShowcase.submit_presentation_fixture",
+			"fixture_class": "PRESENTATION_FIXTURE",
+			"gameplay_green": false,
+			"host_lifecycle_unchanged": true,
+			"human_green": false,
+			"natural_gameplay": false,
+			"production_green": false,
+			"production_main_role": "PRODUCTION_PRESENTATION_HOST_ONLY",
+			"reason_code": "showcase_fixture_bridge_finished",
+			"route": "CARD_TABLE_FIXTURE",
+			"schema": "V076CommercialPresentationFixtureBridgeV1"
+		},
+		"last_route": "CARD_TABLE_FIXTURE",
+		"lifecycle_after": {
+			"authority_snapshot_sha256": "09d14248b7311d1903b6e50becce2ceacf4fd95d48a2fb5913001eb5de02d65c",
+			"kernel_current_tick": 0,
+			"kernel_next_authority_sequence": 1,
+			"kernel_rng_state_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+			"last_published_session_id": "",
+			"load_request_count": 0,
+			"new_game_publication_count": 0,
+			"new_game_transaction_in_progress": false,
+			"production_save_slot_write_count": 0,
+			"save_request_count": 0,
+			"schema": "V076CommercialShowcaseHostLifecycleSnapshotV1",
+			"session_sequence": 0
+		},
+		"lifecycle_before": {
+			"authority_snapshot_sha256": "332400e92d359b9a4557e8a91f35f008691eabfb77548425aebf91fdb9c0a07e",
+			"kernel_current_tick": 0,
+			"kernel_next_authority_sequence": 1,
+			"kernel_rng_state_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+			"last_published_session_id": "",
+			"load_request_count": 0,
+			"new_game_publication_count": 0,
+			"new_game_transaction_in_progress": false,
+			"production_save_slot_write_count": 0,
+			"save_request_count": 0,
+			"schema": "V076CommercialShowcaseHostLifecycleSnapshotV1",
+			"session_sequence": 0
+		},
+		"natural_gameplay": false,
+		"production_green": false,
+		"production_main_role": "PRODUCTION_PRESENTATION_HOST_ONLY",
+		"rejection_count": 0,
+		"replay_count": 13,
+		"route_counts": {
+			"CARD_TABLE_FIXTURE": {
+				"duplicate_suppressed_count": 4,
+				"finish_count": 4,
+				"replay_count": 4,
+				"submit_count": 4
+			},
+			"GENERIC_DIRECTOR_FIXTURE": {
+				"duplicate_suppressed_count": 7,
+				"finish_count": 7,
+				"replay_count": 7,
+				"submit_count": 7
+			},
+			"PRODUCT_SHELL_FIXTURE": {
+				"duplicate_suppressed_count": 2,
+				"finish_count": 2,
+				"replay_count": 2,
+				"submit_count": 2
+			}
+		},
+		"schema": "V076CommercialPresentationFixtureBridgeV1",
+		"submit_count": 13
+	},
+	"fixture_class": "PRESENTATION_FIXTURE",
+	"human_green": false,
+	"natural_gameplay": false,
+	"production_green": false,
+	"schema": "V076CommercialPresentationFixtureBridgeReportV1",
+	"status": "PASS"
+}

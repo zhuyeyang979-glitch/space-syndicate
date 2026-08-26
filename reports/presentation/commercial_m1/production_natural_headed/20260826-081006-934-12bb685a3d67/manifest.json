@@ -1,0 +1,1535 @@
+{
+  "schema": "V076ProductionNaturalFourCueHeadedEvidenceV1",
+  "status": "PASS_AUTOMATED_NATURAL_PRODUCTION_HEADED_ONLY",
+  "evidence_class": "PRODUCTION_NATURAL_AUTOMATION_HEADED",
+  "recorded_at_utc": "2026-08-26T08:14:26.6190418Z",
+  "evaluated_source": "HEAD_PLUS_PRESERVED_WORKTREE",
+  "include_worktree": true,
+  "evidence_head": "12019fdf5ff78733a36b3f0e889fecd1fcfb227c",
+  "evidence_head_tree": "c5710c978fee111b33b265b2e5ad4ea6cebcba38",
+  "source_hashes": [
+    {
+      "path": "tests/v076_production_natural_card_table_headed_capture.gd",
+      "sha256": "300b144d77dd01dbfa27f2a42ef3af24a0f33d343bf8f6499300cef86a092252"
+    },
+    {
+      "path": "tests/v076_production_natural_final_settlement_headed_capture.gd",
+      "sha256": "748325b8e4bc884fec3e25be6c042604208794c1ec719250f1ad1f1cc7faa03e"
+    },
+    {
+      "path": "tests/v076_alpha07_card_table_flow_readiness_test.gd",
+      "sha256": "128dde84c3bef5ccb80221a924e499f2e238e3753aa7714fd5fbb0cc5335ab04"
+    },
+    {
+      "path": "tests/v076_production_victory_audit_readiness_test.gd",
+      "sha256": "07cc7c2203aa79982ed43a18e0a1e6ffaa7241586619aeff627fcbb3fc212798"
+    },
+    {
+      "path": "tools/presentation/invoke_v076_production_natural_card_table_capture.ps1",
+      "sha256": "8ac824e8aa9a0a54b7bea66481f45e7f7c59e9ad3db6cd0eafbad1e28e22e698"
+    }
+  ],
+  "production_main_scene": "res://scenes/main.tscn",
+  "natural_gameplay_automation": true,
+  "presentation_fixture": false,
+  "fixture_receipt_count": 0,
+  "human_executed": false,
+  "human_confirmed": false,
+  "human_green": false,
+  "production_green": false,
+  "commercial_m1_green": false,
+  "step13_status": "PENDING",
+  "step14_status": "PENDING",
+  "step15_status": "PENDING",
+  "cue_count": 4,
+  "frame_count": 12,
+  "cues": [
+    {
+      "bridge_evidence": {
+        "abort_reason": "",
+        "consumer_class": "AUTHORIZED_PRESENTATION_INPUT",
+        "cue_id": "CARD_SELECT",
+        "envelope": {
+          "accepted": true,
+          "authorization_class": "AUTHORIZED_PRESENTATION_INPUT",
+          "authorized_input_kind": "own_hand_card_selection",
+          "cue_id": "CARD_SELECT",
+          "own_hand_projection_sha256": "6bb1a67b50266522f0437fce007628c6e74cb89b4c77e2c5755696bf0865f3c9",
+          "presentation_input_sequence": 1,
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "receipt_kind": "card_selection_receipt",
+          "schema": "V076AuthorizedPresentationInputEnvelopeV1",
+          "schema_version": 1
+        },
+        "finish_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "card_instance_id": "dbg.player.local.000002",
+          "consumer_class": "AUTHORIZED_PRESENTATION_INPUT",
+          "cue_id": "CARD_SELECT",
+          "end_rect": {
+            "height": 150.120010375977,
+            "width": 112.320007324219,
+            "x": 359.839996337891,
+            "y": 677.940002441406
+          },
+          "gameplay_mutation_count": 0,
+          "presentation_only": true,
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "rng_draw_delta": 0,
+          "schema": "V076CardSelectionPresentationEvidenceV1",
+          "selected": true,
+          "start_rect": {
+            "height": 150.120010375977,
+            "width": 112.320007324219,
+            "x": 359.839996337891,
+            "y": 677.940002441406
+          },
+          "terminal_status": "SETTLED"
+        },
+        "queued_cue": {
+          "completion_policy": "VISUAL_SETTLE",
+          "cue_id": "CARD_SELECT",
+          "duration_ms": 620,
+          "effective_flash_intensity": 0.35,
+          "effective_hit_stop_ms": 0,
+          "effective_motion_path": "lift",
+          "effective_screen_shake_profile": "none",
+          "fallback_cue_id": "CARD_PLAY_PUBLIC",
+          "hit_stop_ms": 0.0,
+          "instant_test_mode": false,
+          "interrupt_policy": "REPLACE_SAME_SOURCE",
+          "motion_mode": "FULL_MOTION",
+          "motion_path": "lift",
+          "opacity_curve": "1->1",
+          "particle_profile": "selection_ring",
+          "priority": 50.0,
+          "privacy_class": "CURRENT_PLAYER",
+          "projection": {
+            "current_player_authorized": true,
+            "public_label": "当前玩家合法手牌选择",
+            "source_anchor": {
+              "global_position": {
+                "x": 416.0,
+                "y": 753.0
+              },
+              "global_rect": {
+                "height": 150.120010375977,
+                "width": 112.320007324219,
+                "x": 359.839996337891,
+                "y": 677.940002441406
+              }
+            },
+            "target_anchor": {
+              "global_position": {
+                "x": 416.0,
+                "y": 753.0
+              },
+              "global_rect": {
+                "height": 150.120010375977,
+                "width": 112.320007324219,
+                "x": 359.839996337891,
+                "y": 677.940002441406
+              }
+            }
+          },
+          "queue_policy": "REPLACE_SAME_SOURCE",
+          "receipt_fingerprint": "e01f3b3f2e71cbc36e2db6c84a78821b1d4a4ea6c53881faac11005ebec04aaa",
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "receipt_kind": "card_selection_receipt",
+          "reduced_motion": false,
+          "reduced_motion_duration_ms": 220.0,
+          "rotation_curve": "0deg->0deg",
+          "scale_curve": "1->1.06",
+          "screen_shake_profile": "none",
+          "sound_cue_id": "CARD_SELECT_SFX",
+          "source_anchor": "hand",
+          "source_kind": "PLAYER_HAND",
+          "target_anchor": "hand",
+          "target_kind": "SELECTION"
+        },
+        "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+        "start_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "consumer_class": "AUTHORIZED_PRESENTATION_INPUT",
+          "cue_id": "CARD_SELECT",
+          "gameplay_mutation_count": 0,
+          "own_hand_projection_sha256": "6bb1a67b50266522f0437fce007628c6e74cb89b4c77e2c5755696bf0865f3c9",
+          "presentation_only": true,
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "rng_draw_delta": 0,
+          "schema": "V076CardSelectionPresentationStartV1",
+          "source_rect": {
+            "height": 150.120010375977,
+            "width": 112.320007324219,
+            "x": 359.839996337891,
+            "y": 677.940002441406
+          },
+          "target_rect": {
+            "height": 138.110412597656,
+            "width": 103.334403991699,
+            "x": 364.332794189453,
+            "y": 690.94482421875
+          }
+        },
+        "status": "FINISHED"
+      },
+      "bridge_evidence_at_finish": {
+        "abort_reason": "",
+        "consumer_class": "AUTHORIZED_PRESENTATION_INPUT",
+        "cue_id": "CARD_SELECT",
+        "envelope": {
+          "accepted": true,
+          "authorization_class": "AUTHORIZED_PRESENTATION_INPUT",
+          "authorized_input_kind": "own_hand_card_selection",
+          "cue_id": "CARD_SELECT",
+          "own_hand_projection_sha256": "6bb1a67b50266522f0437fce007628c6e74cb89b4c77e2c5755696bf0865f3c9",
+          "presentation_input_sequence": 1,
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "receipt_kind": "card_selection_receipt",
+          "schema": "V076AuthorizedPresentationInputEnvelopeV1",
+          "schema_version": 1
+        },
+        "finish_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "card_instance_id": "dbg.player.local.000002",
+          "consumer_class": "AUTHORIZED_PRESENTATION_INPUT",
+          "cue_id": "CARD_SELECT",
+          "end_rect": {
+            "height": 150.120010375977,
+            "width": 112.320007324219,
+            "x": 359.839996337891,
+            "y": 677.940002441406
+          },
+          "gameplay_mutation_count": 0,
+          "presentation_only": true,
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "rng_draw_delta": 0,
+          "schema": "V076CardSelectionPresentationEvidenceV1",
+          "selected": true,
+          "start_rect": {
+            "height": 150.120010375977,
+            "width": 112.320007324219,
+            "x": 359.839996337891,
+            "y": 677.940002441406
+          },
+          "terminal_status": "SETTLED"
+        },
+        "queued_cue": {
+          "completion_policy": "VISUAL_SETTLE",
+          "cue_id": "CARD_SELECT",
+          "duration_ms": 620,
+          "effective_flash_intensity": 0.35,
+          "effective_hit_stop_ms": 0,
+          "effective_motion_path": "lift",
+          "effective_screen_shake_profile": "none",
+          "fallback_cue_id": "CARD_PLAY_PUBLIC",
+          "hit_stop_ms": 0.0,
+          "instant_test_mode": false,
+          "interrupt_policy": "REPLACE_SAME_SOURCE",
+          "motion_mode": "FULL_MOTION",
+          "motion_path": "lift",
+          "opacity_curve": "1->1",
+          "particle_profile": "selection_ring",
+          "priority": 50.0,
+          "privacy_class": "CURRENT_PLAYER",
+          "projection": {
+            "current_player_authorized": true,
+            "public_label": "当前玩家合法手牌选择",
+            "source_anchor": {
+              "global_position": {
+                "x": 416.0,
+                "y": 753.0
+              },
+              "global_rect": {
+                "height": 150.120010375977,
+                "width": 112.320007324219,
+                "x": 359.839996337891,
+                "y": 677.940002441406
+              }
+            },
+            "target_anchor": {
+              "global_position": {
+                "x": 416.0,
+                "y": 753.0
+              },
+              "global_rect": {
+                "height": 150.120010375977,
+                "width": 112.320007324219,
+                "x": 359.839996337891,
+                "y": 677.940002441406
+              }
+            }
+          },
+          "queue_policy": "REPLACE_SAME_SOURCE",
+          "receipt_fingerprint": "e01f3b3f2e71cbc36e2db6c84a78821b1d4a4ea6c53881faac11005ebec04aaa",
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "receipt_kind": "card_selection_receipt",
+          "reduced_motion": false,
+          "reduced_motion_duration_ms": 220.0,
+          "rotation_curve": "0deg->0deg",
+          "scale_curve": "1->1.06",
+          "screen_shake_profile": "none",
+          "sound_cue_id": "CARD_SELECT_SFX",
+          "source_anchor": "hand",
+          "source_kind": "PLAYER_HAND",
+          "target_anchor": "hand",
+          "target_kind": "SELECTION"
+        },
+        "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+        "start_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "consumer_class": "AUTHORIZED_PRESENTATION_INPUT",
+          "cue_id": "CARD_SELECT",
+          "gameplay_mutation_count": 0,
+          "own_hand_projection_sha256": "6bb1a67b50266522f0437fce007628c6e74cb89b4c77e2c5755696bf0865f3c9",
+          "presentation_only": true,
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "rng_draw_delta": 0,
+          "schema": "V076CardSelectionPresentationStartV1",
+          "source_rect": {
+            "height": 150.120010375977,
+            "width": 112.320007324219,
+            "x": 359.839996337891,
+            "y": 677.940002441406
+          },
+          "target_rect": {
+            "height": 138.110412597656,
+            "width": 103.334403991699,
+            "x": 364.332794189453,
+            "y": 690.94482421875
+          }
+        },
+        "status": "FINISHED"
+      },
+      "bridge_evidence_at_queue": {
+        "abort_reason": "",
+        "consumer_class": "AUTHORIZED_PRESENTATION_INPUT",
+        "cue_id": "CARD_SELECT",
+        "envelope": {
+          "accepted": true,
+          "authorization_class": "AUTHORIZED_PRESENTATION_INPUT",
+          "authorized_input_kind": "own_hand_card_selection",
+          "cue_id": "CARD_SELECT",
+          "own_hand_projection_sha256": "6bb1a67b50266522f0437fce007628c6e74cb89b4c77e2c5755696bf0865f3c9",
+          "presentation_input_sequence": 1,
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "receipt_kind": "card_selection_receipt",
+          "schema": "V076AuthorizedPresentationInputEnvelopeV1",
+          "schema_version": 1
+        },
+        "finish_evidence": {},
+        "queued_cue": {},
+        "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+        "start_evidence": {},
+        "status": "PENDING_DIRECTOR_QUEUE"
+      },
+      "capture_identity_green": true,
+      "counts": {
+        "collision_count": 0,
+        "duplicate_count": 0,
+        "envelope_count": 2,
+        "finish_missing_count": 0,
+        "finished_count": 2,
+        "fixture_finished_count": 0,
+        "fixture_queued_count": 0,
+        "fixture_source_count": 0,
+        "fixture_surface_finished_count": 0,
+        "fixture_surface_started_count": 0,
+        "production_finished_count": 2,
+        "production_queued_count": 2,
+        "production_source_count": 2,
+        "production_surface_finished_count": 2,
+        "production_surface_started_count": 2,
+        "queued_count": 2,
+        "rejection_count": 0,
+        "source_count": 2,
+        "surface_finished_count": 2,
+        "surface_rejection_count": 0,
+        "surface_started_count": 2
+      },
+      "cue_id": "CARD_SELECT",
+      "director_finish_count_for_receipt": 1,
+      "director_queue_count_for_receipt": 1,
+      "finished_cue": {
+        "completion_policy": "VISUAL_SETTLE",
+        "cue_id": "CARD_SELECT",
+        "duration_ms": 620,
+        "effective_flash_intensity": 0.35,
+        "effective_hit_stop_ms": 0,
+        "effective_motion_path": "lift",
+        "effective_screen_shake_profile": "none",
+        "fallback_cue_id": "CARD_PLAY_PUBLIC",
+        "hit_stop_ms": 0.0,
+        "instant_test_mode": false,
+        "interrupt_policy": "REPLACE_SAME_SOURCE",
+        "motion_mode": "FULL_MOTION",
+        "motion_path": "lift",
+        "opacity_curve": "1->1",
+        "particle_profile": "selection_ring",
+        "priority": 50.0,
+        "privacy_class": "CURRENT_PLAYER",
+        "projection": {
+          "current_player_authorized": true,
+          "public_label": "当前玩家合法手牌选择",
+          "source_anchor": {
+            "global_position": {
+              "x": 416.0,
+              "y": 753.0
+            },
+            "global_rect": {
+              "height": 150.120010375977,
+              "width": 112.320007324219,
+              "x": 359.839996337891,
+              "y": 677.940002441406
+            }
+          },
+          "target_anchor": {
+            "global_position": {
+              "x": 416.0,
+              "y": 753.0
+            },
+            "global_rect": {
+              "height": 150.120010375977,
+              "width": 112.320007324219,
+              "x": 359.839996337891,
+              "y": 677.940002441406
+            }
+          }
+        },
+        "queue_policy": "REPLACE_SAME_SOURCE",
+        "receipt_fingerprint": "e01f3b3f2e71cbc36e2db6c84a78821b1d4a4ea6c53881faac11005ebec04aaa",
+        "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+        "receipt_kind": "card_selection_receipt",
+        "reduced_motion": false,
+        "reduced_motion_duration_ms": 220.0,
+        "rotation_curve": "0deg->0deg",
+        "scale_curve": "1->1.06",
+        "screen_shake_profile": "none",
+        "sound_cue_id": "CARD_SELECT_SFX",
+        "source_anchor": "hand",
+        "source_kind": "PLAYER_HAND",
+        "target_anchor": "hand",
+        "target_kind": "SELECTION"
+      },
+      "fixture_counter_zero": true,
+      "frames": {
+        "end": {
+          "byte_length": 483373,
+          "captured_wall_msec": 41552,
+          "cue_id": "CARD_SELECT",
+          "height": 960,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/card_table/card_select/end.png",
+          "phase": "end",
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "sha256": "a7453979f984ac772dedd12d70469a787705015bd9645eecf14ee8dfcda4876a",
+          "width": 1600
+        },
+        "mid": {
+          "byte_length": 483373,
+          "captured_wall_msec": 41614,
+          "cue_id": "CARD_SELECT",
+          "height": 960,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/card_table/card_select/mid.png",
+          "phase": "mid",
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "sha256": "a7453979f984ac772dedd12d70469a787705015bd9645eecf14ee8dfcda4876a",
+          "width": 1600
+        },
+        "start": {
+          "byte_length": 464205,
+          "captured_wall_msec": 41466,
+          "cue_id": "CARD_SELECT",
+          "height": 960,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/card_table/card_select/start.png",
+          "phase": "start",
+          "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+          "sha256": "5e7ccdcc8d3d80441d6be434fcc0272d0ef24a96692125e0d11b9f659471f669",
+          "width": 1600
+        }
+      },
+      "frames_green": true,
+      "lineage_green": true,
+      "production_aggregate_parity": true,
+      "production_consumer": "AUTHORIZED_PRESENTATION_INPUT",
+      "production_schema": "V076AuthorizedPresentationInputEnvelopeV1",
+      "queued_cue": {
+        "completion_policy": "VISUAL_SETTLE",
+        "cue_id": "CARD_SELECT",
+        "duration_ms": 620,
+        "effective_flash_intensity": 0.35,
+        "effective_hit_stop_ms": 0,
+        "effective_motion_path": "lift",
+        "effective_screen_shake_profile": "none",
+        "fallback_cue_id": "CARD_PLAY_PUBLIC",
+        "hit_stop_ms": 0.0,
+        "instant_test_mode": false,
+        "interrupt_policy": "REPLACE_SAME_SOURCE",
+        "motion_mode": "FULL_MOTION",
+        "motion_path": "lift",
+        "opacity_curve": "1->1",
+        "particle_profile": "selection_ring",
+        "priority": 50.0,
+        "privacy_class": "CURRENT_PLAYER",
+        "projection": {
+          "current_player_authorized": true,
+          "public_label": "当前玩家合法手牌选择",
+          "source_anchor": {
+            "global_position": {
+              "x": 416.0,
+              "y": 753.0
+            },
+            "global_rect": {
+              "height": 150.120010375977,
+              "width": 112.320007324219,
+              "x": 359.839996337891,
+              "y": 677.940002441406
+            }
+          },
+          "target_anchor": {
+            "global_position": {
+              "x": 416.0,
+              "y": 753.0
+            },
+            "global_rect": {
+              "height": 150.120010375977,
+              "width": 112.320007324219,
+              "x": 359.839996337891,
+              "y": 677.940002441406
+            }
+          }
+        },
+        "queue_policy": "REPLACE_SAME_SOURCE",
+        "receipt_fingerprint": "e01f3b3f2e71cbc36e2db6c84a78821b1d4a4ea6c53881faac11005ebec04aaa",
+        "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+        "receipt_kind": "card_selection_receipt",
+        "reduced_motion": false,
+        "reduced_motion_duration_ms": 220.0,
+        "rotation_curve": "0deg->0deg",
+        "scale_curve": "1->1.06",
+        "screen_shake_profile": "none",
+        "sound_cue_id": "CARD_SELECT_SFX",
+        "source_anchor": "hand",
+        "source_kind": "PLAYER_HAND",
+        "target_anchor": "hand",
+        "target_kind": "SELECTION"
+      },
+      "receipt_id": "card-select:9dc9332d60a74b1be7d88b5041601784",
+      "receipt_kind": "card_selection_receipt"
+    },
+    {
+      "bridge_evidence": {
+        "abort_reason": "",
+        "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+        "cue_id": "CARD_PLAY_PUBLIC",
+        "envelope": {
+          "accepted": true,
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "receipt_kind": "public_card_play_receipt",
+          "schema": "V076PublicCardPlayPresentationEnvelopeV1",
+          "schema_version": 1,
+          "source_application_receipt_sha256": "",
+          "source_lineage_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "source_public_projection_id": "public.card.3a26dac44ffda65dd9fd",
+          "source_public_projection_sha256": "9ef4f26e3bed06d85c97919cd94a7a3ff43af4214754fc19309325b369e54388",
+          "source_public_receipt_sha256": "232e9a5f7772a41363bc3f8e418af86722b291faa2ffda3ea19c887ace526375",
+          "source_queue_action_sha256": ""
+        },
+        "finish_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "end_rect": {
+            "height": 164.0,
+            "width": 122.0,
+            "x": 964.679992675781,
+            "y": 379.5
+          },
+          "from_ai_seat": true,
+          "gameplay_mutation_count": 0,
+          "presentation_only": true,
+          "rng_draw_delta": 0,
+          "schema": "V076PublicCardTransitionFinishV1",
+          "transition_id": "public.card.3a26dac44ffda65dd9fd"
+        },
+        "queued_cue": {
+          "completion_policy": "RECEIPT_FINISH",
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "duration_ms": 620,
+          "effective_flash_intensity": 0.55,
+          "effective_hit_stop_ms": 0,
+          "effective_motion_path": "arc_forward",
+          "effective_screen_shake_profile": "light",
+          "fallback_cue_id": "COMBAT_FIZZLE",
+          "hit_stop_ms": 0.0,
+          "instant_test_mode": false,
+          "interrupt_policy": "QUEUE_AFTER_CURRENT",
+          "motion_mode": "FULL_MOTION",
+          "motion_path": "arc_forward",
+          "opacity_curve": "1->1",
+          "particle_profile": "play_spark",
+          "priority": 90.0,
+          "privacy_class": "PUBLIC",
+          "projection": {
+            "current_player_authorized": true,
+            "public_label": "匿名行动",
+            "public_projection_sha256": "9ef4f26e3bed06d85c97919cd94a7a3ff43af4214754fc19309325b369e54388",
+            "source_global_rect": {
+              "height": 144.0,
+              "width": 108.0,
+              "x": 20.0,
+              "y": 316.5
+            },
+            "target_global_rect": {
+              "height": 164.0,
+              "width": 122.0,
+              "x": 964.679992675781,
+              "y": 379.5
+            }
+          },
+          "queue_policy": "EXACT_ONCE",
+          "receipt_fingerprint": "8c01093bceecdf77cadb955c48da1f5ab710705fbfb4390271b7a9a160e991ae",
+          "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "receipt_kind": "public_card_play_receipt",
+          "reduced_motion": false,
+          "reduced_motion_duration_ms": 220.0,
+          "rotation_curve": "0deg->0deg",
+          "scale_curve": "1->1.04",
+          "screen_shake_profile": "light",
+          "sound_cue_id": "CARD_PLAY_SFX",
+          "source_anchor": "hand",
+          "source_kind": "PLAYER_HAND",
+          "target_anchor": "public_track",
+          "target_kind": "PUBLIC_BATCH"
+        },
+        "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+        "start_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "from_ai_seat": true,
+          "gameplay_mutation_count": 0,
+          "presentation_only": true,
+          "rng_draw_delta": 0,
+          "schema": "V076PublicCardTransitionStartV1",
+          "source_rect": {
+            "height": 144.0,
+            "width": 108.0,
+            "x": 20.0,
+            "y": 316.5
+          },
+          "target_rect": {
+            "height": 164.0,
+            "width": 122.0,
+            "x": 964.679992675781,
+            "y": 379.5
+          },
+          "transition_id": "public.card.3a26dac44ffda65dd9fd"
+        },
+        "status": "FINISHED"
+      },
+      "bridge_evidence_at_finish": {
+        "abort_reason": "",
+        "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+        "cue_id": "CARD_PLAY_PUBLIC",
+        "envelope": {
+          "accepted": true,
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "receipt_kind": "public_card_play_receipt",
+          "schema": "V076PublicCardPlayPresentationEnvelopeV1",
+          "schema_version": 1,
+          "source_application_receipt_sha256": "",
+          "source_lineage_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "source_public_projection_id": "public.card.3a26dac44ffda65dd9fd",
+          "source_public_projection_sha256": "9ef4f26e3bed06d85c97919cd94a7a3ff43af4214754fc19309325b369e54388",
+          "source_public_receipt_sha256": "232e9a5f7772a41363bc3f8e418af86722b291faa2ffda3ea19c887ace526375",
+          "source_queue_action_sha256": ""
+        },
+        "finish_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "end_rect": {
+            "height": 164.0,
+            "width": 122.0,
+            "x": 964.679992675781,
+            "y": 379.5
+          },
+          "from_ai_seat": true,
+          "gameplay_mutation_count": 0,
+          "presentation_only": true,
+          "rng_draw_delta": 0,
+          "schema": "V076PublicCardTransitionFinishV1",
+          "transition_id": "public.card.3a26dac44ffda65dd9fd"
+        },
+        "queued_cue": {
+          "completion_policy": "RECEIPT_FINISH",
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "duration_ms": 620,
+          "effective_flash_intensity": 0.55,
+          "effective_hit_stop_ms": 0,
+          "effective_motion_path": "arc_forward",
+          "effective_screen_shake_profile": "light",
+          "fallback_cue_id": "COMBAT_FIZZLE",
+          "hit_stop_ms": 0.0,
+          "instant_test_mode": false,
+          "interrupt_policy": "QUEUE_AFTER_CURRENT",
+          "motion_mode": "FULL_MOTION",
+          "motion_path": "arc_forward",
+          "opacity_curve": "1->1",
+          "particle_profile": "play_spark",
+          "priority": 90.0,
+          "privacy_class": "PUBLIC",
+          "projection": {
+            "current_player_authorized": true,
+            "public_label": "匿名行动",
+            "public_projection_sha256": "9ef4f26e3bed06d85c97919cd94a7a3ff43af4214754fc19309325b369e54388",
+            "source_global_rect": {
+              "height": 144.0,
+              "width": 108.0,
+              "x": 20.0,
+              "y": 316.5
+            },
+            "target_global_rect": {
+              "height": 164.0,
+              "width": 122.0,
+              "x": 964.679992675781,
+              "y": 379.5
+            }
+          },
+          "queue_policy": "EXACT_ONCE",
+          "receipt_fingerprint": "8c01093bceecdf77cadb955c48da1f5ab710705fbfb4390271b7a9a160e991ae",
+          "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "receipt_kind": "public_card_play_receipt",
+          "reduced_motion": false,
+          "reduced_motion_duration_ms": 220.0,
+          "rotation_curve": "0deg->0deg",
+          "scale_curve": "1->1.04",
+          "screen_shake_profile": "light",
+          "sound_cue_id": "CARD_PLAY_SFX",
+          "source_anchor": "hand",
+          "source_kind": "PLAYER_HAND",
+          "target_anchor": "public_track",
+          "target_kind": "PUBLIC_BATCH"
+        },
+        "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+        "start_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "from_ai_seat": true,
+          "gameplay_mutation_count": 0,
+          "presentation_only": true,
+          "rng_draw_delta": 0,
+          "schema": "V076PublicCardTransitionStartV1",
+          "source_rect": {
+            "height": 144.0,
+            "width": 108.0,
+            "x": 20.0,
+            "y": 316.5
+          },
+          "target_rect": {
+            "height": 164.0,
+            "width": 122.0,
+            "x": 964.679992675781,
+            "y": 379.5
+          },
+          "transition_id": "public.card.3a26dac44ffda65dd9fd"
+        },
+        "status": "FINISHED"
+      },
+      "bridge_evidence_at_queue": {
+        "abort_reason": "",
+        "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+        "cue_id": "CARD_PLAY_PUBLIC",
+        "envelope": {
+          "accepted": true,
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "receipt_kind": "public_card_play_receipt",
+          "schema": "V076PublicCardPlayPresentationEnvelopeV1",
+          "schema_version": 1,
+          "source_application_receipt_sha256": "",
+          "source_lineage_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "source_public_projection_id": "public.card.3a26dac44ffda65dd9fd",
+          "source_public_projection_sha256": "9ef4f26e3bed06d85c97919cd94a7a3ff43af4214754fc19309325b369e54388",
+          "source_public_receipt_sha256": "232e9a5f7772a41363bc3f8e418af86722b291faa2ffda3ea19c887ace526375",
+          "source_queue_action_sha256": ""
+        },
+        "finish_evidence": {},
+        "queued_cue": {},
+        "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+        "start_evidence": {},
+        "status": "PENDING_DIRECTOR_QUEUE"
+      },
+      "capture_identity_green": true,
+      "counts": {
+        "collision_count": 0,
+        "duplicate_count": 0,
+        "envelope_count": 57,
+        "finish_missing_count": 0,
+        "finished_count": 57,
+        "fixture_finished_count": 0,
+        "fixture_queued_count": 0,
+        "fixture_source_count": 0,
+        "fixture_surface_finished_count": 0,
+        "fixture_surface_started_count": 0,
+        "production_finished_count": 57,
+        "production_queued_count": 57,
+        "production_source_count": 57,
+        "production_surface_finished_count": 57,
+        "production_surface_started_count": 57,
+        "queued_count": 57,
+        "rejection_count": 0,
+        "source_count": 57,
+        "surface_finished_count": 57,
+        "surface_rejection_count": 0,
+        "surface_started_count": 57
+      },
+      "cue_id": "CARD_PLAY_PUBLIC",
+      "director_finish_count_for_receipt": 1,
+      "director_queue_count_for_receipt": 1,
+      "finished_cue": {
+        "completion_policy": "RECEIPT_FINISH",
+        "cue_id": "CARD_PLAY_PUBLIC",
+        "duration_ms": 620,
+        "effective_flash_intensity": 0.55,
+        "effective_hit_stop_ms": 0,
+        "effective_motion_path": "arc_forward",
+        "effective_screen_shake_profile": "light",
+        "fallback_cue_id": "COMBAT_FIZZLE",
+        "hit_stop_ms": 0.0,
+        "instant_test_mode": false,
+        "interrupt_policy": "QUEUE_AFTER_CURRENT",
+        "motion_mode": "FULL_MOTION",
+        "motion_path": "arc_forward",
+        "opacity_curve": "1->1",
+        "particle_profile": "play_spark",
+        "priority": 90.0,
+        "privacy_class": "PUBLIC",
+        "projection": {
+          "current_player_authorized": true,
+          "public_label": "匿名行动",
+          "public_projection_sha256": "9ef4f26e3bed06d85c97919cd94a7a3ff43af4214754fc19309325b369e54388",
+          "source_global_rect": {
+            "height": 144.0,
+            "width": 108.0,
+            "x": 20.0,
+            "y": 316.5
+          },
+          "target_global_rect": {
+            "height": 164.0,
+            "width": 122.0,
+            "x": 964.679992675781,
+            "y": 379.5
+          }
+        },
+        "queue_policy": "EXACT_ONCE",
+        "receipt_fingerprint": "8c01093bceecdf77cadb955c48da1f5ab710705fbfb4390271b7a9a160e991ae",
+        "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+        "receipt_kind": "public_card_play_receipt",
+        "reduced_motion": false,
+        "reduced_motion_duration_ms": 220.0,
+        "rotation_curve": "0deg->0deg",
+        "scale_curve": "1->1.04",
+        "screen_shake_profile": "light",
+        "sound_cue_id": "CARD_PLAY_SFX",
+        "source_anchor": "hand",
+        "source_kind": "PLAYER_HAND",
+        "target_anchor": "public_track",
+        "target_kind": "PUBLIC_BATCH"
+      },
+      "fixture_counter_zero": true,
+      "frames": {
+        "end": {
+          "byte_length": 442763,
+          "captured_wall_msec": 40825,
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "height": 960,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/card_table/card_play_public/end.png",
+          "phase": "end",
+          "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "sha256": "e4721fcba078bdfb25124d33d5f607068ef34578af461658a05cd5790c926cae",
+          "width": 1600
+        },
+        "mid": {
+          "byte_length": 454589,
+          "captured_wall_msec": 38978,
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "height": 960,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/card_table/card_play_public/mid.png",
+          "phase": "mid",
+          "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "sha256": "0024bcaff90ad4cd8ade9cd4e224fdd46b1def56ce7979a2f6cf1186323f682e",
+          "width": 1600
+        },
+        "start": {
+          "byte_length": 454589,
+          "captured_wall_msec": 38907,
+          "cue_id": "CARD_PLAY_PUBLIC",
+          "height": 960,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/card_table/card_play_public/start.png",
+          "phase": "start",
+          "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+          "sha256": "0024bcaff90ad4cd8ade9cd4e224fdd46b1def56ce7979a2f6cf1186323f682e",
+          "width": 1600
+        }
+      },
+      "frames_green": true,
+      "lineage_green": true,
+      "production_aggregate_parity": true,
+      "production_consumer": "AUTHORIZED_PUBLIC_PROJECTION",
+      "production_schema": "V076PublicCardPlayPresentationEnvelopeV1",
+      "queued_cue": {
+        "completion_policy": "RECEIPT_FINISH",
+        "cue_id": "CARD_PLAY_PUBLIC",
+        "duration_ms": 620,
+        "effective_flash_intensity": 0.55,
+        "effective_hit_stop_ms": 0,
+        "effective_motion_path": "arc_forward",
+        "effective_screen_shake_profile": "light",
+        "fallback_cue_id": "COMBAT_FIZZLE",
+        "hit_stop_ms": 0.0,
+        "instant_test_mode": false,
+        "interrupt_policy": "QUEUE_AFTER_CURRENT",
+        "motion_mode": "FULL_MOTION",
+        "motion_path": "arc_forward",
+        "opacity_curve": "1->1",
+        "particle_profile": "play_spark",
+        "priority": 90.0,
+        "privacy_class": "PUBLIC",
+        "projection": {
+          "current_player_authorized": true,
+          "public_label": "匿名行动",
+          "public_projection_sha256": "9ef4f26e3bed06d85c97919cd94a7a3ff43af4214754fc19309325b369e54388",
+          "source_global_rect": {
+            "height": 144.0,
+            "width": 108.0,
+            "x": 20.0,
+            "y": 316.5
+          },
+          "target_global_rect": {
+            "height": 164.0,
+            "width": 122.0,
+            "x": 964.679992675781,
+            "y": 379.5
+          }
+        },
+        "queue_policy": "EXACT_ONCE",
+        "receipt_fingerprint": "8c01093bceecdf77cadb955c48da1f5ab710705fbfb4390271b7a9a160e991ae",
+        "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+        "receipt_kind": "public_card_play_receipt",
+        "reduced_motion": false,
+        "reduced_motion_duration_ms": 220.0,
+        "rotation_curve": "0deg->0deg",
+        "scale_curve": "1->1.04",
+        "screen_shake_profile": "light",
+        "sound_cue_id": "CARD_PLAY_SFX",
+        "source_anchor": "hand",
+        "source_kind": "PLAYER_HAND",
+        "target_anchor": "public_track",
+        "target_kind": "PUBLIC_BATCH"
+      },
+      "receipt_id": "card-play-public:c7138a142619861d42391c831de31217",
+      "receipt_kind": "public_card_play_receipt"
+    },
+    {
+      "bridge_evidence": {
+        "abort_reason": "",
+        "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+        "cue_id": "CARD_RESOLUTION_FOCUS",
+        "envelope": {
+          "accepted": true,
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "receipt_kind": "public_resolution_receipt",
+          "schema": "V076PublicCardResolutionPresentationEnvelopeV1",
+          "schema_version": 1,
+          "source_public_receipt_id": "receipt.batch.match.v075.sample.900626424.1.0001.anonymous.000000.5e459a8712100255",
+          "source_public_receipt_sha256": "771f4f3d455254478b18e70c967eba39665410fed3b581bc020f018ed23b86e7"
+        },
+        "finish_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "end_rect": {
+            "height": 216.480010986328,
+            "width": 161.040008544922,
+            "x": 1025.66003417969,
+            "y": 343.760009765625
+          },
+          "gameplay_mutation_count": 0,
+          "presentation_only": true,
+          "receipt_id": "receipt.batch.match.v075.sample.900626424.1.0001.anonymous.000000.5e459a8712100255",
+          "rng_draw_delta": 0,
+          "schema": "V076PublicResolutionPresentationFinishV1"
+        },
+        "queued_cue": {
+          "completion_policy": "RECEIPT_FINISH",
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "duration_ms": 620,
+          "effective_flash_intensity": 0.55,
+          "effective_hit_stop_ms": 80,
+          "effective_motion_path": "focus_lift",
+          "effective_screen_shake_profile": "light",
+          "fallback_cue_id": "COMBAT_FIZZLE",
+          "hit_stop_ms": 80.0,
+          "instant_test_mode": false,
+          "interrupt_policy": "QUEUE_AFTER_CURRENT",
+          "motion_mode": "FULL_MOTION",
+          "motion_path": "focus_lift",
+          "opacity_curve": "1->1",
+          "particle_profile": "resolution_focus",
+          "priority": 100.0,
+          "privacy_class": "PUBLIC",
+          "projection": {
+            "current_player_authorized": true,
+            "public_label": "设施建成",
+            "public_receipt_sha256": "771f4f3d455254478b18e70c967eba39665410fed3b581bc020f018ed23b86e7",
+            "source_global_rect": {
+              "height": 297.0,
+              "width": 301.0,
+              "x": 954.679992675781,
+              "y": 306.5
+            },
+            "target_global_rect": {
+              "height": 177.513610839844,
+              "width": 132.052810668945,
+              "x": 1040.15356445313,
+              "y": 363.243194580078
+            }
+          },
+          "queue_policy": "EXACT_ONCE",
+          "receipt_fingerprint": "643c38530d386b4c2b5c230474168b415f9141bfe4ee25313ad79697689a50e4",
+          "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "receipt_kind": "public_resolution_receipt",
+          "reduced_motion": false,
+          "reduced_motion_duration_ms": 220.0,
+          "rotation_curve": "0deg->0deg",
+          "scale_curve": "0.96->1.08",
+          "screen_shake_profile": "light",
+          "sound_cue_id": "CARD_RESOLVE_SFX",
+          "source_anchor": "public_track",
+          "source_kind": "PUBLIC_BATCH",
+          "target_anchor": "sidecar_focus",
+          "target_kind": "RESOLUTION_SIDECAR"
+        },
+        "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+        "start_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "gameplay_mutation_count": 0,
+          "presentation_only": true,
+          "receipt_id": "receipt.batch.match.v075.sample.900626424.1.0001.anonymous.000000.5e459a8712100255",
+          "rng_draw_delta": 0,
+          "schema": "V076PublicResolutionPresentationStartV1",
+          "source_rect": {
+            "height": 297.0,
+            "width": 301.0,
+            "x": 954.679992675781,
+            "y": 306.5
+          },
+          "target_rect": {
+            "height": 177.513610839844,
+            "width": 132.052810668945,
+            "x": 1040.15356445313,
+            "y": 363.243194580078
+          }
+        },
+        "status": "FINISHED"
+      },
+      "bridge_evidence_at_finish": {
+        "abort_reason": "",
+        "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+        "cue_id": "CARD_RESOLUTION_FOCUS",
+        "envelope": {
+          "accepted": true,
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "receipt_kind": "public_resolution_receipt",
+          "schema": "V076PublicCardResolutionPresentationEnvelopeV1",
+          "schema_version": 1,
+          "source_public_receipt_id": "receipt.batch.match.v075.sample.900626424.1.0001.anonymous.000000.5e459a8712100255",
+          "source_public_receipt_sha256": "771f4f3d455254478b18e70c967eba39665410fed3b581bc020f018ed23b86e7"
+        },
+        "finish_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "end_rect": {
+            "height": 216.480010986328,
+            "width": 161.040008544922,
+            "x": 1025.66003417969,
+            "y": 343.760009765625
+          },
+          "gameplay_mutation_count": 0,
+          "presentation_only": true,
+          "receipt_id": "receipt.batch.match.v075.sample.900626424.1.0001.anonymous.000000.5e459a8712100255",
+          "rng_draw_delta": 0,
+          "schema": "V076PublicResolutionPresentationFinishV1"
+        },
+        "queued_cue": {
+          "completion_policy": "RECEIPT_FINISH",
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "duration_ms": 620,
+          "effective_flash_intensity": 0.55,
+          "effective_hit_stop_ms": 80,
+          "effective_motion_path": "focus_lift",
+          "effective_screen_shake_profile": "light",
+          "fallback_cue_id": "COMBAT_FIZZLE",
+          "hit_stop_ms": 80.0,
+          "instant_test_mode": false,
+          "interrupt_policy": "QUEUE_AFTER_CURRENT",
+          "motion_mode": "FULL_MOTION",
+          "motion_path": "focus_lift",
+          "opacity_curve": "1->1",
+          "particle_profile": "resolution_focus",
+          "priority": 100.0,
+          "privacy_class": "PUBLIC",
+          "projection": {
+            "current_player_authorized": true,
+            "public_label": "设施建成",
+            "public_receipt_sha256": "771f4f3d455254478b18e70c967eba39665410fed3b581bc020f018ed23b86e7",
+            "source_global_rect": {
+              "height": 297.0,
+              "width": 301.0,
+              "x": 954.679992675781,
+              "y": 306.5
+            },
+            "target_global_rect": {
+              "height": 177.513610839844,
+              "width": 132.052810668945,
+              "x": 1040.15356445313,
+              "y": 363.243194580078
+            }
+          },
+          "queue_policy": "EXACT_ONCE",
+          "receipt_fingerprint": "643c38530d386b4c2b5c230474168b415f9141bfe4ee25313ad79697689a50e4",
+          "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "receipt_kind": "public_resolution_receipt",
+          "reduced_motion": false,
+          "reduced_motion_duration_ms": 220.0,
+          "rotation_curve": "0deg->0deg",
+          "scale_curve": "0.96->1.08",
+          "screen_shake_profile": "light",
+          "sound_cue_id": "CARD_RESOLVE_SFX",
+          "source_anchor": "public_track",
+          "source_kind": "PUBLIC_BATCH",
+          "target_anchor": "sidecar_focus",
+          "target_kind": "RESOLUTION_SIDECAR"
+        },
+        "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+        "start_evidence": {
+          "authority_sequence_delta": 0,
+          "bridge_receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "gameplay_mutation_count": 0,
+          "presentation_only": true,
+          "receipt_id": "receipt.batch.match.v075.sample.900626424.1.0001.anonymous.000000.5e459a8712100255",
+          "rng_draw_delta": 0,
+          "schema": "V076PublicResolutionPresentationStartV1",
+          "source_rect": {
+            "height": 297.0,
+            "width": 301.0,
+            "x": 954.679992675781,
+            "y": 306.5
+          },
+          "target_rect": {
+            "height": 177.513610839844,
+            "width": 132.052810668945,
+            "x": 1040.15356445313,
+            "y": 363.243194580078
+          }
+        },
+        "status": "FINISHED"
+      },
+      "bridge_evidence_at_queue": {
+        "abort_reason": "",
+        "consumer_class": "AUTHORIZED_PUBLIC_PROJECTION",
+        "cue_id": "CARD_RESOLUTION_FOCUS",
+        "envelope": {
+          "accepted": true,
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "receipt_kind": "public_resolution_receipt",
+          "schema": "V076PublicCardResolutionPresentationEnvelopeV1",
+          "schema_version": 1,
+          "source_public_receipt_id": "receipt.batch.match.v075.sample.900626424.1.0001.anonymous.000000.5e459a8712100255",
+          "source_public_receipt_sha256": "771f4f3d455254478b18e70c967eba39665410fed3b581bc020f018ed23b86e7"
+        },
+        "finish_evidence": {},
+        "queued_cue": {},
+        "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+        "start_evidence": {},
+        "status": "PENDING_DIRECTOR_QUEUE"
+      },
+      "capture_identity_green": true,
+      "counts": {
+        "collision_count": 0,
+        "duplicate_count": 0,
+        "envelope_count": 43,
+        "finish_missing_count": 0,
+        "finished_count": 43,
+        "fixture_finished_count": 0,
+        "fixture_queued_count": 0,
+        "fixture_source_count": 0,
+        "fixture_surface_finished_count": 0,
+        "fixture_surface_started_count": 0,
+        "production_finished_count": 43,
+        "production_queued_count": 43,
+        "production_source_count": 43,
+        "production_surface_finished_count": 43,
+        "production_surface_started_count": 43,
+        "queued_count": 43,
+        "rejection_count": 0,
+        "source_count": 43,
+        "surface_finished_count": 43,
+        "surface_rejection_count": 0,
+        "surface_started_count": 43
+      },
+      "cue_id": "CARD_RESOLUTION_FOCUS",
+      "director_finish_count_for_receipt": 1,
+      "director_queue_count_for_receipt": 1,
+      "finished_cue": {
+        "completion_policy": "RECEIPT_FINISH",
+        "cue_id": "CARD_RESOLUTION_FOCUS",
+        "duration_ms": 620,
+        "effective_flash_intensity": 0.55,
+        "effective_hit_stop_ms": 80,
+        "effective_motion_path": "focus_lift",
+        "effective_screen_shake_profile": "light",
+        "fallback_cue_id": "COMBAT_FIZZLE",
+        "hit_stop_ms": 80.0,
+        "instant_test_mode": false,
+        "interrupt_policy": "QUEUE_AFTER_CURRENT",
+        "motion_mode": "FULL_MOTION",
+        "motion_path": "focus_lift",
+        "opacity_curve": "1->1",
+        "particle_profile": "resolution_focus",
+        "priority": 100.0,
+        "privacy_class": "PUBLIC",
+        "projection": {
+          "current_player_authorized": true,
+          "public_label": "设施建成",
+          "public_receipt_sha256": "771f4f3d455254478b18e70c967eba39665410fed3b581bc020f018ed23b86e7",
+          "source_global_rect": {
+            "height": 297.0,
+            "width": 301.0,
+            "x": 954.679992675781,
+            "y": 306.5
+          },
+          "target_global_rect": {
+            "height": 177.513610839844,
+            "width": 132.052810668945,
+            "x": 1040.15356445313,
+            "y": 363.243194580078
+          }
+        },
+        "queue_policy": "EXACT_ONCE",
+        "receipt_fingerprint": "643c38530d386b4c2b5c230474168b415f9141bfe4ee25313ad79697689a50e4",
+        "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+        "receipt_kind": "public_resolution_receipt",
+        "reduced_motion": false,
+        "reduced_motion_duration_ms": 220.0,
+        "rotation_curve": "0deg->0deg",
+        "scale_curve": "0.96->1.08",
+        "screen_shake_profile": "light",
+        "sound_cue_id": "CARD_RESOLVE_SFX",
+        "source_anchor": "public_track",
+        "source_kind": "PUBLIC_BATCH",
+        "target_anchor": "sidecar_focus",
+        "target_kind": "RESOLUTION_SIDECAR"
+      },
+      "fixture_counter_zero": true,
+      "frames": {
+        "end": {
+          "byte_length": 457093,
+          "captured_wall_msec": 26845,
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "height": 960,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/card_table/card_resolution_focus/end.png",
+          "phase": "end",
+          "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "sha256": "83d77b93798146f2a1a5188da9d9add3521431824ac6e873190f3201ddc289ab",
+          "width": 1600
+        },
+        "mid": {
+          "byte_length": 455526,
+          "captured_wall_msec": 22109,
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "height": 960,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/card_table/card_resolution_focus/mid.png",
+          "phase": "mid",
+          "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "sha256": "ac0fe73896c7cd1c78aacdd31866d4389cd0f6e06d6e236ce0a88cff3b76bad4",
+          "width": 1600
+        },
+        "start": {
+          "byte_length": 454119,
+          "captured_wall_msec": 20800,
+          "cue_id": "CARD_RESOLUTION_FOCUS",
+          "height": 960,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/card_table/card_resolution_focus/start.png",
+          "phase": "start",
+          "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+          "sha256": "a806f50f94fbdd105e57281881a73226398b36b0ba72a201721d853d386d8093",
+          "width": 1600
+        }
+      },
+      "frames_green": true,
+      "lineage_green": true,
+      "production_aggregate_parity": true,
+      "production_consumer": "AUTHORIZED_PUBLIC_PROJECTION",
+      "production_schema": "V076PublicCardResolutionPresentationEnvelopeV1",
+      "queued_cue": {
+        "completion_policy": "RECEIPT_FINISH",
+        "cue_id": "CARD_RESOLUTION_FOCUS",
+        "duration_ms": 620,
+        "effective_flash_intensity": 0.55,
+        "effective_hit_stop_ms": 80,
+        "effective_motion_path": "focus_lift",
+        "effective_screen_shake_profile": "light",
+        "fallback_cue_id": "COMBAT_FIZZLE",
+        "hit_stop_ms": 80.0,
+        "instant_test_mode": false,
+        "interrupt_policy": "QUEUE_AFTER_CURRENT",
+        "motion_mode": "FULL_MOTION",
+        "motion_path": "focus_lift",
+        "opacity_curve": "1->1",
+        "particle_profile": "resolution_focus",
+        "priority": 100.0,
+        "privacy_class": "PUBLIC",
+        "projection": {
+          "current_player_authorized": true,
+          "public_label": "设施建成",
+          "public_receipt_sha256": "771f4f3d455254478b18e70c967eba39665410fed3b581bc020f018ed23b86e7",
+          "source_global_rect": {
+            "height": 297.0,
+            "width": 301.0,
+            "x": 954.679992675781,
+            "y": 306.5
+          },
+          "target_global_rect": {
+            "height": 177.513610839844,
+            "width": 132.052810668945,
+            "x": 1040.15356445313,
+            "y": 363.243194580078
+          }
+        },
+        "queue_policy": "EXACT_ONCE",
+        "receipt_fingerprint": "643c38530d386b4c2b5c230474168b415f9141bfe4ee25313ad79697689a50e4",
+        "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+        "receipt_kind": "public_resolution_receipt",
+        "reduced_motion": false,
+        "reduced_motion_duration_ms": 220.0,
+        "rotation_curve": "0deg->0deg",
+        "scale_curve": "0.96->1.08",
+        "screen_shake_profile": "light",
+        "sound_cue_id": "CARD_RESOLVE_SFX",
+        "source_anchor": "public_track",
+        "source_kind": "PUBLIC_BATCH",
+        "target_anchor": "sidecar_focus",
+        "target_kind": "RESOLUTION_SIDECAR"
+      },
+      "receipt_id": "card-resolution-focus:b467cedd065adaca4a4bc2fe2cfb3e2f",
+      "receipt_kind": "public_resolution_receipt"
+    },
+    {
+      "authority_guard_at_finish": {
+        "kernel_rng_state_sha256": "3d6d006f4210f527ed287fc43242d5154ebc53db653518a28aeed4b90254945a",
+        "runtime_card_zone_state_sha256": "ab14f1df59bfefb321841a068cc95cc08a99fe7d2938068c16fede607d00bd5f",
+        "runtime_facility_state_sha256": "487e630f21e9e189e7d321a376ea0588c06eee939581c48032782a327d7e9930",
+        "runtime_settlement_state_sha256": "839bb86700054119c9461f1c9fbce130d9e2865ad3f7cb87c43e588f4a0d5b62",
+        "runtime_track_state_sha256": "51260120291de64093cf35ab34703c072eecec53ca9f15632410d67982e584db",
+        "valid": true
+      },
+      "authority_guard_at_queue": {
+        "kernel_rng_state_sha256": "3d6d006f4210f527ed287fc43242d5154ebc53db653518a28aeed4b90254945a",
+        "runtime_card_zone_state_sha256": "ab14f1df59bfefb321841a068cc95cc08a99fe7d2938068c16fede607d00bd5f",
+        "runtime_facility_state_sha256": "487e630f21e9e189e7d321a376ea0588c06eee939581c48032782a327d7e9930",
+        "runtime_settlement_state_sha256": "839bb86700054119c9461f1c9fbce130d9e2865ad3f7cb87c43e588f4a0d5b62",
+        "runtime_track_state_sha256": "51260120291de64093cf35ab34703c072eecec53ca9f15632410d67982e584db",
+        "valid": true
+      },
+      "capture_identity_green": true,
+      "cue_id": "FINAL_SETTLEMENT",
+      "finished_cue": {
+        "completion_policy": "RECEIPT_FINISH",
+        "cue_id": "FINAL_SETTLEMENT",
+        "duration_ms": 900,
+        "effective_flash_intensity": 0.55,
+        "effective_hit_stop_ms": 100,
+        "effective_motion_path": "rise_pulse",
+        "effective_screen_shake_profile": "light",
+        "fallback_cue_id": "COMBAT_FIZZLE",
+        "hit_stop_ms": 100.0,
+        "instant_test_mode": false,
+        "interrupt_policy": "SKIP_TO_END",
+        "motion_mode": "FULL_MOTION",
+        "motion_path": "rise_pulse",
+        "opacity_curve": "0->1",
+        "particle_profile": "settlement_complete",
+        "priority": 100.0,
+        "privacy_class": "PUBLIC",
+        "projection": {
+          "current_player_authorized": true,
+          "public_label": "终局结算",
+          "settlement_projection_sha256": "839bb86700054119c9461f1c9fbce130d9e2865ad3f7cb87c43e588f4a0d5b62",
+          "target_global_rect": {
+            "height": 430.0,
+            "width": 620.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "winner_player_id": "player.local"
+        },
+        "queue_policy": "EXACT_ONCE",
+        "receipt_fingerprint": "b1e34048a0f1370371aeaff6413870c830c289369dcb1cf5e63c5c39fbbfd093",
+        "receipt_id": "final-settlement:169acc5aaec59fb996d6af40426f55d3",
+        "receipt_kind": "final_settlement_receipt",
+        "reduced_motion": false,
+        "reduced_motion_duration_ms": 300.0,
+        "rotation_curve": "0deg->0deg",
+        "scale_curve": "0.92->1.05",
+        "screen_shake_profile": "light",
+        "sound_cue_id": "FINAL_SETTLEMENT_SFX",
+        "source_anchor": "action_feed",
+        "source_kind": "AUTHORITY_SETTLEMENT",
+        "target_anchor": "settlement_panel",
+        "target_kind": "SETTLEMENT_PANEL"
+      },
+      "fixture_counter_zero": true,
+      "frames": {
+        "end": {
+          "byte_length": 168030,
+          "captured_wall_msec": 125051,
+          "cue_id": "FINAL_SETTLEMENT",
+          "height": 960,
+          "menu_overlay_visible": false,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/final_settlement/end.png",
+          "phase": "end",
+          "receipt_id": "final-settlement:169acc5aaec59fb996d6af40426f55d3",
+          "settlement_overlay_visible": true,
+          "sha256": "4a60e95e75d3535dbc8b0fa7823db40b60630f7408f944b18e9f4fa3b1333933",
+          "width": 1600
+        },
+        "mid": {
+          "byte_length": 236339,
+          "captured_wall_msec": 124340,
+          "cue_id": "FINAL_SETTLEMENT",
+          "height": 960,
+          "menu_overlay_visible": false,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/final_settlement/mid.png",
+          "phase": "mid",
+          "receipt_id": "final-settlement:169acc5aaec59fb996d6af40426f55d3",
+          "settlement_overlay_visible": true,
+          "sha256": "2c4d0a85048cc0025e5390817ec82f526728d83161daf05cd81c8304e5cb720f",
+          "width": 1600
+        },
+        "start": {
+          "byte_length": 351394,
+          "captured_wall_msec": 124096,
+          "cue_id": "FINAL_SETTLEMENT",
+          "height": 960,
+          "menu_overlay_visible": false,
+          "path": "reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/final_settlement/start.png",
+          "phase": "start",
+          "receipt_id": "final-settlement:169acc5aaec59fb996d6af40426f55d3",
+          "settlement_overlay_visible": true,
+          "sha256": "806e43730dde94354f71c7355e2c6dc23d52690b81819cc9e89c868fe6b70e8b",
+          "width": 1600
+        }
+      },
+      "frames_green": true,
+      "lineage_green": true,
+      "production_aggregate_parity": true,
+      "production_consumer": "AUTHORIZED_SETTLEMENT_PROJECTION",
+      "production_schema": "V076FinalSettlementPresentationEnvelopeV1",
+      "queued_cue": {
+        "completion_policy": "RECEIPT_FINISH",
+        "cue_id": "FINAL_SETTLEMENT",
+        "duration_ms": 900,
+        "effective_flash_intensity": 0.55,
+        "effective_hit_stop_ms": 100,
+        "effective_motion_path": "rise_pulse",
+        "effective_screen_shake_profile": "light",
+        "fallback_cue_id": "COMBAT_FIZZLE",
+        "hit_stop_ms": 100.0,
+        "instant_test_mode": false,
+        "interrupt_policy": "SKIP_TO_END",
+        "motion_mode": "FULL_MOTION",
+        "motion_path": "rise_pulse",
+        "opacity_curve": "0->1",
+        "particle_profile": "settlement_complete",
+        "priority": 100.0,
+        "privacy_class": "PUBLIC",
+        "projection": {
+          "current_player_authorized": true,
+          "public_label": "终局结算",
+          "settlement_projection_sha256": "839bb86700054119c9461f1c9fbce130d9e2865ad3f7cb87c43e588f4a0d5b62",
+          "target_global_rect": {
+            "height": 430.0,
+            "width": 620.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "winner_player_id": "player.local"
+        },
+        "queue_policy": "EXACT_ONCE",
+        "receipt_fingerprint": "b1e34048a0f1370371aeaff6413870c830c289369dcb1cf5e63c5c39fbbfd093",
+        "receipt_id": "final-settlement:169acc5aaec59fb996d6af40426f55d3",
+        "receipt_kind": "final_settlement_receipt",
+        "reduced_motion": false,
+        "reduced_motion_duration_ms": 300.0,
+        "rotation_curve": "0deg->0deg",
+        "scale_curve": "0.92->1.05",
+        "screen_shake_profile": "light",
+        "sound_cue_id": "FINAL_SETTLEMENT_SFX",
+        "source_anchor": "action_feed",
+        "source_kind": "AUTHORITY_SETTLEMENT",
+        "target_anchor": "settlement_panel",
+        "target_kind": "SETTLEMENT_PANEL"
+      },
+      "receipt_id": "final-settlement:169acc5aaec59fb996d6af40426f55d3",
+      "receipt_kind": "final_settlement_receipt"
+    }
+  ],
+  "runs": [
+    {
+      "role": "NON_TERMINAL_CARD_TABLE_NATURAL_DRIVER",
+      "run_id": "20260826-081007-297-v076_production_natural_card_table_headed_capture-f92cd67f",
+      "test_script": "res://tests/v076_production_natural_card_table_headed_capture.gd",
+      "manifest": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\production_natural_headed\\20260826-081006-934-12bb685a3d67\\card_table\\manifest.json",
+      "frame_count": 9,
+      "headed_client_capture": "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice/reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/card_table/headed_client.png"
+    },
+    {
+      "role": "TERMINAL_VICTORY_NATURAL_DRIVER",
+      "run_id": "20260826-081220-684-v076_production_natural_final_settlement_headed_capture-d1f35eb5",
+      "test_script": "res://tests/v076_production_natural_final_settlement_headed_capture.gd",
+      "manifest": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\production_natural_headed\\20260826-081006-934-12bb685a3d67\\final_settlement\\manifest.json",
+      "frame_count": 3,
+      "headed_client_capture": "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice/reports/presentation/commercial_m1/production_natural_headed/20260826-081006-934-12bb685a3d67/final_settlement/headed_client.png"
+    }
+  ],
+  "showcase_fixture_boundary": {
+    "evidence_used": false,
+    "fixture_class": "PRESENTATION_FIXTURE",
+    "natural_gameplay": false,
+    "may_support_this_production_natural_claim": false
+  }
+}

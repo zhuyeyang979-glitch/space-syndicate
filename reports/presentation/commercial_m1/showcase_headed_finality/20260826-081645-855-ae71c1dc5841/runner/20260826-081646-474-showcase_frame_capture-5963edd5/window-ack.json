@@ -1,0 +1,51 @@
+{
+  "schema": "space_syndicate.godot_headed_client_probe_ack.v1",
+  "status": "PASS",
+  "process_id": 21604,
+  "expected_client_size": "1600x960",
+  "client_width": 1600,
+  "client_height": 960,
+  "hwnd_decimal": "46860556",
+  "hwnd_hex": "0x2CB090C",
+  "hwnd_source": "MainWindowHandle",
+  "dpi": 96,
+  "ready_sha256": "bd21d2dedb0bc6f9139482e0033721be6a32ee0982a6c50c042a2eb74b571da7",
+  "probe_nonce": "001ab42b81f04bfa8491aeedc0c61853",
+  "stable_exact_sample_count": 3,
+  "client_capture_path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\showcase_headed_client_final.png",
+  "client_capture_width": 1600,
+  "client_capture_height": 960,
+  "client_capture_bytes": 68353,
+  "client_capture_sha256": "771ebca6ce8aea4de5c61612d0103fbc91d0b6fecb8db8a6479ba647dbfb77da",
+  "client_capture_method": "win32_client_copy_from_screen",
+  "pre_capture_client_width": 1600,
+  "pre_capture_client_height": 960,
+  "post_capture_client_width": 1600,
+  "post_capture_client_height": 960,
+  "post_capture_exact_sample_count": 3,
+  "post_capture_samples": [
+    {
+      "sampled_at_utc": "2026-08-26T08:17:02.2868742Z",
+      "width": 1600,
+      "height": 960
+    },
+    {
+      "sampled_at_utc": "2026-08-26T08:17:02.3963017Z",
+      "width": 1600,
+      "height": 960
+    },
+    {
+      "sampled_at_utc": "2026-08-26T08:17:02.5052661Z",
+      "width": 1600,
+      "height": 960
+    }
+  ],
+  "capture_source_client_origin": {
+    "x": 480,
+    "y": 216
+  },
+  "capture_source_client_rect": {
+    "width": 1600,
+    "height": 960
+  }
+}
