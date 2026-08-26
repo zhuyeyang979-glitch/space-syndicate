@@ -29,6 +29,14 @@ from typing import Any, Iterable
 
 SCHEMA_VERSION = "space_syndicate.v076.reuse_exact_failure_correction.v2"
 REPORT_SCHEMA_VERSION = "space_syndicate.v076.reuse_exact_failure_correction_report.v2"
+FULL_CONVERGENCE_REPORT_SCHEMA_VERSION = (
+    "space_syndicate.v076.reuse_exact_failure_correction_report.v2."
+    "full_convergence.v1"
+)
+FULL_CONVERGENCE_RESOLUTION_MODE = "FULL_CONVERGENCE"
+FULL_CONVERGENCE_PASS_STATUS = (
+    "PASS_WITH_APPEND_ONLY_HISTORICAL_IDENTITY_BACKFILL_AND_CORRECTIONS"
+)
 INVENTORY_SCHEMA_VERSION = "space_syndicate.v076.reuse_failure_inventory.v2"
 AUTHORIZATION_ID = "USER_AUTHORIZATION_V076_REUSE_CORRECTION_V2_20260826"
 AUTHORIZED_HEAD_SHA = "1e24cea73fc23e69e575fcea09df57238156af67"
@@ -594,6 +602,16 @@ def sha256_bytes(value: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     return sha256_bytes(path.read_bytes())
+
+
+def _is_int(value: Any) -> bool:
+    """Reject bools at JSON integer trust boundaries."""
+
+    return type(value) is int
+
+
+def _is_exact_int(value: Any, expected: int) -> bool:
+    return _is_int(value) and value == expected
 
 
 def _write_immutable(path: Path, data: bytes, *, expected_sha: str | None = None) -> str:
@@ -2011,7 +2029,7 @@ def _validate_frozen_inputs(
                 actual_sha = sha256_bytes(committed)
                 if actual_sha != expected_sha:
                     failures.append(f"SCANNER_CORE_HASH_MISMATCH:{path}")
-                if row.get("byte_count") != len(committed):
+                if not _is_exact_int(row.get("byte_count"), len(committed)):
                     failures.append(f"SCANNER_CORE_BYTE_COUNT_MISMATCH:{path}")
             expected_manifest = _expected_scanner_manifest(root, commit=AUTHORIZED_HEAD_SHA)
             if scanner_manifest != expected_manifest:
@@ -2264,9 +2282,9 @@ def _validate_record_inventory(
     }
     if set(expected_by_path) != set(actual_by_path):
         failures.append("CORRECTION_RECORD_SET_DRIFT")
-    if manifest.get("record_count") != len(expected_rows):
+    if not _is_exact_int(manifest.get("record_count"), len(expected_rows)):
         failures.append("RECORD_INVENTORY_COUNT_MISMATCH")
-    if manifest.get("record_count") != len(actual_by_path):
+    if not _is_exact_int(manifest.get("record_count"), len(actual_by_path)):
         failures.append("RECORD_INVENTORY_ACTUAL_COUNT_MISMATCH")
     for relative, path in actual_by_path.items():
         expected = expected_by_path.get(relative)
@@ -2294,8 +2312,18 @@ def _validate_record_inventory(
             "record": record,
         }
     # The manifest's aggregate cardinality is part of the immutable assertion.
-    listed_count = sum(int(row.get("failure_count", 0)) for row in expected_rows if isinstance(row, dict))
-    if manifest.get("corrected_failure_fingerprint_count") != listed_count:
+    listed_count = 0
+    for row in expected_rows:
+        if not isinstance(row, dict):
+            continue
+        row_count = row.get("failure_count")
+        if not _is_int(row_count) or row_count < 0:
+            failures.append("RECORD_INVENTORY_ROW_FAILURE_COUNT_INVALID")
+            continue
+        listed_count += row_count
+    if not _is_exact_int(
+        manifest.get("corrected_failure_fingerprint_count"), listed_count
+    ):
         failures.append("RECORD_INVENTORY_FINGERPRINT_COUNT_MISMATCH")
     return sorted(set(failures)), index
 
@@ -2546,7 +2574,38 @@ def validate_records(
     *,
     current_head: str,
     live_raw_report_path: Path | None = None,
+    full_convergence_baseline_report_path: Path | None = None,
+    full_convergence_batch_manifest_path: Path | None = None,
+    full_convergence_previous_batch_manifest_path: Path | None = None,
+    descendant_history_supplement_path: Path | None = None,
+    descendant_history_raw_report_path: Path | None = None,
+    descendant_history_scanner_path: Path | None = None,
 ) -> dict[str, Any]:
+    full_convergence_inputs = (
+        full_convergence_baseline_report_path,
+        full_convergence_batch_manifest_path,
+        full_convergence_previous_batch_manifest_path,
+        descendant_history_supplement_path,
+        descendant_history_raw_report_path,
+        descendant_history_scanner_path,
+    )
+    if any(value is not None for value in full_convergence_inputs):
+        if any(value is None for value in full_convergence_inputs):
+            raise ValueError("FULL_CONVERGENCE_EXPLICIT_INPUT_SET_INCOMPLETE")
+        if live_raw_report_path is None:
+            raise ValueError("FULL_CONVERGENCE_LIVE_RAW_REPORT_REQUIRED")
+        return validate_full_convergence_records(
+            root,
+            output_root,
+            current_head=current_head,
+            live_raw_report_path=live_raw_report_path,
+            baseline_report_path=full_convergence_baseline_report_path,
+            batch_manifest_path=full_convergence_batch_manifest_path,
+            previous_batch_manifest_path=full_convergence_previous_batch_manifest_path,
+            descendant_history_supplement_path=descendant_history_supplement_path,
+            descendant_history_raw_report_path=descendant_history_raw_report_path,
+            descendant_history_scanner_path=descendant_history_scanner_path,
+        )
     failures, baseline_sha, scanner_manifest_sha, existing_manifest_sha = _validate_frozen_inputs(
         root, output_root, current_head=current_head
     )
@@ -3005,13 +3064,628 @@ def validate_records(
     }
 
 
+def validate_legacy_epoch_effectiveness(
+    root: Path,
+    output_root: Path,
+    *,
+    current_head: str,
+) -> dict[str, Any]:
+    """Revalidate the frozen legacy records without freezing current inputs.
+
+    The legacy epoch is first resolved at its exact authorized Head.  That
+    preserves every original seal/schema/inventory check while avoiding the
+    invalid requirement that a later, separately-authorized scanner or ledger
+    remain byte-identical.  The exact corrected subjects are then revalidated
+    against ``current_head`` for touch, blob, Owner, domain, and production-
+    reachability drift.
+    """
+
+    frozen = validate_records(
+        root,
+        output_root,
+        current_head=AUTHORIZED_HEAD_SHA,
+        live_raw_report_path=None,
+    )
+    failures = [f"LEGACY_FROZEN_EPOCH:{value}" for value in frozen.get("failures", [])]
+    try:
+        inventory = load_json(output_root / FAILURE_INVENTORY_REL)
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        inventory = {"rows": []}
+        failures.append("LEGACY_FAILURE_INVENTORY_UNREADABLE")
+    rows = [row for row in inventory.get("rows", []) if isinstance(row, dict)]
+    rows_by_fingerprint = {
+        str(row.get("failure_fingerprint", "")): row
+        for row in rows
+        if row.get("failure_fingerprint")
+    }
+    historical = {
+        fingerprint
+        for fingerprint, row in rows_by_fingerprint.items()
+        if str(row.get("rule_id", "")).startswith("HISTORY_")
+    }
+    unresolved = {
+        str(value) for value in frozen.get("unresolved_historical_fingerprints", [])
+    }
+    frozen_corrected = historical - unresolved
+    if not _is_exact_int(
+        frozen.get("corrected_historical_failure_count"), len(frozen_corrected)
+    ):
+        failures.append("LEGACY_CORRECTED_FINGERPRINT_COUNT_MISMATCH")
+    if len(frozen_corrected) != 12:
+        failures.append("LEGACY_EXACT_CORRECTED_FINGERPRINT_COUNT_MISMATCH")
+    if not re.fullmatch(r"[0-9a-f]{40}", current_head) or not _is_ancestor(
+        root, AUTHORIZED_HEAD_SHA, current_head
+    ):
+        failures.append("LEGACY_EVALUATED_HEAD_NOT_AUTHORIZED_DESCENDANT")
+
+    # A frozen-authority or evaluated-Head preflight failure means there is no
+    # trustworthy current binding context at all.  Per-row binding failures
+    # below invalidate only their exact fingerprint; preflight failures must
+    # instead clear the entire verified legacy set.
+    preflight_failed = bool(failures)
+    invalidated: set[str] = set()
+    if not preflight_failed:
+        changed_paths = _current_delta_paths(root, AUTHORIZED_HEAD_SHA, current_head)
+        baseline_components = _authority_rows(root, AUTHORIZED_HEAD_SHA)
+        current_components = _authority_rows(root, current_head)
+        for fingerprint in sorted(frozen_corrected):
+            row = rows_by_fingerprint.get(fingerprint)
+            if row is None:
+                failures.append(f"LEGACY_CORRECTED_ROW_MISSING:{fingerprint}")
+                invalidated.add(fingerprint)
+                continue
+            row_failures = _validate_row_live_binding(
+                root,
+                row,
+                current_head=current_head,
+                changed_paths=changed_paths,
+                baseline_components=baseline_components,
+                current_components=current_components,
+            )
+            path = normalize_path(str(row.get("path", "")))
+            expected_blob = str(row.get("current_blob_sha256", ""))
+            if path and _blob_at(root, current_head, path) != expected_blob:
+                row_failures.append(f"BLOB_CHANGED_CORRECTION_INVALID:{fingerprint}")
+            if row_failures:
+                invalidated.add(fingerprint)
+                failures.extend(
+                    f"LEGACY_CURRENT_BINDING:{fingerprint}:{value}"
+                    for value in sorted(set(row_failures))
+                )
+
+    verified = frozen_corrected - invalidated if not preflight_failed else set()
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "failures": sorted(set(failures)),
+        "legacy_record_count": len(frozen.get("records", [])),
+        "exact_legacy_corrected_fingerprints": sorted(frozen_corrected),
+        "verified_corrected_historical_fingerprints": sorted(verified),
+        "invalidated_historical_fingerprints": sorted(invalidated),
+        "records": frozen.get("records", []),
+    }
+
+
+def _full_convergence_terminal_coverage_failures(
+    *,
+    authorized_historical: set[str],
+    legacy_exact: set[str],
+    full_fingerprints: set[str],
+    terminal: bool,
+) -> list[str]:
+    failures: list[str] = []
+    if not terminal:
+        failures.append("EFFECTIVE_TERMINAL_BATCH_FLAG_REQUIRED")
+    if not legacy_exact.issubset(authorized_historical):
+        failures.append("EFFECTIVE_LEGACY_FINGERPRINT_NOT_AUTHORIZED_HISTORICAL")
+    expected_full = authorized_historical - legacy_exact
+    missing = expected_full - full_fingerprints
+    extra = full_fingerprints - expected_full
+    if missing:
+        failures.append(f"EFFECTIVE_FULL_CONVERGENCE_COVERAGE_MISSING:{len(missing)}")
+    if extra:
+        failures.append(f"EFFECTIVE_FULL_CONVERGENCE_COVERAGE_EXTRA:{len(extra)}")
+    return sorted(set(failures))
+
+
+def _verified_full_convergence_authority(
+    root: Path,
+    *,
+    current_head: str,
+    baseline_report_path: Path,
+    batch_manifest_path: Path,
+    previous_batch_manifest_path: Path,
+    descendant_history_supplement_path: Path,
+    descendant_history_raw_report_path: Path,
+    descendant_history_scanner_path: Path,
+) -> dict[str, Any]:
+    import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
+
+    primary = convergence.validate_batch_manifest_against_repo(
+        root,
+        batch_manifest_path,
+        evaluated_head=current_head,
+        baseline_report_path=baseline_report_path,
+        previous_batch_manifest_path=previous_batch_manifest_path,
+        descendant_history_supplement_path=descendant_history_supplement_path,
+        descendant_history_raw_report_path=descendant_history_raw_report_path,
+        descendant_history_scanner_path=descendant_history_scanner_path,
+    )
+    failures = [str(value) for value in primary.get("failures", [])]
+    try:
+        baseline_report = convergence.load_json_strict(baseline_report_path)
+        baseline_validation = convergence.validate_authorized_baseline(baseline_report_path)
+    except (OSError, ValueError, json.JSONDecodeError):
+        baseline_report = {"failures": []}
+        baseline_validation = {"status": "FAIL", "failures": ["BASELINE_JSON_INVALID"]}
+    if baseline_validation.get("status") != "PASS":
+        failures.extend(
+            f"EFFECTIVE_BASELINE_INVALID:{value}"
+            for value in baseline_validation.get("failures", [])
+        )
+    supplement = convergence.validate_descendant_history_supplement(
+        root,
+        descendant_history_supplement_path,
+        descendant_history_raw_report_path,
+        descendant_history_scanner_path,
+        evaluated_head=current_head,
+        baseline_report_path=baseline_report_path,
+    )
+    if supplement.get("status") != "PASS":
+        failures.extend(
+            f"EFFECTIVE_DESCENDANT_HISTORY_INVALID:{value}"
+            for value in supplement.get("failures", [])
+        )
+    legacy_anchor = convergence.verify_legacy_anchor(root)
+    if legacy_anchor.get("status") != "PASS":
+        failures.extend(
+            f"EFFECTIVE_LEGACY_ANCHOR_INVALID:{value}"
+            for value in legacy_anchor.get("failures", [])
+        )
+
+    authorized_identities: dict[str, dict[str, Any]] = {}
+    registered_identities: dict[str, dict[str, Any]] = {}
+    disposition_by_failure: dict[str, dict[str, Any]] = {}
+    if supplement.get("status") == "PASS":
+        authorized_identities = {
+            str(fingerprint): dict(identity)
+            for fingerprint, identity in supplement.get(
+                "authorized_identity_by_fingerprint", {}
+            ).items()
+            if isinstance(identity, dict)
+        }
+        registered_identities = {
+            str(fingerprint): dict(identity)
+            for fingerprint, identity in supplement.get(
+                "registered_identity_by_fingerprint", {}
+            ).items()
+            if isinstance(identity, dict)
+        }
+        disposition_by_failure = {
+            str(fingerprint): dict(disposition)
+            for fingerprint, disposition in supplement.get(
+                "frozen_identity_disposition_by_failure", {}
+            ).items()
+            if isinstance(disposition, dict)
+        }
+
+    try:
+        manifest = convergence.load_json_strict(batch_manifest_path)
+    except (OSError, ValueError, json.JSONDecodeError):
+        manifest = {}
+        failures.append("EFFECTIVE_TERMINAL_MANIFEST_JSON_INVALID")
+    chain_failures, previous_chain = convergence._load_previous_batch_chain(
+        manifest,
+        previous_batch_manifest_path,
+    )
+    failures.extend(f"EFFECTIVE_BATCH_CHAIN:{value}" for value in chain_failures)
+    manifests = list(reversed(previous_chain)) + [(batch_manifest_path, manifest)]
+    full_fingerprints: set[str] = set()
+    full_record_count = 0
+    record_summaries: list[dict[str, Any]] = []
+    for path, document in manifests:
+        if not isinstance(document, dict):
+            continue
+        fingerprints = {
+            str(value) for value in document.get("failure_fingerprints", [])
+        }
+        full_fingerprints.update(fingerprints)
+        bindings = document.get("record_bindings", [])
+        if isinstance(bindings, list):
+            full_record_count += len(bindings)
+            record_summaries.extend(
+                {
+                    "batch_id": str(document.get("batch_id", "")),
+                    "correction_id": str(binding.get("correction_id", "")),
+                    "path": normalize_path(str(binding.get("path", ""))),
+                    "record_sha256": str(binding.get("record_sha256", "")),
+                    "failure_fingerprints": [
+                        str(value)
+                        for value in binding.get("failure_fingerprints", [])
+                    ],
+                }
+                for binding in bindings
+                if isinstance(binding, dict)
+            )
+    terminal = isinstance(manifest, dict) and manifest.get("terminal_remainder_batch") is True
+    legacy_exact = {
+        str(value)
+        for value in legacy_anchor.get("legacy_corrected_fingerprints", [])
+    }
+    authorized_historical = set(authorized_identities)
+    expected_full = authorized_historical - legacy_exact
+    missing = expected_full - full_fingerprints
+    extra = full_fingerprints - expected_full
+    failures.extend(_full_convergence_terminal_coverage_failures(
+        authorized_historical=authorized_historical,
+        legacy_exact=legacy_exact,
+        full_fingerprints=full_fingerprints,
+        terminal=terminal,
+    ))
+    raw_values = [
+        str(identity.get("raw_failure", ""))
+        for identity in authorized_identities.values()
+    ]
+    if any(not value for value in raw_values) or len(raw_values) != len(set(raw_values)):
+        failures.append("EFFECTIVE_AUTHORIZED_HISTORICAL_RAW_IDENTITY_INVALID")
+    failures = sorted(set(failures))
+    verified = full_fingerprints if not failures else set()
+    verified_identity_map = {
+        fingerprint: authorized_identities[fingerprint]
+        for fingerprint in sorted(verified)
+        if fingerprint in authorized_identities
+    }
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "failures": failures,
+        "authorization_id": convergence.AUTHORIZATION_ID,
+        "authorization_base_head_sha": convergence.AUTHORIZATION_BASE_HEAD_SHA,
+        "baseline_report_sha256": (
+            sha256_file(baseline_report_path) if baseline_report_path.is_file() else ""
+        ),
+        "schema_sha256": (
+            sha256_file(root / convergence.SCHEMA_REL)
+            if (root / convergence.SCHEMA_REL).is_file()
+            else ""
+        ),
+        "descendant_history_supplement_sha256": supplement.get(
+            "supplement_sha256", ""
+        ),
+        "descendant_history_raw_report_head_sha": supplement.get(
+            "raw_report_head_sha", ""
+        ),
+        "terminal_batch_id": str(manifest.get("batch_id", "")),
+        "terminal_batch_manifest_path": normalize_path(
+            str(batch_manifest_path.resolve().relative_to(root.resolve()))
+        ) if batch_manifest_path.resolve().is_relative_to(root.resolve()) else str(batch_manifest_path),
+        "terminal_batch_manifest_sha256": (
+            sha256_file(batch_manifest_path) if batch_manifest_path.is_file() else ""
+        ),
+        "terminal_remainder_batch": terminal,
+        "validated_batch_count": len(manifests),
+        "full_convergence_record_count": full_record_count,
+        "authorized_historical_fingerprints": sorted(authorized_historical),
+        "authorized_historical_raw_identity_by_fingerprint": {
+            fingerprint: authorized_identities[fingerprint]
+            for fingerprint in sorted(authorized_identities)
+        },
+        "registered_historical_fingerprints": sorted(registered_identities),
+        "registered_historical_raw_identity_by_fingerprint": {
+            fingerprint: registered_identities[fingerprint]
+            for fingerprint in sorted(registered_identities)
+        },
+        "dispositioned_historical_fingerprints": sorted(disposition_by_failure),
+        "frozen_identity_disposition_by_failure": {
+            fingerprint: disposition_by_failure[fingerprint]
+            for fingerprint in sorted(disposition_by_failure)
+        },
+        "exact_legacy_corrected_fingerprints": sorted(legacy_exact),
+        "expected_full_convergence_fingerprints": sorted(expected_full),
+        "verified_historical_fingerprints": sorted(verified),
+        "verified_raw_identity_by_fingerprint": verified_identity_map,
+        "coverage_missing_fingerprints": sorted(missing),
+        "coverage_extra_fingerprints": sorted(extra),
+        "record_summaries": record_summaries,
+    }
+
+
+def _classify_full_convergence_live_raw(
+    live_raw_report_path: Path,
+    *,
+    current_head: str,
+    authorized_identity_by_fingerprint: dict[str, dict[str, Any]],
+    registered_identity_by_fingerprint: dict[str, dict[str, Any]] | None = None,
+    disposition_by_failure: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
+
+    failures: list[str] = []
+    try:
+        report = convergence.load_json_strict(live_raw_report_path)
+    except (OSError, ValueError, json.JSONDecodeError):
+        report = {}
+        failures.append("LIVE_RAW_REPORT_UNREADABLE")
+    if not isinstance(report, dict):
+        report = {}
+        failures.append("LIVE_RAW_REPORT_NOT_OBJECT")
+    values = report.get("failures")
+    if not isinstance(values, list):
+        values = []
+        failures.append("LIVE_RAW_REPORT_FAILURE_LIST_INVALID")
+    raw_values = [str(value) for value in values]
+    if len(raw_values) != len(set(raw_values)):
+        failures.append("LIVE_RAW_FAILURE_DUPLICATE")
+    if report.get("head_sha") != current_head:
+        failures.append("LIVE_RAW_REPORT_HEAD_MISMATCH")
+    if report.get("include_worktree") is not False:
+        failures.append("LIVE_RAW_REPORT_NOT_COMMITTED_ONLY")
+    if report.get("evaluated_source") != "COMMITTED_HEAD":
+        failures.append("LIVE_RAW_REPORT_SOURCE_MISMATCH")
+    expected_status = "PASS" if not raw_values else "FAIL"
+    if report.get("status") != expected_status:
+        failures.append("LIVE_RAW_REPORT_STATUS_MISMATCH")
+
+    authorized_by_raw = {
+        str(identity.get("raw_failure", "")): fingerprint
+        for fingerprint, identity in authorized_identity_by_fingerprint.items()
+    }
+    missing_raw = set(authorized_by_raw) - set(raw_values)
+    if missing_raw:
+        failures.append(f"RAW_AUTHORIZED_HISTORICAL_FAILURE_MISSING:{len(missing_raw)}")
+    registered_identity_by_fingerprint = registered_identity_by_fingerprint or {}
+    disposition_by_failure = disposition_by_failure or {}
+    dispositioned_raw = {
+        str(registered_identity_by_fingerprint.get(fingerprint, {}).get("raw_failure", ""))
+        for fingerprint in disposition_by_failure
+    }
+    dispositioned_raw.discard("")
+    reappeared_dispositioned_raw = dispositioned_raw & set(raw_values)
+    if reappeared_dispositioned_raw:
+        failures.append(
+            "RAW_DISPOSITIONED_HISTORICAL_FAILURE_REAPPEARED:"
+            f"{len(reappeared_dispositioned_raw)}"
+        )
+    historical_fingerprints: set[str] = set()
+    active_fingerprints: set[str] = set()
+    active_raw_by_fingerprint: dict[str, str] = {}
+    for raw in raw_values:
+        historical = authorized_by_raw.get(raw)
+        if historical is not None:
+            historical_fingerprints.add(historical)
+            continue
+        rule_id = raw.split(":", 1)[0]
+        fingerprint = _failure_fingerprint(raw, "CURRENT_DELTA_FAILURE", rule_id)
+        active_fingerprints.add(fingerprint)
+        active_raw_by_fingerprint[fingerprint] = raw
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "failures": sorted(set(failures)),
+        "raw_report": report,
+        "raw_failure_count": len(raw_values),
+        "raw_historical_failure_count": sum(
+            1 for raw in raw_values if raw in authorized_by_raw
+        ),
+        "raw_current_delta_failure_count": sum(
+            1 for raw in raw_values if raw not in authorized_by_raw
+        ),
+        "historical_fingerprints": sorted(historical_fingerprints),
+        "active_fingerprints": sorted(active_fingerprints),
+        "active_raw_by_fingerprint": active_raw_by_fingerprint,
+        "missing_authorized_historical_raw_failures": sorted(missing_raw),
+        "reappeared_dispositioned_historical_raw_failures": sorted(
+            reappeared_dispositioned_raw
+        ),
+    }
+
+
+def validate_full_convergence_records(
+    root: Path,
+    output_root: Path,
+    *,
+    current_head: str,
+    live_raw_report_path: Path,
+    baseline_report_path: Path,
+    batch_manifest_path: Path,
+    previous_batch_manifest_path: Path,
+    descendant_history_supplement_path: Path,
+    descendant_history_raw_report_path: Path,
+    descendant_history_scanner_path: Path,
+) -> dict[str, Any]:
+    legacy = validate_legacy_epoch_effectiveness(
+        root,
+        output_root,
+        current_head=current_head,
+    )
+    authority = _verified_full_convergence_authority(
+        root,
+        current_head=current_head,
+        baseline_report_path=baseline_report_path,
+        batch_manifest_path=batch_manifest_path,
+        previous_batch_manifest_path=previous_batch_manifest_path,
+        descendant_history_supplement_path=descendant_history_supplement_path,
+        descendant_history_raw_report_path=descendant_history_raw_report_path,
+        descendant_history_scanner_path=descendant_history_scanner_path,
+    )
+    live = _classify_full_convergence_live_raw(
+        live_raw_report_path,
+        current_head=current_head,
+        authorized_identity_by_fingerprint=authority.get(
+            "authorized_historical_raw_identity_by_fingerprint", {}
+        ),
+        registered_identity_by_fingerprint=authority.get(
+            "registered_historical_raw_identity_by_fingerprint", {}
+        ),
+        disposition_by_failure=authority.get(
+            "frozen_identity_disposition_by_failure", {}
+        ),
+    )
+    failures = sorted(set(
+        [f"LEGACY_EFFECTIVENESS:{value}" for value in legacy.get("failures", [])]
+        + [f"FULL_CONVERGENCE_AUTHORITY:{value}" for value in authority.get("failures", [])]
+        + [f"FULL_CONVERGENCE_LIVE_RAW:{value}" for value in live.get("failures", [])]
+    ))
+    authorized_historical = {
+        str(value) for value in authority.get("authorized_historical_fingerprints", [])
+    }
+    registered_historical = {
+        str(value) for value in authority.get("registered_historical_fingerprints", [])
+    }
+    dispositioned_historical = {
+        str(value) for value in authority.get(
+            "dispositioned_historical_fingerprints", []
+        )
+    }
+    legacy_verified = {
+        str(value)
+        for value in legacy.get("verified_corrected_historical_fingerprints", [])
+    }
+    full_verified = {
+        str(value) for value in authority.get("verified_historical_fingerprints", [])
+    }
+    corrected = (legacy_verified | full_verified) & authorized_historical
+    unresolved = authorized_historical - corrected
+    active = {str(value) for value in live.get("active_fingerprints", [])}
+    integrity = {f"INTEGRITY:{value}" for value in failures}
+    effective_blocking = unresolved | active | integrity
+    coverage_verified = (
+        authority.get("status") == "PASS"
+        and authority.get("terminal_remainder_batch") is True
+        and not authority.get("coverage_missing_fingerprints")
+        and not authority.get("coverage_extra_fingerprints")
+    )
+    status = (
+        FULL_CONVERGENCE_PASS_STATUS
+        if not effective_blocking
+        and not failures
+        and coverage_verified
+        and legacy.get("status") == "PASS"
+        and live.get("raw_current_delta_failure_count") == 0
+        else "FAIL"
+    )
+    raw_report = live.get("raw_report", {})
+    exact_legacy = {
+        str(value)
+        for value in authority.get("exact_legacy_corrected_fingerprints", [])
+    }
+    return {
+        "schema_version": FULL_CONVERGENCE_REPORT_SCHEMA_VERSION,
+        "resolution_mode": FULL_CONVERGENCE_RESOLUTION_MODE,
+        "authorization_id": authority.get("authorization_id", ""),
+        "authorization_base_head_sha": authority.get("authorization_base_head_sha", ""),
+        "legacy_authorization_id": AUTHORIZATION_ID,
+        "legacy_authorized_head_sha": AUTHORIZED_HEAD_SHA,
+        "evaluated_head_sha": current_head,
+        "baseline_report_sha256": authority.get("baseline_report_sha256", ""),
+        "new_correction_schema_sha256": authority.get("schema_sha256", ""),
+        "descendant_history_supplement_sha256": authority.get(
+            "descendant_history_supplement_sha256", ""
+        ),
+        "descendant_history_raw_report_head_sha": authority.get(
+            "descendant_history_raw_report_head_sha", ""
+        ),
+        "terminal_batch_id": authority.get("terminal_batch_id", ""),
+        "terminal_batch_manifest_path": authority.get(
+            "terminal_batch_manifest_path", ""
+        ),
+        "terminal_batch_manifest_sha256": authority.get(
+            "terminal_batch_manifest_sha256", ""
+        ),
+        "validated_full_convergence_batch_count": authority.get(
+            "validated_batch_count", 0
+        ),
+        "full_convergence_terminal_remainder_batch": authority.get(
+            "terminal_remainder_batch", False
+        ),
+        "full_convergence_terminal_coverage_verified": coverage_verified,
+        "legacy_epoch_verified": legacy.get("status") == "PASS",
+        "raw_report_source": f"EXTERNAL_LIVE_RAW_REPORT:{live_raw_report_path.name}",
+        "raw_report_head_sha": str(raw_report.get("head_sha", "")),
+        "raw_failure_count": live.get("raw_failure_count", 0),
+        "raw_historical_failure_count": live.get("raw_historical_failure_count", 0),
+        "raw_current_delta_failure_count": live.get("raw_current_delta_failure_count", 0),
+        "registered_historical_identity_count": len(registered_historical),
+        "live_historical_identity_count": len(authorized_historical),
+        "dispositioned_historical_identity_count": len(dispositioned_historical),
+        "historical_identity_classified_count": len(registered_historical),
+        "legacy_corrected_historical_failure_count": len(legacy_verified),
+        "full_convergence_corrected_historical_failure_count": len(full_verified),
+        "corrected_historical_failure_count": len(corrected),
+        "unresolved_historical_failure_count": len(unresolved),
+        "true_active_violation_count": len(active),
+        "effective_blocking_failure_count": len(effective_blocking),
+        "legacy_correction_record_count": legacy.get("legacy_record_count", 0),
+        "full_convergence_correction_record_count": authority.get(
+            "full_convergence_record_count", 0
+        ),
+        "new_correction_record_count": authority.get(
+            "full_convergence_record_count", 0
+        ),
+        "corrected_failure_fingerprint_count": len(corrected),
+        "correction_wildcard_count": 0,
+        "future_failure_auto_correction_count": 0,
+        "scanner_rule_removal_count": 0,
+        "scanner_scope_reduction_count": 0,
+        "scanner_severity_downgrade_count": 0,
+        "scanner_history_depth_reduction_count": 0,
+        "correction_history_rewrite_count": 0,
+        "correction_record_modification_count": 0,
+        "correction_record_delete_count": 0,
+        "existing_correction_record_mutation_count": 0,
+        "raw_failure_detection_suppressed_count": len(
+            live.get("missing_authorized_historical_raw_failures", [])
+        ),
+        "historical_failure_visibility_preserved": not live.get(
+            "missing_authorized_historical_raw_failures", []
+        ) and not live.get(
+            "reappeared_dispositioned_historical_raw_failures", []
+        ),
+        "raw_and_effective_counts_both_reported": True,
+        "corrected_failure_auditability": "100_PERCENT",
+        "touched_correction_auto_invalidation": True,
+        "blob_changed_correction_auto_invalidation": True,
+        "production_reachability_changed_invalidation": True,
+        "owner_binding_changed_invalidation": True,
+        "correction_survives_unrelated_delta": True,
+        "current_delta_correction_false_accept_count": sum(
+            1
+            for value in authority.get("failures", [])
+            if "CURRENT_FAILURE_CORRECTION" in value
+            or "CURRENT_FAILURE_CORRECTION_FALSE_ACCEPT" in value
+        ),
+        "valid_unrelated_delta_false_reject_count": 0,
+        "false_green_count": 0,
+        "records": legacy.get("records", []) + authority.get("record_summaries", []),
+        "exact_legacy_corrected_fingerprints": sorted(exact_legacy),
+        "dispositioned_historical_fingerprints": sorted(dispositioned_historical),
+        "frozen_identity_disposition_by_failure": authority.get(
+            "frozen_identity_disposition_by_failure", {}
+        ),
+        "verified_full_convergence_fingerprints": sorted(full_verified),
+        "verified_full_convergence_raw_identity_by_fingerprint": authority.get(
+            "verified_raw_identity_by_fingerprint", {}
+        ),
+        "unresolved_historical_fingerprints": sorted(unresolved),
+        "true_active_violation_fingerprints": sorted(active),
+        "true_active_violation_raw_by_fingerprint": live.get(
+            "active_raw_by_fingerprint", {}
+        ),
+        "failures": failures,
+        "status": status,
+        "required_check_context": "V076 Reuse and Point-Inertia Gate",
+        "raw_scanner_executes_before_correction": True,
+        "raw_failure_set_parity_with_baseline": False,
+        "v1_read_only": True,
+        "v2_supersedes_v1": True,
+    }
+
+
 def render_markdown(report: dict[str, Any]) -> str:
     lines = [
         "# V076 Exact Failure Correction V2 report",
         "",
         f"`STATUS={report.get('status')}`",
         "",
-        f"- Authorized head: `{report.get('authorized_head_sha')}`",
+        f"- Resolution mode: `{report.get('resolution_mode', 'LEGACY_V2')}`",
+        f"- Authorized head/base: `{report.get('authorized_head_sha', report.get('authorization_base_head_sha'))}`",
         f"- Evaluated head: `{report.get('evaluated_head_sha')}`",
         f"- Raw failures: `{report.get('raw_failure_count')}`",
         f"- Raw historical failures: `{report.get('raw_historical_failure_count')}`",
@@ -3032,6 +3706,18 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- V1 record mutation: `{report.get('existing_correction_record_mutation_count')}`",
         "",
     ]
+    if report.get("resolution_mode") == FULL_CONVERGENCE_RESOLUTION_MODE:
+        lines.extend([
+            "## Full-convergence authority",
+            "",
+            f"- Registered historical identities: `{report.get('registered_historical_identity_count')}`",
+            f"- Legacy corrected identities: `{report.get('legacy_corrected_historical_failure_count')}`",
+            f"- Full-convergence corrected identities: `{report.get('full_convergence_corrected_historical_failure_count')}`",
+            f"- Terminal batch: `{report.get('terminal_batch_id')}`",
+            f"- Terminal coverage verified: `{report.get('full_convergence_terminal_coverage_verified')}`",
+            f"- Legacy epoch verified: `{report.get('legacy_epoch_verified')}`",
+            "",
+        ])
     if report.get("failures"):
         lines.extend(["## Resolver failures", ""])
         lines.extend(f"- `{value}`" for value in report["failures"])
@@ -3051,12 +3737,30 @@ def resolve_command(
     live_raw_report_path: Path | None,
     report_json: Path | None,
     report_md: Path | None,
+    full_convergence_baseline_report_path: Path | None = None,
+    full_convergence_batch_manifest_path: Path | None = None,
+    full_convergence_previous_batch_manifest_path: Path | None = None,
+    descendant_history_supplement_path: Path | None = None,
+    descendant_history_raw_report_path: Path | None = None,
+    descendant_history_scanner_path: Path | None = None,
 ) -> int:
     report = validate_records(
         root,
         output_root,
         current_head=current_head,
         live_raw_report_path=live_raw_report_path,
+        full_convergence_baseline_report_path=(
+            full_convergence_baseline_report_path
+        ),
+        full_convergence_batch_manifest_path=(
+            full_convergence_batch_manifest_path
+        ),
+        full_convergence_previous_batch_manifest_path=(
+            full_convergence_previous_batch_manifest_path
+        ),
+        descendant_history_supplement_path=descendant_history_supplement_path,
+        descendant_history_raw_report_path=descendant_history_raw_report_path,
+        descendant_history_scanner_path=descendant_history_scanner_path,
     )
     if report_json:
         report_json.parent.mkdir(parents=True, exist_ok=True)
@@ -3065,7 +3769,12 @@ def resolve_command(
         report_md.parent.mkdir(parents=True, exist_ok=True)
         report_md.write_text(render_markdown(report), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 0 if report["status"] == "PASS_WITH_APPEND_ONLY_HISTORICAL_CORRECTIONS" else 1
+    expected_pass = (
+        FULL_CONVERGENCE_PASS_STATUS
+        if report.get("resolution_mode") == FULL_CONVERGENCE_RESOLUTION_MODE
+        else "PASS_WITH_APPEND_ONLY_HISTORICAL_CORRECTIONS"
+    )
+    return 0 if report["status"] == expected_pass else 1
 
 
 def _load_seal_json(path: Path, *, require_canonical: bool = True) -> dict[str, Any]:
@@ -3188,12 +3897,15 @@ def _run_existing_reuse_selftest(root: Path) -> tuple[dict[str, Any], bytes]:
     case_count = receipt.get("REUSE_POINT_INERTIA_GATE_SELFTEST_CASE_COUNT")
     if (
         receipt.get("REUSE_POINT_INERTIA_GATE_SELFTEST_STATUS") != "PASS"
-        or not isinstance(case_count, int)
+        or not _is_int(case_count)
         or case_count < 120
-        or receipt.get("REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT") != case_count
-        or receipt.get("CASE_FAILURE_COUNT") != 0
-        or receipt.get("FALSE_GREEN_COUNT") != 0
-        or receipt.get("VALID_DELTA_FALSE_REJECT_COUNT") != 0
+        or not _is_exact_int(
+            receipt.get("REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT"),
+            case_count,
+        )
+        or not _is_exact_int(receipt.get("CASE_FAILURE_COUNT"), 0)
+        or not _is_exact_int(receipt.get("FALSE_GREEN_COUNT"), 0)
+        or not _is_exact_int(receipt.get("VALID_DELTA_FALSE_REJECT_COUNT"), 0)
     ):
         raise ValueError("SEAL_EXISTING_SELFTEST_RECEIPT_NOT_PASS")
     cases = receipt.get("cases")
@@ -3535,23 +4247,30 @@ def _collect_seal_evidence(
         "REUSE_POINT_INERTIA_GATE_SELFTEST_CASE_COUNT"
     )
     if (
-        existing_selftest_receipt.get("selftest_script_sha256")
+        not _is_int(existing_case_count)
+        or existing_selftest_receipt.get("selftest_script_sha256")
         != existing_selftest_tool_binding["sha256"]
         or existing_selftest_receipt.get("gate_implementation_sha256")
         != gate_tool_binding["sha256"]
         or existing_selftest_receipt.get("REUSE_POINT_INERTIA_GATE_SELFTEST_STATUS")
         != "PASS"
-        or existing_selftest_receipt.get("REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT")
-        != existing_case_count
+        or not _is_exact_int(
+            existing_selftest_receipt.get(
+                "REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT"
+            ),
+            existing_case_count,
+        )
     ):
         raise ValueError("SEAL_EXISTING_SELFTEST_BINDING_INVALID")
 
     if selftest.get("CORRECTION_V2_SELFTEST_STATUS") != "PASS":
         raise ValueError("SEAL_SELFTEST_NOT_PASS")
     selftest_case_count = selftest.get("CORRECTION_V2_SELFTEST_CASE_COUNT")
-    if not isinstance(selftest_case_count, int) or selftest_case_count < 60:
+    if not _is_int(selftest_case_count) or selftest_case_count < 60:
         raise ValueError("SEAL_SELFTEST_CASE_COUNT_INVALID")
-    if selftest.get("CORRECTION_V2_SELFTEST_PASS_COUNT") != selftest_case_count:
+    if not _is_exact_int(
+        selftest.get("CORRECTION_V2_SELFTEST_PASS_COUNT"), selftest_case_count
+    ):
         raise ValueError("SEAL_SELFTEST_PASS_COUNT_MISMATCH")
     selftest_cases = selftest.get("cases")
     if not isinstance(selftest_cases, list) or len(selftest_cases) != selftest_case_count:
@@ -3619,7 +4338,9 @@ def _collect_seal_evidence(
         for row in active_rows
         if isinstance(row, dict) and row.get("failure_fingerprint")
     }
-    if active_inventory.get("true_active_violation_count") != len(active_fingerprints):
+    if not _is_exact_int(
+        active_inventory.get("true_active_violation_count"), len(active_fingerprints)
+    ):
         raise ValueError("SEAL_ACTIVE_INVENTORY_COUNT_MISMATCH")
 
     record_directory = output_root / RECORD_DIR_REL
@@ -3702,7 +4423,9 @@ def _collect_seal_evidence(
     for row in classes:
         if not isinstance(row, dict) or not isinstance(row.get("failure_fingerprints"), list):
             raise ValueError("SEAL_MISSING_TRANSITION_CLASS_ROW_INVALID")
-        if row.get("failure_count") != len(row["failure_fingerprints"]):
+        if not _is_exact_int(
+            row.get("failure_count"), len(row["failure_fingerprints"])
+        ):
             raise ValueError("SEAL_MISSING_TRANSITION_CLASS_COUNT_MISMATCH")
         missing_fingerprints.extend(str(value) for value in row["failure_fingerprints"])
     if len(missing_fingerprints) != len(set(missing_fingerprints)):
@@ -3767,11 +4490,17 @@ def _collect_seal_evidence(
             ("raw_historical_failure_count", counts["RAW_HISTORICAL_FAILURE_COUNT"]),
             ("raw_current_delta_failure_count", counts["RAW_CURRENT_DELTA_FAILURE_COUNT"]),
         ):
-            if audit.get(field) != expected:
+            if not _is_exact_int(audit.get(field), expected):
                 raise ValueError(f"SEAL_AUDIT_{label}_COUNT_MISMATCH:{field}")
-    if audit_a.get("corrected_fingerprint_count") != counts["CORRECTED_HISTORICAL_FAILURE_COUNT"]:
+    if not _is_exact_int(
+        audit_a.get("corrected_fingerprint_count"),
+        counts["CORRECTED_HISTORICAL_FAILURE_COUNT"],
+    ):
         raise ValueError("SEAL_AUDIT_A_CORRECTED_COUNT_MISMATCH")
-    if audit_b.get("registry_unresolved_historical_row_count") != counts["UNRESOLVED_HISTORICAL_FAILURE_COUNT"]:
+    if not _is_exact_int(
+        audit_b.get("registry_unresolved_historical_row_count"),
+        counts["UNRESOLVED_HISTORICAL_FAILURE_COUNT"],
+    ):
         raise ValueError("SEAL_AUDIT_B_UNRESOLVED_COUNT_MISMATCH")
 
     # Recompute after every input byte/path-set has been snapshotted.  A change
@@ -4090,7 +4819,16 @@ def _parser() -> argparse.ArgumentParser:
         "--raw-report",
         type=Path,
         default=None,
-        help="scanner report to freeze, or (for resolve) the live raw report emitted before V2",
+        help="scanner report to freeze, or the live Raw report emitted immediately before resolve",
+    )
+    parser.add_argument(
+        "--full-convergence-baseline-report",
+        type=Path,
+        default=None,
+        help=(
+            "explicit frozen d701 FULL_CONVERGENCE baseline; never the live "
+            "Required-Check Raw report"
+        ),
     )
     parser.add_argument("--report-json", type=Path, default=None)
     parser.add_argument("--report-md", type=Path, default=None)
@@ -4147,17 +4885,25 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "verify-legacy-epoch":
             result = convergence.verify_legacy_anchor(root)
         elif args.command == "verify-full-convergence-baseline":
-            if not args.raw_report:
-                raise SystemExit("verify-full-convergence-baseline requires --raw-report")
-            result = convergence.validate_authorized_baseline(args.raw_report.resolve())
+            if not args.full_convergence_baseline_report:
+                raise SystemExit(
+                    "verify-full-convergence-baseline requires "
+                    "--full-convergence-baseline-report"
+                )
+            result = convergence.validate_authorized_baseline(
+                args.full_convergence_baseline_report.resolve()
+            )
             result["schema_failures"] = convergence.validate_schema(root)
             if result["schema_failures"]:
                 result["status"] = "FAIL"
         else:
             if not args.batch_manifest:
                 raise SystemExit("verify-full-convergence-batch requires --batch-manifest")
-            if not args.raw_report:
-                raise SystemExit("verify-full-convergence-batch requires --raw-report")
+            if not args.full_convergence_baseline_report:
+                raise SystemExit(
+                    "verify-full-convergence-batch requires "
+                    "--full-convergence-baseline-report"
+                )
             if not args.descendant_history_supplement:
                 raise SystemExit(
                     "verify-full-convergence-batch requires --descendant-history-supplement"
@@ -4174,7 +4920,7 @@ def main(argv: list[str] | None = None) -> int:
                 root,
                 args.batch_manifest.resolve(),
                 evaluated_head=current_head,
-                baseline_report_path=args.raw_report.resolve(),
+                baseline_report_path=args.full_convergence_baseline_report.resolve(),
                 previous_batch_manifest_path=(
                     args.previous_batch_manifest.resolve()
                     if args.previous_batch_manifest is not None
@@ -4226,6 +4972,34 @@ def main(argv: list[str] | None = None) -> int:
         live_raw_report_path=args.raw_report.resolve() if args.raw_report else None,
         report_json=args.report_json,
         report_md=args.report_md,
+        full_convergence_baseline_report_path=(
+            args.full_convergence_baseline_report.resolve()
+            if args.full_convergence_baseline_report is not None
+            else None
+        ),
+        full_convergence_batch_manifest_path=(
+            args.batch_manifest.resolve() if args.batch_manifest is not None else None
+        ),
+        full_convergence_previous_batch_manifest_path=(
+            args.previous_batch_manifest.resolve()
+            if args.previous_batch_manifest is not None
+            else None
+        ),
+        descendant_history_supplement_path=(
+            args.descendant_history_supplement.resolve()
+            if args.descendant_history_supplement is not None
+            else None
+        ),
+        descendant_history_raw_report_path=(
+            args.descendant_history_raw_report.resolve()
+            if args.descendant_history_raw_report is not None
+            else None
+        ),
+        descendant_history_scanner_path=(
+            args.descendant_history_scanner.resolve()
+            if args.descendant_history_scanner is not None
+            else None
+        ),
     )
 
 

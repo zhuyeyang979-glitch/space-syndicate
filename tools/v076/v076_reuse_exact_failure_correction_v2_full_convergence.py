@@ -44,15 +44,22 @@ BATCH_MANIFEST_SCHEMA_VERSION = "space_syndicate.v076.reuse_exact_failure_correc
 EPOCH_SCHEMA_VERSION = "space_syndicate.v076.reuse_exact_failure_correction.v2.full_convergence_schema.v1"
 DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION = (
     "space_syndicate.v076.reuse_exact_failure_correction.v2."
-    "descendant_history_supplement.v1"
+    "descendant_history_supplement.v2"
 )
-DESCENDANT_HISTORY_SUPPLEMENT_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_001"
+DESCENDANT_HISTORY_SUPPLEMENT_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_002"
 
 SCHEMA_REL = Path("docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json")
 RECORD_ROOT_REL = Path("docs/architecture/reuse_corrections/v2/records/full_convergence_20260827")
 EPOCH_ROOT_REL = Path("reports/reuse/correction_v2/epochs/full_convergence_20260827")
 BASELINE_REPORT_REL = EPOCH_ROOT_REL / "baseline_raw_failure_report.json"
 DESCENDANT_HISTORY_SCANNER_REL = Path("tools/v076/v076_reuse_point_inertia_gate.py")
+DYNAMIC_REFERENCE_MANIFEST_REL = Path("docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json")
+EXACT_SUCCESSOR_FINGERPRINT_MAPPING = "EXACT_SUCCESSOR_FINGERPRINT_MAPPING"
+EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT = "EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT"
+ALLOWED_FROZEN_IDENTITY_DISPOSITIONS = {
+    EXACT_SUCCESSOR_FINGERPRINT_MAPPING,
+    EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT,
+}
 LEGACY_SEAL_MANIFEST_REL = Path(
     "reports/reuse/correction_v2/seals/ci_portability_v2/correction_authorization_manifest.json"
 )
@@ -63,12 +70,13 @@ LEGACY_SCHEMA_REL = Path("docs/architecture/reuse_corrections/v2/schema.json")
 
 # Filled from the committed schema artifact.  Keeping it in code prevents a
 # schema plus freshly rewritten sidecar from silently broadening authority.
-AUTHORIZED_SCHEMA_SHA256 = "474c4864fd72ad1761fbbaae90f31791e9c6ee7d9dcb0e4de53ef47240cb1b12"
+AUTHORIZED_SCHEMA_SHA256 = "6e23a7b9285fcf3ac29bd8aa78393ba243b482d880f8b0ade425501861c63d46"
 
 AUTHORITY_SOURCE_PATHS = (
     "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
     "docs/architecture/V076_SUPERSESSION_MAP.json",
     "docs/architecture/V076_OWNER_REUSE_MAP.md",
+    "docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json",
 )
 
 DESCENDANT_HISTORY_IDENTITY_FIELDS = tuple(sorted((
@@ -84,19 +92,70 @@ DESCENDANT_HISTORY_IDENTITY_FIELDS = tuple(sorted((
     "transition_old_sha",
 )))
 
+FROZEN_IDENTITY_DISPOSITION_FIELDS = tuple(sorted((
+    "baseline_scanner_tool_sha256",
+    "disposition",
+    "evidence",
+    "failure_fingerprint",
+    "live_scanner_tool_sha256",
+    "raw_failure",
+    "rule_id",
+    "subject_kind",
+    "subject_value",
+    "successor_failure_fingerprint",
+    "transition_new_sha",
+    "transition_old_sha",
+    "wildcard_count",
+)))
+
+SUCCESSOR_DISPOSITION_EVIDENCE_FIELDS = tuple(sorted((
+    "baseline_raw_report_sha256",
+    "evidence_kind",
+    "live_raw_report_sha256",
+    "successor_raw_failure",
+    "successor_rule_id",
+    "successor_subject_kind",
+    "successor_subject_value",
+    "successor_transition_new_sha",
+    "successor_transition_old_sha",
+)))
+
+FALSE_COMPONENT_RETIREMENT_EVIDENCE_FIELDS = tuple(sorted((
+    "baseline_raw_report_sha256",
+    "dynamic_reference_ids",
+    "dynamic_reference_manifest_blob_sha256",
+    "dynamic_reference_manifest_path",
+    "evidence_kind",
+    "live_raw_report_sha256",
+    "resolved_target",
+    "subject_directly_changed",
+)))
+
 DESCENDANT_HISTORY_SUPPLEMENT_FIELDS = tuple(sorted((
     "authorization_base_head_sha",
     "authorization_id",
+    "baseline_historical_membership_policy",
     "baseline_failure_set_sha256",
     "baseline_report_sha256",
+    "baseline_scanner_tool_sha256",
     "committed_only",
+    "correction_membership_scope",
     "descendant_history_failure_count",
     "descendant_history_fingerprint_set_sha256",
     "descendant_history_fingerprints",
     "directory_discovery_allowed",
+    "disposition_wildcard_count",
+    "frozen_identity_disposition_by_failure",
     "future_failure_auto_membership_allowed",
     "identity_binding_by_failure",
+    "live_frozen_historical_failure_count",
+    "live_frozen_historical_fingerprint_set_sha256",
+    "live_frozen_historical_fingerprints",
+    "missing_frozen_historical_failure_count",
+    "missing_frozen_historical_fingerprint_set_sha256",
+    "missing_frozen_historical_fingerprints",
     "raw_current_delta_failure_count",
+    "raw_failure_detection_suppressed_count",
     "raw_failure_count",
     "raw_historical_failure_count",
     "raw_report_head_sha",
@@ -186,6 +245,9 @@ IDENTITY_BINDING_FIELDS = tuple(sorted((
     "diagnostic_only_status",
     "documentation_only_status",
     "dynamic_reference_status",
+    "duplicate_identity_sha256",
+    "duplicate_of_failure_fingerprint",
+    "duplicate_reason",
     "generated_evidence_status",
     "first_seen_commit",
     "historical_blob_sha256",
@@ -208,6 +270,7 @@ IDENTITY_BINDING_FIELDS = tuple(sorted((
 
 AUTHORITY_SELECTOR_FIELDS = tuple(sorted((
     "component_ids",
+    "dynamic_reference_ids",
     "paths",
     "retirement_ids",
     "supersession_ids",
@@ -240,6 +303,8 @@ EXTENSION_RECORD_FIELDS = tuple(sorted((
     "descendant_history_supplement_sha256",
     "domain_ids",
     "domain_set_sha256",
+    "dynamic_reference_ids",
+    "dynamic_reference_set_sha256",
     "failure_classes",
     "failure_count",
     "failure_fingerprint_set_sha256",
@@ -318,10 +383,360 @@ ALLOWED_DISPOSITIONS = {
     "HISTORICAL_DYNAMIC_REFERENCE_DIAGNOSTIC_ONLY",
 }
 
+DYNAMIC_REFERENCE_DISPOSITIONS = {
+    value
+    for value in ALLOWED_DISPOSITIONS
+    if value.startswith("HISTORICAL_DYNAMIC_REFERENCE_")
+}
+
+IDENTITY_STATE_FIELDS = (
+    "current_production_reachability",
+    "current_role",
+    "diagnostic_only_status",
+    "documentation_only_status",
+    "domain_id",
+    "dynamic_reference_status",
+    "generated_evidence_status",
+    "historical_production_reachability",
+    "historical_role",
+    "retired_status",
+    "test_only_status",
+)
+
+SUBJECT_PROJECTION_FIELDS = {
+    "dynamic_reference_rows",
+    "owner_map_lines",
+    "registry_rows",
+    "supersession_rows",
+}
+
+DYNAMIC_REFERENCE_ENTRY_FIELDS = {
+    "callsite_contract",
+    "dynamic_reference_id",
+    "failure_policy",
+    "loader",
+    "production_reachable",
+    "reference_expression",
+    "resolution_method",
+    "resolved_targets",
+    "runtime_probe",
+    "source_blob_sha256",
+    "source_line_or_ast_location",
+    "source_path",
+    "target_set_sha256",
+}
+
+DYNAMIC_REFERENCE_LOCATION_FIELDS = {
+    "column",
+    "containing_function",
+    "line",
+}
+
+DYNAMIC_REFERENCE_RUNTIME_PROBE_FIELDS = {
+    "expected_target_count",
+    "probe_id",
+    "required_before_production_claim",
+    "test_path",
+}
+
+DYNAMIC_REFERENCE_FAILURE_POLICY_FIELDS = {
+    "future_site_auto_resolution_count",
+    "source_blob_change_invalidates",
+    "source_location_change_invalidates",
+    "target_set_change_invalidates",
+    "unknown_callsite_fails_closed",
+    "wildcard_count",
+}
+
+DYNAMIC_REFERENCE_RESOLUTION_METHODS = {
+    "EXACT_CONSTANT_CALL_GRAPH_MANIFEST",
+}
+
+DYNAMIC_REFERENCE_CALLSITE_FIELDS = {
+    "allowed_argument_constants",
+    "external_or_unknown_invocation_count",
+    "helper_function",
+    "required_invocation_count",
+    "required_loader_sites",
+}
+
+DYNAMIC_REFERENCE_LOADER_SITE_FIELDS = {
+    "column",
+    "line",
+    "loader",
+    "reference_expression",
+}
+
+REGISTRY_ALLOWED_COMPONENT_ROLES = {
+    "ADAPTER",
+    "CONSUMER",
+    "DIAGNOSTIC_BENCH",
+    "DIAGNOSTIC_ONLY",
+    "DOCUMENTATION_ONLY",
+    "GENERATED_EVIDENCE",
+    "INPUT_ROUTING",
+    "OWNER",
+    "PORT",
+    "PRESENTATION",
+    "PROJECTION",
+    "REDUCER",
+    "RETIRED",
+    "TEST_SUPPORT",
+    "TOOLING",
+}
+
+REGISTRY_ALLOWED_REUSE_DISPOSITIONS = {
+    "ADAPT_AS_CONSUMER",
+    "ADOPT_AS_OWNER",
+    "REFERENCE_ONLY",
+    "REUSE_AS_TEST",
+}
+
+REGISTRY_NONPRODUCTION_ROLES = {
+    "DIAGNOSTIC_BENCH",
+    "DIAGNOSTIC_ONLY",
+    "DOCUMENTATION_ONLY",
+    "GENERATED_EVIDENCE",
+    "RETIRED",
+    "TEST_SUPPORT",
+    "TOOLING",
+}
+
+REGISTRY_COMPONENT_INVENTORY_FIELDS = {
+    "authority_source_kind",
+    "change_class",
+    "class_name",
+    "component_id",
+    "component_role",
+    "domain_id",
+    "focused_test_ids",
+    "golden_scenario_steps",
+    "new_component_justification",
+    "owner_component_id",
+    "owner_path",
+    "owns_identity",
+    "owns_presentation",
+    "owns_replay",
+    "owns_rng",
+    "owns_save",
+    "owns_tick",
+    "path",
+    "production_reachable",
+    "reads_authority",
+    "reuse_candidates_considered",
+    "reuse_disposition",
+    "reuse_scan",
+    "reuse_source_ids",
+    "superseded_by",
+    "supersedes",
+    "writes_authority",
+}
+
+REGISTRY_COMPONENT_INVENTORY_REQUIRED_FIELDS = (
+    REGISTRY_COMPONENT_INVENTORY_FIELDS - {"reuse_scan"}
+)
+
+REGISTRY_HISTORICAL_BACKFILL_FIELDS = {
+    "authority_source_kind",
+    "component_id",
+    "current_disposition",
+    "historical_role",
+    "production_reachability",
+    "source_blob",
+    "source_commit",
+    "supersession",
+}
+
+IDENTITY_NON_MIGRATION_DISPOSITIONS = {
+    "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+    "HISTORICAL_DIAGNOSTIC_ONLY",
+    "HISTORICAL_DOCUMENTATION_ONLY",
+    "HISTORICAL_DUPLICATE_OBSERVATION",
+    "HISTORICAL_DYNAMIC_REFERENCE_DIAGNOSTIC_ONLY",
+    "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED",
+    "HISTORICAL_DYNAMIC_REFERENCE_TEST_ONLY",
+    "HISTORICAL_GENERATED_EVIDENCE",
+    "HISTORICAL_RETIRED_NONREACHABLE",
+    "HISTORICAL_TEST_ONLY",
+}
+
 DISALLOWED_TOKENS = {
     "*", "glob", "regex", "prefix", "directory", "legacy", "misc", "other",
     "unknown", "unknown_accepted", "ignore", "waive", "grandfather",
 }
+
+
+def _identity_state_signature(
+    *,
+    reachability: str,
+    role: str,
+    retired_status: str,
+    test_status: str = "NOT_TEST_ONLY",
+    diagnostic_status: str = "NOT_DIAGNOSTIC_ONLY",
+    documentation_status: str = "NOT_DOCUMENTATION_ONLY",
+    generated_status: str = "NOT_GENERATED_EVIDENCE",
+    dynamic_status: str = "NOT_DYNAMIC_REFERENCE",
+    historical_reachability: str | None = None,
+    historical_role: str | None = None,
+) -> dict[str, str]:
+    return {
+        "current_production_reachability": reachability,
+        "current_role": role,
+        "diagnostic_only_status": diagnostic_status,
+        "documentation_only_status": documentation_status,
+        "dynamic_reference_status": dynamic_status,
+        "generated_evidence_status": generated_status,
+        "historical_production_reachability": (
+            reachability
+            if historical_reachability is None
+            else historical_reachability
+        ),
+        "historical_role": role if historical_role is None else historical_role,
+        "retired_status": retired_status,
+        "test_only_status": test_status,
+    }
+
+
+def _identity_allowed_state_signatures(
+    disposition: str,
+    binding: dict[str, Any],
+) -> list[dict[str, str]]:
+    current_role = str(binding.get("current_role", ""))
+    historical_role = str(binding.get("historical_role", ""))
+    active = _identity_state_signature(
+        reachability="PRODUCTION_REACHABLE",
+        role=current_role,
+        historical_role=historical_role,
+        retired_status="ACTIVE_LINEAGE",
+    )
+    test_only = _identity_state_signature(
+        reachability="TEST_ONLY",
+        role="TEST_SUPPORT",
+        retired_status="NOT_RETIRED",
+        test_status="TEST_ONLY",
+    )
+    diagnostic = _identity_state_signature(
+        reachability="DIAGNOSTIC_ONLY",
+        role=current_role,
+        historical_role=historical_role,
+        retired_status="NOT_RETIRED",
+        diagnostic_status="DIAGNOSTIC_ONLY",
+    )
+    documentation = _identity_state_signature(
+        reachability="DOCUMENTATION_ONLY",
+        role="DOCUMENTATION_ONLY",
+        retired_status="NOT_RETIRED",
+        documentation_status="DOCUMENTATION_ONLY",
+    )
+    generated = _identity_state_signature(
+        reachability="GENERATED_EVIDENCE_ONLY",
+        role="GENERATED_EVIDENCE",
+        retired_status="NOT_RETIRED",
+        generated_status="GENERATED_EVIDENCE",
+    )
+    if disposition == "HISTORICAL_ACTIVE_LINEAGE_REGISTERED":
+        return [active]
+    if disposition == "HISTORICAL_SUPERSEDED_NONREACHABLE":
+        return [_identity_state_signature(
+            reachability="PRODUCTION_REACHABLE",
+            role=current_role,
+            historical_reachability="NONREACHABLE",
+            historical_role=historical_role,
+            retired_status="SUPERSEDED_NONREACHABLE",
+        )]
+    if disposition == "HISTORICAL_RETIRED_NONREACHABLE":
+        return [_identity_state_signature(
+            reachability="NONREACHABLE",
+            role="RETIRED",
+            historical_role="RETIRED",
+            retired_status="RETIRED_NONREACHABLE",
+        )]
+    if disposition == "HISTORICAL_TEST_ONLY":
+        return [test_only]
+    if disposition == "HISTORICAL_DIAGNOSTIC_ONLY":
+        return [diagnostic]
+    if disposition == "HISTORICAL_DOCUMENTATION_ONLY":
+        return [documentation]
+    if disposition == "HISTORICAL_GENERATED_EVIDENCE":
+        return [generated]
+    if disposition == "HISTORICAL_DUPLICATE_OBSERVATION":
+        return [active, test_only, diagnostic, documentation, generated]
+    if disposition == "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED":
+        return [dict(active, dynamic_reference_status="RESOLVED")]
+    if disposition == "HISTORICAL_DYNAMIC_REFERENCE_SUPERSEDED":
+        return [dict(
+            _identity_state_signature(
+                reachability="PRODUCTION_REACHABLE",
+                role=current_role,
+                historical_reachability="NONREACHABLE",
+                historical_role=historical_role,
+                retired_status="SUPERSEDED_NONREACHABLE",
+            ),
+            dynamic_reference_status="SUPERSEDED",
+        )]
+    if disposition == "HISTORICAL_DYNAMIC_REFERENCE_TEST_ONLY":
+        return [dict(test_only, dynamic_reference_status="RESOLVED")]
+    if disposition == "HISTORICAL_DYNAMIC_REFERENCE_DIAGNOSTIC_ONLY":
+        return [dict(diagnostic, dynamic_reference_status="RESOLVED")]
+    return []
+
+
+def _identity_disposition_failures(
+    binding: dict[str, Any],
+    *,
+    rule_id: str,
+) -> list[str]:
+    failures: list[str] = []
+    disposition = str(binding.get("recommended_disposition", ""))
+    is_dynamic_rule = rule_id == "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED"
+    if is_dynamic_rule != (disposition in DYNAMIC_REFERENCE_DISPOSITIONS):
+        failures.append("IDENTITY_BINDING_RULE_DISPOSITION_MISMATCH")
+    for field in IDENTITY_STATE_FIELDS:
+        value = str(binding.get(field, ""))
+        upper_value = value.upper()
+        if not value or "UNKNOWN" in upper_value or "UNRESOLVED" in upper_value:
+            failures.append(f"IDENTITY_BINDING_UNKNOWN:{field}")
+    duplicate_target = str(binding.get("duplicate_of_failure_fingerprint", ""))
+    duplicate_digest = str(binding.get("duplicate_identity_sha256", ""))
+    duplicate_reason = str(binding.get("duplicate_reason", ""))
+    if disposition == "HISTORICAL_DUPLICATE_OBSERVATION":
+        if (
+            re.fullmatch(r"V2F-[0-9a-f]{64}", duplicate_target) is None
+            or not _is_sha256(duplicate_digest)
+            or duplicate_reason
+            != "SAME_RULE_AND_SUBJECT_DISTINCT_TRANSITION_OBSERVATION"
+        ):
+            failures.append("IDENTITY_BINDING_DUPLICATE_EVIDENCE_INVALID")
+    elif duplicate_target or duplicate_digest or duplicate_reason:
+        failures.append("IDENTITY_BINDING_DUPLICATE_EVIDENCE_UNEXPECTED")
+    state = {
+        field: str(binding.get(field, ""))
+        for field in IDENTITY_STATE_FIELDS
+        if field != "domain_id"
+    }
+    if (
+        str(binding.get("current_role", "")) in REGISTRY_NONPRODUCTION_ROLES
+        and str(binding.get("current_production_reachability", ""))
+        == "PRODUCTION_REACHABLE"
+    ):
+        failures.append("IDENTITY_BINDING_NONPRODUCTION_ROLE_REACHABLE")
+    allowed_signatures = _identity_allowed_state_signatures(disposition, binding)
+    if not allowed_signatures or state not in allowed_signatures:
+        failures.append("IDENTITY_BINDING_DISPOSITION_STATE_MATRIX_INVALID")
+    if disposition == "HISTORICAL_ACTIVE_LINEAGE_REGISTERED" and (
+        not binding.get("current_path")
+        or binding.get("current_blob_sha256") == "MISSING"
+    ):
+        failures.append("IDENTITY_BINDING_ACTIVE_LINEAGE_SEMANTICS_INVALID")
+    if disposition in {
+        "HISTORICAL_SUPERSEDED_NONREACHABLE",
+        "HISTORICAL_DYNAMIC_REFERENCE_SUPERSEDED",
+    } and (
+        not isinstance(binding.get("superseded_by"), list)
+        or not binding.get("superseded_by")
+    ):
+        failures.append("IDENTITY_BINDING_SUPERSESSION_SEMANTICS_INVALID")
+    return sorted(set(failures))
 
 
 class DuplicateJsonKeyError(ValueError):
@@ -368,6 +783,16 @@ def _is_sha256(value: Any) -> bool:
 
 def _is_commit(value: Any) -> bool:
     return isinstance(value, str) and bool(re.fullmatch(r"[0-9a-f]{40}", value))
+
+
+def _is_int(value: Any) -> bool:
+    """Reject bools at JSON integer trust boundaries."""
+
+    return type(value) is int
+
+
+def _is_exact_int(value: Any, expected: int) -> bool:
+    return _is_int(value) and value == expected
 
 
 def _line_set_sha(values: Iterable[str]) -> str:
@@ -578,12 +1003,13 @@ def validate_descendant_history_supplement(
     evaluated_head: str,
     baseline_report_path: Path,
 ) -> dict[str, Any]:
-    """Validate one explicit, byte-sealed descendant HISTORY membership set.
+    """Validate one explicit, byte-sealed descendant HISTORY reconciliation.
 
     The supplement is not discovered.  Its three files must be passed by the
     caller, and the raw report must evaluate one committed Head with zero
-    current failures.  Membership is the exact set difference between that
-    report's historical fingerprints and the frozen d701 historical set.
+    current failures.  A frozen identity must either remain live or have one
+    exact append-only successor/false-component disposition.  Only live
+    historical identities enter correction authority.
     """
 
     failures: list[str] = []
@@ -593,6 +1019,10 @@ def validate_descendant_history_supplement(
         "supplement_sha256": "",
         "authorized_historical_fingerprints": set(),
         "authorized_identity_by_fingerprint": {},
+        "registered_historical_fingerprints": set(),
+        "registered_identity_by_fingerprint": {},
+        "dispositioned_historical_fingerprints": set(),
+        "frozen_identity_disposition_by_failure": {},
         "raw_report_head_sha": "",
     }
     if supplement_path is None:
@@ -628,6 +1058,11 @@ def validate_descendant_history_supplement(
         failures.append("DESCENDANT_HISTORY_SUPPLEMENT_NOT_OBJECT")
     if set(supplement) != set(DESCENDANT_HISTORY_SUPPLEMENT_FIELDS):
         failures.append("DESCENDANT_HISTORY_SUPPLEMENT_FIELD_SET_MISMATCH")
+    for field in DESCENDANT_HISTORY_SUPPLEMENT_FIELDS:
+        if field.endswith("_count") and not _is_int(supplement.get(field)):
+            failures.append(
+                f"DESCENDANT_HISTORY_SUPPLEMENT_{field.upper()}_TYPE_INVALID"
+            )
     for field, expected in (
         ("schema_version", DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION),
         ("supplement_id", DESCENDANT_HISTORY_SUPPLEMENT_ID),
@@ -635,11 +1070,15 @@ def validate_descendant_history_supplement(
         ("authorization_base_head_sha", AUTHORIZATION_BASE_HEAD_SHA),
         ("baseline_report_sha256", AUTHORIZED_BASELINE_REPORT_SHA256),
         ("baseline_failure_set_sha256", AUTHORIZED_BASELINE_FAILURE_SET_SHA256),
+        ("baseline_historical_membership_policy", "LIVE_RAW_OR_EXACT_APPEND_ONLY_DISPOSITION"),
         ("committed_only", True),
+        ("correction_membership_scope", "LIVE_HISTORICAL_ONLY"),
         ("directory_discovery_allowed", False),
+        ("disposition_wildcard_count", 0),
         ("wildcard_membership_allowed", False),
         ("future_failure_auto_membership_allowed", False),
         ("raw_current_delta_failure_count", 0),
+        ("raw_failure_detection_suppressed_count", 0),
         ("scanner_tool_path", DESCENDANT_HISTORY_SCANNER_REL.as_posix()),
         ("raw_report_path", raw_report_relative),
     ):
@@ -686,8 +1125,8 @@ def validate_descendant_history_supplement(
         failures.append(f"DESCENDANT_HISTORY_RAW_FINGERPRINT_SET_INVALID:{exc}")
     if final_sets["current"]:
         failures.append("DESCENDANT_HISTORY_FINAL_CURRENT_FAILURE_COUNT_NOT_ZERO")
-    if not frozen_sets["historical"].issubset(final_sets["historical"]):
-        failures.append("DESCENDANT_HISTORY_FROZEN_HISTORICAL_SET_NOT_PRESERVED")
+    live_frozen_fingerprints = frozen_sets["historical"] & final_sets["historical"]
+    missing_frozen_fingerprints = frozen_sets["historical"] - final_sets["historical"]
     descendant_fingerprints = final_sets["historical"] - frozen_sets["historical"]
     if not descendant_fingerprints:
         failures.append("DESCENDANT_HISTORY_SUPPLEMENT_EMPTY")
@@ -704,17 +1143,68 @@ def validate_descendant_history_supplement(
         failures.append("DESCENDANT_HISTORY_FINGERPRINT_SET_INVALID")
     if set(declared_descendant_rendered) != descendant_fingerprints:
         failures.append("DESCENDANT_HISTORY_FINGERPRINT_MEMBERSHIP_MISMATCH")
-    if supplement.get("descendant_history_failure_count") != len(descendant_fingerprints):
+    if not _is_exact_int(
+        supplement.get("descendant_history_failure_count"),
+        len(descendant_fingerprints),
+    ):
         failures.append("DESCENDANT_HISTORY_FAILURE_COUNT_MISMATCH")
     if supplement.get("descendant_history_fingerprint_set_sha256") != _line_set_sha(
         declared_descendant_rendered
     ):
         failures.append("DESCENDANT_HISTORY_FINGERPRINT_SET_SHA256_MISMATCH")
-    if supplement.get("raw_failure_count") != len(raw_rendered):
+    declared_live_frozen = supplement.get("live_frozen_historical_fingerprints")
+    rendered_live_frozen = (
+        [str(value) for value in declared_live_frozen]
+        if isinstance(declared_live_frozen, list)
+        else []
+    )
+    if (
+        rendered_live_frozen != sorted(rendered_live_frozen)
+        or len(rendered_live_frozen) != len(set(rendered_live_frozen))
+        or set(rendered_live_frozen) != live_frozen_fingerprints
+    ):
+        failures.append("DESCENDANT_HISTORY_LIVE_FROZEN_MEMBERSHIP_MISMATCH")
+    if (
+        not _is_exact_int(
+            supplement.get("live_frozen_historical_failure_count"),
+            len(live_frozen_fingerprints),
+        )
+        or supplement.get("live_frozen_historical_fingerprint_set_sha256")
+        != _line_set_sha(rendered_live_frozen)
+    ):
+        failures.append("DESCENDANT_HISTORY_LIVE_FROZEN_DIGEST_MISMATCH")
+    declared_missing_frozen = supplement.get("missing_frozen_historical_fingerprints")
+    rendered_missing_frozen = (
+        [str(value) for value in declared_missing_frozen]
+        if isinstance(declared_missing_frozen, list)
+        else []
+    )
+    if (
+        rendered_missing_frozen != sorted(rendered_missing_frozen)
+        or len(rendered_missing_frozen) != len(set(rendered_missing_frozen))
+        or set(rendered_missing_frozen) != missing_frozen_fingerprints
+    ):
+        failures.append("DESCENDANT_HISTORY_MISSING_FROZEN_MEMBERSHIP_MISMATCH")
+    if (
+        not _is_exact_int(
+            supplement.get("missing_frozen_historical_failure_count"),
+            len(missing_frozen_fingerprints),
+        )
+        or supplement.get("missing_frozen_historical_fingerprint_set_sha256")
+        != _line_set_sha(rendered_missing_frozen)
+    ):
+        failures.append("DESCENDANT_HISTORY_MISSING_FROZEN_DIGEST_MISMATCH")
+    if not _is_exact_int(supplement.get("raw_failure_count"), len(raw_rendered)):
         failures.append("DESCENDANT_HISTORY_RAW_FAILURE_COUNT_MISMATCH")
-    if supplement.get("raw_historical_failure_count") != len(final_sets["historical"]):
+    if not _is_exact_int(
+        supplement.get("raw_historical_failure_count"),
+        len(final_sets["historical"]),
+    ):
         failures.append("DESCENDANT_HISTORY_RAW_HISTORICAL_COUNT_MISMATCH")
-    if supplement.get("raw_current_delta_failure_count") != len(final_sets["current"]):
+    if not _is_exact_int(
+        supplement.get("raw_current_delta_failure_count"),
+        len(final_sets["current"]),
+    ):
         failures.append("DESCENDANT_HISTORY_RAW_CURRENT_COUNT_MISMATCH")
     report_head = str(raw_report.get("head_sha", ""))
     if supplement.get("raw_report_head_sha") != report_head or not _is_commit(report_head):
@@ -754,6 +1244,222 @@ def validate_descendant_history_supplement(
         or scanner_sha != scanner_at_report_sha
     ):
         failures.append("DESCENDANT_HISTORY_SCANNER_SHA256_MISMATCH")
+    baseline_scanner_bytes = _git_bytes(
+        root,
+        AUTHORIZATION_BASE_HEAD_SHA,
+        DESCENDANT_HISTORY_SCANNER_REL.as_posix(),
+    )
+    baseline_scanner_sha = (
+        sha256_bytes(baseline_scanner_bytes)
+        if baseline_scanner_bytes is not None
+        else ""
+    )
+    if supplement.get("baseline_scanner_tool_sha256") != baseline_scanner_sha:
+        failures.append("DESCENDANT_HISTORY_BASELINE_SCANNER_SHA256_MISMATCH")
+
+    manifest_bytes = (
+        _git_bytes(root, report_head, DYNAMIC_REFERENCE_MANIFEST_REL.as_posix())
+        if _is_commit(report_head)
+        else None
+    )
+    manifest_sha = sha256_bytes(manifest_bytes) if manifest_bytes is not None else ""
+    target_to_dynamic_reference_ids: dict[str, list[str]] = {}
+    try:
+        manifest_document = json.loads(
+            (manifest_bytes or b"").decode("utf-8-sig"),
+            object_pairs_hook=_strict_object,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, DuplicateJsonKeyError):
+        manifest_document = {}
+        failures.append("DESCENDANT_HISTORY_DYNAMIC_REFERENCE_MANIFEST_INVALID")
+    entries = manifest_document.get("entries", []) if isinstance(manifest_document, dict) else []
+    if not isinstance(entries, list):
+        entries = []
+        failures.append("DESCENDANT_HISTORY_DYNAMIC_REFERENCE_ENTRY_SET_INVALID")
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        reference_id = str(entry.get("dynamic_reference_id", ""))
+        targets = entry.get("resolved_targets", [])
+        if not reference_id or not isinstance(targets, list):
+            continue
+        for target in targets:
+            normalized_target = normalize_path(str(target))
+            if normalized_target:
+                target_to_dynamic_reference_ids.setdefault(normalized_target, []).append(
+                    reference_id
+                )
+    for target in target_to_dynamic_reference_ids:
+        target_to_dynamic_reference_ids[target] = sorted(
+            set(target_to_dynamic_reference_ids[target])
+        )
+
+    dispositions = supplement.get("frozen_identity_disposition_by_failure")
+    if not isinstance(dispositions, dict) or set(dispositions) != missing_frozen_fingerprints:
+        failures.append("DESCENDANT_HISTORY_FROZEN_DISPOSITION_SET_MISMATCH")
+        dispositions = dispositions if isinstance(dispositions, dict) else {}
+    verified_dispositions: dict[str, dict[str, Any]] = {}
+    used_successors: set[str] = set()
+    for fingerprint in sorted(missing_frozen_fingerprints):
+        row_failure_count = len(failures)
+        row = dispositions.get(fingerprint)
+        frozen_identity = frozen_identities.get(fingerprint)
+        if not isinstance(row, dict) or set(row) != set(FROZEN_IDENTITY_DISPOSITION_FIELDS):
+            failures.append(f"DESCENDANT_HISTORY_DISPOSITION_FIELD_SET_MISMATCH:{fingerprint}")
+            continue
+        if not isinstance(frozen_identity, dict) or frozen_identity.get("bucket") != "HISTORICAL":
+            failures.append(f"DESCENDANT_HISTORY_DISPOSITION_FROZEN_IDENTITY_UNRESOLVED:{fingerprint}")
+            continue
+        for field, expected in (
+            ("failure_fingerprint", fingerprint),
+            ("raw_failure", frozen_identity.get("raw_failure")),
+            ("rule_id", frozen_identity.get("rule_id")),
+            ("baseline_scanner_tool_sha256", baseline_scanner_sha),
+            ("live_scanner_tool_sha256", scanner_at_report_sha),
+            ("subject_kind", frozen_identity.get("subject_kind")),
+            ("subject_value", frozen_identity.get("subject_value")),
+            ("wildcard_count", 0),
+        ):
+            if row.get(field) != expected:
+                failures.append(
+                    f"DESCENDANT_HISTORY_DISPOSITION_{field.upper()}_MISMATCH:{fingerprint}"
+                )
+        disposition = str(row.get("disposition", ""))
+        if disposition not in ALLOWED_FROZEN_IDENTITY_DISPOSITIONS:
+            failures.append(f"DESCENDANT_HISTORY_DISPOSITION_KIND_INVALID:{fingerprint}")
+        subject_value = normalize_path(str(frozen_identity.get("subject_value", "")))
+        if (
+            not subject_value
+            or subject_value != frozen_identity.get("subject_value")
+            or any(char in subject_value for char in "*?[]")
+        ):
+            failures.append(f"DESCENDANT_HISTORY_DISPOSITION_SUBJECT_NOT_EXACT:{fingerprint}")
+        old_commit = _resolve_commit_prefix(
+            root, str(frozen_identity.get("transition_old_prefix", ""))
+        )
+        new_commit = _resolve_commit_prefix(
+            root, str(frozen_identity.get("transition_new_prefix", ""))
+        )
+        direct_parent = ""
+        if new_commit:
+            try:
+                direct_parent = _git(root, "rev-parse", f"{new_commit}^1")
+            except ValueError:
+                direct_parent = ""
+        if not old_commit or not new_commit or direct_parent != old_commit:
+            failures.append(f"DESCENDANT_HISTORY_DISPOSITION_TRANSITION_INVALID:{fingerprint}")
+        if row.get("transition_old_sha") != old_commit:
+            failures.append(f"DESCENDANT_HISTORY_DISPOSITION_TRANSITION_OLD_MISMATCH:{fingerprint}")
+        if row.get("transition_new_sha") != new_commit:
+            failures.append(f"DESCENDANT_HISTORY_DISPOSITION_TRANSITION_NEW_MISMATCH:{fingerprint}")
+        if new_commit and report_head and not _is_ancestor(root, new_commit, report_head):
+            failures.append(f"DESCENDANT_HISTORY_DISPOSITION_TRANSITION_ANCESTRY_INVALID:{fingerprint}")
+        evidence = row.get("evidence")
+        successor_fingerprint = str(row.get("successor_failure_fingerprint", ""))
+        if disposition == EXACT_SUCCESSOR_FINGERPRINT_MAPPING:
+            if (
+                not isinstance(evidence, dict)
+                or set(evidence) != set(SUCCESSOR_DISPOSITION_EVIDENCE_FIELDS)
+            ):
+                failures.append(f"DESCENDANT_HISTORY_SUCCESSOR_EVIDENCE_FIELD_SET_MISMATCH:{fingerprint}")
+                evidence = evidence if isinstance(evidence, dict) else {}
+            successor_identity = final_identities.get(successor_fingerprint)
+            if (
+                successor_fingerprint not in descendant_fingerprints
+                or successor_fingerprint in used_successors
+                or not isinstance(successor_identity, dict)
+            ):
+                failures.append(f"DESCENDANT_HISTORY_SUCCESSOR_FINGERPRINT_INVALID:{fingerprint}")
+                successor_identity = {}
+            used_successors.add(successor_fingerprint)
+            if (
+                successor_identity.get("rule_id") != frozen_identity.get("rule_id")
+                or successor_identity.get("subject_kind") != frozen_identity.get("subject_kind")
+                or successor_identity.get("subject_value") != frozen_identity.get("subject_value")
+            ):
+                failures.append(f"DESCENDANT_HISTORY_SUCCESSOR_SUBJECT_MISMATCH:{fingerprint}")
+            successor_old = _resolve_commit_prefix(
+                root, str(successor_identity.get("transition_old_prefix", ""))
+            )
+            successor_new = _resolve_commit_prefix(
+                root, str(successor_identity.get("transition_new_prefix", ""))
+            )
+            successor_parent = ""
+            if successor_new:
+                try:
+                    successor_parent = _git(root, "rev-parse", f"{successor_new}^1")
+                except ValueError:
+                    successor_parent = ""
+            if not successor_old or not successor_new or successor_parent != successor_old:
+                failures.append(f"DESCENDANT_HISTORY_SUCCESSOR_TRANSITION_INVALID:{fingerprint}")
+            for field, expected in (
+                ("evidence_kind", "EXACT_LIVE_RAW_SUCCESSOR_IDENTITY"),
+                ("baseline_raw_report_sha256", AUTHORIZED_BASELINE_REPORT_SHA256),
+                ("live_raw_report_sha256", raw_report_sha),
+                ("successor_raw_failure", successor_identity.get("raw_failure")),
+                ("successor_rule_id", successor_identity.get("rule_id")),
+                ("successor_transition_old_sha", successor_old),
+                ("successor_transition_new_sha", successor_new),
+                ("successor_subject_kind", successor_identity.get("subject_kind")),
+                ("successor_subject_value", successor_identity.get("subject_value")),
+            ):
+                if evidence.get(field) != expected:
+                    failures.append(
+                        f"DESCENDANT_HISTORY_SUCCESSOR_EVIDENCE_{field.upper()}_MISMATCH:{fingerprint}"
+                    )
+        elif disposition == EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT:
+            if successor_fingerprint:
+                failures.append(f"DESCENDANT_HISTORY_FALSE_COMPONENT_SUCCESSOR_UNEXPECTED:{fingerprint}")
+            if (
+                not isinstance(evidence, dict)
+                or set(evidence) != set(FALSE_COMPONENT_RETIREMENT_EVIDENCE_FIELDS)
+            ):
+                failures.append(f"DESCENDANT_HISTORY_FALSE_COMPONENT_EVIDENCE_FIELD_SET_MISMATCH:{fingerprint}")
+                evidence = evidence if isinstance(evidence, dict) else {}
+            changed_paths: set[str] = set()
+            if old_commit and new_commit:
+                try:
+                    changed_paths = {
+                        normalize_path(value)
+                        for value in _git(
+                            root, "diff", "--name-only", old_commit, new_commit
+                        ).splitlines()
+                        if value.strip()
+                    }
+                except ValueError:
+                    changed_paths = set()
+            exact_dynamic_ids = target_to_dynamic_reference_ids.get(subject_value, [])
+            evidence_dynamic_ids = evidence.get("dynamic_reference_ids")
+            rendered_dynamic_ids = (
+                [str(value) for value in evidence_dynamic_ids]
+                if isinstance(evidence_dynamic_ids, list)
+                else []
+            )
+            if (
+                frozen_identity.get("rule_id") != "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"
+                or frozen_identity.get("subject_kind") != "path"
+            ):
+                failures.append(f"DESCENDANT_HISTORY_FALSE_COMPONENT_RULE_INVALID:{fingerprint}")
+            if subject_value in changed_paths or evidence.get("subject_directly_changed") is not False:
+                failures.append(f"DESCENDANT_HISTORY_FALSE_COMPONENT_DIRECT_CHANGE_INVALID:{fingerprint}")
+            if not exact_dynamic_ids or rendered_dynamic_ids != exact_dynamic_ids:
+                failures.append(f"DESCENDANT_HISTORY_FALSE_COMPONENT_DYNAMIC_TARGET_INVALID:{fingerprint}")
+            for field, expected in (
+                ("evidence_kind", "EXACT_DYNAMIC_REFERENCE_TARGET_NOT_DIRECT_TRANSITION_CHANGE"),
+                ("baseline_raw_report_sha256", AUTHORIZED_BASELINE_REPORT_SHA256),
+                ("live_raw_report_sha256", raw_report_sha),
+                ("dynamic_reference_manifest_path", DYNAMIC_REFERENCE_MANIFEST_REL.as_posix()),
+                ("dynamic_reference_manifest_blob_sha256", manifest_sha),
+                ("resolved_target", f"res://{subject_value}"),
+            ):
+                if evidence.get(field) != expected:
+                    failures.append(
+                        f"DESCENDANT_HISTORY_FALSE_COMPONENT_EVIDENCE_{field.upper()}_MISMATCH:{fingerprint}"
+                    )
+        if len(failures) == row_failure_count:
+            verified_dispositions[fingerprint] = row
+    if set(verified_dispositions) != missing_frozen_fingerprints:
+        failures.append("DESCENDANT_HISTORY_FROZEN_DISPOSITION_COVERAGE_INVALID")
     repaired = supplement.get("repaired_frozen_current_fingerprints")
     if not isinstance(repaired, list):
         repaired = []
@@ -765,7 +1471,10 @@ def validate_descendant_history_supplement(
         or set(repaired_rendered) != frozen_sets["current"]
     ):
         failures.append("DESCENDANT_HISTORY_REPAIRED_CURRENT_SET_MISMATCH")
-    if supplement.get("repaired_frozen_current_failure_count") != len(frozen_sets["current"]):
+    if not _is_exact_int(
+        supplement.get("repaired_frozen_current_failure_count"),
+        len(frozen_sets["current"]),
+    ):
         failures.append("DESCENDANT_HISTORY_REPAIRED_CURRENT_COUNT_MISMATCH")
     if supplement.get("repaired_frozen_current_fingerprint_set_sha256") != _line_set_sha(
         repaired_rendered
@@ -811,10 +1520,7 @@ def validate_descendant_history_supplement(
             failures.append(f"DESCENDANT_HISTORY_TRANSITION_NEW_MISMATCH:{fingerprint}")
         if binding.get("source_commit_sha") != new_commit:
             failures.append(f"DESCENDANT_HISTORY_SOURCE_COMMIT_MISMATCH:{fingerprint}")
-        if (
-            not _is_ancestor(root, AUTHORIZATION_BASE_HEAD_SHA, new_commit)
-            or not _is_ancestor(root, new_commit, report_head)
-        ):
+        if not _is_ancestor(root, new_commit, report_head):
             failures.append(f"DESCENDANT_HISTORY_SOURCE_COMMIT_ANCESTRY_INVALID:{fingerprint}")
         source_path = normalize_path(str(binding.get("source_path", "")))
         if (
@@ -873,13 +1579,46 @@ def validate_descendant_history_supplement(
         authorized_identities[fingerprint] = authorized_identity
     if mapped_current != frozen_sets["current"] or mapped_current != set(repaired_rendered):
         failures.append("DESCENDANT_HISTORY_REPAIR_BINDING_COVERAGE_MISMATCH")
+    live_identities: dict[str, dict[str, Any]] = {}
+    for fingerprint in sorted(final_sets["historical"]):
+        if fingerprint in authorized_identities:
+            live_identities[fingerprint] = dict(authorized_identities[fingerprint])
+            continue
+        identity = frozen_identities.get(fingerprint, final_identities.get(fingerprint))
+        if not isinstance(identity, dict):
+            failures.append(f"DESCENDANT_HISTORY_LIVE_IDENTITY_UNRESOLVED:{fingerprint}")
+            continue
+        row = dict(identity)
+        row["authority_origin"] = "FROZEN_FULL_CONVERGENCE_BASELINE"
+        live_identities[fingerprint] = row
+    registered_identities: dict[str, dict[str, Any]] = {}
+    for fingerprint in sorted(frozen_sets["historical"]):
+        identity = frozen_identities.get(fingerprint)
+        if not isinstance(identity, dict):
+            failures.append(f"DESCENDANT_HISTORY_REGISTERED_IDENTITY_UNRESOLVED:{fingerprint}")
+            continue
+        row = dict(identity)
+        row["authority_origin"] = "FROZEN_FULL_CONVERGENCE_BASELINE"
+        if fingerprint in verified_dispositions:
+            row["non_live_disposition"] = verified_dispositions[fingerprint]
+        registered_identities[fingerprint] = row
+    registered_identities.update(
+        {
+            fingerprint: dict(identity)
+            for fingerprint, identity in authorized_identities.items()
+        }
+    )
     failures = sorted(set(failures))
     return {
         "status": "PASS" if not failures else "FAIL",
         "failures": failures,
         "supplement_sha256": supplement_sha,
-        "authorized_historical_fingerprints": descendant_fingerprints,
-        "authorized_identity_by_fingerprint": authorized_identities,
+        "authorized_historical_fingerprints": set(live_identities),
+        "authorized_identity_by_fingerprint": live_identities,
+        "registered_historical_fingerprints": set(registered_identities),
+        "registered_identity_by_fingerprint": registered_identities,
+        "dispositioned_historical_fingerprints": set(verified_dispositions),
+        "frozen_identity_disposition_by_failure": verified_dispositions,
         "raw_report_head_sha": report_head,
         "frozen_current_identity_count": len(frozen_identities) - len(frozen_sets["historical"]),
     }
@@ -905,7 +1644,7 @@ def _artifact_common_failures(
         failures.append(f"{prefix}_BATCH_ID_MISMATCH")
     if rendered != expected_fingerprints:
         failures.append(f"{prefix}_FINGERPRINT_SET_MISMATCH")
-    if document.get("failure_count") != len(expected_fingerprints):
+    if not _is_exact_int(document.get("failure_count"), len(expected_fingerprints)):
         failures.append(f"{prefix}_FAILURE_COUNT_MISMATCH")
     return failures
 
@@ -929,7 +1668,9 @@ def _validate_batch_artifact_document(
     fingerprints = [str(value) for value in manifest.get("failure_fingerprints", [])]
     prefix = f"BATCH_ARTIFACT_{kind.upper()}"
     if kind == "inventory":
-        if document.get("identity_coverage_percent") != 100 or document.get("unknown_count") != 0:
+        if not _is_exact_int(
+            document.get("identity_coverage_percent"), 100
+        ) or not _is_exact_int(document.get("unknown_count"), 0):
             failures.append(f"{prefix}_COVERAGE_INVALID")
         rows = document.get("rows")
         if not isinstance(rows, dict) or set(rows) != set(fingerprints):
@@ -947,7 +1688,9 @@ def _validate_batch_artifact_document(
                 if row.get("rule_id") != identity.get("rule_id"):
                     failures.append(f"{prefix}_ROW_RULE_MISMATCH:{fingerprint}")
     elif kind == "classification":
-        if document.get("unknown_count") != 0 or document.get("wildcard_count") != 0:
+        if not _is_exact_int(
+            document.get("unknown_count"), 0
+        ) or not _is_exact_int(document.get("wildcard_count"), 0):
             failures.append(f"{prefix}_COUNTS_INVALID")
         classifications = document.get("classifications")
         if not isinstance(classifications, dict) or set(classifications) != set(fingerprints):
@@ -972,7 +1715,7 @@ def _validate_batch_artifact_document(
         if document.get("status") != "PASS":
             failures.append(f"{prefix}_STATUS_INVALID")
         for field, expected in required_counts.items():
-            if document.get(field) != expected:
+            if not _is_exact_int(document.get(field), expected):
                 failures.append(f"{prefix}_{field.upper()}_INVALID")
         checks = document.get("checks")
         if not isinstance(checks, dict) or not checks or any(value is not True for value in checks.values()):
@@ -983,7 +1726,9 @@ def _validate_batch_artifact_document(
             failures.append(f"{prefix}_REVIEW_ID_INVALID")
         if document.get("status") != "GO":
             failures.append(f"{prefix}_STATUS_INVALID")
-        if document.get("p0_count") != 0 or document.get("p1_count") != 0:
+        if not _is_exact_int(
+            document.get("p0_count"), 0
+        ) or not _is_exact_int(document.get("p1_count"), 0):
             failures.append(f"{prefix}_FINDING_COUNT_INVALID")
         if document.get("findings") != []:
             failures.append(f"{prefix}_FINDINGS_NOT_EMPTY")
@@ -1024,6 +1769,66 @@ def validate_batch_artifacts(
     return sorted(set(failures))
 
 
+def _classification_record_disposition_failures(
+    root: Path,
+    manifest_path: Path,
+    manifest: dict[str, Any],
+) -> list[str]:
+    failures: list[str] = []
+    classification_path = manifest_path.parent / "batch_classification.json"
+    try:
+        classification = load_json_strict(classification_path)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        return ["BATCH_CLASSIFICATION_DISPOSITION_MAP_UNREADABLE"]
+    rows = (
+        classification.get("classifications")
+        if isinstance(classification, dict)
+        else None
+    )
+    classification_by_fingerprint = {
+        str(fingerprint): str(row.get("recommended_disposition", ""))
+        for fingerprint, row in (rows.items() if isinstance(rows, dict) else [])
+        if isinstance(row, dict)
+    }
+    record_by_fingerprint: dict[str, str] = {}
+    for record_binding in manifest.get("record_bindings", []):
+        if not isinstance(record_binding, dict):
+            continue
+        relative = normalize_path(str(record_binding.get("path", "")))
+        try:
+            record = load_json_strict(root / relative)
+        except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+            continue
+        identities = (
+            record.get("identity_binding_by_failure")
+            if isinstance(record, dict)
+            else None
+        )
+        if not isinstance(identities, dict):
+            continue
+        for fingerprint, identity in identities.items():
+            if isinstance(identity, dict):
+                record_by_fingerprint[str(fingerprint)] = str(
+                    identity.get("recommended_disposition", "")
+                )
+    manifest_fingerprints = {
+        str(value) for value in manifest.get("failure_fingerprints", [])
+    }
+    if (
+        set(classification_by_fingerprint) != manifest_fingerprints
+        or set(record_by_fingerprint) != manifest_fingerprints
+    ):
+        failures.append("BATCH_CLASSIFICATION_RECORD_DISPOSITION_COVERAGE_MISMATCH")
+    for fingerprint in sorted(manifest_fingerprints):
+        if classification_by_fingerprint.get(fingerprint) != record_by_fingerprint.get(
+            fingerprint
+        ):
+            failures.append(
+                f"BATCH_CLASSIFICATION_RECORD_DISPOSITION_MISMATCH:{fingerprint}"
+            )
+    return sorted(set(failures))
+
+
 def validate_schema(root: Path) -> list[str]:
     path = root / SCHEMA_REL
     if not path.is_file():
@@ -1049,6 +1854,12 @@ def validate_schema(root: Path) -> list[str]:
         failures.append("FULL_CONVERGENCE_SCHEMA_IDENTITY_FIELDS_MISMATCH")
     if tuple(sorted(schema.get("authority_selector_required_fields", []))) != AUTHORITY_SELECTOR_FIELDS:
         failures.append("FULL_CONVERGENCE_SCHEMA_SELECTOR_FIELDS_MISMATCH")
+    if tuple(schema.get("authority_source_paths", [])) != tuple(
+        sorted(AUTHORITY_SOURCE_PATHS)
+    ):
+        failures.append("FULL_CONVERGENCE_SCHEMA_AUTHORITY_SOURCE_PATHS_MISMATCH")
+    if set(schema.get("subject_projection_required_fields", [])) != SUBJECT_PROJECTION_FIELDS:
+        failures.append("FULL_CONVERGENCE_SCHEMA_PROJECTION_FIELDS_MISMATCH")
     if set(schema.get("allowed_dispositions", [])) != ALLOWED_DISPOSITIONS:
         failures.append("FULL_CONVERGENCE_SCHEMA_DISPOSITION_SET_MISMATCH")
     if schema.get("legacy_record_chain_terminal_sha256") != LEGACY_RECORD_CHAIN_TERMINAL_SHA256:
@@ -1059,8 +1870,13 @@ def validate_schema(root: Path) -> list[str]:
         failures.append("FULL_CONVERGENCE_SCHEMA_PREVIOUS_BATCH_DISCOVERY_POLICY_MISMATCH")
     if schema.get("previous_batch_manifest_required_for_non_initial_batch") is not True:
         failures.append("FULL_CONVERGENCE_SCHEMA_PREVIOUS_BATCH_REQUIREMENT_MISMATCH")
-    if schema.get("baseline_historical_fingerprint_membership_required") is not True:
+    if (
+        schema.get("baseline_historical_membership_policy")
+        != "LIVE_RAW_OR_EXACT_APPEND_ONLY_DISPOSITION"
+    ):
         failures.append("FULL_CONVERGENCE_SCHEMA_BASELINE_MEMBERSHIP_POLICY_MISMATCH")
+    if schema.get("correction_membership_scope") != "LIVE_HISTORICAL_ONLY":
+        failures.append("FULL_CONVERGENCE_SCHEMA_CORRECTION_MEMBERSHIP_SCOPE_MISMATCH")
     if schema.get("current_failure_correction_allowed") is not False:
         failures.append("FULL_CONVERGENCE_SCHEMA_CURRENT_CORRECTION_POLICY_MISMATCH")
     if schema.get("descendant_history_supplement_required") is not True:
@@ -1076,6 +1892,33 @@ def validate_schema(root: Path) -> list[str]:
         != DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION
     ):
         failures.append("FULL_CONVERGENCE_SCHEMA_DESCENDANT_VERSION_MISMATCH")
+    if (
+        tuple(sorted(schema.get("descendant_history_supplement_required_fields", [])))
+        != DESCENDANT_HISTORY_SUPPLEMENT_FIELDS
+    ):
+        failures.append("FULL_CONVERGENCE_SCHEMA_DESCENDANT_FIELDS_MISMATCH")
+    if (
+        tuple(sorted(schema.get("frozen_identity_disposition_required_fields", [])))
+        != FROZEN_IDENTITY_DISPOSITION_FIELDS
+    ):
+        failures.append("FULL_CONVERGENCE_SCHEMA_FROZEN_DISPOSITION_FIELDS_MISMATCH")
+    if (
+        tuple(sorted(schema.get("successor_disposition_evidence_required_fields", [])))
+        != SUCCESSOR_DISPOSITION_EVIDENCE_FIELDS
+    ):
+        failures.append("FULL_CONVERGENCE_SCHEMA_SUCCESSOR_EVIDENCE_FIELDS_MISMATCH")
+    if (
+        tuple(sorted(schema.get("false_component_retirement_evidence_required_fields", [])))
+        != FALSE_COMPONENT_RETIREMENT_EVIDENCE_FIELDS
+    ):
+        failures.append("FULL_CONVERGENCE_SCHEMA_FALSE_COMPONENT_EVIDENCE_FIELDS_MISMATCH")
+    if (
+        set(schema.get("frozen_identity_dispositions_allowed", []))
+        != ALLOWED_FROZEN_IDENTITY_DISPOSITIONS
+    ):
+        failures.append("FULL_CONVERGENCE_SCHEMA_FROZEN_DISPOSITION_SET_MISMATCH")
+    if schema.get("dynamic_reference_manifest_path") != DYNAMIC_REFERENCE_MANIFEST_REL.as_posix():
+        failures.append("FULL_CONVERGENCE_SCHEMA_DYNAMIC_REFERENCE_MANIFEST_MISMATCH")
     return sorted(set(failures))
 
 
@@ -1174,6 +2017,7 @@ def _selector_failures(selector: Any) -> list[str]:
 
 def _matches_selector(row: dict[str, Any], selector: dict[str, list[str]]) -> bool:
     component_ids = set(selector.get("component_ids", []))
+    dynamic_reference_ids = set(selector.get("dynamic_reference_ids", []))
     paths = set(selector.get("paths", []))
     supersession_ids = set(selector.get("supersession_ids", []))
     retirement_ids = set(selector.get("retirement_ids", []))
@@ -1188,15 +2032,26 @@ def _matches_selector(row: dict[str, Any], selector: dict[str, list[str]]) -> bo
         normalize_path(str(row.get(key, "")))
         for key in (
             "path", "historical_path", "current_path", "owner_path",
-            "old_owner_path", "new_owner_path",
+            "old_owner_path", "new_owner_path", "source_path",
         )
     }
+    resolved_targets = row.get("resolved_targets")
+    if isinstance(resolved_targets, list):
+        path_values.update(
+            normalize_path(str(value)) for value in resolved_targets
+        )
     id_values = {
         str(row.get(key, ""))
-        for key in ("supersession_id", "retirement_id", "record_id")
+        for key in (
+            "dynamic_reference_id",
+            "supersession_id",
+            "retirement_id",
+            "record_id",
+        )
     }
     return bool(
         component_ids & component_values
+        or dynamic_reference_ids & id_values
         or paths & path_values
         or supersession_ids & id_values
         or retirement_ids & id_values
@@ -1217,12 +2072,79 @@ def subject_projection(root: Path, commit: str, selector: dict[str, list[str]]) 
     registry = _json_at(root, commit, AUTHORITY_SOURCE_PATHS[0])
     supersession = _json_at(root, commit, AUTHORITY_SOURCE_PATHS[1])
     owner_map_payload = _git_bytes(root, commit, AUTHORITY_SOURCE_PATHS[2])
-    if registry is None or supersession is None or owner_map_payload is None:
+    dynamic_reference_manifest = _json_at(root, commit, AUTHORITY_SOURCE_PATHS[3])
+    if (
+        registry is None
+        or supersession is None
+        or owner_map_payload is None
+        or dynamic_reference_manifest is None
+    ):
         raise ValueError("SUBJECT_PROJECTION_AUTHORITY_SOURCE_MISSING")
-    registry_rows = [row for row in _walk_dicts(registry) if _matches_selector(row, selector)]
-    supersession_rows = [row for row in _walk_dicts(supersession) if _matches_selector(row, selector)]
+    component_ids = {str(value) for value in selector.get("component_ids", [])}
+    paths = {
+        normalize_path(str(value)) for value in selector.get("paths", [])
+    }
+    dynamic_reference_ids = {
+        str(value) for value in selector.get("dynamic_reference_ids", [])
+    }
+    supersession_ids = {
+        str(value) for value in selector.get("supersession_ids", [])
+    }
+    retirement_ids = {
+        str(value) for value in selector.get("retirement_ids", [])
+    }
+    registry_candidates: list[Any] = []
+    if isinstance(registry, dict):
+        for key in ("component_inventory", "historical_identity_backfill"):
+            values = registry.get(key, [])
+            if isinstance(values, list):
+                for value in values:
+                    if isinstance(value, dict):
+                        tagged = dict(value)
+                        tagged["authority_source_kind"] = key
+                        registry_candidates.append(tagged)
+    registry_rows = [
+        row
+        for row in registry_candidates
+        if isinstance(row, dict)
+        and (
+            str(row.get("component_id", "")) in component_ids
+            or normalize_path(str(row.get("path", ""))) in paths
+        )
+    ]
+    supersession_candidates: list[Any] = []
+    if isinstance(supersession, dict):
+        for key in ("entries", "retirement_entries"):
+            values = supersession.get(key, [])
+            if isinstance(values, list):
+                supersession_candidates.extend(values)
+    supersession_rows = [
+        row
+        for row in supersession_candidates
+        if isinstance(row, dict)
+        and (
+            str(row.get("supersession_id", "")) in supersession_ids
+            or str(row.get("retirement_id", "")) in retirement_ids
+        )
+    ]
+    dynamic_candidates = (
+        dynamic_reference_manifest.get("entries", [])
+        if isinstance(dynamic_reference_manifest, dict)
+        else []
+    )
+    dynamic_reference_rows = [
+        row
+        for row in dynamic_candidates
+        if isinstance(row, dict)
+        and str(row.get("dynamic_reference_id", ""))
+        in dynamic_reference_ids
+    ]
     registry_rows = sorted(registry_rows, key=lambda row: canonical_bytes(row))
     supersession_rows = sorted(supersession_rows, key=lambda row: canonical_bytes(row))
+    dynamic_reference_rows = sorted(
+        dynamic_reference_rows,
+        key=lambda row: canonical_bytes(row),
+    )
     exact_needles = sorted({
         str(value)
         for field in AUTHORITY_SELECTOR_FIELDS
@@ -1234,13 +2156,1029 @@ def subject_projection(root: Path, commit: str, selector: dict[str, list[str]]) 
         for line in owner_map_payload.decode("utf-8-sig", errors="replace").splitlines()
         if any(needle in line for needle in exact_needles)
     })
-    if not registry_rows and not supersession_rows and not owner_map_lines:
+    if (
+        not registry_rows
+        and not supersession_rows
+        and not owner_map_lines
+        and not dynamic_reference_rows
+    ):
         raise ValueError("SUBJECT_PROJECTION_SELECTOR_UNRESOLVED")
     return {
+        "dynamic_reference_rows": dynamic_reference_rows,
         "owner_map_lines": owner_map_lines,
         "registry_rows": registry_rows,
         "supersession_rows": supersession_rows,
     }
+
+
+def _dynamic_target_set_sha256(targets: Iterable[str]) -> str:
+    return sha256_bytes("\n".join(targets).encode("utf-8"))
+
+
+def _duplicate_identity_payload(identity: dict[str, Any]) -> dict[str, str]:
+    return {
+        field: str(identity.get(field, ""))
+        for field in (
+            "raw_failure",
+            "rule_id",
+            "subject_kind",
+            "subject_value",
+            "transition_new_prefix",
+            "transition_old_prefix",
+        )
+    }
+
+
+def _exact_relation_values(value: Any) -> list[str] | None:
+    if not isinstance(value, list):
+        return None
+    rendered = [str(item) for item in value]
+    if (
+        rendered != sorted(rendered)
+        or len(rendered) != len(set(rendered))
+        or any(
+            not item
+            or any(char in item for char in "*?[]")
+            or set(re.findall(r"[a-z0-9_]+", item.casefold()))
+            & DISALLOWED_TOKENS
+            for item in rendered
+        )
+    ):
+        return None
+    return rendered
+
+
+def _registry_row_failures(row: dict[str, Any]) -> list[str]:
+    failures: list[str] = []
+    source_kind = str(row.get("authority_source_kind", ""))
+    if source_kind == "historical_identity_backfill":
+        if set(row) != REGISTRY_HISTORICAL_BACKFILL_FIELDS:
+            failures.append("IDENTITY_BINDING_BACKFILL_FIELD_SET_INVALID")
+        if (
+            not str(row.get("component_id", ""))
+            or any(
+                char in str(row.get("component_id", ""))
+                for char in "*?[]"
+            )
+            or not _is_commit(row.get("source_commit"))
+            or not _is_sha256(row.get("source_blob"))
+            or str(row.get("historical_role", ""))
+            not in REGISTRY_ALLOWED_COMPONENT_ROLES
+            or str(row.get("current_disposition", ""))
+            not in ALLOWED_DISPOSITIONS
+            or str(row.get("production_reachability", ""))
+            not in {
+                "DIAGNOSTIC_ONLY",
+                "DOCUMENTATION_ONLY",
+                "GENERATED_EVIDENCE_ONLY",
+                "NONREACHABLE",
+                "PRODUCTION_REACHABLE",
+                "TEST_ONLY",
+            }
+            or _exact_relation_values(row.get("supersession")) is None
+        ):
+            failures.append("IDENTITY_BINDING_BACKFILL_IDENTITY_INVALID")
+        return sorted(set(failures))
+    if source_kind != "component_inventory":
+        return ["IDENTITY_BINDING_REGISTRY_SOURCE_KIND_INVALID"]
+    if (
+        not set(row).issubset(REGISTRY_COMPONENT_INVENTORY_FIELDS)
+        or not REGISTRY_COMPONENT_INVENTORY_REQUIRED_FIELDS.issubset(row)
+    ):
+        failures.append("IDENTITY_BINDING_REGISTRY_FIELD_SET_INVALID")
+    component_id = str(row.get("component_id", ""))
+    domain_id = str(row.get("domain_id", ""))
+    owner_id = str(row.get("owner_component_id", ""))
+    owner_path = str(row.get("owner_path", ""))
+    path = str(row.get("path", ""))
+    role = str(row.get("component_role", ""))
+    for field, value in (
+        ("component_id", component_id),
+        ("domain_id", domain_id),
+        ("owner_component_id", owner_id),
+    ):
+        if not value or any(char in value for char in "*?[]"):
+            failures.append(
+                f"IDENTITY_BINDING_REGISTRY_IDENTIFIER_INVALID:{field}"
+            )
+    if (
+        not path
+        or normalize_path(path) != path
+        or path.startswith(("/", "../"))
+        or path.endswith("/")
+        or "/../" in path
+        or any(char in path for char in "*?[]")
+    ):
+        failures.append("IDENTITY_BINDING_REGISTRY_PATH_INVALID")
+    if (
+        not owner_path
+        or normalize_path(owner_path) != owner_path
+        or owner_path.startswith(("/", "../"))
+        or owner_path.endswith("/")
+        or "/../" in owner_path
+        or any(char in owner_path for char in "*?[]")
+    ):
+        failures.append("IDENTITY_BINDING_REGISTRY_OWNER_PATH_INVALID")
+    if role not in REGISTRY_ALLOWED_COMPONENT_ROLES:
+        failures.append("IDENTITY_BINDING_REGISTRY_ROLE_INVALID")
+    authority_bool_fields = (
+        "owns_identity",
+        "owns_presentation",
+        "owns_replay",
+        "owns_rng",
+        "owns_save",
+        "owns_tick",
+        "production_reachable",
+        "reads_authority",
+        "writes_authority",
+    )
+    if any(not isinstance(row.get(field), bool) for field in authority_bool_fields):
+        failures.append("IDENTITY_BINDING_REGISTRY_AUTHORITY_FLAGS_INVALID")
+    owns_by_field = {
+        field: bool(row.get(field))
+        for field in (
+            "owns_identity",
+            "owns_presentation",
+            "owns_replay",
+            "owns_rng",
+            "owns_save",
+            "owns_tick",
+        )
+    }
+    if role == "OWNER":
+        if (
+            row.get("writes_authority") is not True
+            or owner_id != component_id
+            or normalize_path(owner_path) != normalize_path(path)
+        ):
+            failures.append("IDENTITY_BINDING_REGISTRY_OWNER_AUTHORITY_INVALID")
+    else:
+        if role != "DIAGNOSTIC_BENCH" and any(owns_by_field.values()):
+            failures.append("IDENTITY_BINDING_REGISTRY_NONOWNER_OWNERSHIP_INVALID")
+        if role == "DIAGNOSTIC_BENCH" and any(
+            owns_by_field[field]
+            for field in (
+                "owns_identity",
+                "owns_replay",
+                "owns_rng",
+                "owns_save",
+                "owns_tick",
+            )
+        ):
+            failures.append("IDENTITY_BINDING_REGISTRY_DIAGNOSTIC_OWNERSHIP_INVALID")
+        if role != "REDUCER" and row.get("writes_authority") is not False:
+            failures.append("IDENTITY_BINDING_REGISTRY_NONOWNER_WRITE_INVALID")
+    if role in REGISTRY_NONPRODUCTION_ROLES and row.get(
+        "production_reachable"
+    ) is not False:
+        failures.append("IDENTITY_BINDING_REGISTRY_NONPRODUCTION_ROLE_REACHABLE")
+    for field in ("supersedes", "superseded_by"):
+        if _exact_relation_values(row.get(field)) is None:
+            failures.append(
+                f"IDENTITY_BINDING_REGISTRY_RELATION_SET_INVALID:{field}"
+            )
+    reuse_disposition = row.get("reuse_disposition")
+    current_disposition = row.get("current_disposition")
+    if reuse_disposition is not None:
+        if reuse_disposition not in REGISTRY_ALLOWED_REUSE_DISPOSITIONS:
+            failures.append("IDENTITY_BINDING_REGISTRY_REUSE_DISPOSITION_INVALID")
+        if role == "OWNER" and reuse_disposition != "ADOPT_AS_OWNER":
+            failures.append("IDENTITY_BINDING_REGISTRY_OWNER_DISPOSITION_INVALID")
+        if role != "OWNER" and reuse_disposition == "ADOPT_AS_OWNER":
+            failures.append("IDENTITY_BINDING_REGISTRY_NONOWNER_DISPOSITION_INVALID")
+        if role == "TEST_SUPPORT" and reuse_disposition != "REUSE_AS_TEST":
+            failures.append("IDENTITY_BINDING_REGISTRY_TEST_DISPOSITION_INVALID")
+    elif not isinstance(current_disposition, str) or not current_disposition:
+        failures.append("IDENTITY_BINDING_REGISTRY_DISPOSITION_MISSING")
+    return sorted(set(failures))
+
+
+def _dynamic_reference_structure_failures(row: dict[str, Any]) -> list[str]:
+    failures: list[str] = []
+    location = row.get("source_line_or_ast_location")
+    targets = row.get("resolved_targets")
+    rendered_targets = (
+        [str(value) for value in targets]
+        if isinstance(targets, list)
+        else []
+    )
+    callsite = row.get("callsite_contract")
+    if row.get("resolution_method") not in DYNAMIC_REFERENCE_RESOLUTION_METHODS:
+        failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_RESOLUTION_METHOD_INVALID")
+    if (
+        not isinstance(callsite, dict)
+        or set(callsite) != DYNAMIC_REFERENCE_CALLSITE_FIELDS
+    ):
+        return sorted(set([
+            *failures,
+            "IDENTITY_BINDING_DYNAMIC_REFERENCE_CALLSITE_CONTRACT_INVALID",
+        ]))
+    helper = str(callsite.get("helper_function", ""))
+    constants = callsite.get("allowed_argument_constants")
+    rendered_constants = (
+        [str(value) for value in constants]
+        if isinstance(constants, list)
+        else []
+    )
+    sites = callsite.get("required_loader_sites")
+    rendered_sites = sites if isinstance(sites, list) else []
+    if (
+        not helper
+        or not isinstance(location, dict)
+        or helper != str(location.get("containing_function", ""))
+        or not rendered_constants
+        or rendered_constants != sorted(rendered_constants)
+        or len(rendered_constants) != len(set(rendered_constants))
+        or any(
+            re.fullmatch(r"[A-Z][A-Z0-9_]*", value) is None
+            for value in rendered_constants
+        )
+        or not _is_exact_int(
+            callsite.get("required_invocation_count"), len(rendered_constants)
+        )
+        or len(rendered_constants) != len(rendered_targets)
+        or not _is_exact_int(
+            callsite.get("external_or_unknown_invocation_count"), 0
+        )
+    ):
+        failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_CALLSITE_CONTRACT_INVALID")
+    site_keys: list[tuple[int, int, str, str]] = []
+    for site in rendered_sites:
+        if not isinstance(site, dict) or set(site) != DYNAMIC_REFERENCE_LOADER_SITE_FIELDS:
+            failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_LOADER_SITE_INVALID")
+            continue
+        key = (
+            site.get("line") if _is_int(site.get("line")) else 0,
+            site.get("column") if _is_int(site.get("column")) else 0,
+            str(site.get("loader", "")),
+            str(site.get("reference_expression", "")),
+        )
+        site_keys.append(key)
+        if (
+            key[0] < 1
+            or key[1] < 1
+            or not key[2]
+            or not key[3]
+            or any(char in key[2] + key[3] for char in "*?[]")
+        ):
+            failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_LOADER_SITE_INVALID")
+    if (
+        not site_keys
+        or site_keys != sorted(site_keys)
+        or len(site_keys) != len(set(site_keys))
+    ):
+        failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_LOADER_SITE_SET_INVALID")
+    if isinstance(location, dict):
+        primary_site = (
+            location.get("line"),
+            location.get("column"),
+            str(row.get("loader", "")),
+            str(row.get("reference_expression", "")),
+        )
+        if primary_site not in site_keys:
+            failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_PRIMARY_SITE_MISMATCH")
+    runtime_probe = row.get("runtime_probe")
+    if isinstance(runtime_probe, dict):
+        test_path = normalize_path(str(runtime_probe.get("test_path", "")))
+        probe_id = str(runtime_probe.get("probe_id", ""))
+        if (
+            not test_path
+            or test_path.startswith(("/", "../"))
+            or any(char in test_path for char in "*?[]")
+            or Path(test_path).suffix != ".gd"
+            or Path(test_path).stem != probe_id
+        ):
+            failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_RUNTIME_PROBE_INVALID")
+    return sorted(set(failures))
+
+
+def _identity_projection_failures(
+    binding: dict[str, Any],
+    *,
+    rule_id: str,
+    raw_failure: str = "",
+) -> list[str]:
+    """Bind every identity claim to exact authority rows, not record prose."""
+
+    failures: list[str] = []
+    projection = binding.get("subject_projection")
+    if not isinstance(projection, dict):
+        return ["IDENTITY_BINDING_PROJECTION_INVALID"]
+    if set(projection) != SUBJECT_PROJECTION_FIELDS:
+        failures.append("IDENTITY_BINDING_PROJECTION_FIELD_SET_INVALID")
+    projected: dict[str, list[Any]] = {}
+    for field in SUBJECT_PROJECTION_FIELDS:
+        value = projection.get(field)
+        if not isinstance(value, list):
+            failures.append(f"IDENTITY_BINDING_PROJECTION_LIST_INVALID:{field}")
+            projected[field] = []
+        else:
+            projected[field] = value
+    if not any(projected.values()):
+        failures.append("IDENTITY_BINDING_PROJECTION_EMPTY")
+
+    registry_rows = [
+        row for row in projected["registry_rows"] if isinstance(row, dict)
+    ]
+    if len(registry_rows) != len(projected["registry_rows"]):
+        failures.append("IDENTITY_BINDING_REGISTRY_ROW_INVALID")
+    selector = binding.get("authority_selectors")
+    selector_components = (
+        {str(value) for value in selector.get("component_ids", [])}
+        if isinstance(selector, dict)
+        else set()
+    )
+    selector_paths = (
+        {normalize_path(str(value)) for value in selector.get("paths", [])}
+        if isinstance(selector, dict)
+        else set()
+    )
+    expected_components = {
+        str(binding.get(field, ""))
+        for field in (
+            "current_component_id",
+            "current_owner_id",
+            "historical_component_id",
+            "historical_owner_id",
+        )
+        if binding.get(field)
+    }
+    expected_paths = {
+        normalize_path(str(binding.get(field, "")))
+        for field in ("current_path", "historical_path")
+        if binding.get(field)
+    }
+    if selector_components != expected_components:
+        failures.append("IDENTITY_BINDING_COMPONENT_SELECTOR_SET_MISMATCH")
+    if selector_paths != expected_paths:
+        failures.append("IDENTITY_BINDING_PATH_SELECTOR_SET_MISMATCH")
+
+    for row in registry_rows:
+        failures.extend(_registry_row_failures(row))
+    inventory_rows = [
+        row
+        for row in registry_rows
+        if row.get("authority_source_kind") == "component_inventory"
+    ]
+    backfill_rows = [
+        row
+        for row in registry_rows
+        if row.get("authority_source_kind") == "historical_identity_backfill"
+    ]
+    projected_component_ids = [str(row.get("component_id", "")) for row in registry_rows]
+    if set(projected_component_ids) != selector_components:
+        failures.append("IDENTITY_BINDING_REGISTRY_SELECTOR_SET_MISMATCH")
+    inventory_component_ids = [
+        str(row.get("component_id", "")) for row in inventory_rows
+    ]
+    if any(
+        inventory_component_ids.count(component_id) != 1
+        for component_id in set(inventory_component_ids)
+    ):
+        failures.append("IDENTITY_BINDING_REGISTRY_PRIMARY_KEY_NOT_UNIQUE")
+    backfill_primary_keys = [
+        (
+            str(row.get("component_id", "")),
+            str(row.get("source_commit", "")),
+            str(row.get("source_blob", "")),
+        )
+        for row in backfill_rows
+    ]
+    if len(backfill_primary_keys) != len(set(backfill_primary_keys)):
+        failures.append("IDENTITY_BINDING_BACKFILL_PRIMARY_KEY_NOT_UNIQUE")
+
+    bound_registry_rows: dict[str, dict[str, Any]] = {}
+
+    def bind_inventory_side(prefix: str, row: dict[str, Any]) -> None:
+        component_id = str(binding.get(f"{prefix}_component_id", ""))
+        path = normalize_path(str(binding.get(f"{prefix}_path", "")))
+        bound_registry_rows[prefix] = row
+        if path and normalize_path(str(row.get("path", ""))) != path:
+            failures.append(
+                f"IDENTITY_BINDING_{prefix.upper()}_REGISTRY_PATH_MISMATCH"
+            )
+        if component_id not in selector_components:
+            failures.append(
+                f"IDENTITY_BINDING_{prefix.upper()}_COMPONENT_SELECTOR_MISSING"
+            )
+        for binding_field, row_field in (
+            ("domain_id", "domain_id"),
+            (f"{prefix}_role", "component_role"),
+            (f"{prefix}_owner_id", "owner_component_id"),
+        ):
+            if str(binding.get(binding_field, "")) != str(row.get(row_field, "")):
+                failures.append(
+                    f"IDENTITY_BINDING_{prefix.upper()}_REGISTRY_{row_field.upper()}_MISMATCH"
+                )
+        reachable = row.get("production_reachable")
+        declared_reachability = str(
+            binding.get(f"{prefix}_production_reachability", "")
+        )
+        if not isinstance(reachable, bool):
+            failures.append(
+                f"IDENTITY_BINDING_{prefix.upper()}_REGISTRY_REACHABILITY_INVALID"
+            )
+        elif reachable and declared_reachability != "PRODUCTION_REACHABLE":
+            failures.append(
+                f"IDENTITY_BINDING_{prefix.upper()}_REGISTRY_REACHABILITY_MISMATCH"
+            )
+        elif not reachable and declared_reachability == "PRODUCTION_REACHABLE":
+            failures.append(
+                f"IDENTITY_BINDING_{prefix.upper()}_REGISTRY_REACHABILITY_MISMATCH"
+            )
+        role = str(row.get("component_role", ""))
+        owner_id = str(row.get("owner_component_id", ""))
+        if role == "OWNER":
+            if owner_id != component_id:
+                failures.append(
+                    f"IDENTITY_BINDING_{prefix.upper()}_OWNER_SELF_BINDING_INVALID"
+                )
+        elif not owner_id:
+            failures.append(
+                f"IDENTITY_BINDING_{prefix.upper()}_OWNER_MISSING"
+            )
+        if owner_id:
+            if owner_id not in selector_components:
+                failures.append(
+                    f"IDENTITY_BINDING_{prefix.upper()}_OWNER_SELECTOR_MISSING"
+                )
+            owner_rows = [
+                owner_row
+                for owner_row in inventory_rows
+                if str(owner_row.get("component_id", "")) == owner_id
+            ]
+            if (
+                len(owner_rows) != 1
+                or str(owner_rows[0].get("domain_id", ""))
+                != str(row.get("domain_id", ""))
+                or owner_rows[0].get("component_role") != "OWNER"
+                or owner_rows[0].get("owner_component_id") != owner_id
+            ):
+                failures.append(
+                    f"IDENTITY_BINDING_{prefix.upper()}_OWNER_ROW_NOT_UNIQUE"
+                )
+            elif normalize_path(str(row.get("owner_path", ""))) != normalize_path(
+                str(owner_rows[0].get("path", ""))
+            ):
+                failures.append(
+                    f"IDENTITY_BINDING_{prefix.upper()}_OWNER_PATH_MISMATCH"
+                )
+
+    def bind_registry_side(prefix: str) -> None:
+        component_id = str(binding.get(f"{prefix}_component_id", ""))
+        if not component_id:
+            failures.append(f"IDENTITY_BINDING_{prefix.upper()}_COMPONENT_MISSING")
+            return
+        if component_id not in selector_components:
+            failures.append(
+                f"IDENTITY_BINDING_{prefix.upper()}_COMPONENT_SELECTOR_MISSING"
+            )
+        inventory_candidates = [
+            row
+            for row in inventory_rows
+            if str(row.get("component_id", "")) == component_id
+        ]
+        if prefix == "current":
+            if len(inventory_candidates) != 1:
+                failures.append("IDENTITY_BINDING_CURRENT_REGISTRY_ROW_NOT_UNIQUE")
+                return
+            bind_inventory_side(prefix, inventory_candidates[0])
+            return
+
+        component_backfills = [
+            row
+            for row in backfill_rows
+            if str(row.get("component_id", "")) == component_id
+        ]
+        if component_backfills:
+            exact_backfills = [
+                row
+                for row in component_backfills
+                if row.get("source_commit") == binding.get("source_commit")
+                and row.get("source_blob") == binding.get("historical_blob_sha256")
+            ]
+            if len(exact_backfills) != 1:
+                failures.append("IDENTITY_BINDING_HISTORICAL_BACKFILL_ROW_NOT_UNIQUE")
+                return
+            row = exact_backfills[0]
+            bound_registry_rows[prefix] = row
+            for binding_field, row_field in (
+                ("historical_role", "historical_role"),
+                ("recommended_disposition", "current_disposition"),
+                ("historical_production_reachability", "production_reachability"),
+            ):
+                if str(binding.get(binding_field, "")) != str(row.get(row_field, "")):
+                    failures.append(
+                        "IDENTITY_BINDING_HISTORICAL_BACKFILL_"
+                        f"{row_field.upper()}_MISMATCH"
+                    )
+            backfill_supersession = _exact_relation_values(row.get("supersession"))
+            binding_superseded_by = _exact_relation_values(
+                binding.get("superseded_by")
+            )
+            if (
+                backfill_supersession is None
+                or binding_superseded_by is None
+                or backfill_supersession != binding_superseded_by
+            ):
+                failures.append(
+                    "IDENTITY_BINDING_HISTORICAL_BACKFILL_SUPERSESSION_MISMATCH"
+                )
+            historical_owner_id = str(binding.get("historical_owner_id", ""))
+            historical_role = str(binding.get("historical_role", ""))
+            if historical_role == "OWNER":
+                if historical_owner_id != component_id:
+                    failures.append(
+                        "IDENTITY_BINDING_HISTORICAL_OWNER_SELF_BINDING_INVALID"
+                    )
+            else:
+                owner_rows = [
+                    owner_row
+                    for owner_row in inventory_rows
+                    if str(owner_row.get("component_id", "")) == historical_owner_id
+                ]
+                if historical_owner_id not in selector_components:
+                    failures.append(
+                        "IDENTITY_BINDING_HISTORICAL_OWNER_SELECTOR_MISSING"
+                    )
+                if (
+                    len(owner_rows) != 1
+                    or owner_rows[0].get("component_role") != "OWNER"
+                    or owner_rows[0].get("owner_component_id")
+                    != historical_owner_id
+                    or str(owner_rows[0].get("domain_id", ""))
+                    != str(binding.get("domain_id", ""))
+                ):
+                    failures.append(
+                        "IDENTITY_BINDING_HISTORICAL_OWNER_ROW_NOT_UNIQUE"
+                    )
+            return
+
+        if len(inventory_candidates) != 1:
+            failures.append("IDENTITY_BINDING_HISTORICAL_REGISTRY_ROW_NOT_UNIQUE")
+            return
+        bind_inventory_side(prefix, inventory_candidates[0])
+
+    bind_registry_side("historical")
+    bind_registry_side("current")
+
+    disposition = str(binding.get("recommended_disposition", ""))
+    supersedes = _exact_relation_values(binding.get("supersedes"))
+    superseded_by = _exact_relation_values(binding.get("superseded_by"))
+    if supersedes is None:
+        failures.append("IDENTITY_BINDING_SUPERSEDES_SET_INVALID")
+        supersedes = []
+    if superseded_by is None:
+        failures.append("IDENTITY_BINDING_SUPERSEDED_BY_SET_INVALID")
+        superseded_by = []
+    if disposition in IDENTITY_NON_MIGRATION_DISPOSITIONS and (
+        binding.get("historical_component_id") != binding.get("current_component_id")
+        or normalize_path(str(binding.get("historical_path", "")))
+        != normalize_path(str(binding.get("current_path", "")))
+    ):
+        failures.append("IDENTITY_BINDING_UNAUTHORIZED_LINEAGE_SUBSTITUTION")
+    historical_registry_row = bound_registry_rows.get("historical", {})
+    current_registry_row = bound_registry_rows.get("current", {})
+    registry_supersedes = _exact_relation_values(
+        current_registry_row.get("supersedes")
+    )
+    registry_superseded_by = _exact_relation_values(
+        historical_registry_row.get("superseded_by")
+    )
+    if registry_supersedes is not None and supersedes != registry_supersedes:
+        failures.append("IDENTITY_BINDING_SUPERSEDES_REGISTRY_MISMATCH")
+    if (
+        registry_superseded_by is not None
+        and superseded_by != registry_superseded_by
+    ):
+        failures.append("IDENTITY_BINDING_SUPERSEDED_BY_REGISTRY_MISMATCH")
+
+    dynamic_rows = [
+        row
+        for row in projected["dynamic_reference_rows"]
+        if isinstance(row, dict)
+    ]
+    if len(dynamic_rows) != len(projected["dynamic_reference_rows"]):
+        failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_ROW_INVALID")
+    dynamic_rule = rule_id == "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED"
+    selector_dynamic_ids = (
+        [str(value) for value in selector.get("dynamic_reference_ids", [])]
+        if isinstance(selector, dict)
+        and isinstance(selector.get("dynamic_reference_ids"), list)
+        else []
+    )
+    projected_dynamic_ids = [
+        str(row.get("dynamic_reference_id", "")) for row in dynamic_rows
+    ]
+    if set(projected_dynamic_ids) != set(selector_dynamic_ids):
+        failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_SELECTOR_UNRESOLVED")
+    if any(
+        projected_dynamic_ids.count(reference_id) != 1
+        for reference_id in selector_dynamic_ids
+    ):
+        failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_PRIMARY_KEY_NOT_UNIQUE")
+    if dynamic_rule:
+        source_path = normalize_path(str(binding.get("historical_path", "")))
+        source_rows = [
+            row
+            for row in dynamic_rows
+            if normalize_path(str(row.get("source_path", ""))) == source_path
+            and str(row.get("dynamic_reference_id", ""))
+            in selector_dynamic_ids
+        ]
+        exact_rows = source_rows
+        raw_parts = raw_failure.split(":")
+        if raw_failure and len(raw_parts) >= 5:
+            loader, expression = raw_parts[1], raw_parts[2]
+            exact_rows = [
+                row
+                for row in source_rows
+                if row.get("loader") == loader
+                and row.get("reference_expression") == expression
+            ]
+        if len(exact_rows) != 1:
+            failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_ROW_NOT_UNIQUE")
+        if (
+            len(selector_dynamic_ids) != 1
+            or len(exact_rows) != 1
+            or selector_dynamic_ids[0]
+            != str(exact_rows[0].get("dynamic_reference_id", ""))
+        ):
+            failures.append(
+                "IDENTITY_BINDING_DYNAMIC_REFERENCE_SELECTOR_MISMATCH"
+            )
+        for row in exact_rows:
+            if set(row) != DYNAMIC_REFERENCE_ENTRY_FIELDS:
+                failures.append(
+                    "IDENTITY_BINDING_DYNAMIC_REFERENCE_FIELD_SET_INVALID"
+                )
+                continue
+            reference_id = str(row.get("dynamic_reference_id", ""))
+            location = row.get("source_line_or_ast_location")
+            targets = row.get("resolved_targets")
+            runtime_probe = row.get("runtime_probe")
+            policy = row.get("failure_policy")
+            if (
+                not reference_id
+                or any(char in reference_id for char in "*?[]")
+                or not _is_sha256(row.get("source_blob_sha256"))
+                or not isinstance(location, dict)
+                or set(location) != DYNAMIC_REFERENCE_LOCATION_FIELDS
+                or not _is_int(location.get("line"))
+                or location.get("line", 0) < 1
+                or not _is_int(location.get("column"))
+                or location.get("column", 0) < 1
+                or not str(location.get("containing_function", ""))
+                or not str(row.get("loader", ""))
+                or not str(row.get("reference_expression", ""))
+                or not isinstance(row.get("production_reachable"), bool)
+                or not str(row.get("resolution_method", ""))
+                or not isinstance(row.get("callsite_contract"), dict)
+                or not row.get("callsite_contract")
+                ):
+                failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_METADATA_INVALID")
+            failures.extend(_dynamic_reference_structure_failures(row))
+            rendered_targets = (
+                [str(value) for value in targets]
+                if isinstance(targets, list)
+                else []
+            )
+            if (
+                not rendered_targets
+                or rendered_targets != sorted(rendered_targets)
+                or len(rendered_targets) != len(set(rendered_targets))
+                or any(
+                    not value.startswith("res://")
+                    or normalize_path(value) != value[6:]
+                    or any(char in value for char in "*?[]")
+                    for value in rendered_targets
+                )
+                or row.get("target_set_sha256")
+                != _dynamic_target_set_sha256(rendered_targets)
+            ):
+                failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_TARGET_SET_INVALID")
+            if (
+                not isinstance(runtime_probe, dict)
+                or set(runtime_probe) != DYNAMIC_REFERENCE_RUNTIME_PROBE_FIELDS
+                or not str(runtime_probe.get("probe_id", ""))
+                or not str(runtime_probe.get("test_path", ""))
+                or not _is_exact_int(
+                    runtime_probe.get("expected_target_count"),
+                    len(rendered_targets),
+                )
+                or runtime_probe.get("required_before_production_claim") is not True
+            ):
+                failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_RUNTIME_PROBE_INVALID")
+            if (
+                not isinstance(policy, dict)
+                or set(policy) != DYNAMIC_REFERENCE_FAILURE_POLICY_FIELDS
+                or policy.get("source_blob_change_invalidates") is not True
+                or policy.get("source_location_change_invalidates") is not True
+                or policy.get("target_set_change_invalidates") is not True
+                or policy.get("unknown_callsite_fails_closed") is not True
+                or not _is_exact_int(
+                    policy.get("future_site_auto_resolution_count"), 0
+                )
+                or not _is_exact_int(policy.get("wildcard_count"), 0)
+            ):
+                failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_FAILURE_POLICY_INVALID")
+    elif (
+        isinstance(selector, dict)
+        and selector.get("dynamic_reference_ids") != []
+    ):
+        failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_SELECTOR_UNEXPECTED")
+
+    selector_supersession_ids = (
+        [str(value) for value in selector.get("supersession_ids", [])]
+        if isinstance(selector, dict)
+        and isinstance(selector.get("supersession_ids"), list)
+        else []
+    )
+    selector_retirement_ids = (
+        [str(value) for value in selector.get("retirement_ids", [])]
+        if isinstance(selector, dict)
+        and isinstance(selector.get("retirement_ids"), list)
+        else []
+    )
+    supersession_rows = [
+        row for row in projected["supersession_rows"] if isinstance(row, dict)
+    ]
+    if len(supersession_rows) != len(projected["supersession_rows"]):
+        failures.append("IDENTITY_BINDING_DISPOSITION_AUTHORITY_ROW_INVALID")
+    projected_supersession_ids = [
+        str(row.get("supersession_id", ""))
+        for row in supersession_rows
+        if row.get("supersession_id")
+    ]
+    projected_retirement_ids = [
+        str(row.get("retirement_id", ""))
+        for row in supersession_rows
+        if row.get("retirement_id")
+    ]
+    if any(
+        bool(row.get("supersession_id")) == bool(row.get("retirement_id"))
+        for row in supersession_rows
+    ):
+        failures.append("IDENTITY_BINDING_DISPOSITION_AUTHORITY_KIND_INVALID")
+    if set(projected_supersession_ids) != set(selector_supersession_ids):
+        failures.append("IDENTITY_BINDING_SUPERSESSION_SELECTOR_UNRESOLVED")
+    if any(
+        projected_supersession_ids.count(authority_id) != 1
+        for authority_id in selector_supersession_ids
+    ):
+        failures.append("IDENTITY_BINDING_SUPERSESSION_PRIMARY_KEY_NOT_UNIQUE")
+    if set(projected_retirement_ids) != set(selector_retirement_ids):
+        failures.append("IDENTITY_BINDING_RETIREMENT_SELECTOR_UNRESOLVED")
+    if any(
+        projected_retirement_ids.count(authority_id) != 1
+        for authority_id in selector_retirement_ids
+    ):
+        failures.append("IDENTITY_BINDING_RETIREMENT_PRIMARY_KEY_NOT_UNIQUE")
+    if disposition in {
+        "HISTORICAL_SUPERSEDED_NONREACHABLE",
+        "HISTORICAL_DYNAMIC_REFERENCE_SUPERSEDED",
+    }:
+        matching_rows = [
+            row
+            for row in supersession_rows
+            if str(row.get("supersession_id", "")) in selector_supersession_ids
+            and row.get("old_component_id")
+            == binding.get("historical_component_id")
+            and row.get("new_component_id") in binding.get("superseded_by", [])
+            and row.get("domain_id") == binding.get("domain_id")
+            and _is_exact_int(row.get("dual_write_count"), 0)
+            and _is_exact_int(row.get("fallback_count"), 0)
+            and _is_exact_int(row.get("old_owner_production_reachability"), 0)
+        ]
+        matched_ids = {
+            str(row.get("supersession_id", "")) for row in matching_rows
+        }
+        matched_successors = sorted({
+            str(row.get("new_component_id", ""))
+            for row in matching_rows
+            if row.get("new_component_id")
+        })
+        if (
+            not selector_supersession_ids
+            or len(matching_rows) != len(selector_supersession_ids)
+            or matched_ids != set(selector_supersession_ids)
+            or matched_successors != superseded_by
+            or not set(matched_successors).issubset(selector_components)
+            or binding.get("current_component_id") not in matched_successors
+            or binding.get("historical_component_id") not in supersedes
+        ):
+            failures.append("IDENTITY_BINDING_SUPERSESSION_AUTHORITY_MISMATCH")
+    elif selector_supersession_ids:
+        failures.append("IDENTITY_BINDING_SUPERSESSION_SELECTOR_UNEXPECTED")
+    if disposition == "HISTORICAL_RETIRED_NONREACHABLE":
+        matching_rows = [
+            row
+            for row in supersession_rows
+            if str(row.get("retirement_id", "")) in selector_retirement_ids
+            and row.get("component_id") == binding.get("historical_component_id")
+            and row.get("domain_id") == binding.get("domain_id")
+            and row.get("production_reachable") is False
+            and _is_exact_int(row.get("dual_write_count"), 0)
+            and _is_exact_int(row.get("fallback_count"), 0)
+            and row.get("retired_status") == "RETIRED_NONREACHABLE"
+        ]
+        matched_ids = {
+            str(row.get("retirement_id", "")) for row in matching_rows
+        }
+        if (
+            not selector_retirement_ids
+            or len(matching_rows) != len(selector_retirement_ids)
+            or matched_ids != set(selector_retirement_ids)
+        ):
+            failures.append("IDENTITY_BINDING_RETIREMENT_AUTHORITY_MISMATCH")
+    elif selector_retirement_ids:
+        failures.append("IDENTITY_BINDING_RETIREMENT_SELECTOR_UNEXPECTED")
+    return sorted(set(failures))
+
+
+def _dynamic_projection_repo_failures(
+    root: Path,
+    authority_commit: str,
+    projection: dict[str, Any],
+    *,
+    source_commit: str,
+) -> list[str]:
+    failures: list[str] = []
+    rows = projection.get("dynamic_reference_rows", [])
+    if not isinstance(rows, list):
+        return ["DYNAMIC_REFERENCE_PROJECTION_ROWS_INVALID"]
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != DYNAMIC_REFERENCE_ENTRY_FIELDS:
+            continue
+        reference_id = str(row.get("dynamic_reference_id", ""))
+        source_path = normalize_path(str(row.get("source_path", "")))
+        source_bytes = (
+            _git_bytes(root, source_commit, source_path)
+            if source_path and _is_commit(source_commit)
+            else None
+        )
+        if (
+            source_bytes is None
+            or sha256_bytes(source_bytes) != row.get("source_blob_sha256")
+        ):
+            failures.append(
+                f"DYNAMIC_REFERENCE_SOURCE_BLOB_MISMATCH:{reference_id}"
+            )
+        if source_bytes is not None:
+            source_text = source_bytes.decode(
+                "utf-8-sig", errors="replace"
+            )
+            source_lines = source_text.splitlines()
+            location = row.get("source_line_or_ast_location")
+            line_number = (
+                location.get("line") if isinstance(location, dict) else 0
+            )
+            column = (
+                location.get("column") if isinstance(location, dict) else 0
+            )
+            loader = str(row.get("loader", ""))
+            expression = str(row.get("reference_expression", ""))
+            safe_line_number = line_number if _is_int(line_number) else 0
+            source_line = (
+                source_lines[safe_line_number - 1]
+                if 1 <= safe_line_number <= len(source_lines)
+                else ""
+            )
+            if (
+                not source_line
+                or not _is_int(column)
+                or loader not in source_line
+                or expression not in source_line
+                or source_line.find(loader) + 1 != column
+            ):
+                failures.append(
+                    f"DYNAMIC_REFERENCE_SOURCE_LOCATION_MISMATCH:{reference_id}"
+                )
+            containing_function = (
+                str(location.get("containing_function", ""))
+                if isinstance(location, dict)
+                else ""
+            )
+            preceding_function = ""
+            for candidate in reversed(
+                source_lines[: max(safe_line_number - 1, 0)]
+            ):
+                match = re.match(r"\s*func\s+([A-Za-z0-9_]+)\s*\(", candidate)
+                if match:
+                    preceding_function = match.group(1)
+                    break
+            if preceding_function != containing_function:
+                failures.append(
+                    f"DYNAMIC_REFERENCE_CONTAINING_FUNCTION_MISMATCH:{reference_id}"
+                )
+            callsite = row.get("callsite_contract")
+            sites = (
+                callsite.get("required_loader_sites", [])
+                if isinstance(callsite, dict)
+                else []
+            )
+            for site in sites if isinstance(sites, list) else []:
+                if not isinstance(site, dict):
+                    continue
+                site_line_number = site.get("line")
+                site_column = site.get("column")
+                site_loader = str(site.get("loader", ""))
+                site_expression = str(site.get("reference_expression", ""))
+                site_line = (
+                    source_lines[site_line_number - 1]
+                    if _is_int(site_line_number)
+                    and 1 <= site_line_number <= len(source_lines)
+                    else ""
+                )
+                if (
+                    not site_line
+                    or not _is_int(site_column)
+                    or site_loader not in site_line
+                    or site_expression not in site_line
+                    or site_line.find(site_loader) + 1 != site_column
+                ):
+                    failures.append(
+                        f"DYNAMIC_REFERENCE_LOADER_SITE_MISMATCH:{reference_id}"
+                    )
+            if isinstance(callsite, dict):
+                helper = str(callsite.get("helper_function", ""))
+                allowed_constants = [
+                    str(value)
+                    for value in callsite.get("allowed_argument_constants", [])
+                ] if isinstance(
+                    callsite.get("allowed_argument_constants"), list
+                ) else []
+                constant_values = {
+                    match.group(1): match.group(2)
+                    for match in re.finditer(
+                        r'^\s*const\s+([A-Z][A-Z0-9_]*)\s*:?=\s*"([^"]+)"\s*$',
+                        source_text,
+                        flags=re.MULTILINE,
+                    )
+                }
+                resolved_constant_targets = sorted(
+                    constant_values.get(name, "") for name in allowed_constants
+                )
+                helper_invocations: list[str] = []
+                if helper:
+                    invocation_pattern = re.compile(
+                        rf"\b{re.escape(helper)}\s*\(\s*([^\s,)]+)"
+                    )
+                    for source_line_candidate in source_lines:
+                        if re.match(
+                            rf"\s*func\s+{re.escape(helper)}\s*\(",
+                            source_line_candidate,
+                        ):
+                            continue
+                        helper_invocations.extend(
+                            match.group(1)
+                            for match in invocation_pattern.finditer(
+                                source_line_candidate
+                            )
+                        )
+                declared_targets = sorted(
+                    str(value) for value in row.get("resolved_targets", [])
+                ) if isinstance(row.get("resolved_targets"), list) else []
+                if (
+                    not allowed_constants
+                    or any(not value for value in resolved_constant_targets)
+                    or resolved_constant_targets != declared_targets
+                    or sorted(helper_invocations) != sorted(allowed_constants)
+                    or not _is_exact_int(
+                        callsite.get("required_invocation_count"),
+                        len(helper_invocations),
+                    )
+                ):
+                    failures.append(
+                        f"DYNAMIC_REFERENCE_CALLSITE_TARGET_BINDING_MISMATCH:{reference_id}"
+                    )
+        targets = row.get("resolved_targets", [])
+        if isinstance(targets, list):
+            for target in targets:
+                target_path = normalize_path(str(target))
+                if (
+                    not target_path
+                    or _git_bytes(root, authority_commit, target_path) is None
+                ):
+                    failures.append(
+                        f"DYNAMIC_REFERENCE_TARGET_MISSING:{reference_id}:{target_path}"
+                    )
+        runtime_probe = row.get("runtime_probe")
+        test_path = (
+            normalize_path(str(runtime_probe.get("test_path", "")))
+            if isinstance(runtime_probe, dict)
+            else ""
+        )
+        if (
+            not test_path
+            or _git_bytes(root, authority_commit, test_path) is None
+            or Path(test_path).stem
+            != str(runtime_probe.get("probe_id", ""))
+        ):
+            failures.append(
+                f"DYNAMIC_REFERENCE_RUNTIME_PROBE_MISSING:{reference_id}:{test_path}"
+            )
+    return sorted(set(failures))
 
 
 def _record_payload(record: dict[str, Any]) -> dict[str, Any]:
@@ -1279,7 +3217,7 @@ def validate_extension_record_document(record: Any) -> list[str]:
         failures.append("EXTENSION_RECORD_FINGERPRINT_SET_INVALID")
     if any(not re.fullmatch(r"V2F-[0-9a-f]{64}", value) for value in rendered):
         failures.append("EXTENSION_RECORD_FINGERPRINT_FORMAT_INVALID")
-    if record.get("failure_count") != len(rendered):
+    if not _is_exact_int(record.get("failure_count"), len(rendered)):
         failures.append("EXTENSION_RECORD_FINGERPRINT_COUNT_MISMATCH")
     if record.get("failure_fingerprint_set_sha256") != _line_set_sha(rendered):
         failures.append("EXTENSION_RECORD_FINGERPRINT_SET_HASH_MISMATCH")
@@ -1294,7 +3232,12 @@ def validate_extension_record_document(record: Any) -> list[str]:
     ):
         failures.append("EXTENSION_RECORD_RULE_CLASS_INVALID")
     transition = str(record.get("transition_class_id", ""))
-    if not transition or set(re.findall(r"[a-z0-9_]+", transition.casefold())) & DISALLOWED_TOKENS:
+    if (
+        not transition
+        or any(char in transition for char in "*?[]")
+        or re.fullmatch(r"[A-Z0-9_]+", transition) is None
+        or set(re.findall(r"[a-z0-9_]+", transition.casefold())) & DISALLOWED_TOKENS
+    ):
         failures.append("EXTENSION_RECORD_TRANSITION_CLASS_INVALID")
     if record.get("from_state") != "HISTORICAL_FAILURE_PRESENT_CLASSIFIED":
         failures.append("EXTENSION_RECORD_FROM_STATE_INVALID")
@@ -1324,6 +3267,11 @@ def validate_extension_record_document(record: Any) -> list[str]:
     }
     if touch != required_touch:
         failures.append("EXTENSION_RECORD_TOUCH_POLICY_INVALID")
+    if record.get("revocation_policy") != {
+        "OLD_RECORD_MUTATION_FORBIDDEN": True,
+        "REVOCATION_APPEND_ONLY": True,
+    }:
+        failures.append("EXTENSION_RECORD_REVOCATION_POLICY_INVALID")
     previous = record.get("previous_correction_chain_sha256")
     if not _is_sha256(previous):
         failures.append("EXTENSION_RECORD_CHAIN_PREDECESSOR_INVALID")
@@ -1339,13 +3287,21 @@ def validate_extension_record_document(record: Any) -> list[str]:
         disposition = str(binding.get("recommended_disposition", ""))
         if disposition not in ALLOWED_DISPOSITIONS:
             failures.append(f"IDENTITY_BINDING_DISPOSITION_INVALID:{fingerprint}")
-        for key in (
-            "domain_id", "historical_role", "current_role", "retired_status", "dynamic_reference_status",
-            "historical_production_reachability", "current_production_reachability",
-        ):
-            value = str(binding.get(key, ""))
-            if not value or "UNKNOWN" in value or "UNRESOLVED" in value:
-                failures.append(f"IDENTITY_BINDING_UNKNOWN:{key}:{fingerprint}")
+        rule_id = str(rules[0]) if isinstance(rules, list) and len(rules) == 1 else ""
+        failures.extend(
+            f"{failure}:{fingerprint}"
+            for failure in _identity_disposition_failures(
+                binding,
+                rule_id=rule_id,
+            )
+        )
+        failures.extend(
+            f"{failure}:{fingerprint}"
+            for failure in _identity_projection_failures(
+                binding,
+                rule_id=rule_id,
+            )
+        )
         for key in ("source_commit", "first_seen_commit", "last_seen_commit"):
             if not _is_commit(binding.get(key)):
                 failures.append(f"IDENTITY_BINDING_COMMIT_INVALID:{key}:{fingerprint}")
@@ -1370,6 +3326,17 @@ def validate_extension_record_document(record: Any) -> list[str]:
             failures.append(f"IDENTITY_BINDING_PROJECTION_HASH_MISMATCH:{fingerprint}")
         if binding.get("invalidation_policy") != touch:
             failures.append(f"IDENTITY_BINDING_INVALIDATION_POLICY_MISMATCH:{fingerprint}")
+    grouping_values = {
+        (
+            str(binding.get("historical_production_reachability", "")),
+            str(binding.get("current_production_reachability", "")),
+            str(binding.get("recommended_disposition", "")),
+        )
+        for binding in bindings.values()
+        if isinstance(binding, dict)
+    }
+    if len(grouping_values) > 1:
+        failures.append("EXTENSION_RECORD_IDENTITY_GROUPING_MISMATCH")
     expected_sets = {
         "paths": sorted({
             normalize_path(str(binding.get(key, "")))
@@ -1396,6 +3363,18 @@ def validate_extension_record_document(record: Any) -> list[str]:
             if isinstance(binding, dict)
             for key in ("historical_owner_id", "current_owner_id")
             if binding.get(key)
+        }),
+        "dynamic_reference_ids": sorted({
+            str(value)
+            for binding in bindings.values()
+            if isinstance(binding, dict)
+            for value in (
+                binding.get("authority_selectors", {}).get(
+                    "dynamic_reference_ids", []
+                )
+                if isinstance(binding.get("authority_selectors"), dict)
+                else []
+            )
         }),
         "supersession_ids": sorted({
             str(value)
@@ -1426,6 +3405,7 @@ def validate_extension_record_document(record: Any) -> list[str]:
         "component_ids": "component_set_sha256",
         "domain_ids": "domain_set_sha256",
         "owner_ids": "owner_set_sha256",
+        "dynamic_reference_ids": "dynamic_reference_set_sha256",
         "supersession_ids": "supersession_set_sha256",
         "retirement_ids": "retirement_set_sha256",
         "source_commit_set": "source_commit_set_sha256",
@@ -1449,6 +3429,41 @@ def validate_extension_record_document(record: Any) -> list[str]:
             failures.append(f"EXTENSION_RECORD_{field.upper()}_INVALID")
     if not isinstance(record.get("batch_id"), str) or not re.fullmatch(r"batch-[0-9]{3}", record.get("batch_id", "")):
         failures.append("EXTENSION_RECORD_BATCH_ID_INVALID")
+    for field in ("correction_id", "correction_reason", "creator"):
+        value = str(record.get(field, ""))
+        if not value or any(char in value for char in "*?[]"):
+            failures.append(f"EXTENSION_RECORD_{field.upper()}_INVALID")
+    if re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+        str(record.get("created_at", "")),
+    ) is None:
+        failures.append("EXTENSION_RECORD_CREATED_AT_INVALID")
+    backlog_ids = record.get("backlog_item_ids")
+    rendered_backlog = (
+        [str(value) for value in backlog_ids]
+        if isinstance(backlog_ids, list)
+        else []
+    )
+    if (
+        not rendered_backlog
+        or rendered_backlog != sorted(rendered_backlog)
+        or len(rendered_backlog) != len(set(rendered_backlog))
+        or any(
+            not value or any(char in value for char in "*?[]")
+            for value in rendered_backlog
+        )
+    ):
+        failures.append("EXTENSION_RECORD_BACKLOG_ITEM_IDS_INVALID")
+    negative_examples = record.get("negative_examples")
+    rendered_negative = (
+        [str(value) for value in negative_examples]
+        if isinstance(negative_examples, list)
+        else []
+    )
+    if not {"CURRENT_DELTA_FAILURE", "WILDCARD"}.issubset(
+        set(rendered_negative)
+    ):
+        failures.append("EXTENSION_RECORD_NEGATIVE_EXAMPLES_INVALID")
     if record.get("record_payload_sha256") != sha256_bytes(canonical_bytes(_record_payload(record))):
         failures.append("EXTENSION_RECORD_PAYLOAD_HASH_MISMATCH")
     return sorted(set(failures))
@@ -1476,6 +3491,14 @@ def _authorized_identity_binding_failures(
     if not isinstance(identity, dict) or identity.get("bucket") != "HISTORICAL":
         return [f"IDENTITY_BASELINE_RAW_UNRESOLVED:{fingerprint}"]
     rule_id = str(identity.get("rule_id", ""))
+    failures.extend(
+        f"{failure}:{fingerprint}"
+        for failure in _identity_projection_failures(
+            binding,
+            rule_id=rule_id,
+            raw_failure=str(identity.get("raw_failure", "")),
+        )
+    )
     if record_rule_ids != [rule_id]:
         failures.append(f"IDENTITY_BASELINE_RULE_MISMATCH:{fingerprint}")
     source_commit = _resolve_commit_prefix(root, str(identity.get("transition_new_prefix", "")))
@@ -1598,6 +3621,7 @@ def validate_extension_record_against_repo(
     except ValueError:
         changed_paths = set()
         failures.append("EXTENSION_RECORD_TOUCH_SET_UNRESOLVED")
+    identity_map = authorized_identities or {}
     bindings = record.get("identity_binding_by_failure", {})
     if isinstance(bindings, dict):
         for fingerprint, binding in bindings.items():
@@ -1609,10 +3633,50 @@ def validate_extension_record_against_repo(
                     root,
                     str(fingerprint),
                     binding,
-                    (authorized_identities or {}).get(str(fingerprint)),
+                    identity_map.get(str(fingerprint)),
                     record_rule_ids=[str(value) for value in record.get("rule_ids", [])],
                 )
             )
+            if (
+                binding.get("recommended_disposition")
+                == "HISTORICAL_DUPLICATE_OBSERVATION"
+            ):
+                raw_identity = identity_map.get(str(fingerprint), {})
+                duplicate_target = str(
+                    binding.get("duplicate_of_failure_fingerprint", "")
+                )
+                duplicate_identity = identity_map.get(duplicate_target, {})
+                peers = sorted(
+                    other_fingerprint
+                    for other_fingerprint, other_identity in identity_map.items()
+                    if other_fingerprint != str(fingerprint)
+                    and other_identity.get("rule_id") == raw_identity.get("rule_id")
+                    and other_identity.get("subject_kind")
+                    == raw_identity.get("subject_kind")
+                    and other_identity.get("subject_value")
+                    == raw_identity.get("subject_value")
+                )
+                canonical = min([str(fingerprint), *peers]) if peers else ""
+                duplicate_digest = sha256_bytes(canonical_bytes(
+                    _duplicate_identity_payload(duplicate_identity)
+                )) if duplicate_identity else ""
+                if (
+                    not peers
+                    or canonical == str(fingerprint)
+                    or duplicate_target != canonical
+                    or duplicate_target == str(fingerprint)
+                    or duplicate_identity.get("rule_id")
+                    != raw_identity.get("rule_id")
+                    or duplicate_identity.get("subject_kind")
+                    != raw_identity.get("subject_kind")
+                    or duplicate_identity.get("subject_value")
+                    != raw_identity.get("subject_value")
+                    or binding.get("duplicate_identity_sha256")
+                    != duplicate_digest
+                ):
+                    failures.append(
+                        f"IDENTITY_DUPLICATE_OBSERVATION_AUTHORITY_MISMATCH:{fingerprint}"
+                    )
             source_commit = str(binding.get("source_commit", ""))
             authorized_identity = (authorized_identities or {}).get(str(fingerprint), {})
             if _is_commit(source_commit):
@@ -1654,6 +3718,15 @@ def validate_extension_record_against_repo(
                 continue
             if bound_projection != binding.get("subject_projection"):
                 failures.append(f"SUBJECT_PROJECTION_BINDING_MISMATCH:{fingerprint}")
+            failures.extend(
+                f"{failure}:{fingerprint}"
+                for failure in _dynamic_projection_repo_failures(
+                    root,
+                    binding_head,
+                    bound_projection,
+                    source_commit=source_commit,
+                )
+            )
             try:
                 evaluated_projection = subject_projection(root, evaluated_head, selector)
             except (ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
@@ -1661,6 +3734,15 @@ def validate_extension_record_against_repo(
                 continue
             if sha256_bytes(canonical_bytes(evaluated_projection)) != binding.get("subject_projection_sha256"):
                 failures.append(f"SUBJECT_PROJECTION_CHANGED_INVALID:{fingerprint}")
+            failures.extend(
+                f"{failure}:{fingerprint}"
+                for failure in _dynamic_projection_repo_failures(
+                    root,
+                    evaluated_head,
+                    evaluated_projection,
+                    source_commit=source_commit,
+                )
+            )
     return sorted(set(failures))
 
 
@@ -1684,10 +3766,17 @@ def validate_batch_manifest_document(manifest: Any) -> list[str]:
         ("batch_wildcard_count", 0),
         ("current_failure_false_accept_count", 0),
     ):
-        if manifest.get(field) != expected:
+        if (
+            type(expected) is int
+            and not _is_exact_int(manifest.get(field), expected)
+        ) or (
+            type(expected) is not int
+            and manifest.get(field) != expected
+        ):
             failures.append(f"BATCH_MANIFEST_{field.upper()}_MISMATCH")
     batch_id = str(manifest.get("batch_id", ""))
-    if not re.fullmatch(r"batch-[0-9]{3}", batch_id):
+    batch_match = re.fullmatch(r"batch-([0-9]{3})", batch_id)
+    if batch_match is None:
         failures.append("BATCH_MANIFEST_BATCH_ID_INVALID")
     fingerprints = manifest.get("failure_fingerprints")
     if not isinstance(fingerprints, list):
@@ -1698,10 +3787,12 @@ def validate_batch_manifest_document(manifest: Any) -> list[str]:
         failures.append("BATCH_MANIFEST_FINGERPRINT_SET_INVALID")
     if any(not re.fullmatch(r"V2F-[0-9a-f]{64}", value) for value in rendered):
         failures.append("BATCH_MANIFEST_FINGERPRINT_FORMAT_INVALID")
-    if manifest.get("failure_count") != len(rendered):
+    if not _is_exact_int(manifest.get("failure_count"), len(rendered)):
         failures.append("BATCH_MANIFEST_FINGERPRINT_COUNT_MISMATCH")
     if len(rendered) > 50 or len(rendered) == 0:
         failures.append("BATCH_MANIFEST_SIZE_OUT_OF_RANGE")
+    if not isinstance(manifest.get("terminal_remainder_batch"), bool):
+        failures.append("BATCH_MANIFEST_TERMINAL_REMAINDER_FLAG_INVALID")
     if len(rendered) < 25 and manifest.get("terminal_remainder_batch") is not True:
         failures.append("BATCH_MANIFEST_NONTERMINAL_BELOW_TARGET")
     if manifest.get("failure_fingerprint_set_sha256") != _line_set_sha(rendered):
@@ -1720,6 +3811,12 @@ def validate_batch_manifest_document(manifest: Any) -> list[str]:
     previous_batch = manifest.get("previous_batch_append_sha256")
     if previous_batch != "" and not _is_sha256(previous_batch):
         failures.append("BATCH_MANIFEST_PREVIOUS_APPEND_INVALID")
+    if batch_match is not None:
+        batch_number = int(batch_match.group(1))
+        if batch_number == 1 and previous_batch != "":
+            failures.append("BATCH_MANIFEST_INITIAL_BATCH_PREVIOUS_APPEND_INVALID")
+        if batch_number > 1 and not _is_sha256(previous_batch):
+            failures.append("BATCH_MANIFEST_NONINITIAL_PREVIOUS_APPEND_REQUIRED")
     bindings = manifest.get("record_bindings")
     if not isinstance(bindings, list) or not bindings:
         failures.append("BATCH_MANIFEST_RECORD_BINDINGS_INVALID")
@@ -2050,12 +4147,20 @@ def validate_batch_manifest_against_repo(
         f"BATCH_DESCENDANT_HISTORY_INVALID:{failure}"
         for failure in supplement.get("failures", [])
     )
-    authorized_fingerprints["historical"].update(
-        supplement.get("authorized_historical_fingerprints", set())
-    )
-    authorized_identities.update(
-        supplement.get("authorized_identity_by_fingerprint", {})
-    )
+    # Correction authority is the exact live historical Raw set.  Frozen
+    # identities that were preserved by an exact non-live disposition remain
+    # auditable registry identities, but must never be corrected as if live.
+    authorized_fingerprints["historical"] = {
+        str(value)
+        for value in supplement.get("authorized_historical_fingerprints", set())
+    }
+    authorized_identities = {
+        str(fingerprint): dict(identity)
+        for fingerprint, identity in supplement.get(
+            "authorized_identity_by_fingerprint", {}
+        ).items()
+        if isinstance(identity, dict)
+    }
     expected_supplement_sha = supplement.get("supplement_sha256", "")
     legacy_fingerprints = set(legacy.get("legacy_corrected_fingerprints", []))
     all_manifests = list(reversed(previous_chain)) + [(manifest_path, manifest)]
@@ -2074,6 +4179,9 @@ def validate_batch_manifest_against_repo(
                 document,
                 authorized_identities=authorized_identities,
             )
+        )
+        failures.extend(
+            _classification_record_disposition_failures(root, path, document)
         )
         fingerprints = {
             str(value) for value in document.get("failure_fingerprints", [])

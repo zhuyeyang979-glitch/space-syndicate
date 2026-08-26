@@ -39,7 +39,7 @@ FULL_CONVERGENCE_AUTHORIZATION_ID = (
 FULL_CONVERGENCE_BASE_HEAD = "d701a81dce693b584d52fbfca3e0e78b521ad775"
 FULL_CONVERGENCE_BASELINE_SHA = "cfb84c08abacb294ea54ffc975f691869b33ac47a5d6a9f28377c54534f19166"
 FULL_CONVERGENCE_FAILURE_SET_SHA = "dd3b9f88319ba008dafa0de8be14d4e7427a3cb02d7b3e11ed6d50e2c80893ef"
-FULL_CONVERGENCE_SCHEMA_SHA = "474c4864fd72ad1761fbbaae90f31791e9c6ee7d9dcb0e4de53ef47240cb1b12"
+FULL_CONVERGENCE_SCHEMA_SHA = "6e23a7b9285fcf3ac29bd8aa78393ba243b482d880f8b0ade425501861c63d46"
 FULL_CONVERGENCE_SCHEMA = Path(
     "docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json"
 )
@@ -50,12 +50,27 @@ FULL_CONVERGENCE_BASELINE_REPORT = Path(
 FULL_CONVERGENCE_RECORD_ROOT = (
     "docs/architecture/reuse_corrections/v2/records/full_convergence_20260827/"
 )
+FULL_CONVERGENCE_RECORD_SCHEMA_VERSION = (
+    "space_syndicate.v076.reuse_exact_failure_correction.v2."
+    "full_convergence_record.v1"
+)
+FULL_CONVERGENCE_BATCH_MANIFEST_SCHEMA_VERSION = (
+    "space_syndicate.v076.reuse_exact_failure_correction.v2."
+    "full_convergence_batch.v1"
+)
 DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION = (
     "space_syndicate.v076.reuse_exact_failure_correction.v2."
-    "descendant_history_supplement.v1"
+    "descendant_history_supplement.v2"
 )
-DESCENDANT_HISTORY_SUPPLEMENT_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_001"
+DESCENDANT_HISTORY_SUPPLEMENT_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_002"
 DESCENDANT_HISTORY_SCANNER = Path("tools/v076/v076_reuse_point_inertia_gate.py")
+DYNAMIC_REFERENCE_MANIFEST = Path("docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json")
+EXACT_SUCCESSOR_FINGERPRINT_MAPPING = "EXACT_SUCCESSOR_FINGERPRINT_MAPPING"
+EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT = "EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT"
+ALLOWED_FROZEN_IDENTITY_DISPOSITIONS = {
+    EXACT_SUCCESSOR_FINGERPRINT_MAPPING,
+    EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT,
+}
 LEGACY_CHAIN_TERMINAL_SHA = "99f051cd23c250e0282db1708e49e2625d0e82279753a846a00a713614fed67d"
 LEGACY_SEAL_PATH = Path(
     "reports/reuse/correction_v2/seals/ci_portability_v2/correction_authorization_manifest.json"
@@ -97,6 +112,382 @@ BATCH_ARTIFACT_SPECS = {
     ),
 }
 
+FULL_CONVERGENCE_RECORD_FIELDS = {
+    "allowed_from_state",
+    "allowed_rule_ids",
+    "allowed_to_state",
+    "authority_source_sha256",
+    "authorization_base_head_sha",
+    "authorization_id",
+    "backlog_item_ids",
+    "baseline_failure_set_sha256",
+    "baseline_report_sha256",
+    "batch_classification_sha256",
+    "batch_id",
+    "batch_inventory_sha256",
+    "batch_negative_checks_sha256",
+    "batch_review_a_sha256",
+    "batch_review_b_sha256",
+    "binding_head_sha",
+    "binding_tree_sha",
+    "component_ids",
+    "component_set_sha256",
+    "correction_id",
+    "correction_reason",
+    "created_at",
+    "creator",
+    "descendant_history_supplement_sha256",
+    "domain_ids",
+    "domain_set_sha256",
+    "dynamic_reference_ids",
+    "dynamic_reference_set_sha256",
+    "failure_classes",
+    "failure_count",
+    "failure_fingerprint_set_sha256",
+    "failure_fingerprints",
+    "from_state",
+    "future_failure_policy",
+    "identity_binding_by_failure",
+    "negative_examples",
+    "owner_ids",
+    "owner_set_sha256",
+    "path_set_sha256",
+    "paths",
+    "previous_correction_chain_sha256",
+    "record_kind",
+    "record_payload_sha256",
+    "required_untouched_state",
+    "retirement_ids",
+    "retirement_set_sha256",
+    "revocation_policy",
+    "rule_ids",
+    "schema_version",
+    "source_commit_set",
+    "source_commit_set_sha256",
+    "supersession_ids",
+    "supersession_set_sha256",
+    "to_effective_disposition",
+    "touch_invalidation_policy",
+    "transition_class_id",
+    "untouched_in_current_delta",
+}
+
+FULL_CONVERGENCE_BATCH_MANIFEST_FIELDS = {
+    "authorization_base_head_sha",
+    "authorization_id",
+    "baseline_failure_set_sha256",
+    "baseline_report_sha256",
+    "batch_classification_sha256",
+    "batch_id",
+    "batch_inventory_sha256",
+    "batch_negative_checks_sha256",
+    "batch_review_a_sha256",
+    "batch_review_a_status",
+    "batch_review_b_sha256",
+    "batch_review_b_status",
+    "batch_size_target",
+    "batch_unknown_count",
+    "batch_wildcard_count",
+    "binding_head_sha",
+    "binding_tree_sha",
+    "current_failure_false_accept_count",
+    "descendant_history_supplement_sha256",
+    "failure_count",
+    "failure_fingerprint_set_sha256",
+    "failure_fingerprints",
+    "identity_coverage_percent",
+    "previous_batch_append_sha256",
+    "record_bindings",
+    "record_chain_start_sha256",
+    "record_chain_terminal_sha256",
+    "schema_version",
+    "terminal_remainder_batch",
+}
+
+FULL_CONVERGENCE_RECORD_BINDING_FIELDS = {
+    "correction_id",
+    "failure_fingerprints",
+    "path",
+    "previous_correction_chain_sha256",
+    "record_payload_sha256",
+    "record_sha256",
+}
+
+FULL_CONVERGENCE_AUTHORITY_SOURCE_PATHS = (
+    "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+    "docs/architecture/V076_SUPERSESSION_MAP.json",
+    "docs/architecture/V076_OWNER_REUSE_MAP.md",
+    "docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json",
+)
+
+FULL_CONVERGENCE_IDENTITY_BINDING_FIELDS = {
+    "authority_selectors",
+    "current_blob_sha256",
+    "current_component_id",
+    "current_owner_id",
+    "current_path",
+    "current_production_reachability",
+    "current_role",
+    "diagnostic_only_status",
+    "documentation_only_status",
+    "domain_id",
+    "dynamic_reference_status",
+    "duplicate_identity_sha256",
+    "duplicate_of_failure_fingerprint",
+    "duplicate_reason",
+    "first_seen_commit",
+    "generated_evidence_status",
+    "historical_blob_sha256",
+    "historical_component_id",
+    "historical_owner_id",
+    "historical_path",
+    "historical_production_reachability",
+    "historical_role",
+    "invalidation_policy",
+    "last_seen_commit",
+    "recommended_disposition",
+    "retired_status",
+    "source_commit",
+    "subject_projection",
+    "subject_projection_sha256",
+    "superseded_by",
+    "supersedes",
+    "test_only_status",
+}
+
+FULL_CONVERGENCE_AUTHORITY_SELECTOR_FIELDS = {
+    "component_ids",
+    "dynamic_reference_ids",
+    "paths",
+    "retirement_ids",
+    "supersession_ids",
+}
+
+FULL_CONVERGENCE_ALLOWED_DISPOSITIONS = {
+    "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+    "HISTORICAL_DIAGNOSTIC_ONLY",
+    "HISTORICAL_DOCUMENTATION_ONLY",
+    "HISTORICAL_DUPLICATE_OBSERVATION",
+    "HISTORICAL_DYNAMIC_REFERENCE_DIAGNOSTIC_ONLY",
+    "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED",
+    "HISTORICAL_DYNAMIC_REFERENCE_SUPERSEDED",
+    "HISTORICAL_DYNAMIC_REFERENCE_TEST_ONLY",
+    "HISTORICAL_GENERATED_EVIDENCE",
+    "HISTORICAL_RETIRED_NONREACHABLE",
+    "HISTORICAL_SUPERSEDED_NONREACHABLE",
+    "HISTORICAL_TEST_ONLY",
+}
+
+FULL_CONVERGENCE_DYNAMIC_REFERENCE_DISPOSITIONS = {
+    value
+    for value in FULL_CONVERGENCE_ALLOWED_DISPOSITIONS
+    if value.startswith("HISTORICAL_DYNAMIC_REFERENCE_")
+}
+
+FULL_CONVERGENCE_IDENTITY_STATE_FIELDS = (
+    "current_production_reachability",
+    "current_role",
+    "diagnostic_only_status",
+    "documentation_only_status",
+    "domain_id",
+    "dynamic_reference_status",
+    "generated_evidence_status",
+    "historical_production_reachability",
+    "historical_role",
+    "retired_status",
+    "test_only_status",
+)
+
+FULL_CONVERGENCE_SUBJECT_PROJECTION_FIELDS = {
+    "dynamic_reference_rows",
+    "owner_map_lines",
+    "registry_rows",
+    "supersession_rows",
+}
+
+FULL_CONVERGENCE_DYNAMIC_REFERENCE_ENTRY_FIELDS = {
+    "callsite_contract",
+    "dynamic_reference_id",
+    "failure_policy",
+    "loader",
+    "production_reachable",
+    "reference_expression",
+    "resolution_method",
+    "resolved_targets",
+    "runtime_probe",
+    "source_blob_sha256",
+    "source_line_or_ast_location",
+    "source_path",
+    "target_set_sha256",
+}
+
+FULL_CONVERGENCE_DYNAMIC_REFERENCE_LOCATION_FIELDS = {
+    "column",
+    "containing_function",
+    "line",
+}
+
+FULL_CONVERGENCE_DYNAMIC_REFERENCE_RUNTIME_PROBE_FIELDS = {
+    "expected_target_count",
+    "probe_id",
+    "required_before_production_claim",
+    "test_path",
+}
+
+FULL_CONVERGENCE_DYNAMIC_REFERENCE_FAILURE_POLICY_FIELDS = {
+    "future_site_auto_resolution_count",
+    "source_blob_change_invalidates",
+    "source_location_change_invalidates",
+    "target_set_change_invalidates",
+    "unknown_callsite_fails_closed",
+    "wildcard_count",
+}
+
+FULL_CONVERGENCE_DYNAMIC_REFERENCE_RESOLUTION_METHODS = {
+    "EXACT_CONSTANT_CALL_GRAPH_MANIFEST",
+}
+
+FULL_CONVERGENCE_DYNAMIC_REFERENCE_CALLSITE_FIELDS = {
+    "allowed_argument_constants",
+    "external_or_unknown_invocation_count",
+    "helper_function",
+    "required_invocation_count",
+    "required_loader_sites",
+}
+
+FULL_CONVERGENCE_DYNAMIC_REFERENCE_LOADER_SITE_FIELDS = {
+    "column",
+    "line",
+    "loader",
+    "reference_expression",
+}
+
+FULL_CONVERGENCE_REGISTRY_ALLOWED_COMPONENT_ROLES = {
+    "ADAPTER",
+    "CONSUMER",
+    "DIAGNOSTIC_BENCH",
+    "DIAGNOSTIC_ONLY",
+    "DOCUMENTATION_ONLY",
+    "GENERATED_EVIDENCE",
+    "INPUT_ROUTING",
+    "OWNER",
+    "PORT",
+    "PRESENTATION",
+    "PROJECTION",
+    "REDUCER",
+    "RETIRED",
+    "TEST_SUPPORT",
+    "TOOLING",
+}
+
+FULL_CONVERGENCE_REGISTRY_NONPRODUCTION_ROLES = {
+    "DIAGNOSTIC_BENCH",
+    "DIAGNOSTIC_ONLY",
+    "DOCUMENTATION_ONLY",
+    "GENERATED_EVIDENCE",
+    "RETIRED",
+    "TEST_SUPPORT",
+    "TOOLING",
+}
+
+FULL_CONVERGENCE_REGISTRY_ALLOWED_REUSE_DISPOSITIONS = {
+    "ADAPT_AS_CONSUMER",
+    "ADOPT_AS_OWNER",
+    "REFERENCE_ONLY",
+    "REUSE_AS_TEST",
+}
+
+FULL_CONVERGENCE_REGISTRY_COMPONENT_INVENTORY_FIELDS = {
+    "authority_source_kind",
+    "change_class",
+    "class_name",
+    "component_id",
+    "component_role",
+    "domain_id",
+    "focused_test_ids",
+    "golden_scenario_steps",
+    "new_component_justification",
+    "owner_component_id",
+    "owner_path",
+    "owns_identity",
+    "owns_presentation",
+    "owns_replay",
+    "owns_rng",
+    "owns_save",
+    "owns_tick",
+    "path",
+    "production_reachable",
+    "reads_authority",
+    "reuse_candidates_considered",
+    "reuse_disposition",
+    "reuse_scan",
+    "reuse_source_ids",
+    "superseded_by",
+    "supersedes",
+    "writes_authority",
+}
+
+FULL_CONVERGENCE_REGISTRY_COMPONENT_INVENTORY_REQUIRED_FIELDS = (
+    FULL_CONVERGENCE_REGISTRY_COMPONENT_INVENTORY_FIELDS - {"reuse_scan"}
+)
+
+FULL_CONVERGENCE_REGISTRY_HISTORICAL_BACKFILL_FIELDS = {
+    "authority_source_kind",
+    "component_id",
+    "current_disposition",
+    "historical_role",
+    "production_reachability",
+    "source_blob",
+    "source_commit",
+    "supersession",
+}
+
+FULL_CONVERGENCE_IDENTITY_NON_MIGRATION_DISPOSITIONS = {
+    "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+    "HISTORICAL_DIAGNOSTIC_ONLY",
+    "HISTORICAL_DOCUMENTATION_ONLY",
+    "HISTORICAL_DUPLICATE_OBSERVATION",
+    "HISTORICAL_DYNAMIC_REFERENCE_DIAGNOSTIC_ONLY",
+    "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED",
+    "HISTORICAL_DYNAMIC_REFERENCE_TEST_ONLY",
+    "HISTORICAL_GENERATED_EVIDENCE",
+    "HISTORICAL_RETIRED_NONREACHABLE",
+    "HISTORICAL_TEST_ONLY",
+}
+
+FULL_CONVERGENCE_DISALLOWED_TOKENS = {
+    "*",
+    "directory",
+    "glob",
+    "grandfather",
+    "ignore",
+    "legacy",
+    "misc",
+    "other",
+    "prefix",
+    "regex",
+    "unknown",
+    "unknown_accepted",
+    "waive",
+}
+
+FULL_CONVERGENCE_TOUCH_INVALIDATION_POLICY = {
+    "BLOB_CHANGED_CORRECTION_AUTO_INVALIDATION": True,
+    "COMPONENT_CHANGED_CORRECTION_AUTO_INVALIDATION": True,
+    "DOMAIN_CHANGED_CORRECTION_AUTO_INVALIDATION": True,
+    "OWNER_BINDING_CHANGED_INVALIDATION": True,
+    "PRODUCTION_REACHABILITY_CHANGED_INVALIDATION": True,
+    "RETIREMENT_CHANGED_INVALIDATION": True,
+    "SUPERSESSION_CHANGED_INVALIDATION": True,
+    "TOUCH_INVALIDATES_CORRECTION": True,
+    "UNRELATED_DELTA_PRESERVES_CORRECTION": True,
+}
+
+FULL_CONVERGENCE_REVOCATION_POLICY = {
+    "OLD_RECORD_MUTATION_FORBIDDEN": True,
+    "REVOCATION_APPEND_ONLY": True,
+}
+
 DESCENDANT_HISTORY_IDENTITY_FIELDS = {
     "failure_fingerprint",
     "raw_failure",
@@ -110,19 +501,70 @@ DESCENDANT_HISTORY_IDENTITY_FIELDS = {
     "transition_old_sha",
 }
 
+FROZEN_IDENTITY_DISPOSITION_FIELDS = {
+    "baseline_scanner_tool_sha256",
+    "disposition",
+    "evidence",
+    "failure_fingerprint",
+    "live_scanner_tool_sha256",
+    "raw_failure",
+    "rule_id",
+    "subject_kind",
+    "subject_value",
+    "successor_failure_fingerprint",
+    "transition_new_sha",
+    "transition_old_sha",
+    "wildcard_count",
+}
+
+SUCCESSOR_DISPOSITION_EVIDENCE_FIELDS = {
+    "baseline_raw_report_sha256",
+    "evidence_kind",
+    "live_raw_report_sha256",
+    "successor_raw_failure",
+    "successor_rule_id",
+    "successor_subject_kind",
+    "successor_subject_value",
+    "successor_transition_new_sha",
+    "successor_transition_old_sha",
+}
+
+FALSE_COMPONENT_RETIREMENT_EVIDENCE_FIELDS = {
+    "baseline_raw_report_sha256",
+    "dynamic_reference_ids",
+    "dynamic_reference_manifest_blob_sha256",
+    "dynamic_reference_manifest_path",
+    "evidence_kind",
+    "live_raw_report_sha256",
+    "resolved_target",
+    "subject_directly_changed",
+}
+
 DESCENDANT_HISTORY_SUPPLEMENT_FIELDS = {
     "authorization_base_head_sha",
     "authorization_id",
+    "baseline_historical_membership_policy",
     "baseline_failure_set_sha256",
     "baseline_report_sha256",
+    "baseline_scanner_tool_sha256",
     "committed_only",
+    "correction_membership_scope",
     "descendant_history_failure_count",
     "descendant_history_fingerprint_set_sha256",
     "descendant_history_fingerprints",
     "directory_discovery_allowed",
+    "disposition_wildcard_count",
+    "frozen_identity_disposition_by_failure",
     "future_failure_auto_membership_allowed",
     "identity_binding_by_failure",
+    "live_frozen_historical_failure_count",
+    "live_frozen_historical_fingerprint_set_sha256",
+    "live_frozen_historical_fingerprints",
+    "missing_frozen_historical_failure_count",
+    "missing_frozen_historical_fingerprint_set_sha256",
+    "missing_frozen_historical_fingerprints",
     "raw_current_delta_failure_count",
+    "raw_failure_detection_suppressed_count",
     "raw_failure_count",
     "raw_historical_failure_count",
     "raw_report_head_sha",
@@ -195,6 +637,43 @@ def _is_commit(value: Any) -> bool:
     return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value) is not None
 
 
+def _is_exact_int(value: Any) -> bool:
+    """Return true only for a JSON integer, never for Python's bool subtype."""
+
+    return type(value) is int
+
+
+def _is_exact_int_equal(value: Any, expected: int) -> bool:
+    return _is_exact_int(value) and value == expected
+
+
+def _is_exact_positive_int(value: Any) -> bool:
+    return _is_exact_int(value) and value >= 1
+
+
+def _matches_exact_scalar_contract(value: Any, expected: Any) -> bool:
+    if type(expected) is bool:
+        return value is expected
+    if type(expected) is int:
+        return _is_exact_int_equal(value, expected)
+    return value == expected
+
+
+def _is_exact_future_failure_policy(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value)
+        == {
+            "FUTURE_FAILURE_AUTO_CORRECTION_COUNT",
+            "NEW_FAILURE_REQUIRES_NEW_RECORD",
+        }
+        and _is_exact_int_equal(
+            value.get("FUTURE_FAILURE_AUTO_CORRECTION_COUNT"), 0
+        )
+        and value.get("NEW_FAILURE_REQUIRES_NEW_RECORD") is True
+    )
+
+
 def _normalize_path(value: str) -> str:
     return value.removeprefix("res://").replace("\\", "/")
 
@@ -238,7 +717,15 @@ def _subject_projection(root: Path, commit: str, selector: dict[str, Any]) -> di
     owner_bytes = _git_bytes(
         root, commit, "docs/architecture/V076_OWNER_REUSE_MAP.md"
     )
-    if registry_bytes is None or supersession_bytes is None or owner_bytes is None:
+    dynamic_reference_bytes = _git_bytes(
+        root, commit, "docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json"
+    )
+    if (
+        registry_bytes is None
+        or supersession_bytes is None
+        or owner_bytes is None
+        or dynamic_reference_bytes is None
+    ):
         return None
     try:
         registry = json.loads(
@@ -247,52 +734,99 @@ def _subject_projection(root: Path, commit: str, selector: dict[str, Any]) -> di
         supersession = json.loads(
             supersession_bytes.decode("utf-8-sig"), object_pairs_hook=_strict_object
         )
+        dynamic_reference_manifest = json.loads(
+            dynamic_reference_bytes.decode("utf-8-sig"),
+            object_pairs_hook=_strict_object,
+        )
     except (UnicodeDecodeError, ValueError):
         return None
     component_ids = {str(value) for value in selector.get("component_ids", [])}
     paths = {str(value).removeprefix("res://").replace("\\", "/") for value in selector.get("paths", [])}
-    record_ids = {
-        str(value)
-        for key in ("supersession_ids", "retirement_ids")
-        for value in selector.get(key, [])
+    dynamic_reference_ids = {
+        str(value) for value in selector.get("dynamic_reference_ids", [])
     }
-
-    def matches(row: dict[str, Any]) -> bool:
-        components = {
-            str(row.get(key, ""))
-            for key in (
-                "component_id", "historical_component_id", "current_component_id",
-                "owner_component_id", "old_component_id", "new_component_id",
-            )
-        }
-        row_paths = {
-            str(row.get(key, "")).removeprefix("res://").replace("\\", "/")
-            for key in (
-                "path", "historical_path", "current_path", "owner_path",
-                "old_owner_path", "new_owner_path",
-            )
-        }
-        ids = {
-            str(row.get(key, ""))
-            for key in ("supersession_id", "retirement_id", "record_id")
-        }
-        return bool(component_ids & components or paths & row_paths or record_ids & ids)
-
+    supersession_ids = {
+        str(value) for value in selector.get("supersession_ids", [])
+    }
+    retirement_ids = {
+        str(value) for value in selector.get("retirement_ids", [])
+    }
+    registry_candidates: list[Any] = []
+    if isinstance(registry, dict):
+        for key in ("component_inventory", "historical_identity_backfill"):
+            values = registry.get(key, [])
+            if isinstance(values, list):
+                for value in values:
+                    if isinstance(value, dict):
+                        tagged = dict(value)
+                        tagged["authority_source_kind"] = key
+                        registry_candidates.append(tagged)
     registry_rows = sorted(
-        [row for row in _walk_dicts(registry) if matches(row)],
+        [
+            row
+            for row in registry_candidates
+            if isinstance(row, dict)
+            and (
+                str(row.get("component_id", "")) in component_ids
+                or _normalize_path(str(row.get("path", ""))) in paths
+            )
+        ],
         key=_canonical,
     )
+    supersession_candidates: list[Any] = []
+    if isinstance(supersession, dict):
+        for key in ("entries", "retirement_entries"):
+            values = supersession.get(key, [])
+            if isinstance(values, list):
+                supersession_candidates.extend(values)
     supersession_rows = sorted(
-        [row for row in _walk_dicts(supersession) if matches(row)],
+        [
+            row
+            for row in supersession_candidates
+            if isinstance(row, dict)
+            and (
+                str(row.get("supersession_id", "")) in supersession_ids
+                or str(row.get("retirement_id", "")) in retirement_ids
+            )
+        ],
         key=_canonical,
     )
-    needles = sorted(component_ids | paths | record_ids)
+    dynamic_candidates = (
+        dynamic_reference_manifest.get("entries", [])
+        if isinstance(dynamic_reference_manifest, dict)
+        else []
+    )
+    dynamic_reference_rows = sorted(
+        [
+            row
+            for row in dynamic_candidates
+            if isinstance(row, dict)
+            and str(row.get("dynamic_reference_id", ""))
+            in dynamic_reference_ids
+        ],
+        key=_canonical,
+    )
+    needles = sorted(
+        component_ids
+        | paths
+        | dynamic_reference_ids
+        | supersession_ids
+        | retirement_ids
+    )
     owner_lines = sorted({
         line.rstrip()
         for line in owner_bytes.decode("utf-8-sig", errors="replace").splitlines()
         if any(needle in line for needle in needles)
     })
+    if (
+        not registry_rows
+        and not supersession_rows
+        and not owner_lines
+        and not dynamic_reference_rows
+    ):
+        return None
     return {
+        "dynamic_reference_rows": dynamic_reference_rows,
         "owner_map_lines": owner_lines,
         "registry_rows": registry_rows,
         "supersession_rows": supersession_rows,
@@ -398,6 +932,7 @@ def _descendant_history_supplement_findings(
     list[dict[str, Any]],
     set[str],
     dict[str, dict[str, str]],
+    set[str],
     str,
     str,
 ]:
@@ -413,7 +948,7 @@ def _descendant_history_supplement_findings(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_EXPLICIT_INPUT_REQUIRED",
             "supplement, raw report, and scanner paths must all be supplied explicitly",
         )
-        return findings, set(), {}, "", ""
+        return findings, set(), {}, set(), "", ""
     supplement_relative = _exact_repo_relative(root, supplement_path)
     raw_report_relative = _exact_repo_relative(root, raw_report_path)
     scanner_relative = _exact_repo_relative(root, scanner_path)
@@ -444,7 +979,7 @@ def _descendant_history_supplement_findings(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_SUPPLEMENT_INVALID",
             "supplement is not one strict JSON object",
         )
-        return findings, set(), {}, supplement_sha, ""
+        return findings, set(), {}, set(), supplement_sha, ""
     if set(supplement) != DESCENDANT_HISTORY_SUPPLEMENT_FIELDS:
         add(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_SUPPLEMENT_FIELD_SET_INVALID",
@@ -457,15 +992,19 @@ def _descendant_history_supplement_findings(
         ("authorization_base_head_sha", FULL_CONVERGENCE_BASE_HEAD),
         ("baseline_report_sha256", FULL_CONVERGENCE_BASELINE_SHA),
         ("baseline_failure_set_sha256", FULL_CONVERGENCE_FAILURE_SET_SHA),
+        ("baseline_historical_membership_policy", "LIVE_RAW_OR_EXACT_APPEND_ONLY_DISPOSITION"),
         ("committed_only", True),
+        ("correction_membership_scope", "LIVE_HISTORICAL_ONLY"),
         ("directory_discovery_allowed", False),
+        ("disposition_wildcard_count", 0),
         ("wildcard_membership_allowed", False),
         ("future_failure_auto_membership_allowed", False),
         ("raw_current_delta_failure_count", 0),
+        ("raw_failure_detection_suppressed_count", 0),
         ("raw_report_path", raw_report_relative),
         ("scanner_tool_path", DESCENDANT_HISTORY_SCANNER.as_posix()),
     ):
-        if supplement.get(field) != expected:
+        if not _matches_exact_scalar_contract(supplement.get(field), expected):
             add(
                 "FULL_CONVERGENCE_DESCENDANT_HISTORY_AUTHORITY_MISMATCH",
                 "supplement authority or fail-closed policy differs from the contract",
@@ -484,7 +1023,7 @@ def _descendant_history_supplement_findings(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_REPORT_INVALID",
             "the explicit final raw report is not one strict JSON object",
         )
-        return findings, set(), {}, supplement_sha, ""
+        return findings, set(), {}, set(), supplement_sha, ""
     if supplement.get("raw_report_sha256") != raw_report_sha:
         add(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_REPORT_HASH_MISMATCH",
@@ -505,11 +1044,8 @@ def _descendant_history_supplement_findings(
             "the sealed final raw report still contains current failures",
             current_failure_count=len(final_sets["current"]),
         )
-    if not baseline_sets["historical"].issubset(final_sets["historical"]):
-        add(
-            "FULL_CONVERGENCE_DESCENDANT_HISTORY_FROZEN_HISTORY_HIDDEN",
-            "the final raw report omits one or more frozen historical failures",
-        )
+    live_frozen = baseline_sets["historical"] & final_sets["historical"]
+    missing_frozen = baseline_sets["historical"] - final_sets["historical"]
     descendants = final_sets["historical"] - baseline_sets["historical"]
     declared = supplement.get("descendant_history_fingerprints")
     rendered_declared = [str(value) for value in declared] if isinstance(declared, list) else []
@@ -524,7 +1060,9 @@ def _descendant_history_supplement_findings(
             "declared membership is not the exact nonempty final-minus-d701 historical set",
         )
     if (
-        supplement.get("descendant_history_failure_count") != len(descendants)
+        not _is_exact_int_equal(
+            supplement.get("descendant_history_failure_count"), len(descendants)
+        )
         or supplement.get("descendant_history_fingerprint_set_sha256")
         != _line_set_sha(rendered_declared)
     ):
@@ -532,10 +1070,60 @@ def _descendant_history_supplement_findings(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_MEMBERSHIP_DIGEST_MISMATCH",
             "descendant membership count or digest is not canonical",
         )
+    declared_live_frozen = supplement.get("live_frozen_historical_fingerprints")
+    rendered_live_frozen = (
+        [str(value) for value in declared_live_frozen]
+        if isinstance(declared_live_frozen, list)
+        else []
+    )
     if (
-        supplement.get("raw_failure_count") != len(raw_rendered)
-        or supplement.get("raw_historical_failure_count") != len(final_sets["historical"])
-        or supplement.get("raw_current_delta_failure_count") != len(final_sets["current"])
+        rendered_live_frozen != sorted(rendered_live_frozen)
+        or len(rendered_live_frozen) != len(set(rendered_live_frozen))
+        or set(rendered_live_frozen) != live_frozen
+        or not _is_exact_int_equal(
+            supplement.get("live_frozen_historical_failure_count"),
+            len(live_frozen),
+        )
+        or supplement.get("live_frozen_historical_fingerprint_set_sha256")
+        != _line_set_sha(rendered_live_frozen)
+    ):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_LIVE_FROZEN_SET_INVALID",
+            "live frozen membership, count, or digest is not exact",
+        )
+    declared_missing_frozen = supplement.get("missing_frozen_historical_fingerprints")
+    rendered_missing_frozen = (
+        [str(value) for value in declared_missing_frozen]
+        if isinstance(declared_missing_frozen, list)
+        else []
+    )
+    if (
+        rendered_missing_frozen != sorted(rendered_missing_frozen)
+        or len(rendered_missing_frozen) != len(set(rendered_missing_frozen))
+        or set(rendered_missing_frozen) != missing_frozen
+        or not _is_exact_int_equal(
+            supplement.get("missing_frozen_historical_failure_count"),
+            len(missing_frozen),
+        )
+        or supplement.get("missing_frozen_historical_fingerprint_set_sha256")
+        != _line_set_sha(rendered_missing_frozen)
+    ):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_MISSING_FROZEN_SET_INVALID",
+            "missing frozen membership, count, or digest is not exact",
+        )
+    if (
+        not _is_exact_int_equal(
+            supplement.get("raw_failure_count"), len(raw_rendered)
+        )
+        or not _is_exact_int_equal(
+            supplement.get("raw_historical_failure_count"),
+            len(final_sets["historical"]),
+        )
+        or not _is_exact_int_equal(
+            supplement.get("raw_current_delta_failure_count"),
+            len(final_sets["current"]),
+        )
     ):
         add(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_RAW_COUNTS_MISMATCH",
@@ -572,13 +1160,253 @@ def _descendant_history_supplement_findings(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_SCANNER_HASH_MISMATCH",
             "scanner bytes differ from the exact tool committed at the report Head",
         )
+    baseline_scanner_bytes = _git_bytes(
+        root, FULL_CONVERGENCE_BASE_HEAD, DESCENDANT_HISTORY_SCANNER.as_posix()
+    )
+    baseline_scanner_sha = (
+        _sha_bytes(baseline_scanner_bytes)
+        if baseline_scanner_bytes is not None
+        else ""
+    )
+    if supplement.get("baseline_scanner_tool_sha256") != baseline_scanner_sha:
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_BASELINE_SCANNER_HASH_MISMATCH",
+            "baseline scanner bytes differ from the exact d701 tool",
+        )
+    baseline_identities = _authorized_failure_identity_by_fingerprint(baseline_report)
+    manifest_bytes = _git_bytes(root, report_head, DYNAMIC_REFERENCE_MANIFEST.as_posix())
+    manifest_sha = _sha_bytes(manifest_bytes) if manifest_bytes is not None else ""
+    try:
+        manifest_document = json.loads(
+            (manifest_bytes or b"").decode("utf-8-sig"),
+            object_pairs_hook=_strict_object,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, DuplicateJsonKeyError):
+        manifest_document = {}
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_DYNAMIC_REFERENCE_MANIFEST_INVALID",
+            "the exact live dynamic-reference manifest is invalid",
+        )
+    target_to_ids: dict[str, list[str]] = {}
+    entries = manifest_document.get("entries", []) if isinstance(manifest_document, dict) else []
+    if not isinstance(entries, list):
+        entries = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        reference_id = str(entry.get("dynamic_reference_id", ""))
+        targets = entry.get("resolved_targets", [])
+        if not reference_id or not isinstance(targets, list):
+            continue
+        for target in targets:
+            normalized = _normalize_path(str(target))
+            if normalized:
+                target_to_ids.setdefault(normalized, []).append(reference_id)
+    for target in target_to_ids:
+        target_to_ids[target] = sorted(set(target_to_ids[target]))
+    dispositions = supplement.get("frozen_identity_disposition_by_failure")
+    if not isinstance(dispositions, dict) or set(dispositions) != missing_frozen:
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_FROZEN_DISPOSITION_SET_INVALID",
+            "the disposition map does not exactly cover every missing frozen identity",
+        )
+        dispositions = dispositions if isinstance(dispositions, dict) else {}
+    verified_dispositions: set[str] = set()
+    used_successors: set[str] = set()
+    for fingerprint in sorted(missing_frozen):
+        before = len(findings)
+        row = dispositions.get(fingerprint)
+        frozen_identity = baseline_identities.get(fingerprint)
+        if not isinstance(row, dict) or set(row) != FROZEN_IDENTITY_DISPOSITION_FIELDS:
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_DISPOSITION_FIELDS_INVALID",
+                "one frozen disposition differs from the closed field contract",
+                fingerprint=fingerprint,
+            )
+            continue
+        if not isinstance(frozen_identity, dict):
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_DISPOSITION_IDENTITY_UNRESOLVED",
+                "one frozen disposition has no exact baseline identity",
+                fingerprint=fingerprint,
+            )
+            continue
+        expected_common = {
+            "failure_fingerprint": fingerprint,
+            "raw_failure": frozen_identity.get("raw_failure"),
+            "rule_id": frozen_identity.get("rule_id"),
+            "baseline_scanner_tool_sha256": baseline_scanner_sha,
+            "live_scanner_tool_sha256": scanner_at_head_sha,
+            "subject_kind": frozen_identity.get("subject_kind"),
+            "subject_value": frozen_identity.get("subject_value"),
+            "wildcard_count": 0,
+        }
+        if (
+            not _is_exact_int_equal(row.get("wildcard_count"), 0)
+            or any(
+                row.get(field) != expected
+                for field, expected in expected_common.items()
+                if field != "wildcard_count"
+            )
+        ):
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_DISPOSITION_IDENTITY_MISMATCH",
+                "one frozen disposition does not bind the exact baseline raw identity",
+                fingerprint=fingerprint,
+            )
+        disposition = str(row.get("disposition", ""))
+        if disposition not in ALLOWED_FROZEN_IDENTITY_DISPOSITIONS:
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_DISPOSITION_KIND_INVALID",
+                "one frozen disposition kind is outside the closed contract",
+                fingerprint=fingerprint,
+            )
+        subject = _normalize_path(str(frozen_identity.get("subject_value", "")))
+        if not subject or any(char in subject for char in "*?[]"):
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_DISPOSITION_SUBJECT_NOT_EXACT",
+                "one frozen disposition subject is empty or wildcarded",
+                fingerprint=fingerprint,
+            )
+        old_commit = _resolve_commit_prefix(
+            root, str(frozen_identity.get("transition_old_prefix", ""))
+        )
+        new_commit = _resolve_commit_prefix(
+            root, str(frozen_identity.get("transition_new_prefix", ""))
+        )
+        if (
+            not old_commit
+            or not new_commit
+            or _git(root, "rev-parse", f"{new_commit}^1") != old_commit
+            or row.get("transition_old_sha") != old_commit
+            or row.get("transition_new_sha") != new_commit
+            or not _is_ancestor(root, new_commit, report_head)
+        ):
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_DISPOSITION_TRANSITION_INVALID",
+                "one frozen disposition transition is not one exact ancestor edge",
+                fingerprint=fingerprint,
+            )
+        evidence = row.get("evidence")
+        successor_fingerprint = str(row.get("successor_failure_fingerprint", ""))
+        if disposition == EXACT_SUCCESSOR_FINGERPRINT_MAPPING:
+            if not isinstance(evidence, dict) or set(evidence) != SUCCESSOR_DISPOSITION_EVIDENCE_FIELDS:
+                add(
+                    "FULL_CONVERGENCE_DESCENDANT_HISTORY_SUCCESSOR_EVIDENCE_INVALID",
+                    "one successor disposition evidence field set is invalid",
+                    fingerprint=fingerprint,
+                )
+                evidence = evidence if isinstance(evidence, dict) else {}
+            successor_identity = final_identities.get(successor_fingerprint)
+            if (
+                successor_fingerprint not in descendants
+                or successor_fingerprint in used_successors
+                or not isinstance(successor_identity, dict)
+            ):
+                add(
+                    "FULL_CONVERGENCE_DESCENDANT_HISTORY_SUCCESSOR_FINGERPRINT_INVALID",
+                    "one successor is absent, non-novel, or reused",
+                    fingerprint=fingerprint,
+                )
+                successor_identity = {}
+            used_successors.add(successor_fingerprint)
+            if (
+                successor_identity.get("rule_id") != frozen_identity.get("rule_id")
+                or successor_identity.get("subject_kind") != frozen_identity.get("subject_kind")
+                or successor_identity.get("subject_value") != frozen_identity.get("subject_value")
+            ):
+                add(
+                    "FULL_CONVERGENCE_DESCENDANT_HISTORY_SUCCESSOR_SUBJECT_INVALID",
+                    "one successor does not preserve the exact rule and subject",
+                    fingerprint=fingerprint,
+                )
+            successor_old = _resolve_commit_prefix(
+                root, str(successor_identity.get("transition_old_prefix", ""))
+            )
+            successor_new = _resolve_commit_prefix(
+                root, str(successor_identity.get("transition_new_prefix", ""))
+            )
+            expected_evidence = {
+                "evidence_kind": "EXACT_LIVE_RAW_SUCCESSOR_IDENTITY",
+                "baseline_raw_report_sha256": FULL_CONVERGENCE_BASELINE_SHA,
+                "live_raw_report_sha256": raw_report_sha,
+                "successor_raw_failure": successor_identity.get("raw_failure"),
+                "successor_rule_id": successor_identity.get("rule_id"),
+                "successor_transition_old_sha": successor_old,
+                "successor_transition_new_sha": successor_new,
+                "successor_subject_kind": successor_identity.get("subject_kind"),
+                "successor_subject_value": successor_identity.get("subject_value"),
+            }
+            if (
+                not successor_old
+                or not successor_new
+                or _git(root, "rev-parse", f"{successor_new}^1") != successor_old
+                or any(evidence.get(field) != expected for field, expected in expected_evidence.items())
+            ):
+                add(
+                    "FULL_CONVERGENCE_DESCENDANT_HISTORY_SUCCESSOR_BINDING_INVALID",
+                    "one successor transition or evidence binding is invalid",
+                    fingerprint=fingerprint,
+                )
+        elif disposition == EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT:
+            if not isinstance(evidence, dict) or set(evidence) != FALSE_COMPONENT_RETIREMENT_EVIDENCE_FIELDS:
+                add(
+                    "FULL_CONVERGENCE_DESCENDANT_HISTORY_FALSE_COMPONENT_EVIDENCE_INVALID",
+                    "one false-component evidence field set is invalid",
+                    fingerprint=fingerprint,
+                )
+                evidence = evidence if isinstance(evidence, dict) else {}
+            changed_paths = {
+                _normalize_path(value)
+                for value in _git(root, "diff", "--name-only", old_commit, new_commit).splitlines()
+                if value.strip()
+            }
+            exact_ids = target_to_ids.get(subject, [])
+            rendered_ids = (
+                [str(value) for value in evidence.get("dynamic_reference_ids", [])]
+                if isinstance(evidence.get("dynamic_reference_ids"), list)
+                else []
+            )
+            expected_evidence = {
+                "evidence_kind": "EXACT_DYNAMIC_REFERENCE_TARGET_NOT_DIRECT_TRANSITION_CHANGE",
+                "baseline_raw_report_sha256": FULL_CONVERGENCE_BASELINE_SHA,
+                "live_raw_report_sha256": raw_report_sha,
+                "subject_directly_changed": False,
+                "dynamic_reference_manifest_path": DYNAMIC_REFERENCE_MANIFEST.as_posix(),
+                "dynamic_reference_manifest_blob_sha256": manifest_sha,
+                "resolved_target": f"res://{subject}",
+            }
+            if (
+                successor_fingerprint
+                or frozen_identity.get("rule_id") != "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"
+                or frozen_identity.get("subject_kind") != "path"
+                or subject in changed_paths
+                or not exact_ids
+                or rendered_ids != exact_ids
+                or any(evidence.get(field) != expected for field, expected in expected_evidence.items())
+            ):
+                add(
+                    "FULL_CONVERGENCE_DESCENDANT_HISTORY_FALSE_COMPONENT_BINDING_INVALID",
+                    "one false-component disposition lacks exact transition and target evidence",
+                    fingerprint=fingerprint,
+                )
+        if len(findings) == before:
+            verified_dispositions.add(fingerprint)
+    if verified_dispositions != missing_frozen:
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_HISTORY_DISPOSITION_COVERAGE_INVALID",
+            "verified dispositions do not cover the exact missing frozen set",
+        )
     repaired = supplement.get("repaired_frozen_current_fingerprints")
     rendered_repaired = [str(value) for value in repaired] if isinstance(repaired, list) else []
     if (
         rendered_repaired != sorted(rendered_repaired)
         or len(rendered_repaired) != len(set(rendered_repaired))
         or set(rendered_repaired) != baseline_sets["current"]
-        or supplement.get("repaired_frozen_current_failure_count") != len(baseline_sets["current"])
+        or not _is_exact_int_equal(
+            supplement.get("repaired_frozen_current_failure_count"),
+            len(baseline_sets["current"]),
+        )
         or supplement.get("repaired_frozen_current_fingerprint_set_sha256")
         != _line_set_sha(rendered_repaired)
     ):
@@ -631,7 +1459,6 @@ def _descendant_history_supplement_findings(
             or binding.get("transition_old_sha") != old_commit
             or binding.get("transition_new_sha") != new_commit
             or binding.get("source_commit_sha") != new_commit
-            or not _is_ancestor(root, FULL_CONVERGENCE_BASE_HEAD, new_commit)
             or not _is_ancestor(root, new_commit, report_head)
         ):
             add(
@@ -718,12 +1545,36 @@ def _descendant_history_supplement_findings(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_REPAIR_COVERAGE_INVALID",
             "per-descendant repair bindings do not cover the exact frozen current set",
         )
-    return findings, descendants, authorized_identities, supplement_sha, report_head
+    live_identities: dict[str, dict[str, str]] = {}
+    for fingerprint in sorted(final_sets["historical"]):
+        if fingerprint in authorized_identities:
+            live_identities[fingerprint] = dict(authorized_identities[fingerprint])
+            continue
+        identity = baseline_identities.get(fingerprint, final_identities.get(fingerprint))
+        if not isinstance(identity, dict):
+            add(
+                "FULL_CONVERGENCE_DESCENDANT_HISTORY_LIVE_IDENTITY_UNRESOLVED",
+                "one live historical fingerprint has no exact identity",
+                fingerprint=fingerprint,
+            )
+            continue
+        row = dict(identity)
+        row["authority_origin"] = "FROZEN_FULL_CONVERGENCE_BASELINE"
+        live_identities[fingerprint] = row
+    return (
+        findings,
+        descendants,
+        live_identities,
+        verified_dispositions,
+        supplement_sha,
+        report_head,
+    )
 
 
 def _selector_is_exact(selector: Any) -> bool:
     expected_fields = {
-        "component_ids", "paths", "retirement_ids", "supersession_ids",
+        "component_ids", "dynamic_reference_ids", "paths",
+        "retirement_ids", "supersession_ids",
     }
     if not isinstance(selector, dict) or set(selector) != expected_fields:
         return False
@@ -786,6 +1637,13 @@ def _raw_identity_findings(
         )
         return findings
     rule_id = str(identity.get("rule_id", ""))
+    findings.extend(_identity_projection_findings(
+        subject,
+        path=path,
+        fingerprint=fingerprint,
+        rule_id=rule_id,
+        raw_failure=str(identity.get("raw_failure", "")),
+    ))
     if record_rule_ids != [rule_id]:
         add(
             "FULL_CONVERGENCE_BASELINE_RAW_RULE_MISMATCH",
@@ -1047,7 +1905,9 @@ def _batch_artifact_findings(
             and document.get("batch_id") == manifest.get("batch_id")
             and [str(value) for value in document.get("failure_fingerprints", [])]
             == expected_fingerprints
-            and document.get("failure_count") == len(expected_fingerprints)
+            and _is_exact_int_equal(
+                document.get("failure_count"), len(expected_fingerprints)
+            )
         )
         if not common_valid:
             findings.append(_finding(
@@ -1060,8 +1920,10 @@ def _batch_artifact_findings(
         if kind == "inventory":
             rows = document.get("rows")
             if (
-                document.get("identity_coverage_percent") != 100
-                or document.get("unknown_count") != 0
+                not _is_exact_int_equal(
+                    document.get("identity_coverage_percent"), 100
+                )
+                or not _is_exact_int_equal(document.get("unknown_count"), 0)
                 or not isinstance(rows, dict)
                 or set(rows) != set(expected_fingerprints)
             ):
@@ -1087,15 +1949,16 @@ def _batch_artifact_findings(
         elif kind == "classification":
             rows = document.get("classifications")
             if (
-                document.get("unknown_count") != 0
-                or document.get("wildcard_count") != 0
+                not _is_exact_int_equal(document.get("unknown_count"), 0)
+                or not _is_exact_int_equal(document.get("wildcard_count"), 0)
                 or not isinstance(rows, dict)
                 or set(rows) != set(expected_fingerprints)
                 or any(
                     not isinstance(row, dict)
                     or row.get("failure_fingerprint") != fingerprint
                     or row.get("status") != "CLASSIFIED"
-                    or not str(row.get("recommended_disposition", "")).startswith("HISTORICAL_")
+                    or str(row.get("recommended_disposition", ""))
+                    not in FULL_CONVERGENCE_ALLOWED_DISPOSITIONS
                     for fingerprint, row in (rows.items() if isinstance(rows, dict) else [])
                 )
             ):
@@ -1109,9 +1972,13 @@ def _batch_artifact_findings(
             checks = document.get("checks")
             if (
                 document.get("status") != "PASS"
-                or document.get("current_failure_false_accept_count") != 0
-                or document.get("future_failure_auto_correction_count") != 0
-                or document.get("wildcard_count") != 0
+                or not _is_exact_int_equal(
+                    document.get("current_failure_false_accept_count"), 0
+                )
+                or not _is_exact_int_equal(
+                    document.get("future_failure_auto_correction_count"), 0
+                )
+                or not _is_exact_int_equal(document.get("wildcard_count"), 0)
                 or not isinstance(checks, dict)
                 or not checks
                 or any(value is not True for value in checks.values())
@@ -1127,8 +1994,8 @@ def _batch_artifact_findings(
             if (
                 document.get("review_id") != review_id
                 or document.get("status") != "GO"
-                or document.get("p0_count") != 0
-                or document.get("p1_count") != 0
+                or not _is_exact_int_equal(document.get("p0_count"), 0)
+                or not _is_exact_int_equal(document.get("p1_count"), 0)
                 or document.get("findings") != []
             ):
                 findings.append(_finding(
@@ -1137,6 +2004,2076 @@ def _batch_artifact_findings(
                     "review GO is not supported by a zero-P0/P1 review document",
                     artifact=filename,
                 ))
+    return findings
+
+
+def _full_convergence_selector_findings(
+    selector: Any,
+    *,
+    path: str,
+    fingerprint: str,
+) -> list[dict[str, Any]]:
+    """Independently enforce one exact authority selector contract."""
+
+    findings: list[dict[str, Any]] = []
+
+    def add(code: str, message: str, **evidence: Any) -> None:
+        findings.append(_finding(
+            code,
+            "P0",
+            message,
+            path=path,
+            fingerprint=fingerprint,
+            **evidence,
+        ))
+
+    if not isinstance(selector, dict):
+        add(
+            "FULL_CONVERGENCE_SUBJECT_SELECTOR_NOT_OBJECT",
+            "authority selector is not one strict object",
+        )
+        return findings
+    if set(selector) != FULL_CONVERGENCE_AUTHORITY_SELECTOR_FIELDS:
+        add(
+            "FULL_CONVERGENCE_SUBJECT_SELECTOR_FIELD_SET_INVALID",
+            "authority selector fields differ from the exact closed contract",
+        )
+    total = 0
+    for field in sorted(FULL_CONVERGENCE_AUTHORITY_SELECTOR_FIELDS):
+        values = selector.get(field)
+        if not isinstance(values, list):
+            add(
+                "FULL_CONVERGENCE_SUBJECT_SELECTOR_LIST_INVALID",
+                "authority selector field is not a list",
+                field=field,
+            )
+            continue
+        rendered = [str(value) for value in values]
+        total += len(rendered)
+        if rendered != sorted(rendered) or len(rendered) != len(set(rendered)):
+            add(
+                "FULL_CONVERGENCE_SUBJECT_SELECTOR_SET_INVALID",
+                "authority selector values are not unique and sorted",
+                field=field,
+            )
+        for value in rendered:
+            normalized = _normalize_path(value) if field == "paths" else value
+            tokens = set(re.findall(r"[a-z0-9_]+", value.casefold()))
+            if (
+                not value
+                or any(char in value for char in "*?[]")
+                or tokens & FULL_CONVERGENCE_DISALLOWED_TOKENS
+                or (
+                    field == "paths"
+                    and (
+                        normalized != value
+                        or value.endswith("/")
+                        or value.startswith(("/", "../"))
+                        or "/../" in value
+                    )
+                )
+            ):
+                add(
+                    "FULL_CONVERGENCE_SUBJECT_SELECTOR_NOT_EXACT",
+                    "authority selector contains a wildcard or non-exact value",
+                    field=field,
+                    value=value,
+                )
+    if total == 0:
+        add(
+            "FULL_CONVERGENCE_SUBJECT_SELECTOR_EMPTY",
+            "authority selector does not bind any exact identity",
+        )
+    return findings
+
+
+def _full_convergence_identity_state_signature(
+    *,
+    reachability: str,
+    role: str,
+    retired_status: str,
+    test_status: str = "NOT_TEST_ONLY",
+    diagnostic_status: str = "NOT_DIAGNOSTIC_ONLY",
+    documentation_status: str = "NOT_DOCUMENTATION_ONLY",
+    generated_status: str = "NOT_GENERATED_EVIDENCE",
+    dynamic_status: str = "NOT_DYNAMIC_REFERENCE",
+    historical_reachability: str | None = None,
+    historical_role: str | None = None,
+) -> dict[str, str]:
+    return {
+        "current_production_reachability": reachability,
+        "current_role": role,
+        "diagnostic_only_status": diagnostic_status,
+        "documentation_only_status": documentation_status,
+        "dynamic_reference_status": dynamic_status,
+        "generated_evidence_status": generated_status,
+        "historical_production_reachability": (
+            reachability
+            if historical_reachability is None
+            else historical_reachability
+        ),
+        "historical_role": role if historical_role is None else historical_role,
+        "retired_status": retired_status,
+        "test_only_status": test_status,
+    }
+
+
+def _full_convergence_identity_allowed_state_signatures(
+    disposition: str,
+    binding: dict[str, Any],
+) -> list[dict[str, str]]:
+    current_role = str(binding.get("current_role", ""))
+    historical_role = str(binding.get("historical_role", ""))
+    active = _full_convergence_identity_state_signature(
+        reachability="PRODUCTION_REACHABLE",
+        role=current_role,
+        historical_role=historical_role,
+        retired_status="ACTIVE_LINEAGE",
+    )
+    test_only = _full_convergence_identity_state_signature(
+        reachability="TEST_ONLY",
+        role="TEST_SUPPORT",
+        retired_status="NOT_RETIRED",
+        test_status="TEST_ONLY",
+    )
+    diagnostic = _full_convergence_identity_state_signature(
+        reachability="DIAGNOSTIC_ONLY",
+        role=current_role,
+        historical_role=historical_role,
+        retired_status="NOT_RETIRED",
+        diagnostic_status="DIAGNOSTIC_ONLY",
+    )
+    documentation = _full_convergence_identity_state_signature(
+        reachability="DOCUMENTATION_ONLY",
+        role="DOCUMENTATION_ONLY",
+        retired_status="NOT_RETIRED",
+        documentation_status="DOCUMENTATION_ONLY",
+    )
+    generated = _full_convergence_identity_state_signature(
+        reachability="GENERATED_EVIDENCE_ONLY",
+        role="GENERATED_EVIDENCE",
+        retired_status="NOT_RETIRED",
+        generated_status="GENERATED_EVIDENCE",
+    )
+    if disposition == "HISTORICAL_ACTIVE_LINEAGE_REGISTERED":
+        return [active]
+    if disposition == "HISTORICAL_SUPERSEDED_NONREACHABLE":
+        return [_full_convergence_identity_state_signature(
+            reachability="PRODUCTION_REACHABLE",
+            role=current_role,
+            historical_reachability="NONREACHABLE",
+            historical_role=historical_role,
+            retired_status="SUPERSEDED_NONREACHABLE",
+        )]
+    if disposition == "HISTORICAL_RETIRED_NONREACHABLE":
+        return [_full_convergence_identity_state_signature(
+            reachability="NONREACHABLE",
+            role="RETIRED",
+            historical_role="RETIRED",
+            retired_status="RETIRED_NONREACHABLE",
+        )]
+    if disposition == "HISTORICAL_TEST_ONLY":
+        return [test_only]
+    if disposition == "HISTORICAL_DIAGNOSTIC_ONLY":
+        return [diagnostic]
+    if disposition == "HISTORICAL_DOCUMENTATION_ONLY":
+        return [documentation]
+    if disposition == "HISTORICAL_GENERATED_EVIDENCE":
+        return [generated]
+    if disposition == "HISTORICAL_DUPLICATE_OBSERVATION":
+        return [active, test_only, diagnostic, documentation, generated]
+    if disposition == "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED":
+        return [dict(active, dynamic_reference_status="RESOLVED")]
+    if disposition == "HISTORICAL_DYNAMIC_REFERENCE_SUPERSEDED":
+        return [dict(
+            _full_convergence_identity_state_signature(
+                reachability="PRODUCTION_REACHABLE",
+                role=current_role,
+                historical_reachability="NONREACHABLE",
+                historical_role=historical_role,
+                retired_status="SUPERSEDED_NONREACHABLE",
+            ),
+            dynamic_reference_status="SUPERSEDED",
+        )]
+    if disposition == "HISTORICAL_DYNAMIC_REFERENCE_TEST_ONLY":
+        return [dict(test_only, dynamic_reference_status="RESOLVED")]
+    if disposition == "HISTORICAL_DYNAMIC_REFERENCE_DIAGNOSTIC_ONLY":
+        return [dict(diagnostic, dynamic_reference_status="RESOLVED")]
+    return []
+
+
+def _full_convergence_exact_relation_values(value: Any) -> list[str] | None:
+    if not isinstance(value, list):
+        return None
+    rendered = [str(item) for item in value]
+    if (
+        rendered != sorted(rendered)
+        or len(rendered) != len(set(rendered))
+        or any(
+            not item
+            or any(char in item for char in "*?[]")
+            or set(re.findall(r"[a-z0-9_]+", item.casefold()))
+            & FULL_CONVERGENCE_DISALLOWED_TOKENS
+            for item in rendered
+        )
+    ):
+        return None
+    return rendered
+
+
+def _full_convergence_registry_row_findings(
+    row: dict[str, Any],
+    *,
+    path: str,
+    fingerprint: str,
+) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+
+    def add(code: str, message: str, **evidence: Any) -> None:
+        findings.append(_finding(
+            code,
+            "P0",
+            message,
+            path=path,
+            fingerprint=fingerprint,
+            **evidence,
+        ))
+
+    source_kind = str(row.get("authority_source_kind", ""))
+    if source_kind == "historical_identity_backfill":
+        if set(row) != FULL_CONVERGENCE_REGISTRY_HISTORICAL_BACKFILL_FIELDS:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_BACKFILL_FIELD_SET_INVALID",
+                "historical identity backfill fields are not closed",
+            )
+        component_id = str(row.get("component_id", ""))
+        if (
+            not component_id
+            or any(char in component_id for char in "*?[]")
+            or not _is_commit(row.get("source_commit"))
+            or not _is_sha256(row.get("source_blob"))
+            or str(row.get("historical_role", ""))
+            not in FULL_CONVERGENCE_REGISTRY_ALLOWED_COMPONENT_ROLES
+            or str(row.get("current_disposition", ""))
+            not in FULL_CONVERGENCE_ALLOWED_DISPOSITIONS
+            or str(row.get("production_reachability", ""))
+            not in {
+                "DIAGNOSTIC_ONLY",
+                "DOCUMENTATION_ONLY",
+                "GENERATED_EVIDENCE_ONLY",
+                "NONREACHABLE",
+                "PRODUCTION_REACHABLE",
+                "TEST_ONLY",
+            }
+            or _full_convergence_exact_relation_values(
+                row.get("supersession")
+            )
+            is None
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_BACKFILL_IDENTITY_INVALID",
+                "historical identity backfill is not one exact closed identity",
+            )
+        if (
+            str(row.get("historical_role", ""))
+            in FULL_CONVERGENCE_REGISTRY_NONPRODUCTION_ROLES
+            and row.get("production_reachability") == "PRODUCTION_REACHABLE"
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONPRODUCTION_ROLE_REACHABLE",
+                "historical non-production role claims production reachability",
+            )
+        return findings
+
+    if source_kind != "component_inventory":
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_SOURCE_KIND_INVALID",
+            "Registry row is not from one recognized authority source",
+        )
+        return findings
+    if (
+        not set(row).issubset(
+            FULL_CONVERGENCE_REGISTRY_COMPONENT_INVENTORY_FIELDS
+        )
+        or not FULL_CONVERGENCE_REGISTRY_COMPONENT_INVENTORY_REQUIRED_FIELDS.issubset(
+            row
+        )
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_FIELD_SET_INVALID",
+            "component inventory fields are not closed",
+        )
+    component_id = str(row.get("component_id", ""))
+    domain_id = str(row.get("domain_id", ""))
+    owner_id = str(row.get("owner_component_id", ""))
+    row_path = str(row.get("path", ""))
+    owner_path = str(row.get("owner_path", ""))
+    role = str(row.get("component_role", ""))
+    if any(
+        not value or any(char in value for char in "*?[]")
+        for value in (component_id, domain_id, owner_id)
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_IDENTIFIER_INVALID",
+            "Registry identity contains an empty or wildcard identifier",
+        )
+    if (
+        not row_path
+        or _normalize_path(row_path) != row_path
+        or row_path.startswith(("/", "../"))
+        or row_path.endswith("/")
+        or "/../" in row_path
+        or any(char in row_path for char in "*?[]")
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_PATH_INVALID",
+            "Registry path is not one exact repository path",
+        )
+    if (
+        not owner_path
+        or _normalize_path(owner_path) != owner_path
+        or owner_path.startswith(("/", "../"))
+        or owner_path.endswith("/")
+        or "/../" in owner_path
+        or any(char in owner_path for char in "*?[]")
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_OWNER_PATH_INVALID",
+            "Registry owner path is not one exact repository path",
+        )
+    if role not in FULL_CONVERGENCE_REGISTRY_ALLOWED_COMPONENT_ROLES:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_ROLE_INVALID",
+            "Registry role is outside the closed role set",
+        )
+    authority_bool_fields = (
+        "owns_identity",
+        "owns_presentation",
+        "owns_replay",
+        "owns_rng",
+        "owns_save",
+        "owns_tick",
+        "production_reachable",
+        "reads_authority",
+        "writes_authority",
+    )
+    if any(
+        not isinstance(row.get(field), bool)
+        for field in authority_bool_fields
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_AUTHORITY_FLAGS_INVALID",
+            "Registry authority and reachability flags are not boolean",
+        )
+    ownership_fields = (
+        "owns_identity",
+        "owns_presentation",
+        "owns_replay",
+        "owns_rng",
+        "owns_save",
+        "owns_tick",
+    )
+    if role == "OWNER":
+        if (
+            owner_id != component_id
+            or owner_path != row_path
+            or row.get("writes_authority") is not True
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_OWNER_AUTHORITY_INVALID",
+                "Registry Owner is not self-bound with write authority",
+            )
+    else:
+        if role == "DIAGNOSTIC_BENCH":
+            forbidden_ownership = tuple(
+                field for field in ownership_fields if field != "owns_presentation"
+            )
+            if any(row.get(field) is not False for field in forbidden_ownership):
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_REGISTRY_DIAGNOSTIC_OWNERSHIP_INVALID",
+                    "diagnostic bench owns authority outside presentation",
+                )
+        elif any(row.get(field) is not False for field in ownership_fields):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONOWNER_OWNERSHIP_INVALID",
+                "non-Owner claims an Owner authority flag",
+            )
+        if role != "REDUCER" and row.get("writes_authority") is not False:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONOWNER_WRITE_INVALID",
+                "non-Reducer non-Owner writes authority",
+            )
+    if role in FULL_CONVERGENCE_REGISTRY_NONPRODUCTION_ROLES and row.get(
+        "production_reachable"
+    ) is not False:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONPRODUCTION_ROLE_REACHABLE",
+            "semantic non-production role is production reachable",
+        )
+    for field in ("supersedes", "superseded_by"):
+        if _full_convergence_exact_relation_values(row.get(field)) is None:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_RELATION_SET_INVALID",
+                "Registry relation list is not exact, sorted, and unique",
+                field=field,
+            )
+    reuse_disposition = row.get("reuse_disposition")
+    if reuse_disposition not in FULL_CONVERGENCE_REGISTRY_ALLOWED_REUSE_DISPOSITIONS:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_REUSE_DISPOSITION_INVALID",
+            "Registry reuse disposition is outside the closed set",
+        )
+    if role == "OWNER" and reuse_disposition != "ADOPT_AS_OWNER":
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_OWNER_DISPOSITION_INVALID",
+            "Registry Owner is not adopted as the Owner",
+        )
+    if role != "OWNER" and reuse_disposition == "ADOPT_AS_OWNER":
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONOWNER_DISPOSITION_INVALID",
+            "non-Owner claims Owner disposition",
+        )
+    if role == "TEST_SUPPORT" and reuse_disposition != "REUSE_AS_TEST":
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_TEST_DISPOSITION_INVALID",
+            "test support is not classified as test reuse",
+        )
+    return findings
+
+
+def _full_convergence_dynamic_structure_findings(
+    row: dict[str, Any],
+    *,
+    path: str,
+    fingerprint: str,
+) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+
+    def add(code: str, message: str) -> None:
+        findings.append(_finding(
+            code,
+            "P0",
+            message,
+            path=path,
+            fingerprint=fingerprint,
+        ))
+
+    location = row.get("source_line_or_ast_location")
+    targets = row.get("resolved_targets")
+    rendered_targets = [str(value) for value in targets] if isinstance(targets, list) else []
+    callsite = row.get("callsite_contract")
+    if row.get("resolution_method") not in FULL_CONVERGENCE_DYNAMIC_REFERENCE_RESOLUTION_METHODS:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_RESOLUTION_METHOD_INVALID",
+            "dynamic resolution method is outside the closed set",
+        )
+    if (
+        not isinstance(callsite, dict)
+        or set(callsite) != FULL_CONVERGENCE_DYNAMIC_REFERENCE_CALLSITE_FIELDS
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_CALLSITE_CONTRACT_INVALID",
+            "dynamic callsite contract fields are not closed",
+        )
+        return findings
+    helper = str(callsite.get("helper_function", ""))
+    constants = callsite.get("allowed_argument_constants")
+    rendered_constants = [str(value) for value in constants] if isinstance(constants, list) else []
+    sites = callsite.get("required_loader_sites")
+    rendered_sites = sites if isinstance(sites, list) else []
+    if (
+        not helper
+        or not isinstance(location, dict)
+        or helper != str(location.get("containing_function", ""))
+        or not _is_exact_positive_int(location.get("line"))
+        or not _is_exact_positive_int(location.get("column"))
+        or not rendered_constants
+        or rendered_constants != sorted(rendered_constants)
+        or len(rendered_constants) != len(set(rendered_constants))
+        or any(re.fullmatch(r"[A-Z][A-Z0-9_]*", value) is None for value in rendered_constants)
+        or not _is_exact_int_equal(
+            callsite.get("required_invocation_count"), len(rendered_constants)
+        )
+        or len(rendered_constants) != len(rendered_targets)
+        or not _is_exact_int_equal(
+            callsite.get("external_or_unknown_invocation_count"), 0
+        )
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_CALLSITE_CONTRACT_INVALID",
+            "dynamic callsite contract does not bind exact known invocations",
+        )
+    site_keys: list[tuple[int, int, str, str]] = []
+    for site in rendered_sites:
+        if not isinstance(site, dict) or set(site) != FULL_CONVERGENCE_DYNAMIC_REFERENCE_LOADER_SITE_FIELDS:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_LOADER_SITE_INVALID",
+                "dynamic loader site fields are not closed",
+            )
+            continue
+        key = (
+            site.get("line") if _is_exact_positive_int(site.get("line")) else 0,
+            site.get("column")
+            if _is_exact_positive_int(site.get("column"))
+            else 0,
+            str(site.get("loader", "")),
+            str(site.get("reference_expression", "")),
+        )
+        site_keys.append(key)
+        if key[0] < 1 or key[1] < 1 or not key[2] or not key[3]:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_LOADER_SITE_INVALID",
+                "dynamic loader site is incomplete",
+            )
+    if not site_keys or site_keys != sorted(site_keys) or len(site_keys) != len(set(site_keys)):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_LOADER_SITE_SET_INVALID",
+            "dynamic loader sites are not exact, sorted, and unique",
+        )
+    if isinstance(location, dict) and (
+        location.get("line"),
+        location.get("column"),
+        str(row.get("loader", "")),
+        str(row.get("reference_expression", "")),
+    ) not in site_keys:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_PRIMARY_SITE_MISMATCH",
+            "dynamic primary site is not one required loader site",
+        )
+    runtime_probe = row.get("runtime_probe")
+    if isinstance(runtime_probe, dict):
+        test_path = _normalize_path(str(runtime_probe.get("test_path", "")))
+        if (
+            not test_path
+            or test_path.startswith(("/", "../"))
+            or any(char in test_path for char in "*?[]")
+            or Path(test_path).suffix != ".gd"
+            or Path(test_path).stem != str(runtime_probe.get("probe_id", ""))
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_RUNTIME_PROBE_INVALID",
+                "dynamic runtime probe identity does not match its exact test path",
+            )
+    return findings
+
+
+def _identity_projection_findings(
+    binding: dict[str, Any],
+    *,
+    path: str,
+    fingerprint: str,
+    rule_id: str,
+    raw_failure: str = "",
+) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+
+    def add(code: str, message: str, **evidence: Any) -> None:
+        findings.append(_finding(
+            code,
+            "P0",
+            message,
+            path=path,
+            fingerprint=fingerprint,
+            **evidence,
+        ))
+
+    projection = binding.get("subject_projection")
+    if not isinstance(projection, dict):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_PROJECTION_INVALID",
+            "identity projection is not one strict object",
+        )
+        return findings
+    if set(projection) != FULL_CONVERGENCE_SUBJECT_PROJECTION_FIELDS:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_PROJECTION_FIELD_SET_INVALID",
+            "identity projection fields differ from the closed contract",
+        )
+    projected: dict[str, list[Any]] = {}
+    for field in FULL_CONVERGENCE_SUBJECT_PROJECTION_FIELDS:
+        value = projection.get(field)
+        if not isinstance(value, list):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_PROJECTION_LIST_INVALID",
+                "identity projection member is not a list",
+                field=field,
+            )
+            projected[field] = []
+        else:
+            projected[field] = value
+    if not any(projected.values()):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_PROJECTION_EMPTY",
+            "identity projection contains no authority row",
+        )
+
+    selector = binding.get("authority_selectors")
+    selector_components = (
+        {str(value) for value in selector.get("component_ids", [])}
+        if isinstance(selector, dict)
+        else set()
+    )
+    selector_paths = (
+        {_normalize_path(str(value)) for value in selector.get("paths", [])}
+        if isinstance(selector, dict)
+        else set()
+    )
+    expected_components = {
+        str(binding.get(field, ""))
+        for field in (
+            "current_component_id",
+            "current_owner_id",
+            "historical_component_id",
+            "historical_owner_id",
+        )
+        if binding.get(field)
+    }
+    expected_paths = {
+        _normalize_path(str(binding.get(field, "")))
+        for field in ("current_path", "historical_path")
+        if binding.get(field)
+    }
+    if selector_components != expected_components:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_COMPONENT_SELECTOR_SET_MISMATCH",
+            "component selectors differ from the exact identity and owner set",
+        )
+    if selector_paths != expected_paths:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_PATH_SELECTOR_SET_MISMATCH",
+            "path selectors differ from the exact historical/current path set",
+        )
+    registry_rows = [
+        row for row in projected["registry_rows"] if isinstance(row, dict)
+    ]
+    if len(registry_rows) != len(projected["registry_rows"]):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_ROW_INVALID",
+            "identity projection contains a non-object Registry row",
+        )
+    for row in registry_rows:
+        findings.extend(_full_convergence_registry_row_findings(
+            row,
+            path=path,
+            fingerprint=fingerprint,
+        ))
+    component_inventory_rows = [
+        row
+        for row in registry_rows
+        if row.get("authority_source_kind") == "component_inventory"
+    ]
+    historical_backfill_rows = [
+        row
+        for row in registry_rows
+        if row.get("authority_source_kind") == "historical_identity_backfill"
+    ]
+    component_inventory_ids = [
+        str(row.get("component_id", "")) for row in component_inventory_rows
+    ]
+    historical_backfill_ids = [
+        str(row.get("component_id", "")) for row in historical_backfill_rows
+    ]
+    projected_authority_component_ids = set(component_inventory_ids) | set(
+        historical_backfill_ids
+    )
+    if projected_authority_component_ids != selector_components:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_SELECTOR_SET_MISMATCH",
+            "projected Registry authority component ids differ from the selector",
+        )
+    if any(
+        component_inventory_ids.count(component_id) != 1
+        for component_id in set(component_inventory_ids)
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_PRIMARY_KEY_NOT_UNIQUE",
+            "a component inventory component id does not occur exactly once",
+        )
+    historical_backfill_keys = [
+        (
+            str(row.get("component_id", "")),
+            str(row.get("source_commit", "")),
+            str(row.get("source_blob", "")),
+        )
+        for row in historical_backfill_rows
+    ]
+    if any(
+        historical_backfill_keys.count(key) != 1
+        for key in set(historical_backfill_keys)
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_BACKFILL_PRIMARY_KEY_NOT_UNIQUE",
+            "a historical backfill composite identity occurs more than once",
+        )
+
+    bound_registry_rows: dict[str, dict[str, Any]] = {}
+
+    def validate_selected_owner(
+        prefix: str,
+        *,
+        owner_id: str,
+        expected_domain: str,
+        declared_owner_path: str = "",
+    ) -> None:
+        if not owner_id:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_OWNER_MISSING",
+                "identity side has no exact Owner",
+                side=prefix,
+            )
+            return
+        owner_rows = [
+            row
+            for row in component_inventory_rows
+            if str(row.get("component_id", "")) == owner_id
+        ]
+        if (
+            owner_id not in selector_components
+            or len(owner_rows) != 1
+            or str(owner_rows[0].get("domain_id", "")) != expected_domain
+            or owner_rows[0].get("component_role") != "OWNER"
+            or owner_rows[0].get("owner_component_id") != owner_id
+            or owner_rows[0].get("owner_path") != owner_rows[0].get("path")
+            or (
+                declared_owner_path
+                and declared_owner_path != str(owner_rows[0].get("path", ""))
+            )
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_OWNER_ROW_NOT_UNIQUE",
+                "identity Owner is not one selected same-domain inventory Owner",
+                side=prefix,
+            )
+
+    def bind_inventory_side(prefix: str) -> None:
+        component_id = str(binding.get(f"{prefix}_component_id", ""))
+        row_path = _normalize_path(str(binding.get(f"{prefix}_path", "")))
+        if not component_id:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_COMPONENT_MISSING",
+                "identity side has no exact component id",
+                side=prefix,
+            )
+            return
+        rows = [
+            row
+            for row in component_inventory_rows
+            if str(row.get("component_id", "")) == component_id
+        ]
+        if len(rows) != 1:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_ROW_NOT_UNIQUE",
+                "identity side does not resolve to one primary Registry row",
+                side=prefix,
+            )
+            return
+        row = rows[0]
+        bound_registry_rows[prefix] = row
+        if row_path and _normalize_path(str(row.get("path", ""))) != row_path:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_PATH_MISMATCH",
+                "identity path differs from its unique Registry row",
+                side=prefix,
+            )
+        for binding_field, row_field in (
+            ("domain_id", "domain_id"),
+            (f"{prefix}_role", "component_role"),
+            (f"{prefix}_owner_id", "owner_component_id"),
+        ):
+            if str(binding.get(binding_field, "")) != str(row.get(row_field, "")):
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_REGISTRY_FIELD_MISMATCH",
+                    "identity field differs from its unique Registry row",
+                    side=prefix,
+                    field=row_field,
+                )
+        reachable = row.get("production_reachable")
+        declared = str(binding.get(f"{prefix}_production_reachability", ""))
+        if not isinstance(reachable, bool) or (
+            reachable and declared != "PRODUCTION_REACHABLE"
+        ) or (not reachable and declared == "PRODUCTION_REACHABLE"):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_REACHABILITY_MISMATCH",
+                "identity reachability differs from its unique Registry row",
+                side=prefix,
+            )
+        role = str(row.get("component_role", ""))
+        owner_id = str(row.get("owner_component_id", ""))
+        if role == "OWNER" and owner_id != component_id:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_OWNER_SELF_BINDING_INVALID",
+                "Registry Owner does not self-bind",
+                side=prefix,
+            )
+        elif role != "OWNER" and not owner_id:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_OWNER_MISSING",
+                "non-Owner has no exact Owner",
+                side=prefix,
+            )
+        validate_selected_owner(
+            prefix,
+            owner_id=owner_id,
+            expected_domain=str(row.get("domain_id", "")),
+            declared_owner_path=str(row.get("owner_path", "")),
+        )
+
+    def bind_historical_side() -> None:
+        prefix = "historical"
+        component_id = str(binding.get("historical_component_id", ""))
+        if not component_id:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_COMPONENT_MISSING",
+                "identity side has no exact component id",
+                side=prefix,
+            )
+            return
+        component_backfills = [
+            row
+            for row in historical_backfill_rows
+            if str(row.get("component_id", "")) == component_id
+        ]
+        exact_backfills = [
+            row
+            for row in component_backfills
+            if (
+                str(row.get("source_commit", ""))
+                == str(binding.get("source_commit", ""))
+                and str(row.get("source_blob", ""))
+                == str(binding.get("historical_blob_sha256", ""))
+            )
+        ]
+        if component_backfills:
+            if len(exact_backfills) != 1:
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_REGISTRY_ROW_NOT_UNIQUE",
+                    "historical identity does not resolve to one exact backfill row",
+                    side=prefix,
+                )
+                return
+            row = exact_backfills[0]
+            bound_registry_rows[prefix] = row
+            for binding_field, row_field in (
+                ("historical_role", "historical_role"),
+                ("recommended_disposition", "current_disposition"),
+                (
+                    "historical_production_reachability",
+                    "production_reachability",
+                ),
+            ):
+                if str(binding.get(binding_field, "")) != str(row.get(row_field, "")):
+                    add(
+                        "FULL_CONVERGENCE_IDENTITY_REGISTRY_FIELD_MISMATCH",
+                        "historical identity differs from its exact backfill row",
+                        side=prefix,
+                        field=row_field,
+                    )
+            historical_owner_id = str(binding.get("historical_owner_id", ""))
+            if row.get("historical_role") == "OWNER":
+                if historical_owner_id != component_id:
+                    add(
+                        "FULL_CONVERGENCE_IDENTITY_OWNER_SELF_BINDING_INVALID",
+                        "historical backfill Owner does not self-bind",
+                        side=prefix,
+                    )
+            else:
+                validate_selected_owner(
+                    prefix,
+                    owner_id=historical_owner_id,
+                    expected_domain=str(binding.get("domain_id", "")),
+                )
+            return
+        bind_inventory_side(prefix)
+
+    bind_historical_side()
+    bind_inventory_side("current")
+
+    disposition = str(binding.get("recommended_disposition", ""))
+    supersedes = _full_convergence_exact_relation_values(
+        binding.get("supersedes")
+    )
+    superseded_by = _full_convergence_exact_relation_values(
+        binding.get("superseded_by")
+    )
+    if supersedes is None:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_SUPERSEDES_SET_INVALID",
+            "identity supersedes list is not exact, sorted, and unique",
+        )
+        supersedes = []
+    if superseded_by is None:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_SUPERSEDED_BY_SET_INVALID",
+            "identity superseded_by list is not exact, sorted, and unique",
+        )
+        superseded_by = []
+    if disposition in FULL_CONVERGENCE_IDENTITY_NON_MIGRATION_DISPOSITIONS and (
+        binding.get("historical_component_id") != binding.get("current_component_id")
+        or _normalize_path(str(binding.get("historical_path", "")))
+        != _normalize_path(str(binding.get("current_path", "")))
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_UNAUTHORIZED_LINEAGE_SUBSTITUTION",
+            "non-migration disposition substitutes an unrelated current identity",
+        )
+    historical_registry_row = bound_registry_rows.get("historical", {})
+    current_registry_row = bound_registry_rows.get("current", {})
+    registry_supersedes = _full_convergence_exact_relation_values(
+        current_registry_row.get("supersedes")
+    )
+    historical_relation_field = (
+        "supersession"
+        if historical_registry_row.get("authority_source_kind")
+        == "historical_identity_backfill"
+        else "superseded_by"
+    )
+    registry_superseded_by = _full_convergence_exact_relation_values(
+        historical_registry_row.get(historical_relation_field)
+    )
+    if registry_supersedes is not None and supersedes != registry_supersedes:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_SUPERSEDES_REGISTRY_MISMATCH",
+            "identity supersedes list differs from its current Registry row",
+        )
+    if registry_superseded_by is not None and superseded_by != registry_superseded_by:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_SUPERSEDED_BY_REGISTRY_MISMATCH",
+            "identity superseded_by list differs from its historical Registry row",
+        )
+
+    dynamic_rows = [
+        row
+        for row in projected["dynamic_reference_rows"]
+        if isinstance(row, dict)
+    ]
+    if len(dynamic_rows) != len(projected["dynamic_reference_rows"]):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_ROW_INVALID",
+            "dynamic projection contains a non-object row",
+        )
+    is_dynamic = rule_id == "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED"
+    selector_dynamic_ids = (
+        [str(value) for value in selector.get("dynamic_reference_ids", [])]
+        if isinstance(selector, dict)
+        and isinstance(selector.get("dynamic_reference_ids"), list)
+        else []
+    )
+    projected_dynamic_ids = [
+        str(row.get("dynamic_reference_id", "")) for row in dynamic_rows
+    ]
+    if set(projected_dynamic_ids) != set(selector_dynamic_ids):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_SELECTOR_UNRESOLVED",
+            "dynamic projection ids differ from the exact selector",
+        )
+    if any(
+        projected_dynamic_ids.count(reference_id) != 1
+        for reference_id in selector_dynamic_ids
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_PRIMARY_KEY_NOT_UNIQUE",
+            "a selected dynamic reference id does not occur exactly once",
+        )
+    if is_dynamic:
+        source_path = _normalize_path(str(binding.get("historical_path", "")))
+        rows = [
+            row
+            for row in dynamic_rows
+            if _normalize_path(str(row.get("source_path", ""))) == source_path
+            and str(row.get("dynamic_reference_id", "")) in selector_dynamic_ids
+        ]
+        parts = raw_failure.split(":")
+        if raw_failure and len(parts) >= 5:
+            rows = [
+                row
+                for row in rows
+                if row.get("loader") == parts[1]
+                and row.get("reference_expression") == parts[2]
+            ]
+        if (
+            len(selector_dynamic_ids) != 1
+            or len(rows) != 1
+            or selector_dynamic_ids[0]
+            != str(rows[0].get("dynamic_reference_id", ""))
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_SELECTOR_MISMATCH",
+                "dynamic identity does not select one exact manifest entry",
+            )
+        for row in rows:
+            if set(row) != FULL_CONVERGENCE_DYNAMIC_REFERENCE_ENTRY_FIELDS:
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_FIELD_SET_INVALID",
+                    "dynamic manifest row fields differ from the closed contract",
+                )
+                continue
+            location = row.get("source_line_or_ast_location")
+            targets = row.get("resolved_targets")
+            rendered_targets = (
+                [str(value) for value in targets]
+                if isinstance(targets, list)
+                else []
+            )
+            runtime_probe = row.get("runtime_probe")
+            policy = row.get("failure_policy")
+            if (
+                not str(row.get("dynamic_reference_id", ""))
+                or not _is_sha256(row.get("source_blob_sha256"))
+                or not isinstance(location, dict)
+                or set(location) != FULL_CONVERGENCE_DYNAMIC_REFERENCE_LOCATION_FIELDS
+                or not _is_exact_positive_int(location.get("line"))
+                or not _is_exact_positive_int(location.get("column"))
+                or not str(location.get("containing_function", ""))
+                or not str(row.get("loader", ""))
+                or not str(row.get("reference_expression", ""))
+                or not isinstance(row.get("production_reachable"), bool)
+                or not str(row.get("resolution_method", ""))
+                or not isinstance(row.get("callsite_contract"), dict)
+                or not row.get("callsite_contract")
+                ):
+                    add(
+                    "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_METADATA_INVALID",
+                        "dynamic manifest row metadata is incomplete",
+                    )
+            findings.extend(_full_convergence_dynamic_structure_findings(
+                row,
+                path=path,
+                fingerprint=fingerprint,
+            ))
+            if (
+                not rendered_targets
+                or rendered_targets != sorted(rendered_targets)
+                or len(rendered_targets) != len(set(rendered_targets))
+                or any(
+                    not value.startswith("res://")
+                    or _normalize_path(value) != value[6:]
+                    or any(char in value for char in "*?[]")
+                    for value in rendered_targets
+                )
+                or row.get("target_set_sha256")
+                != _sha_bytes("\n".join(rendered_targets).encode("utf-8"))
+            ):
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_TARGET_SET_INVALID",
+                    "dynamic target set is not one exact sorted digest-bound set",
+                )
+            if (
+                not isinstance(runtime_probe, dict)
+                or set(runtime_probe)
+                != FULL_CONVERGENCE_DYNAMIC_REFERENCE_RUNTIME_PROBE_FIELDS
+                or not str(runtime_probe.get("probe_id", ""))
+                or not str(runtime_probe.get("test_path", ""))
+                or not _is_exact_int_equal(
+                    runtime_probe.get("expected_target_count"),
+                    len(rendered_targets),
+                )
+                or runtime_probe.get("required_before_production_claim") is not True
+            ):
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_RUNTIME_PROBE_INVALID",
+                    "dynamic runtime probe is not exact and required",
+                )
+            if (
+                not isinstance(policy, dict)
+                or set(policy)
+                != FULL_CONVERGENCE_DYNAMIC_REFERENCE_FAILURE_POLICY_FIELDS
+                or policy.get("source_blob_change_invalidates") is not True
+                or policy.get("source_location_change_invalidates") is not True
+                or policy.get("target_set_change_invalidates") is not True
+                or policy.get("unknown_callsite_fails_closed") is not True
+                or not _is_exact_int_equal(
+                    policy.get("future_site_auto_resolution_count"), 0
+                )
+                or not _is_exact_int_equal(policy.get("wildcard_count"), 0)
+            ):
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_FAILURE_POLICY_INVALID",
+                    "dynamic failure policy permits drift or future auto-resolution",
+                )
+    elif selector_dynamic_ids:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_SELECTOR_UNEXPECTED",
+            "non-dynamic identity selects dynamic-reference authority",
+        )
+
+    selected_supersession_ids = (
+        [str(value) for value in selector.get("supersession_ids", [])]
+        if isinstance(selector, dict)
+        and isinstance(selector.get("supersession_ids"), list)
+        else []
+    )
+    selected_retirement_ids = (
+        [str(value) for value in selector.get("retirement_ids", [])]
+        if isinstance(selector, dict)
+        and isinstance(selector.get("retirement_ids"), list)
+        else []
+    )
+    supersession_rows = [
+        row for row in projected["supersession_rows"] if isinstance(row, dict)
+    ]
+    if len(supersession_rows) != len(projected["supersession_rows"]):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DISPOSITION_AUTHORITY_ROW_INVALID",
+            "disposition projection contains a non-object row",
+        )
+    projected_supersession_ids = [
+        str(row.get("supersession_id", ""))
+        for row in supersession_rows
+        if row.get("supersession_id")
+    ]
+    projected_retirement_ids = [
+        str(row.get("retirement_id", ""))
+        for row in supersession_rows
+        if row.get("retirement_id")
+    ]
+    if any(
+        bool(row.get("supersession_id")) == bool(row.get("retirement_id"))
+        for row in supersession_rows
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_DISPOSITION_AUTHORITY_KIND_INVALID",
+            "authority row is neither one supersession nor one retirement",
+        )
+    if set(projected_supersession_ids) != set(selected_supersession_ids):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_SUPERSESSION_SELECTOR_UNRESOLVED",
+            "supersession selector does not resolve exactly",
+        )
+    if any(
+        projected_supersession_ids.count(authority_id) != 1
+        for authority_id in selected_supersession_ids
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_SUPERSESSION_PRIMARY_KEY_NOT_UNIQUE",
+            "a selected supersession id does not occur exactly once",
+        )
+    if set(projected_retirement_ids) != set(selected_retirement_ids):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_RETIREMENT_SELECTOR_UNRESOLVED",
+            "retirement selector does not resolve exactly",
+        )
+    if any(
+        projected_retirement_ids.count(authority_id) != 1
+        for authority_id in selected_retirement_ids
+    ):
+        add(
+            "FULL_CONVERGENCE_IDENTITY_RETIREMENT_PRIMARY_KEY_NOT_UNIQUE",
+            "a selected retirement id does not occur exactly once",
+        )
+    if disposition in {
+        "HISTORICAL_SUPERSEDED_NONREACHABLE",
+        "HISTORICAL_DYNAMIC_REFERENCE_SUPERSEDED",
+    }:
+        rows = [
+            row
+            for row in supersession_rows
+            if str(row.get("supersession_id", ""))
+            in selected_supersession_ids
+            and row.get("old_component_id")
+            == binding.get("historical_component_id")
+            and row.get("new_component_id") in binding.get("superseded_by", [])
+            and row.get("domain_id") == binding.get("domain_id")
+            and _is_exact_int_equal(row.get("dual_write_count"), 0)
+            and _is_exact_int_equal(row.get("fallback_count"), 0)
+            and _is_exact_int_equal(
+                row.get("old_owner_production_reachability"), 0
+            )
+        ]
+        matched_ids = {
+            str(row.get("supersession_id", "")) for row in rows
+        }
+        matched_successors = sorted({
+            str(row.get("new_component_id", ""))
+            for row in rows
+            if row.get("new_component_id")
+        })
+        if (
+            not selected_supersession_ids
+            or len(rows) != len(selected_supersession_ids)
+            or matched_ids != set(selected_supersession_ids)
+            or matched_successors != superseded_by
+            or not set(matched_successors).issubset(selector_components)
+            or binding.get("current_component_id") not in matched_successors
+            or binding.get("historical_component_id") not in supersedes
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_SUPERSESSION_AUTHORITY_MISMATCH",
+                "superseded disposition lacks one exact no-dual-write map row",
+            )
+    elif selected_supersession_ids:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_SUPERSESSION_SELECTOR_UNEXPECTED",
+            "non-superseded disposition selects supersession authority",
+        )
+    if disposition == "HISTORICAL_RETIRED_NONREACHABLE":
+        rows = [
+            row
+            for row in supersession_rows
+            if str(row.get("retirement_id", "")) in selected_retirement_ids
+            and row.get("component_id")
+            == binding.get("historical_component_id")
+            and row.get("domain_id") == binding.get("domain_id")
+            and row.get("production_reachable") is False
+            and _is_exact_int_equal(row.get("dual_write_count"), 0)
+            and _is_exact_int_equal(row.get("fallback_count"), 0)
+            and row.get("retired_status") == "RETIRED_NONREACHABLE"
+        ]
+        matched_ids = {
+            str(row.get("retirement_id", "")) for row in rows
+        }
+        if (
+            not selected_retirement_ids
+            or len(rows) != len(selected_retirement_ids)
+            or matched_ids != set(selected_retirement_ids)
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_RETIREMENT_AUTHORITY_MISMATCH",
+                "retired disposition lacks one exact nonreachable map row",
+            )
+    elif selected_retirement_ids:
+        add(
+            "FULL_CONVERGENCE_IDENTITY_RETIREMENT_SELECTOR_UNEXPECTED",
+            "non-retired disposition selects retirement authority",
+        )
+    return findings
+
+
+def _dynamic_projection_repo_findings(
+    root: Path,
+    authority_commit: str,
+    projection: dict[str, Any],
+    *,
+    source_commit: str,
+    path: str,
+    fingerprint: str,
+) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+
+    def add(code: str, message: str, **evidence: Any) -> None:
+        findings.append(_finding(
+            code,
+            "P0",
+            message,
+            path=path,
+            fingerprint=fingerprint,
+            **evidence,
+        ))
+
+    rows = projection.get("dynamic_reference_rows", [])
+    if not isinstance(rows, list):
+        add(
+            "FULL_CONVERGENCE_DYNAMIC_REFERENCE_PROJECTION_ROWS_INVALID",
+            "dynamic projection rows are not a list",
+        )
+        return findings
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or set(row) != FULL_CONVERGENCE_DYNAMIC_REFERENCE_ENTRY_FIELDS
+        ):
+            continue
+        reference_id = str(row.get("dynamic_reference_id", ""))
+        source_path = _normalize_path(str(row.get("source_path", "")))
+        source_bytes = (
+            _git_bytes(root, source_commit, source_path)
+            if source_path and _is_commit(source_commit)
+            else None
+        )
+        if (
+            source_bytes is None
+            or _sha_bytes(source_bytes) != row.get("source_blob_sha256")
+        ):
+            add(
+                "FULL_CONVERGENCE_DYNAMIC_REFERENCE_SOURCE_BLOB_MISMATCH",
+                "dynamic source blob differs from its source commit",
+                dynamic_reference_id=reference_id,
+            )
+        if source_bytes is not None:
+            source_text = source_bytes.decode("utf-8-sig", errors="replace")
+            source_lines = source_text.splitlines()
+            location = row.get("source_line_or_ast_location")
+            line_number = (
+                location.get("line")
+                if isinstance(location, dict)
+                and _is_exact_positive_int(location.get("line"))
+                else 0
+            )
+            column = (
+                location.get("column")
+                if isinstance(location, dict)
+                and _is_exact_positive_int(location.get("column"))
+                else 0
+            )
+            loader = str(row.get("loader", ""))
+            expression = str(row.get("reference_expression", ""))
+            source_line = (
+                source_lines[line_number - 1]
+                if _is_exact_positive_int(line_number)
+                and line_number <= len(source_lines)
+                else ""
+            )
+            if (
+                not source_line
+                or loader not in source_line
+                or expression not in source_line
+                or source_line.find(loader) + 1 != column
+            ):
+                add(
+                    "FULL_CONVERGENCE_DYNAMIC_REFERENCE_SOURCE_LOCATION_MISMATCH",
+                    "dynamic source location does not identify the declared loader",
+                    dynamic_reference_id=reference_id,
+                )
+            containing_function = (
+                str(location.get("containing_function", ""))
+                if isinstance(location, dict)
+                else ""
+            )
+            preceding_function = ""
+            for candidate in reversed(source_lines[: max(line_number - 1, 0)]):
+                match = re.match(r"\s*func\s+([A-Za-z0-9_]+)\s*\(", candidate)
+                if match:
+                    preceding_function = match.group(1)
+                    break
+            if preceding_function != containing_function:
+                add(
+                    "FULL_CONVERGENCE_DYNAMIC_REFERENCE_CONTAINING_FUNCTION_MISMATCH",
+                    "dynamic source location is not inside the declared function",
+                    dynamic_reference_id=reference_id,
+                )
+            callsite = row.get("callsite_contract")
+            sites = callsite.get("required_loader_sites", []) if isinstance(callsite, dict) else []
+            for site in sites if isinstance(sites, list) else []:
+                if not isinstance(site, dict):
+                    continue
+                site_line_number = site.get("line")
+                site_column = site.get("column")
+                site_loader = str(site.get("loader", ""))
+                site_expression = str(site.get("reference_expression", ""))
+                site_line = (
+                    source_lines[site_line_number - 1]
+                    if _is_exact_positive_int(site_line_number)
+                    and site_line_number <= len(source_lines)
+                    else ""
+                )
+                if (
+                    not site_line
+                    or not _is_exact_positive_int(site_column)
+                    or site_loader not in site_line
+                    or site_expression not in site_line
+                    or site_line.find(site_loader) + 1 != site_column
+                ):
+                    add(
+                        "FULL_CONVERGENCE_DYNAMIC_REFERENCE_LOADER_SITE_MISMATCH",
+                        "one required loader site does not match source bytes",
+                        dynamic_reference_id=reference_id,
+                    )
+            if isinstance(callsite, dict):
+                helper = str(callsite.get("helper_function", ""))
+                allowed_constants = [
+                    str(value)
+                    for value in callsite.get("allowed_argument_constants", [])
+                ] if isinstance(callsite.get("allowed_argument_constants"), list) else []
+                constant_values = {
+                    match.group(1): match.group(2)
+                    for match in re.finditer(
+                        r'^\s*const\s+([A-Z][A-Z0-9_]*)\s*:?=\s*"([^"]+)"\s*$',
+                        source_text,
+                        flags=re.MULTILINE,
+                    )
+                }
+                resolved_constant_targets = sorted(
+                    constant_values.get(name, "") for name in allowed_constants
+                )
+                helper_invocations: list[str] = []
+                if helper:
+                    invocation_pattern = re.compile(
+                        rf"\b{re.escape(helper)}\s*\(\s*([^\s,)]+)"
+                    )
+                    for source_line_candidate in source_lines:
+                        if re.match(
+                            rf"\s*func\s+{re.escape(helper)}\s*\(",
+                            source_line_candidate,
+                        ):
+                            continue
+                        helper_invocations.extend(
+                            match.group(1)
+                            for match in invocation_pattern.finditer(source_line_candidate)
+                        )
+                declared_targets = sorted(
+                    str(value) for value in row.get("resolved_targets", [])
+                ) if isinstance(row.get("resolved_targets"), list) else []
+                if (
+                    not allowed_constants
+                    or any(not value for value in resolved_constant_targets)
+                    or resolved_constant_targets != declared_targets
+                    or sorted(helper_invocations) != sorted(allowed_constants)
+                    or not _is_exact_int_equal(
+                        callsite.get("required_invocation_count"),
+                        len(helper_invocations),
+                    )
+                ):
+                    add(
+                        "FULL_CONVERGENCE_DYNAMIC_REFERENCE_CALLSITE_TARGET_BINDING_MISMATCH",
+                        "dynamic targets are not derived from the exact source constants and calls",
+                        dynamic_reference_id=reference_id,
+                    )
+        targets = row.get("resolved_targets", [])
+        if isinstance(targets, list):
+            for target in targets:
+                target_path = _normalize_path(str(target))
+                if not target_path or _git_bytes(root, authority_commit, target_path) is None:
+                    add(
+                        "FULL_CONVERGENCE_DYNAMIC_REFERENCE_TARGET_MISSING",
+                        "dynamic target is absent from the authority commit",
+                        dynamic_reference_id=reference_id,
+                        target_path=target_path,
+                    )
+        runtime_probe = row.get("runtime_probe")
+        test_path = (
+            _normalize_path(str(runtime_probe.get("test_path", "")))
+            if isinstance(runtime_probe, dict)
+            else ""
+        )
+        if (
+            not test_path
+            or _git_bytes(root, authority_commit, test_path) is None
+            or Path(test_path).stem != str(runtime_probe.get("probe_id", ""))
+        ):
+            add(
+                "FULL_CONVERGENCE_DYNAMIC_REFERENCE_RUNTIME_PROBE_MISSING",
+                "dynamic runtime probe path is absent or identity-mismatched",
+                dynamic_reference_id=reference_id,
+                test_path=test_path,
+            )
+    return findings
+
+
+def _duplicate_observation_findings(
+    fingerprint: str,
+    binding: dict[str, Any],
+    identities: dict[str, dict[str, str]],
+    *,
+    path: str,
+) -> list[dict[str, Any]]:
+    if (
+        binding.get("recommended_disposition")
+        != "HISTORICAL_DUPLICATE_OBSERVATION"
+    ):
+        return []
+    identity = identities.get(fingerprint, {})
+    duplicate_target = str(
+        binding.get("duplicate_of_failure_fingerprint", "")
+    )
+    duplicate_identity = identities.get(duplicate_target, {})
+    peers = sorted(
+        other_fingerprint
+        for other_fingerprint, other_identity in identities.items()
+        if other_fingerprint != fingerprint
+        and other_identity.get("rule_id") == identity.get("rule_id")
+        and other_identity.get("subject_kind") == identity.get("subject_kind")
+        and other_identity.get("subject_value") == identity.get("subject_value")
+    )
+    canonical = min([fingerprint, *peers]) if peers else ""
+    duplicate_payload = {
+        field: str(duplicate_identity.get(field, ""))
+        for field in (
+            "raw_failure",
+            "rule_id",
+            "subject_kind",
+            "subject_value",
+            "transition_new_prefix",
+            "transition_old_prefix",
+        )
+    }
+    if (
+        peers
+        and canonical != fingerprint
+        and duplicate_target == canonical
+        and duplicate_target != fingerprint
+        and duplicate_identity.get("rule_id") == identity.get("rule_id")
+        and duplicate_identity.get("subject_kind")
+        == identity.get("subject_kind")
+        and duplicate_identity.get("subject_value")
+        == identity.get("subject_value")
+        and binding.get("duplicate_identity_sha256")
+        == _sha_bytes(_canonical(duplicate_payload))
+        and binding.get("duplicate_reason")
+        == "SAME_RULE_AND_SUBJECT_DISTINCT_TRANSITION_OBSERVATION"
+    ):
+        return []
+    return [_finding(
+        "FULL_CONVERGENCE_IDENTITY_DUPLICATE_OBSERVATION_AUTHORITY_MISMATCH",
+        "P0",
+        "duplicate disposition has no distinct canonical raw observation",
+        path=path,
+        fingerprint=fingerprint,
+    )]
+
+
+def _classification_record_disposition_findings(
+    root: Path,
+    manifest_path: Path,
+    manifest: dict[str, Any],
+) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    try:
+        classification = _json(manifest_path.parent / "batch_classification.json")
+    except (OSError, ValueError):
+        classification = None
+    rows = (
+        classification.get("classifications")
+        if isinstance(classification, dict)
+        else None
+    )
+    classification_by_fingerprint = {
+        str(fingerprint): str(row.get("recommended_disposition", ""))
+        for fingerprint, row in (rows.items() if isinstance(rows, dict) else [])
+        if isinstance(row, dict)
+    }
+    record_by_fingerprint: dict[str, str] = {}
+    for record_binding in manifest.get("record_bindings", []):
+        if not isinstance(record_binding, dict):
+            continue
+        relative = _normalize_path(str(record_binding.get("path", "")))
+        try:
+            record = _json(root / relative)
+        except (OSError, ValueError):
+            continue
+        identities = (
+            record.get("identity_binding_by_failure")
+            if isinstance(record, dict)
+            else None
+        )
+        if not isinstance(identities, dict):
+            continue
+        for fingerprint, identity in identities.items():
+            if isinstance(identity, dict):
+                record_by_fingerprint[str(fingerprint)] = str(
+                    identity.get("recommended_disposition", "")
+                )
+    manifest_fingerprints = {
+        str(value) for value in manifest.get("failure_fingerprints", [])
+    }
+    if (
+        set(classification_by_fingerprint) != manifest_fingerprints
+        or set(record_by_fingerprint) != manifest_fingerprints
+    ):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_CLASSIFICATION_RECORD_DISPOSITION_COVERAGE_MISMATCH",
+            "P0",
+            "classification and record dispositions do not cover the exact batch",
+            manifest_path=str(manifest_path),
+        ))
+    for fingerprint in sorted(manifest_fingerprints):
+        if classification_by_fingerprint.get(fingerprint) != record_by_fingerprint.get(
+            fingerprint
+        ):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_CLASSIFICATION_RECORD_DISPOSITION_MISMATCH",
+                "P0",
+                "classification disposition differs from the actual correction record",
+                manifest_path=str(manifest_path),
+                fingerprint=fingerprint,
+            ))
+    return findings
+
+
+def _full_convergence_record_contract_findings(
+    record: dict[str, Any],
+    *,
+    path: str,
+    root: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Duplicate the primary record contract without importing the resolver."""
+
+    findings: list[dict[str, Any]] = []
+
+    def add(code: str, message: str, **evidence: Any) -> None:
+        findings.append(_finding(code, "P0", message, path=path, **evidence))
+
+    if set(record) != FULL_CONVERGENCE_RECORD_FIELDS:
+        add(
+            "FULL_CONVERGENCE_RECORD_FIELD_SET_INVALID",
+            "record fields differ from the exact closed contract",
+        )
+    for field, expected in (
+        ("schema_version", FULL_CONVERGENCE_RECORD_SCHEMA_VERSION),
+        ("record_kind", "CORRECTION_RECORD"),
+        ("authorization_id", FULL_CONVERGENCE_AUTHORIZATION_ID),
+        ("authorization_base_head_sha", FULL_CONVERGENCE_BASE_HEAD),
+        ("baseline_report_sha256", FULL_CONVERGENCE_BASELINE_SHA),
+        ("baseline_failure_set_sha256", FULL_CONVERGENCE_FAILURE_SET_SHA),
+    ):
+        if record.get(field) != expected:
+            add(
+                "FULL_CONVERGENCE_RECORD_AUTHORITY_MISMATCH",
+                "record authority or schema differs from the closed contract",
+                field=field,
+                expected=expected,
+                actual=record.get(field),
+            )
+            if field == "schema_version":
+                add(
+                    "FULL_CONVERGENCE_RECORD_SCHEMA_VERSION_INVALID",
+                    "record schema version differs from the authorized epoch",
+                )
+            elif field == "record_kind":
+                add(
+                    "FULL_CONVERGENCE_RECORD_KIND_INVALID",
+                    "record kind is not the authorized correction record kind",
+                )
+    if not _is_commit(record.get("binding_head_sha")):
+        add(
+            "FULL_CONVERGENCE_RECORD_BINDING_HEAD_INVALID",
+            "record binding Head is not one exact commit",
+        )
+    if not _is_commit(record.get("binding_tree_sha")):
+        add(
+            "FULL_CONVERGENCE_RECORD_BINDING_TREE_INVALID",
+            "record binding tree is not one exact Git object id",
+        )
+    fingerprints_value = record.get("failure_fingerprints")
+    fingerprints = (
+        [str(value) for value in fingerprints_value]
+        if isinstance(fingerprints_value, list)
+        else []
+    )
+    if (
+        not fingerprints
+        or len(fingerprints) > 50
+        or fingerprints != sorted(fingerprints)
+        or len(fingerprints) != len(set(fingerprints))
+        or any(
+            re.fullmatch(r"V2F-[0-9a-f]{64}", value) is None
+            for value in fingerprints
+        )
+    ):
+        add(
+            "FULL_CONVERGENCE_RECORD_FINGERPRINT_SET_INVALID",
+            "record fingerprints are not one unique sorted exact V2 set",
+        )
+    if (
+        not _is_exact_int_equal(record.get("failure_count"), len(fingerprints))
+        or record.get("failure_fingerprint_set_sha256")
+        != _line_set_sha(fingerprints)
+    ):
+        add(
+            "FULL_CONVERGENCE_RECORD_FINGERPRINT_DIGEST_INVALID",
+            "record fingerprint count or digest is not canonical",
+        )
+    rules_value = record.get("rule_ids")
+    rules = (
+        [str(value) for value in rules_value]
+        if isinstance(rules_value, list)
+        else []
+    )
+    if (
+        len(rules) != 1
+        or not rules[0].startswith(HISTORY_PREFIX)
+        or record.get("failure_classes") != rules
+        or record.get("allowed_rule_ids") != rules
+    ):
+        add(
+            "FULL_CONVERGENCE_RECORD_RULE_CLASS_INVALID",
+            "record is not restricted to one exact historical rule",
+        )
+    transition = str(record.get("transition_class_id", ""))
+    if (
+        not transition
+        or any(char in transition for char in "*?[]")
+        or re.fullmatch(r"[A-Z0-9_]+", transition) is None
+        or set(re.findall(r"[a-z0-9_]+", transition.casefold()))
+        & FULL_CONVERGENCE_DISALLOWED_TOKENS
+    ):
+        add(
+            "FULL_CONVERGENCE_RECORD_TRANSITION_CLASS_INVALID",
+            "record transition class is empty or contains a waiver token",
+        )
+    if record.get("from_state") != "HISTORICAL_FAILURE_PRESENT_CLASSIFIED":
+        add(
+            "FULL_CONVERGENCE_RECORD_FROM_STATE_INVALID",
+            "record source state is not the classified historical state",
+        )
+    if record.get("to_effective_disposition") != "CORRECTED_HISTORICAL_DEBT":
+        add(
+            "FULL_CONVERGENCE_RECORD_TO_STATE_INVALID",
+            "record destination state is not corrected historical debt",
+        )
+    if (
+        record.get("allowed_from_state") != record.get("from_state")
+        or record.get("allowed_to_state")
+        != record.get("to_effective_disposition")
+    ):
+        add(
+            "FULL_CONVERGENCE_RECORD_ALLOWED_STATE_INVALID",
+            "record allowed state boundary differs from its exact transition",
+        )
+    if (
+        record.get("untouched_in_current_delta") is not True
+        or record.get("required_untouched_state") is not True
+    ):
+        add(
+            "FULL_CONVERGENCE_RECORD_UNTOUCHED_ATTESTATION_INVALID",
+            "record does not require the historical subject to remain untouched",
+        )
+    if not _is_exact_future_failure_policy(record.get("future_failure_policy")):
+        add(
+            "FULL_CONVERGENCE_RECORD_FUTURE_AUTO_CORRECTION_ENABLED",
+            "record future-failure policy is not exact and fail-closed",
+        )
+    touch = record.get("touch_invalidation_policy")
+    if touch != FULL_CONVERGENCE_TOUCH_INVALIDATION_POLICY:
+        add(
+            "FULL_CONVERGENCE_RECORD_TOUCH_POLICY_INVALID",
+            "record touch invalidation policy differs from the closed contract",
+        )
+    if record.get("revocation_policy") != FULL_CONVERGENCE_REVOCATION_POLICY:
+        add(
+            "FULL_CONVERGENCE_RECORD_REVOCATION_POLICY_INVALID",
+            "record revocation policy is not append-only and immutable",
+        )
+    if not _is_sha256(record.get("previous_correction_chain_sha256")):
+        add(
+            "FULL_CONVERGENCE_RECORD_CHAIN_PREDECESSOR_INVALID",
+            "record predecessor is not one exact payload digest",
+        )
+    bindings_value = record.get("identity_binding_by_failure")
+    bindings = bindings_value if isinstance(bindings_value, dict) else {}
+    if not isinstance(bindings_value, dict) or set(bindings) != set(fingerprints):
+        add(
+            "FULL_CONVERGENCE_RECORD_IDENTITY_BINDING_SET_INVALID",
+            "record identity bindings do not exactly cover its fingerprints",
+        )
+    for fingerprint, binding in bindings.items():
+        if (
+            not isinstance(binding, dict)
+            or set(binding) != FULL_CONVERGENCE_IDENTITY_BINDING_FIELDS
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_BINDING_FIELD_SET_INVALID",
+                "identity binding fields differ from the exact closed contract",
+                fingerprint=fingerprint,
+            )
+            continue
+        findings.extend(_full_convergence_selector_findings(
+            binding.get("authority_selectors"),
+            path=path,
+            fingerprint=str(fingerprint),
+        ))
+        disposition = str(binding.get("recommended_disposition", ""))
+        if disposition not in FULL_CONVERGENCE_ALLOWED_DISPOSITIONS:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_DISPOSITION_INVALID",
+                "identity binding disposition is outside the exact closed set",
+                fingerprint=fingerprint,
+            )
+        rule_id = rules[0] if len(rules) == 1 else ""
+        is_dynamic_rule = rule_id == "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED"
+        if is_dynamic_rule != (
+            disposition in FULL_CONVERGENCE_DYNAMIC_REFERENCE_DISPOSITIONS
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_RULE_DISPOSITION_MISMATCH",
+                "identity disposition is not valid for its exact historical rule",
+                fingerprint=fingerprint,
+            )
+        findings.extend(_identity_projection_findings(
+            binding,
+            path=path,
+            fingerprint=str(fingerprint),
+            rule_id=rule_id,
+        ))
+        for field in FULL_CONVERGENCE_IDENTITY_STATE_FIELDS:
+            rendered = str(binding.get(field, ""))
+            upper_rendered = rendered.upper()
+            if (
+                not rendered
+                or "UNKNOWN" in upper_rendered
+                or "UNRESOLVED" in upper_rendered
+            ):
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_UNKNOWN_VALUE",
+                    "identity binding retains an unknown or unresolved value",
+                    fingerprint=fingerprint,
+                    field=field,
+                )
+        duplicate_target = str(
+            binding.get("duplicate_of_failure_fingerprint", "")
+        )
+        duplicate_digest = str(binding.get("duplicate_identity_sha256", ""))
+        duplicate_reason = str(binding.get("duplicate_reason", ""))
+        if disposition == "HISTORICAL_DUPLICATE_OBSERVATION":
+            if (
+                re.fullmatch(r"V2F-[0-9a-f]{64}", duplicate_target) is None
+                or not _is_sha256(duplicate_digest)
+                or duplicate_reason
+                != "SAME_RULE_AND_SUBJECT_DISTINCT_TRANSITION_OBSERVATION"
+            ):
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_DUPLICATE_EVIDENCE_INVALID",
+                    "duplicate disposition lacks exact target evidence",
+                    fingerprint=fingerprint,
+                )
+        elif duplicate_target or duplicate_digest or duplicate_reason:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_DUPLICATE_EVIDENCE_UNEXPECTED",
+                "non-duplicate disposition carries duplicate evidence",
+                fingerprint=fingerprint,
+            )
+        state = {
+            field: str(binding.get(field, ""))
+            for field in FULL_CONVERGENCE_IDENTITY_STATE_FIELDS
+            if field != "domain_id"
+        }
+        allowed_signatures = _full_convergence_identity_allowed_state_signatures(
+            disposition,
+            binding,
+        )
+        if not allowed_signatures or state not in allowed_signatures:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_DISPOSITION_STATE_MATRIX_INVALID",
+                "identity disposition conflicts with the closed state matrix",
+                fingerprint=fingerprint,
+            )
+        if disposition == "HISTORICAL_ACTIVE_LINEAGE_REGISTERED" and (
+            not binding.get("current_path")
+            or binding.get("current_blob_sha256") == "MISSING"
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_ACTIVE_LINEAGE_SEMANTICS_INVALID",
+                "active lineage has no current path or blob",
+                fingerprint=fingerprint,
+            )
+        if disposition in {
+            "HISTORICAL_SUPERSEDED_NONREACHABLE",
+            "HISTORICAL_DYNAMIC_REFERENCE_SUPERSEDED",
+        } and (
+            not isinstance(binding.get("superseded_by"), list)
+            or not binding.get("superseded_by")
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_SUPERSESSION_SEMANTICS_INVALID",
+                "superseded identity has no exact successor set",
+                fingerprint=fingerprint,
+            )
+        for field in ("source_commit", "first_seen_commit", "last_seen_commit"):
+            if not _is_commit(binding.get(field)):
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_COMMIT_INVALID",
+                    "identity binding commit is not exact",
+                    fingerprint=fingerprint,
+                    field=field,
+                )
+        for field in ("historical_blob_sha256", "current_blob_sha256"):
+            value = binding.get(field)
+            if value != "MISSING" and not _is_sha256(value):
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_BLOB_INVALID",
+                    "identity binding blob is neither MISSING nor SHA-256",
+                    fingerprint=fingerprint,
+                    field=field,
+                )
+        for field in ("historical_path", "current_path"):
+            value = str(binding.get(field, ""))
+            if value and (
+                _normalize_path(value) != value
+                or value.startswith(("/", "../"))
+                or value.endswith("/")
+                or "/../" in value
+                or any(char in value for char in "*?[]")
+            ):
+                add(
+                    "FULL_CONVERGENCE_IDENTITY_PATH_INVALID",
+                    "identity binding path is not one exact repository path",
+                    fingerprint=fingerprint,
+                    field=field,
+                )
+        projection = binding.get("subject_projection")
+        if (
+            not isinstance(projection, dict)
+            or binding.get("subject_projection_sha256")
+            != _sha_bytes(_canonical(projection if isinstance(projection, dict) else {}))
+        ):
+            add(
+                "FULL_CONVERGENCE_IDENTITY_PROJECTION_HASH_INVALID",
+                "identity projection does not match its canonical digest",
+                fingerprint=fingerprint,
+            )
+        if binding.get("invalidation_policy") != touch:
+            add(
+                "FULL_CONVERGENCE_IDENTITY_INVALIDATION_POLICY_MISMATCH",
+                "identity invalidation policy differs from its record",
+                fingerprint=fingerprint,
+            )
+    grouping_values = {
+        (
+            str(binding.get("historical_production_reachability", "")),
+            str(binding.get("current_production_reachability", "")),
+            str(binding.get("recommended_disposition", "")),
+        )
+        for binding in bindings.values()
+        if isinstance(binding, dict)
+    }
+    if len(grouping_values) > 1:
+        add(
+            "FULL_CONVERGENCE_RECORD_IDENTITY_GROUPING_MISMATCH",
+            "one correction record mixes disposition or reachability classes",
+        )
+    expected_sets = {
+        "paths": sorted({
+            _normalize_path(str(binding.get(field, "")))
+            for binding in bindings.values()
+            if isinstance(binding, dict)
+            for field in ("historical_path", "current_path")
+            if binding.get(field)
+        }),
+        "component_ids": sorted({
+            str(binding.get(field, ""))
+            for binding in bindings.values()
+            if isinstance(binding, dict)
+            for field in ("historical_component_id", "current_component_id")
+            if binding.get(field)
+        }),
+        "domain_ids": sorted({
+            str(binding.get("domain_id", ""))
+            for binding in bindings.values()
+            if isinstance(binding, dict) and binding.get("domain_id")
+        }),
+        "owner_ids": sorted({
+            str(binding.get(field, ""))
+            for binding in bindings.values()
+            if isinstance(binding, dict)
+            for field in ("historical_owner_id", "current_owner_id")
+            if binding.get(field)
+        }),
+        "supersession_ids": sorted({
+            str(value)
+            for binding in bindings.values()
+            if isinstance(binding, dict)
+            for value in (
+                binding.get("authority_selectors", {}).get("supersession_ids", [])
+                if isinstance(binding.get("authority_selectors"), dict)
+                else []
+            )
+        }),
+        "retirement_ids": sorted({
+            str(value)
+            for binding in bindings.values()
+            if isinstance(binding, dict)
+            for value in (
+                binding.get("authority_selectors", {}).get("retirement_ids", [])
+                if isinstance(binding.get("authority_selectors"), dict)
+                else []
+            )
+        }),
+        "source_commit_set": sorted({
+            str(binding.get("source_commit", ""))
+            for binding in bindings.values()
+            if isinstance(binding, dict) and binding.get("source_commit")
+        }),
+    }
+    digest_fields = {
+        "paths": "path_set_sha256",
+        "component_ids": "component_set_sha256",
+        "domain_ids": "domain_set_sha256",
+        "owner_ids": "owner_set_sha256",
+        "supersession_ids": "supersession_set_sha256",
+        "retirement_ids": "retirement_set_sha256",
+        "source_commit_set": "source_commit_set_sha256",
+    }
+    for field, expected in expected_sets.items():
+        if (
+            record.get(field) != expected
+            or record.get(digest_fields[field]) != _line_set_sha(expected)
+        ):
+            add(
+                "FULL_CONVERGENCE_RECORD_AGGREGATE_SET_INVALID",
+                "record aggregate set or digest differs from its identity bindings",
+                field=field,
+            )
+    source_hashes = record.get("authority_source_sha256")
+    if (
+        not isinstance(source_hashes, dict)
+        or set(source_hashes) != set(FULL_CONVERGENCE_AUTHORITY_SOURCE_PATHS)
+        or any(not _is_sha256(value) for value in source_hashes.values())
+    ):
+        add(
+            "FULL_CONVERGENCE_RECORD_AUTHORITY_SOURCE_SET_INVALID",
+            "record authority source digest set is not exact",
+        )
+    elif root is not None and _is_commit(record.get("binding_head_sha")):
+        binding_head = str(record.get("binding_head_sha"))
+        for relative in FULL_CONVERGENCE_AUTHORITY_SOURCE_PATHS:
+            payload = _git_bytes(root, binding_head, relative)
+            expected = _sha_bytes(payload) if payload is not None else ""
+            if source_hashes.get(relative) != expected:
+                add(
+                    "FULL_CONVERGENCE_RECORD_AUTHORITY_SOURCE_HASH_MISMATCH",
+                    "record authority source digest differs from its binding Head",
+                    authority_source_path=relative,
+                )
+    for field in (*BATCH_ARTIFACT_SPECS, "descendant_history_supplement_sha256"):
+        if not _is_sha256(record.get(field)):
+            add(
+                "FULL_CONVERGENCE_RECORD_EVIDENCE_DIGEST_INVALID",
+                "record evidence digest is not SHA-256",
+                field=field,
+            )
+    if not re.fullmatch(r"batch-[0-9]{3}", str(record.get("batch_id", ""))):
+        add(
+            "FULL_CONVERGENCE_RECORD_BATCH_ID_INVALID",
+            "record batch id is not exact",
+        )
+    for field in ("correction_id", "correction_reason", "creator"):
+        value = str(record.get(field, ""))
+        if not value or any(char in value for char in "*?[]"):
+            add(
+                "FULL_CONVERGENCE_RECORD_METADATA_INVALID",
+                "record identity metadata is empty or contains selector syntax",
+                field=field,
+            )
+    if re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+        str(record.get("created_at", "")),
+    ) is None:
+        add(
+            "FULL_CONVERGENCE_RECORD_CREATED_AT_INVALID",
+            "record creation time is not one exact UTC timestamp",
+        )
+    backlog_values = record.get("backlog_item_ids")
+    backlog = (
+        [str(value) for value in backlog_values]
+        if isinstance(backlog_values, list)
+        else []
+    )
+    if (
+        not backlog
+        or backlog != sorted(backlog)
+        or len(backlog) != len(set(backlog))
+        or any(not value or any(char in value for char in "*?[]") for value in backlog)
+    ):
+        add(
+            "FULL_CONVERGENCE_RECORD_BACKLOG_ITEM_IDS_INVALID",
+            "record backlog ids are not one nonempty exact sorted set",
+        )
+    negative_values = record.get("negative_examples")
+    negatives = (
+        {str(value) for value in negative_values}
+        if isinstance(negative_values, list)
+        else set()
+    )
+    if not {"CURRENT_DELTA_FAILURE", "WILDCARD"}.issubset(negatives):
+        add(
+            "FULL_CONVERGENCE_RECORD_NEGATIVE_EXAMPLES_INVALID",
+            "record does not bind both current-failure and wildcard negatives",
+        )
+    if record.get("record_payload_sha256") != _sha_bytes(
+        _canonical(_record_payload(record))
+    ):
+        add(
+            "FULL_CONVERGENCE_RECORD_PAYLOAD_HASH_MISMATCH",
+            "record payload digest does not bind its canonical content",
+        )
     return findings
 
 
@@ -1169,11 +4106,14 @@ def _manifest_record_findings(
         return findings, seen, correction_ids, 0
     expected_previous = str(manifest.get("record_chain_start_sha256", ""))
     for index, binding in enumerate(bindings):
-        if not isinstance(binding, dict):
+        if (
+            not isinstance(binding, dict)
+            or set(binding) != FULL_CONVERGENCE_RECORD_BINDING_FIELDS
+        ):
             findings.append(_finding(
                 "FULL_CONVERGENCE_RECORD_BINDING_INVALID",
                 "P0",
-                "record binding is not an object",
+                "record binding is not one exact closed-contract object",
                 batch_id=manifest.get("batch_id"),
                 index=index,
             ))
@@ -1227,6 +4167,11 @@ def _manifest_record_findings(
                 path=relative,
             ))
             continue
+        findings.extend(_full_convergence_record_contract_findings(
+            record,
+            path=relative,
+            root=root,
+        ))
         for field, expected in (
             ("authorization_id", FULL_CONVERGENCE_AUTHORIZATION_ID),
             ("authorization_base_head_sha", FULL_CONVERGENCE_BASE_HEAD),
@@ -1304,10 +4249,9 @@ def _manifest_record_findings(
                 correction_id=correction_id,
             ))
         correction_ids.add(correction_id)
-        if record.get("future_failure_policy") != {
-            "FUTURE_FAILURE_AUTO_CORRECTION_COUNT": 0,
-            "NEW_FAILURE_REQUIRES_NEW_RECORD": True,
-        }:
+        if not _is_exact_future_failure_policy(
+            record.get("future_failure_policy")
+        ):
             findings.append(_finding(
                 "FULL_CONVERGENCE_RECORD_FUTURE_AUTO_CORRECTION_ENABLED",
                 "P0",
@@ -1346,6 +4290,17 @@ def _manifest_record_findings(
             ))
             subjects = subjects if isinstance(subjects, dict) else {}
         binding_head = str(record.get("binding_head_sha", ""))
+        changed_paths = {
+            _normalize_path(value)
+            for value in _git(
+                root,
+                "diff",
+                "--name-only",
+                binding_head,
+                evaluated_head,
+            ).splitlines()
+            if value.strip()
+        } if _is_commit(binding_head) and _is_commit(evaluated_head) else set()
         for fingerprint in record_fingerprints:
             if fingerprint in seen:
                 findings.append(_finding(
@@ -1365,6 +4320,12 @@ def _manifest_record_findings(
                 subject=subject,
                 identity=baseline_identities.get(fingerprint),
                 record_rule_ids=rendered_rules,
+                path=relative,
+            ))
+            findings.extend(_duplicate_observation_findings(
+                fingerprint,
+                subject,
+                baseline_identities,
                 path=relative,
             ))
             selector = subject.get("authority_selectors")
@@ -1393,6 +4354,19 @@ def _manifest_record_findings(
             source_commit = str(subject.get("source_commit", ""))
             historical_path = _normalize_path(str(subject.get("historical_path", "")))
             current_path = _normalize_path(str(subject.get("current_path", "")))
+            touched_paths = sorted(
+                {value for value in (historical_path, current_path) if value}
+                & changed_paths
+            )
+            if touched_paths:
+                findings.append(_finding(
+                    "FULL_CONVERGENCE_TOUCHED_CORRECTION_INVALID",
+                    "P0",
+                    "a bound historical or current path changed after correction binding",
+                    path=relative,
+                    fingerprint=fingerprint,
+                    touched_paths=touched_paths,
+                ))
             if historical_path and _is_commit(source_commit):
                 historical_bytes = _git_bytes(root, source_commit, historical_path)
                 historical_sha = _sha_bytes(historical_bytes) if historical_bytes is not None else "MISSING"
@@ -1435,11 +4409,29 @@ def _manifest_record_findings(
                     path=relative,
                     fingerprint=fingerprint,
                 ))
+            if isinstance(binding_projection, dict):
+                findings.extend(_dynamic_projection_repo_findings(
+                    root,
+                    binding_head,
+                    binding_projection,
+                    source_commit=source_commit,
+                    path=relative,
+                    fingerprint=fingerprint,
+                ))
             if current_projection != projection:
                 findings.append(_finding(
                     "FULL_CONVERGENCE_SUBJECT_PROJECTION_CHANGED",
                     "P0",
                     "subject projection changed at the evaluated Head",
+                    path=relative,
+                    fingerprint=fingerprint,
+                ))
+            if isinstance(current_projection, dict):
+                findings.extend(_dynamic_projection_repo_findings(
+                    root,
+                    evaluated_head,
+                    current_projection,
+                    source_commit=source_commit,
                     path=relative,
                     fingerprint=fingerprint,
                 ))
@@ -1483,8 +4475,26 @@ def _manifest_contract_findings(
     *,
     evaluated_head: str,
     baseline_identities: dict[str, dict[str, str]],
+    descendant_supplement_sha: str,
 ) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
+    if set(manifest) != FULL_CONVERGENCE_BATCH_MANIFEST_FIELDS:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_BATCH_MANIFEST_FIELD_SET_INVALID",
+            "P0",
+            "batch manifest fields differ from the exact closed contract",
+            manifest_path=str(manifest_path),
+        ))
+    if (
+        manifest.get("schema_version")
+        != FULL_CONVERGENCE_BATCH_MANIFEST_SCHEMA_VERSION
+    ):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_BATCH_MANIFEST_SCHEMA_VERSION_INVALID",
+            "P0",
+            "batch manifest schema version differs from the authorized epoch",
+            manifest_path=str(manifest_path),
+        ))
     fingerprints = [
         str(value) for value in manifest.get("failure_fingerprints", [])
     ] if isinstance(manifest.get("failure_fingerprints"), list) else []
@@ -1499,7 +4509,9 @@ def _manifest_contract_findings(
             "manifest fingerprints must be unique sorted exact V2 identities",
             manifest_path=str(manifest_path),
         ))
-    if manifest.get("failure_count") != len(fingerprints):
+    if not _is_exact_int_equal(
+        manifest.get("failure_count"), len(fingerprints)
+    ):
         findings.append(_finding(
             "FULL_CONVERGENCE_MANIFEST_FINGERPRINT_COUNT_MISMATCH",
             "P0",
@@ -1537,9 +4549,10 @@ def _manifest_contract_findings(
         ("identity_coverage_percent", 100),
         ("batch_unknown_count", 0),
         ("batch_wildcard_count", 0),
+        ("batch_size_target", "25_TO_50_FAILURE_FINGERPRINTS"),
         ("current_failure_false_accept_count", 0),
     ):
-        if manifest.get(field) != expected:
+        if not _matches_exact_scalar_contract(manifest.get(field), expected):
             findings.append(_finding(
                 "FULL_CONVERGENCE_BATCH_AUTHORITY_MISMATCH",
                 "P0",
@@ -1549,6 +4562,41 @@ def _manifest_contract_findings(
                 expected=expected,
                 actual=manifest.get(field),
             ))
+    batch_match = re.fullmatch(
+        r"batch-([0-9]{3})",
+        str(manifest.get("batch_id", "")),
+    )
+    if batch_match is None:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_BATCH_ID_INVALID",
+            "P0",
+            "batch id is not the exact batch-NNN form",
+            manifest_path=str(manifest_path),
+        ))
+    else:
+        previous_append = manifest.get("previous_batch_append_sha256")
+        batch_number = int(batch_match.group(1))
+        if batch_number == 1 and previous_append != "":
+            findings.append(_finding(
+                "FULL_CONVERGENCE_INITIAL_BATCH_PREVIOUS_APPEND_INVALID",
+                "P0",
+                "batch-001 cannot claim a predecessor batch append",
+                manifest_path=str(manifest_path),
+            ))
+        if batch_number > 1 and not _is_sha256(previous_append):
+            findings.append(_finding(
+                "FULL_CONVERGENCE_NONINITIAL_PREVIOUS_APPEND_REQUIRED",
+                "P0",
+                "every non-initial batch requires one exact predecessor digest",
+                manifest_path=str(manifest_path),
+            ))
+    if not isinstance(manifest.get("terminal_remainder_batch"), bool):
+        findings.append(_finding(
+            "FULL_CONVERGENCE_TERMINAL_REMAINDER_FLAG_INVALID",
+            "P0",
+            "terminal remainder flag is not a strict boolean",
+            manifest_path=str(manifest_path),
+        ))
     binding_head = str(manifest.get("binding_head_sha", ""))
     binding_tree = _git(root, "rev-parse", f"{binding_head}^{{tree}}")
     if not _is_commit(binding_head) or not binding_tree:
@@ -1592,11 +4640,14 @@ def _manifest_contract_findings(
         ))
         bindings = []
     for index, binding in enumerate(bindings):
-        if not isinstance(binding, dict):
+        if (
+            not isinstance(binding, dict)
+            or set(binding) != FULL_CONVERGENCE_RECORD_BINDING_FIELDS
+        ):
             findings.append(_finding(
                 "FULL_CONVERGENCE_RECORD_BINDING_INVALID",
                 "P0",
-                "record binding is not an object",
+                "record binding is not one exact closed-contract object",
                 manifest_path=str(manifest_path),
                 index=index,
             ))
@@ -1641,6 +4692,11 @@ def _manifest_contract_findings(
         manifest,
         baseline_identities,
     ))
+    findings.extend(_classification_record_disposition_findings(
+        root,
+        manifest_path,
+        manifest,
+    ))
     if manifest.get("descendant_history_supplement_sha256") != descendant_supplement_sha:
         findings.append(_finding(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_MANIFEST_HASH_MISMATCH",
@@ -1658,6 +4714,7 @@ def _predecessor_chain_findings(
     *,
     evaluated_head: str,
     baseline_identities: dict[str, dict[str, str]],
+    descendant_supplement_sha: str,
 ) -> tuple[list[dict[str, Any]], list[tuple[Path, dict[str, Any]]]]:
     """Load the whole sequence-bound predecessor chain without discovery."""
 
@@ -1710,6 +4767,7 @@ def _predecessor_chain_findings(
             previous,
             evaluated_head=evaluated_head,
             baseline_identities=baseline_identities,
+            descendant_supplement_sha=descendant_supplement_sha,
         ))
         if current.get("record_chain_start_sha256") != previous.get("record_chain_terminal_sha256"):
             findings.append(_finding(
@@ -1848,7 +4906,15 @@ def audit_a(root: Path) -> dict[str, Any]:
     if not context["authorized_v1_sha256_match"]:
         findings.append(_finding("V1_MANIFEST_HASH_NOT_AUTHORIZED", "P0", "V1 manifest hash differs from authorization", actual=context["existing_corrections_manifest_sha256"], expected=AUTHORIZED_V1_SHA))
 
-    if scanner.get("scanner_rule_removal_count", 0) != 0 or scanner.get("scanner_scope_reduction_count", 0) != 0 or scanner.get("scanner_severity_downgrade_count", 0) != 0 or scanner.get("scanner_history_depth_reduction_count", 0) != 0:
+    if any(
+        not _is_exact_int_equal(scanner.get(field), 0)
+        for field in (
+            "scanner_rule_removal_count",
+            "scanner_scope_reduction_count",
+            "scanner_severity_downgrade_count",
+            "scanner_history_depth_reduction_count",
+        )
+    ):
         findings.append(_finding("SCANNER_WEAKENING", "P0", "scanner manifest attests a weakening", scanner= scanner))
     listed_scanner = {str(row.get("path", "")) for row in scanner.get("files", []) if isinstance(row, dict)}
     if listed_scanner != SCANNER_PATHS:
@@ -1903,7 +4969,15 @@ def audit_a(root: Path) -> dict[str, Any]:
         if any(token in selector_tokens for token in ("regex", "glob", "prefix", "directory", "legacy", "unknown", "unknown_accepted", "misc", "other")) or any(char in selector_text for char in ("*", "?", "[", "]")):
             findings.append(_finding("BROAD_CORRECTION_SELECTOR", "P0", "record contains a broad selector or waiver token", path=name))
         attestation = record.get("production_reachability_attestation", {})
-        if any(attestation.get(key, 0) != 0 for key in ("active_owner_violation_count", "parallel_owner_count", "dual_write_count", "fallback_count")):
+        if any(
+            not _is_exact_int_equal(attestation.get(key), 0)
+            for key in (
+                "active_owner_violation_count",
+                "parallel_owner_count",
+                "dual_write_count",
+                "fallback_count",
+            )
+        ):
             findings.append(_finding("ACTIVE_OWNER_CORRECTION", "P0", "record attests an active owner, parallel owner, dual-write or fallback", path=name, attestation=attestation))
     duplicates = len(all_fingerprints) - len(set(all_fingerprints))
     if duplicates:
@@ -1930,7 +5004,10 @@ def audit_a(root: Path) -> dict[str, Any]:
         findings.append(_finding("V1_V2_DUPLICATE_CORRECTION_AUTHORITY", "P0", "a V2 correction fingerprint is already owned by the read-only V1 authority", overlap=v1_overlap))
     if corrected & current_fingerprints:
         findings.append(_finding("CURRENT_FAILURE_CORRECTION_OVERLAP", "P0", "a current baseline failure fingerprint is corrected", overlap=sorted(corrected & current_fingerprints)))
-    if inventory.get("corrected_failure_fingerprint_count") != len(all_fingerprints):
+    if not _is_exact_int_equal(
+        inventory.get("corrected_failure_fingerprint_count"),
+        len(all_fingerprints),
+    ):
         findings.append(_finding("RECORD_INVENTORY_CARDINALITY_DRIFT", "P1", "record inventory fingerprint count is inaccurate", listed=inventory.get("corrected_failure_fingerprint_count"), actual=len(all_fingerprints)))
     return {
         "schema_version": "space_syndicate.v076.reuse_correction_v2.audit_a.v2",
@@ -2098,7 +5175,8 @@ def audit_full_convergence_batch(
     (
         supplement_findings,
         descendant_fingerprints,
-        descendant_identities,
+        live_historical_identities,
+        dispositioned_fingerprints,
         descendant_supplement_sha,
         descendant_report_head,
     ) = _descendant_history_supplement_findings(
@@ -2111,8 +5189,14 @@ def audit_full_convergence_batch(
         baseline_sets=baseline_fingerprints,
     )
     findings.extend(supplement_findings)
-    baseline_fingerprints["historical"].update(descendant_fingerprints)
-    baseline_identities.update(descendant_identities)
+    # Correction authority is exactly the live historical Raw set.  The
+    # independently verified non-live dispositions remain preserved evidence,
+    # not correction candidates.
+    baseline_fingerprints["historical"] = set(live_historical_identities)
+    baseline_identities = {
+        str(fingerprint): dict(identity)
+        for fingerprint, identity in live_historical_identities.items()
+    }
     schema_path = root / FULL_CONVERGENCE_SCHEMA
     if not schema_path.is_file() or _sha_file(schema_path) != FULL_CONVERGENCE_SCHEMA_SHA:
         findings.append(_finding(
@@ -2184,6 +5268,14 @@ def audit_full_convergence_batch(
             "the explicit batch manifest must be a JSON object",
         ))
         manifest = {}
+    findings.extend(_manifest_contract_findings(
+        root,
+        manifest_path,
+        manifest,
+        evaluated_head=evaluated_head,
+        baseline_identities=baseline_identities,
+        descendant_supplement_sha=descendant_supplement_sha,
+    ))
     manifest_fingerprints = [
         str(value) for value in manifest.get("failure_fingerprints", [])
     ]
@@ -2197,7 +5289,9 @@ def audit_full_convergence_batch(
             "P0",
             "manifest fingerprints must be unique sorted exact V2 identities",
         ))
-    if manifest.get("failure_count") != len(manifest_fingerprints):
+    if not _is_exact_int_equal(
+        manifest.get("failure_count"), len(manifest_fingerprints)
+    ):
         findings.append(_finding(
             "FULL_CONVERGENCE_MANIFEST_FINGERPRINT_COUNT_MISMATCH",
             "P0",
@@ -2247,7 +5341,7 @@ def audit_full_convergence_batch(
         ("batch_wildcard_count", 0),
         ("current_failure_false_accept_count", 0),
     ):
-        if manifest.get(field) != expected:
+        if not _matches_exact_scalar_contract(manifest.get(field), expected):
             findings.append(_finding(
                 "FULL_CONVERGENCE_BATCH_AUTHORITY_MISMATCH",
                 "P0",
@@ -2267,6 +5361,7 @@ def audit_full_convergence_batch(
         previous_batch_manifest_path,
         evaluated_head=evaluated_head,
         baseline_identities=baseline_identities,
+        descendant_supplement_sha=descendant_supplement_sha,
     )
     findings.extend(chain_findings)
     predecessor_fingerprints: set[str] = set()
@@ -2336,6 +5431,13 @@ def audit_full_convergence_batch(
             ))
         predecessor_correction_ids.update(correction_ids)
         predecessor_record_count += record_count
+    current_record_findings, _, _, _ = _manifest_record_findings(
+        root,
+        manifest,
+        evaluated_head=evaluated_head,
+        baseline_identities=baseline_identities,
+    )
+    findings.extend(current_record_findings)
     bindings = manifest.get("record_bindings")
     if not isinstance(bindings, list) or not bindings:
         findings.append(_finding(
@@ -2355,11 +5457,14 @@ def audit_full_convergence_batch(
         ))
     all_fingerprints: list[str] = []
     for index, binding in enumerate(bindings):
-        if not isinstance(binding, dict):
+        if (
+            not isinstance(binding, dict)
+            or set(binding) != FULL_CONVERGENCE_RECORD_BINDING_FIELDS
+        ):
             findings.append(_finding(
                 "FULL_CONVERGENCE_RECORD_BINDING_INVALID",
                 "P0",
-                "record binding is not an object",
+                "record binding is not one exact closed-contract object",
                 index=index,
             ))
             continue
@@ -2412,6 +5517,11 @@ def audit_full_convergence_batch(
                 path=relative,
             ))
             continue
+        findings.extend(_full_convergence_record_contract_findings(
+            record,
+            path=relative,
+            root=root,
+        ))
         if record.get("authorization_id") != FULL_CONVERGENCE_AUTHORIZATION_ID:
             findings.append(_finding(
                 "FULL_CONVERGENCE_RECORD_AUTHORIZATION_MISMATCH",
@@ -2495,10 +5605,9 @@ def audit_full_convergence_batch(
                 "record correction id differs from the explicit manifest binding",
                 path=relative,
             ))
-        if record.get("future_failure_policy") != {
-            "FUTURE_FAILURE_AUTO_CORRECTION_COUNT": 0,
-            "NEW_FAILURE_REQUIRES_NEW_RECORD": True,
-        }:
+        if not _is_exact_future_failure_policy(
+            record.get("future_failure_policy")
+        ):
             findings.append(_finding(
                 "FULL_CONVERGENCE_RECORD_FUTURE_AUTO_CORRECTION_ENABLED",
                 "P0",
@@ -2542,6 +5651,12 @@ def audit_full_convergence_batch(
                         if isinstance(rules, list)
                         else []
                     ),
+                    path=relative,
+                ))
+                findings.extend(_duplicate_observation_findings(
+                    str(fingerprint),
+                    subject,
+                    baseline_identities,
                     path=relative,
                 ))
                 projection = subject.get("subject_projection")
@@ -2687,6 +5802,10 @@ def audit_full_convergence_batch(
         "descendant_history_supplement_sha256": descendant_supplement_sha,
         "descendant_history_raw_report_head_sha": descendant_report_head,
         "descendant_history_authorized_fingerprint_count": len(descendant_fingerprints),
+        "live_historical_correction_authority_count": len(
+            baseline_fingerprints["historical"]
+        ),
+        "dispositioned_historical_identity_count": len(dispositioned_fingerprints),
         "p0": [item for item in findings if item["severity"] == "P0"],
         "p1": [item for item in findings if item["severity"] == "P1"],
         "status": "GO" if not findings else "NO_GO",

@@ -15,6 +15,15 @@ from typing import Any, Callable
 
 import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
 import v076_reuse_correction_v2_independent_audit as independent_audit
+import v076_reuse_exact_failure_correction_v2 as legacy_resolver
+
+
+REAL_DESCENDANT_RAW_REL = (
+    convergence.EPOCH_ROOT_REL / "descendant_history_raw_570d6e3c.json"
+)
+REAL_DESCENDANT_SUPPLEMENT_REL = (
+    convergence.EPOCH_ROOT_REL / "descendant_history_supplement_570d6e3c.json"
+)
 
 
 @dataclass(frozen=True)
@@ -51,20 +60,131 @@ def _touch_policy() -> dict[str, bool]:
     }
 
 
+def _component_inventory_row(
+    *,
+    component_id: str,
+    path: str,
+    domain_id: str = "domain.sample",
+    role: str = "OWNER",
+    owner_component_id: str | None = None,
+    owner_path: str | None = None,
+    production_reachable: bool = True,
+    superseded_by: list[str] | None = None,
+    supersedes: list[str] | None = None,
+    **overrides: Any,
+) -> dict[str, Any]:
+    """Return one closed, projection-tagged component-inventory authority row."""
+
+    is_owner = role == "OWNER"
+    owner_component_id = owner_component_id or (
+        component_id if is_owner else "component.current.owner"
+    )
+    owner_path = owner_path or (
+        path if is_owner else "scripts/current/owner.gd"
+    )
+    row: dict[str, Any] = {
+        "authority_source_kind": "component_inventory",
+        "change_class": "DOMAIN_CORE",
+        "class_name": "Selftest" + "".join(
+            part.title() for part in component_id.split(".")
+        ),
+        "component_id": component_id,
+        "component_role": role,
+        "domain_id": domain_id,
+        "focused_test_ids": ["v076_full_convergence_selftest"],
+        "golden_scenario_steps": [],
+        "new_component_justification": "Exact self-test authority fixture.",
+        "owner_component_id": owner_component_id,
+        "owner_path": owner_path,
+        "owns_identity": is_owner,
+        "owns_presentation": False,
+        "owns_replay": False,
+        "owns_rng": False,
+        "owns_save": False,
+        "owns_tick": False,
+        "path": path,
+        "production_reachable": production_reachable,
+        "reads_authority": True,
+        "reuse_candidates_considered": ["reuse.selftest.existing"],
+        "reuse_disposition": (
+            "ADOPT_AS_OWNER" if is_owner else "ADAPT_AS_CONSUMER"
+        ),
+        "reuse_source_ids": ["reuse.selftest.existing"],
+        "superseded_by": sorted(superseded_by or []),
+        "supersedes": sorted(supersedes or []),
+        "writes_authority": is_owner,
+    }
+    row.update(overrides)
+    return row
+
+
+def _historical_backfill_row(
+    *,
+    component_id: str = "component.history.sample",
+    source_commit: str = "3" * 40,
+    source_blob: str = "1" * 64,
+    historical_role: str = "CONSUMER",
+    current_disposition: str = "HISTORICAL_SUPERSEDED_NONREACHABLE",
+    production_reachability: str = "NONREACHABLE",
+    supersession: list[str] | None = None,
+    **overrides: Any,
+) -> dict[str, Any]:
+    """Return the exact minimal historical-identity backfill contract."""
+
+    row: dict[str, Any] = {
+        "authority_source_kind": "historical_identity_backfill",
+        "component_id": component_id,
+        "current_disposition": current_disposition,
+        "historical_role": historical_role,
+        "production_reachability": production_reachability,
+        "source_blob": source_blob,
+        "source_commit": source_commit,
+        "supersession": sorted(supersession or []),
+    }
+    row.update(overrides)
+    return row
+
+
+def _raw_authority_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Remove the projection-only source tag before writing an authority file."""
+
+    result = copy.deepcopy(row)
+    result.pop("authority_source_kind", None)
+    return result
+
+
 def _identity_binding() -> dict[str, Any]:
     selector = {
-        "component_ids": ["component.history.sample"],
-        "paths": ["scripts/history/sample.gd"],
+        "component_ids": [
+            "component.current.owner",
+            "component.history.sample",
+        ],
+        "dynamic_reference_ids": [],
+        "paths": [
+            "scripts/current/owner.gd",
+            "scripts/history/sample.gd",
+        ],
         "retirement_ids": [],
         "supersession_ids": ["supersession.sample"],
     }
     projection = {
-        "registry_rows": [{
-            "component_id": "component.history.sample",
-            "path": "scripts/history/sample.gd",
-            "owner_component_id": "component.current.owner",
-        }],
+        "dynamic_reference_rows": [],
+        "owner_map_lines": [],
+        "registry_rows": [
+            _component_inventory_row(
+                component_id="component.current.owner",
+                path="scripts/current/owner.gd",
+                supersedes=["component.history.sample"],
+            ),
+            _historical_backfill_row(
+                supersession=["component.current.owner"],
+            ),
+        ],
         "supersession_rows": [{
+            "domain_id": "domain.sample",
+            "dual_write_count": 0,
+            "fallback_count": 0,
+            "old_owner_production_reachability": 0,
             "supersession_id": "supersession.sample",
             "old_component_id": "component.history.sample",
             "new_component_id": "component.current.owner",
@@ -78,18 +198,21 @@ def _identity_binding() -> dict[str, Any]:
         "current_owner_id": "component.current.owner",
         "current_path": "scripts/current/owner.gd",
         "current_production_reachability": "PRODUCTION_REACHABLE",
-        "current_role": "CONSUMER",
+        "current_role": "OWNER",
         "diagnostic_only_status": "NOT_DIAGNOSTIC_ONLY",
         "documentation_only_status": "NOT_DOCUMENTATION_ONLY",
         "dynamic_reference_status": "NOT_DYNAMIC_REFERENCE",
+        "duplicate_identity_sha256": "",
+        "duplicate_of_failure_fingerprint": "",
+        "duplicate_reason": "",
         "generated_evidence_status": "NOT_GENERATED_EVIDENCE",
         "first_seen_commit": "3" * 40,
         "historical_blob_sha256": "1" * 64,
         "historical_component_id": "component.history.sample",
-        "historical_owner_id": "component.history.sample",
+        "historical_owner_id": "component.current.owner",
         "historical_path": "scripts/history/sample.gd",
         "historical_production_reachability": "NONREACHABLE",
-        "historical_role": "HISTORICAL_OWNER",
+        "historical_role": "CONSUMER",
         "invalidation_policy": _touch_policy(),
         "recommended_disposition": "HISTORICAL_SUPERSEDED_NONREACHABLE",
         "retired_status": "SUPERSEDED_NONREACHABLE",
@@ -97,7 +220,7 @@ def _identity_binding() -> dict[str, Any]:
         "subject_projection_sha256": convergence.sha256_bytes(convergence.canonical_bytes(projection)),
         "source_commit": "3" * 40,
         "superseded_by": ["component.current.owner"],
-        "supersedes": [],
+        "supersedes": ["component.history.sample"],
         "test_only_status": "NOT_TEST_ONLY",
         "last_seen_commit": "3" * 40,
     }
@@ -137,6 +260,8 @@ def _record(fingerprints: list[str] | None = None) -> dict[str, Any]:
         "descendant_history_supplement_sha256": "9" * 64,
         "domain_ids": ["domain.sample"],
         "domain_set_sha256": convergence._line_set_sha(["domain.sample"]),
+        "dynamic_reference_ids": [],
+        "dynamic_reference_set_sha256": convergence._line_set_sha([]),
         "failure_classes": ["HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"],
         "failure_count": len(fingerprints),
         "failure_fingerprint_set_sha256": convergence._line_set_sha(fingerprints),
@@ -150,9 +275,9 @@ def _record(fingerprints: list[str] | None = None) -> dict[str, Any]:
             fingerprint: copy.deepcopy(binding) for fingerprint in fingerprints
         },
         "negative_examples": ["CURRENT_DELTA_FAILURE", "WILDCARD"],
-        "owner_ids": ["component.current.owner", "component.history.sample"],
+        "owner_ids": ["component.current.owner"],
         "owner_set_sha256": convergence._line_set_sha([
-            "component.current.owner", "component.history.sample",
+            "component.current.owner",
         ]),
         "path_set_sha256": convergence._line_set_sha([
             "scripts/current/owner.gd", "scripts/history/sample.gd",
@@ -254,15 +379,35 @@ def _projection_invalidation_case() -> None:
         registry = docs / "V076_HISTORICAL_REUSE_REGISTRY.json"
         supersession = docs / "V076_SUPERSESSION_MAP.json"
         owner = docs / "V076_OWNER_REUSE_MAP.md"
-        registry.write_text(json.dumps({"component_inventory": [{
-            "component_id": "component.history.sample",
-            "path": "scripts/history/sample.gd",
-            "owner_component_id": "component.current.owner",
-        }]}), encoding="utf-8")
-        supersession.write_text(json.dumps({"supersessions": [{
+        registry.write_text(json.dumps({
+            "component_inventory": [
+                _raw_authority_row(_component_inventory_row(
+                    component_id="component.history.sample",
+                    path="scripts/history/sample.gd",
+                    role="CONSUMER",
+                    owner_component_id="component.current.owner",
+                    owner_path="scripts/current/owner.gd",
+                    production_reachable=False,
+                    superseded_by=["component.current.owner"],
+                )),
+                _raw_authority_row(_component_inventory_row(
+                    component_id="component.current.owner",
+                    path="scripts/current/owner.gd",
+                    supersedes=["component.history.sample"],
+                )),
+            ],
+            "historical_identity_backfill": [],
+        }), encoding="utf-8")
+        dynamic = docs / "V076_DYNAMIC_REFERENCE_MANIFEST.json"
+        dynamic.write_text(json.dumps({"entries": []}), encoding="utf-8")
+        supersession.write_text(json.dumps({"entries": [{
             "supersession_id": "supersession.sample",
             "old_component_id": "component.history.sample",
             "new_component_id": "component.current.owner",
+            "domain_id": "domain.sample",
+            "dual_write_count": 0,
+            "fallback_count": 0,
+            "old_owner_production_reachability": 0,
         }]}), encoding="utf-8")
         owner.write_text("owner map\n", encoding="utf-8")
         _git(root, "add", "docs/architecture")
@@ -782,6 +927,13 @@ def _write_descendant_history_supplement_fixture(
     )
     frozen_sets = convergence.authorized_failure_fingerprint_sets(baseline_report)
     repaired = sorted(frozen_sets["current"])
+    live_frozen = sorted(frozen_sets["historical"])
+    baseline_scanner_bytes = convergence._git_bytes(
+        fixture,
+        convergence.AUTHORIZATION_BASE_HEAD_SHA,
+        convergence.DESCENDANT_HISTORY_SCANNER_REL.as_posix(),
+    )
+    _expect(baseline_scanner_bytes is not None, "baseline scanner missing")
     source_bytes = convergence._git_bytes(
         fixture, report_head, source_relative
     )
@@ -791,14 +943,21 @@ def _write_descendant_history_supplement_fixture(
         "authorization_base_head_sha": convergence.AUTHORIZATION_BASE_HEAD_SHA,
         "authorization_id": convergence.AUTHORIZATION_ID,
         "baseline_failure_set_sha256": convergence.AUTHORIZED_BASELINE_FAILURE_SET_SHA256,
+        "baseline_historical_membership_policy": "LIVE_RAW_OR_EXACT_APPEND_ONLY_DISPOSITION",
         "baseline_report_sha256": convergence.AUTHORIZED_BASELINE_REPORT_SHA256,
+        "baseline_scanner_tool_sha256": convergence.sha256_bytes(
+            baseline_scanner_bytes
+        ),
         "committed_only": True,
+        "correction_membership_scope": "LIVE_HISTORICAL_ONLY",
         "descendant_history_failure_count": 1,
         "descendant_history_fingerprint_set_sha256": convergence._line_set_sha([
             descendant_fingerprint
         ]),
         "descendant_history_fingerprints": [descendant_fingerprint],
         "directory_discovery_allowed": False,
+        "disposition_wildcard_count": 0,
+        "frozen_identity_disposition_by_failure": {},
         "future_failure_auto_membership_allowed": False,
         "identity_binding_by_failure": {
             descendant_fingerprint: {
@@ -814,7 +973,16 @@ def _write_descendant_history_supplement_fixture(
                 "transition_old_sha": old_commit,
             }
         },
+        "live_frozen_historical_failure_count": len(live_frozen),
+        "live_frozen_historical_fingerprint_set_sha256": convergence._line_set_sha(
+            live_frozen
+        ),
+        "live_frozen_historical_fingerprints": live_frozen,
+        "missing_frozen_historical_failure_count": 0,
+        "missing_frozen_historical_fingerprint_set_sha256": convergence._line_set_sha([]),
+        "missing_frozen_historical_fingerprints": [],
         "raw_current_delta_failure_count": 0,
+        "raw_failure_detection_suppressed_count": 0,
         "raw_failure_count": len(final_report["failures"]),
         "raw_historical_failure_count": len(final_report["failures"]),
         "raw_report_head_sha": report_head,
@@ -888,9 +1056,18 @@ def _descendant_supplement_primary_positive_case(root: Path) -> None:
         )
         _expect(result["status"] == "PASS", str(result["failures"]))
         _expect(
-            result["authorized_historical_fingerprints"]
-            == {sealed["descendant_fingerprint"]},
-            "exact descendant membership not returned",
+            sealed["descendant_fingerprint"]
+            in result["authorized_historical_fingerprints"],
+            "exact descendant membership not included in live authority",
+        )
+        _expect(
+            len(result["authorized_historical_fingerprints"])
+            == convergence.AUTHORIZED_BASELINE_HISTORICAL_COUNT + 1,
+            "live historical correction authority count drifted",
+        )
+        _expect(
+            not result["dispositioned_historical_fingerprints"],
+            "fixture without missing frozen identities produced a disposition",
         )
 
 
@@ -991,7 +1168,7 @@ def _descendant_supplement_binding_negative_case(root: Path) -> None:
         baseline_sets = convergence.authorized_failure_fingerprint_sets(
             baseline_report
         )
-        independent_findings, _, _, _, _ = (
+        independent_findings, _, _, _, _, _ = (
             independent_audit._descendant_history_supplement_findings(
                 fixture,
                 supplement_path=sealed["supplement_path"],
@@ -1038,7 +1215,25 @@ def _independent_audit_fixture_case(root: Path) -> None:
         baseline_identities = convergence.authorized_failure_identity_by_fingerprint(
             baseline_report
         )
-        candidates: list[str] = []
+        registry_bytes = convergence._git_bytes(
+            fixture,
+            head,
+            convergence.AUTHORITY_SOURCE_PATHS[0],
+        )
+        _expect(registry_bytes is not None, "fixture Registry is missing")
+        registry_payload = json.loads(registry_bytes.decode("utf-8-sig"))
+        registry_rows = [
+            row
+            for key in ("component_inventory", "historical_identity_backfill")
+            for row in (
+                registry_payload.get(key, [])
+                if isinstance(registry_payload.get(key, []), list)
+                else []
+            )
+            if isinstance(row, dict)
+        ]
+        candidates: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
+        selected_component_ids: set[str] = set()
         for fingerprint, identity in sorted(baseline_identities.items()):
             if (
                 identity.get("bucket") != "HISTORICAL"
@@ -1053,15 +1248,39 @@ def _independent_audit_fixture_case(root: Path) -> None:
                 fixture, identity.get("transition_old_prefix", "")
             )
             subject_path = convergence.normalize_path(identity.get("subject_value", ""))
+            component_rows = [
+                row
+                for row in registry_rows
+                if convergence.normalize_path(str(row.get("path", "")))
+                == subject_path
+            ]
+            if len(component_rows) != 1:
+                continue
+            component_row = component_rows[0]
+            component_id = str(component_row.get("component_id", ""))
+            owner_id = str(component_row.get("owner_component_id", ""))
+            owner_rows = [
+                row
+                for row in registry_rows
+                if str(row.get("component_id", "")) == owner_id
+                and row.get("component_role") == "OWNER"
+                and row.get("owner_component_id") == owner_id
+                and row.get("domain_id") == component_row.get("domain_id")
+            ]
             if (
                 not source_commit
                 or not old_commit
                 or _git(fixture, "rev-parse", f"{source_commit}^1") != old_commit
                 or convergence._git_bytes(fixture, source_commit, subject_path) is None
                 or convergence._git_bytes(fixture, head, subject_path) is None
+                or not component_id
+                or component_id in selected_component_ids
+                or component_row.get("production_reachable") is not True
+                or len(owner_rows) != 1
             ):
                 continue
-            candidates.append(fingerprint)
+            candidates[fingerprint] = (component_row, owner_rows[0])
+            selected_component_ids.add(component_id)
             if len(candidates) == 25:
                 break
         _expect(len(candidates) == 25, f"only {len(candidates)} exact fixture identities")
@@ -1097,10 +1316,15 @@ def _independent_audit_fixture_case(root: Path) -> None:
         identity_bindings: dict[str, dict[str, Any]] = {}
         for fingerprint in fingerprints:
             identity = baseline_identities[fingerprint]
+            component_row, owner_row = candidates[fingerprint]
             source_commit = convergence._resolve_commit_prefix(
                 fixture, identity["transition_new_prefix"]
             )
             subject_path = convergence.normalize_path(identity["subject_value"])
+            component_id = str(component_row["component_id"])
+            owner_id = str(component_row["owner_component_id"])
+            domain_id = str(component_row["domain_id"])
+            component_role = str(component_row["component_role"])
             historical_bytes = convergence._git_bytes(
                 fixture, source_commit, subject_path
             )
@@ -1108,7 +1332,8 @@ def _independent_audit_fixture_case(root: Path) -> None:
             _expect(historical_bytes is not None, f"missing source blob {subject_path}")
             _expect(current_bytes is not None, f"missing current blob {subject_path}")
             selector = {
-                "component_ids": [],
+                "component_ids": sorted({component_id, owner_id}),
+                "dynamic_reference_ids": [],
                 "paths": [subject_path],
                 "retirement_ids": [],
                 "supersession_ids": [],
@@ -1120,23 +1345,26 @@ def _independent_audit_fixture_case(root: Path) -> None:
             identity_bindings[fingerprint] = {
                 "authority_selectors": selector,
                 "current_blob_sha256": convergence.sha256_bytes(current_bytes),
-                "current_component_id": "",
-                "domain_id": "domain.presentation",
-                "current_owner_id": "",
+                "current_component_id": component_id,
+                "domain_id": domain_id,
+                "current_owner_id": owner_id,
                 "current_path": subject_path,
                 "current_production_reachability": "PRODUCTION_REACHABLE",
-                "current_role": "PRESENTATION_ASSET",
+                "current_role": component_role,
                 "diagnostic_only_status": "NOT_DIAGNOSTIC_ONLY",
                 "documentation_only_status": "NOT_DOCUMENTATION_ONLY",
                 "dynamic_reference_status": "NOT_DYNAMIC_REFERENCE",
+                "duplicate_identity_sha256": "",
+                "duplicate_of_failure_fingerprint": "",
+                "duplicate_reason": "",
                 "generated_evidence_status": "NOT_GENERATED_EVIDENCE",
                 "first_seen_commit": source_commit,
                 "historical_blob_sha256": convergence.sha256_bytes(historical_bytes),
-                "historical_component_id": "",
-                "historical_owner_id": "",
+                "historical_component_id": component_id,
+                "historical_owner_id": owner_id,
                 "historical_path": subject_path,
                 "historical_production_reachability": "PRODUCTION_REACHABLE",
-                "historical_role": "PRESENTATION_ASSET",
+                "historical_role": component_role,
                 "invalidation_policy": _touch_policy(),
                 "recommended_disposition": "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
                 "retired_status": "ACTIVE_LINEAGE",
@@ -1145,8 +1373,8 @@ def _independent_audit_fixture_case(root: Path) -> None:
                     convergence.canonical_bytes(projection)
                 ),
                 "source_commit": source_commit,
-                "superseded_by": [],
-                "supersedes": [],
+                "superseded_by": list(component_row.get("superseded_by", [])),
+                "supersedes": list(component_row.get("supersedes", [])),
                 "test_only_status": "NOT_TEST_ONLY",
                 "last_seen_commit": convergence.AUTHORIZATION_BASE_HEAD_SHA,
             }
@@ -1158,12 +1386,22 @@ def _independent_audit_fixture_case(root: Path) -> None:
             if value
         })
         record["path_set_sha256"] = convergence._line_set_sha(record["paths"])
-        record["component_ids"] = []
-        record["component_set_sha256"] = convergence._line_set_sha([])
-        record["domain_ids"] = ["domain.presentation"]
+        record["component_ids"] = sorted({
+            binding["current_component_id"] for binding in identity_bindings.values()
+        })
+        record["component_set_sha256"] = convergence._line_set_sha(
+            record["component_ids"]
+        )
+        record["domain_ids"] = sorted({
+            binding["domain_id"] for binding in identity_bindings.values()
+        })
         record["domain_set_sha256"] = convergence._line_set_sha(record["domain_ids"])
-        record["owner_ids"] = []
-        record["owner_set_sha256"] = convergence._line_set_sha([])
+        record["dynamic_reference_ids"] = []
+        record["dynamic_reference_set_sha256"] = convergence._line_set_sha([])
+        record["owner_ids"] = sorted({
+            binding["current_owner_id"] for binding in identity_bindings.values()
+        })
+        record["owner_set_sha256"] = convergence._line_set_sha(record["owner_ids"])
         record["supersession_ids"] = []
         record["supersession_set_sha256"] = convergence._line_set_sha([])
         record["retirement_ids"] = []
@@ -1217,9 +1455,68 @@ def _independent_audit_fixture_case(root: Path) -> None:
                     "scanner_path"
                 ],
             )
+            _expect(report["status"] == "GO", json.dumps(report, sort_keys=True))
+
+            # Rehash every byte/chain binding after injecting extra authority
+            # and schema fields.  Only exact closed-contract checks should
+            # reject this otherwise internally consistent mutation.
+            record["schema_version"] = (
+                convergence.SCHEMA_VERSION + ".unexpected"
+            )
+            record["unexpected_selector"] = {"paths": ["*"]}
+            record["record_payload_sha256"] = convergence.sha256_bytes(
+                convergence.canonical_bytes(convergence._record_payload(record))
+            )
+            _write_json(record_path, record)
+            manifest["record_bindings"][0].update({
+                "record_payload_sha256": record["record_payload_sha256"],
+                "record_sha256": convergence.sha256_file(record_path),
+            })
+            manifest["record_chain_terminal_sha256"] = record[
+                "record_payload_sha256"
+            ]
+            manifest["schema_version"] = (
+                convergence.BATCH_MANIFEST_SCHEMA_VERSION + ".unexpected"
+            )
+            manifest["unexpected_future_policy"] = {
+                "FUTURE_FAILURE_AUTO_CORRECTION_COUNT": 1
+            }
+            _write_json(manifest_path, manifest)
+            negative_report = independent_audit.audit_full_convergence_batch(
+                fixture,
+                manifest_path,
+                evaluated_head=head,
+                baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+                descendant_history_supplement_path=supplement_fixture[
+                    "supplement_path"
+                ],
+                descendant_history_raw_report_path=supplement_fixture[
+                    "raw_report_path"
+                ],
+                descendant_history_scanner_path=supplement_fixture[
+                    "scanner_path"
+                ],
+            )
+            negative_codes = {
+                item["code"]
+                for bucket in ("p0", "p1")
+                for item in negative_report.get(bucket, [])
+            }
+            _expect(negative_report["status"] == "NO_GO", json.dumps(
+                negative_report, sort_keys=True
+            ))
+            for expected_code in (
+                "FULL_CONVERGENCE_BATCH_MANIFEST_FIELD_SET_INVALID",
+                "FULL_CONVERGENCE_BATCH_MANIFEST_SCHEMA_VERSION_INVALID",
+                "FULL_CONVERGENCE_RECORD_FIELD_SET_INVALID",
+                "FULL_CONVERGENCE_RECORD_SCHEMA_VERSION_INVALID",
+            ):
+                _expect(
+                    expected_code in negative_codes,
+                    json.dumps(negative_report, sort_keys=True),
+                )
         finally:
             independent_audit.FULL_CONVERGENCE_BASELINE_SHA = original_baseline_sha
-        _expect(report["status"] == "GO", json.dumps(report, sort_keys=True))
 
 
 def _non_object_documents_fail_closed_case(root: Path) -> None:
@@ -1249,6 +1546,1689 @@ def _non_object_documents_fail_closed_case(root: Path) -> None:
         _expect_failure(result["failures"], "BATCH_MANIFEST_NOT_OBJECT")
 
 
+def _effective_all_or_none_case(root: Path) -> None:
+    try:
+        legacy_resolver.validate_records(
+            root,
+            root,
+            current_head=_git(root, "rev-parse", "HEAD"),
+            full_convergence_baseline_report_path=(
+                root / convergence.BASELINE_REPORT_REL
+            ),
+        )
+    except ValueError as exc:
+        _expect(
+            str(exc) == "FULL_CONVERGENCE_EXPLICIT_INPUT_SET_INCOMPLETE",
+            str(exc),
+        )
+        return
+    raise AssertionError("partial full-convergence input set was accepted")
+
+
+def _effective_terminal_coverage_case() -> None:
+    authorized = {"h1", "h2", "h3"}
+    legacy = {"h1"}
+    _expect(
+        not legacy_resolver._full_convergence_terminal_coverage_failures(
+            authorized_historical=authorized,
+            legacy_exact=legacy,
+            full_fingerprints={"h2", "h3"},
+            terminal=True,
+        ),
+        "exact terminal coverage was rejected",
+    )
+    nonterminal = legacy_resolver._full_convergence_terminal_coverage_failures(
+        authorized_historical=authorized,
+        legacy_exact=legacy,
+        full_fingerprints={"h2", "h3"},
+        terminal=False,
+    )
+    _expect_failure(nonterminal, "EFFECTIVE_TERMINAL_BATCH_FLAG_REQUIRED")
+    partial = legacy_resolver._full_convergence_terminal_coverage_failures(
+        authorized_historical=authorized,
+        legacy_exact=legacy,
+        full_fingerprints={"h2"},
+        terminal=True,
+    )
+    _expect_failure(partial, "EFFECTIVE_FULL_CONVERGENCE_COVERAGE_MISSING:1")
+
+
+def _effective_novel_history_is_active_case() -> None:
+    historical_raw = "HISTORY_SAMPLE:aaaaaaaaaaaa->bbbbbbbbbbbb:scripts/known.gd"
+    novel_raw = "HISTORY_FUTURE:bbbbbbbbbbbb->cccccccccccc:scripts/future.gd"
+    head = "a" * 40
+    with tempfile.TemporaryDirectory(prefix="v076-fc-live-raw-") as temporary:
+        path = Path(temporary) / "live.json"
+        _write_json(path, {
+            "status": "FAIL",
+            "head_sha": head,
+            "include_worktree": False,
+            "evaluated_source": "COMMITTED_HEAD",
+            "failures": [historical_raw, novel_raw],
+        })
+        report = legacy_resolver._classify_full_convergence_live_raw(
+            path,
+            current_head=head,
+            authorized_identity_by_fingerprint={
+                "V2F-" + "1" * 64: {"raw_failure": historical_raw},
+            },
+        )
+    _expect(report["status"] == "PASS", str(report))
+    _expect(report["raw_historical_failure_count"] == 1, str(report))
+    _expect(report["raw_current_delta_failure_count"] == 1, str(report))
+    active_raw = set(report["active_raw_by_fingerprint"].values())
+    _expect(active_raw == {novel_raw}, str(active_raw))
+
+
+def _effective_missing_history_fails_closed_case() -> None:
+    historical_raw = "HISTORY_SAMPLE:aaaaaaaaaaaa->bbbbbbbbbbbb:scripts/known.gd"
+    head = "b" * 40
+    with tempfile.TemporaryDirectory(prefix="v076-fc-live-missing-") as temporary:
+        path = Path(temporary) / "live.json"
+        _write_json(path, {
+            "status": "PASS",
+            "head_sha": head,
+            "include_worktree": False,
+            "evaluated_source": "COMMITTED_HEAD",
+            "failures": [],
+        })
+        report = legacy_resolver._classify_full_convergence_live_raw(
+            path,
+            current_head=head,
+            authorized_identity_by_fingerprint={
+                "V2F-" + "2" * 64: {"raw_failure": historical_raw},
+            },
+        )
+    _expect(report["status"] == "FAIL", str(report))
+    _expect_failure(
+        report["failures"],
+        "RAW_AUTHORIZED_HISTORICAL_FAILURE_MISSING:1",
+    )
+
+
+def _legacy_current_binding_revalidation_case(root: Path) -> None:
+    report = legacy_resolver.validate_legacy_epoch_effectiveness(
+        root,
+        root,
+        current_head=_git(root, "rev-parse", "HEAD"),
+    )
+    _expect(report["status"] == "PASS", json.dumps(report, sort_keys=True))
+    _expect(
+        len(report["verified_corrected_historical_fingerprints"]) == 12,
+        json.dumps(report, sort_keys=True),
+    )
+
+
+def _legacy_preflight_failure_clears_verified_set_case(root: Path) -> None:
+    report = legacy_resolver.validate_legacy_epoch_effectiveness(
+        root,
+        root,
+        current_head="f" * 40,
+    )
+    _expect(report["status"] == "FAIL", json.dumps(report, sort_keys=True))
+    _expect_failure(
+        report["failures"],
+        "LEGACY_EVALUATED_HEAD_NOT_AUTHORIZED_DESCENDANT",
+    )
+    _expect(
+        report["verified_corrected_historical_fingerprints"] == [],
+        json.dumps(report, sort_keys=True),
+    )
+
+
+def _copy_real_reconciliation_fixture(root: Path, fixture: Path) -> None:
+    clone = subprocess.run(
+        ["git", "clone", "--quiet", "--no-hardlinks", str(root), str(fixture)],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    _expect(clone.returncode == 0, clone.stderr)
+    for relative in (
+        convergence.SCHEMA_REL,
+        convergence.BASELINE_REPORT_REL,
+        REAL_DESCENDANT_RAW_REL,
+        REAL_DESCENDANT_SUPPLEMENT_REL,
+    ):
+        _copy_locked(root, fixture, relative.as_posix())
+
+
+def _validate_real_reconciliation(root: Path) -> dict[str, Any]:
+    return convergence.validate_descendant_history_supplement(
+        root,
+        root / REAL_DESCENDANT_SUPPLEMENT_REL,
+        root / REAL_DESCENDANT_RAW_REL,
+        root / convergence.DESCENDANT_HISTORY_SCANNER_REL,
+        evaluated_head=_git(root, "rev-parse", "HEAD"),
+        baseline_report_path=root / convergence.BASELINE_REPORT_REL,
+    )
+
+
+def _real_missing19_novel10_positive_case(root: Path) -> None:
+    result = _validate_real_reconciliation(root)
+    _expect(result["status"] == "PASS", json.dumps(result["failures"]))
+    _expect(len(result["authorized_historical_fingerprints"]) == 501, "live != 501")
+    _expect(len(result["registered_historical_fingerprints"]) == 520, "registered != 520")
+    _expect(len(result["dispositioned_historical_fingerprints"]) == 19, "dispositioned != 19")
+    dispositions = result["frozen_identity_disposition_by_failure"].values()
+    _expect(
+        sum(
+            row.get("disposition")
+            == convergence.EXACT_SUCCESSOR_FINGERPRINT_MAPPING
+            for row in dispositions
+        )
+        == 3,
+        "exact successor disposition count != 3",
+    )
+    _expect(
+        sum(
+            row.get("disposition")
+            == convergence.EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT
+            for row in dispositions
+        )
+        == 16,
+        "exact false-component retirement count != 16",
+    )
+    baseline = independent_audit._json(root / convergence.BASELINE_REPORT_REL)
+    independent = independent_audit._descendant_history_supplement_findings(
+        root,
+        supplement_path=root / REAL_DESCENDANT_SUPPLEMENT_REL,
+        raw_report_path=root / REAL_DESCENDANT_RAW_REL,
+        scanner_path=root / convergence.DESCENDANT_HISTORY_SCANNER_REL,
+        evaluated_head=_git(root, "rev-parse", "HEAD"),
+        baseline_report=baseline,
+        baseline_sets=independent_audit._authorized_failure_fingerprint_sets(
+            baseline
+        ),
+    )
+    _expect(not independent[0], json.dumps(independent[0], sort_keys=True))
+    _expect(len(independent[1]) == 10, "independent novel != 10")
+    _expect(len(independent[2]) == 501, "independent live != 501")
+    _expect(len(independent[3]) == 19, "independent dispositioned != 19")
+
+
+def _real_disposition_negative_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-real-disposition-negative-") as temporary:
+        fixture = Path(temporary)
+        _copy_real_reconciliation_fixture(root, fixture)
+        supplement_path = fixture / REAL_DESCENDANT_SUPPLEMENT_REL
+        original = convergence.load_json_strict(supplement_path)
+
+        missing_one = copy.deepcopy(original)
+        removed = next(iter(sorted(missing_one["frozen_identity_disposition_by_failure"])))
+        missing_one["frozen_identity_disposition_by_failure"].pop(removed)
+        _write_json(supplement_path, missing_one)
+        result = _validate_real_reconciliation(fixture)
+        _expect_failure(
+            result["failures"],
+            "DESCENDANT_HISTORY_FROZEN_DISPOSITION_SET_MISMATCH",
+        )
+
+        successor_drift = copy.deepcopy(original)
+        successor_key = next(
+            key
+            for key, row in successor_drift[
+                "frozen_identity_disposition_by_failure"
+            ].items()
+            if row["disposition"]
+            == convergence.EXACT_SUCCESSOR_FINGERPRINT_MAPPING
+        )
+        successor_drift["frozen_identity_disposition_by_failure"][successor_key][
+            "evidence"
+        ]["successor_subject_value"] = "scripts/not-the-successor.gd"
+        _write_json(supplement_path, successor_drift)
+        result = _validate_real_reconciliation(fixture)
+        _expect_failure(
+            result["failures"],
+            "DESCENDANT_HISTORY_SUCCESSOR_EVIDENCE_SUCCESSOR_SUBJECT_VALUE_MISMATCH",
+        )
+
+        false_target_drift = copy.deepcopy(original)
+        false_key = next(
+            key
+            for key, row in false_target_drift[
+                "frozen_identity_disposition_by_failure"
+            ].items()
+            if row["disposition"]
+            == convergence.EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT
+        )
+        false_target_drift["frozen_identity_disposition_by_failure"][false_key][
+            "evidence"
+        ]["dynamic_reference_ids"] = []
+        _write_json(supplement_path, false_target_drift)
+        result = _validate_real_reconciliation(fixture)
+        _expect_failure(
+            result["failures"],
+            "DESCENDANT_HISTORY_FALSE_COMPONENT_DYNAMIC_TARGET_INVALID",
+        )
+
+
+def _disposed_identity_reappearance_fails_case(root: Path) -> None:
+    authority = _validate_real_reconciliation(root)
+    _expect(authority["status"] == "PASS", json.dumps(authority["failures"]))
+    disposed_fingerprint = sorted(
+        authority["dispositioned_historical_fingerprints"]
+    )[0]
+    disposed_raw = authority["registered_identity_by_fingerprint"][
+        disposed_fingerprint
+    ]["raw_failure"]
+    with tempfile.TemporaryDirectory(prefix="v076-fc-disposed-reappears-") as temporary:
+        live_path = Path(temporary) / "live.json"
+        live = convergence.load_json_strict(root / REAL_DESCENDANT_RAW_REL)
+        live["failures"] = sorted([*live["failures"], disposed_raw])
+        _write_json(live_path, live)
+        report = legacy_resolver._classify_full_convergence_live_raw(
+            live_path,
+            current_head=_git(root, "rev-parse", "HEAD"),
+            authorized_identity_by_fingerprint=authority[
+                "authorized_identity_by_fingerprint"
+            ],
+            registered_identity_by_fingerprint=authority[
+                "registered_identity_by_fingerprint"
+            ],
+            disposition_by_failure=authority[
+                "frozen_identity_disposition_by_failure"
+            ],
+        )
+    _expect(report["status"] == "FAIL", json.dumps(report, sort_keys=True))
+    _expect_failure(
+        report["failures"],
+        "RAW_DISPOSITIONED_HISTORICAL_FAILURE_REAPPEARED:1",
+    )
+
+
+def _real_live_terminal_coverage_case(root: Path) -> None:
+    authority = _validate_real_reconciliation(root)
+    live = set(authority["authorized_historical_fingerprints"])
+    disposed = set(authority["dispositioned_historical_fingerprints"])
+    legacy = set(
+        convergence.verify_legacy_anchor(root)["legacy_corrected_fingerprints"]
+    )
+    full = live - legacy
+    _expect(len(live) == 501 and len(legacy) == 12 and len(full) == 489, "501-12 coverage drift")
+    _expect(
+        not legacy_resolver._full_convergence_terminal_coverage_failures(
+            authorized_historical=live,
+            legacy_exact=legacy,
+            full_fingerprints=full,
+            terminal=True,
+        ),
+        "exact live terminal coverage rejected",
+    )
+    disposed_extra = next(iter(disposed))
+    failures = legacy_resolver._full_convergence_terminal_coverage_failures(
+        authorized_historical=live,
+        legacy_exact=legacy,
+        full_fingerprints=full | {disposed_extra},
+        terminal=True,
+    )
+    _expect_failure(failures, "EFFECTIVE_FULL_CONVERGENCE_COVERAGE_EXTRA:1")
+
+
+def _independent_record_contract_parity_case(root: Path) -> None:
+    fingerprint = _fingerprint(1)
+
+    nested_extra = _record()
+    nested_extra["identity_binding_by_failure"][fingerprint][
+        "unexpected_wildcard"
+    ] = "*"
+    nested_extra["record_payload_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(convergence._record_payload(nested_extra))
+    )
+    nested_findings = independent_audit._full_convergence_record_contract_findings(
+        nested_extra,
+        path="fixture-record.json",
+    )
+    _expect(
+        any(
+            item["code"]
+            == "FULL_CONVERGENCE_IDENTITY_BINDING_FIELD_SET_INVALID"
+            for item in nested_findings
+        ),
+        json.dumps(nested_findings, sort_keys=True),
+    )
+    _expect_failure(
+        convergence.validate_extension_record_document(nested_extra),
+        "IDENTITY_BINDING_FIELD_SET_MISMATCH",
+    )
+
+    selector_extra = _record()
+    selector_extra["identity_binding_by_failure"][fingerprint][
+        "authority_selectors"
+    ]["glob"] = "*"
+    selector_extra["record_payload_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(convergence._record_payload(selector_extra))
+    )
+    selector_findings = independent_audit._full_convergence_record_contract_findings(
+        selector_extra,
+        path="fixture-record.json",
+    )
+    _expect(
+        any(
+            item["code"]
+            == "FULL_CONVERGENCE_SUBJECT_SELECTOR_FIELD_SET_INVALID"
+            for item in selector_findings
+        ),
+        json.dumps(selector_findings, sort_keys=True),
+    )
+    _expect_failure(
+        convergence.validate_extension_record_document(selector_extra),
+        "SUBJECT_SELECTOR_FIELD_SET_MISMATCH",
+    )
+
+    semantic = _record()
+    binding = semantic["identity_binding_by_failure"][fingerprint]
+    binding["recommended_disposition"] = "HISTORICAL_WILDCARD_WAIVER"
+    semantic["to_effective_disposition"] = "WAIVED"
+    semantic["allowed_to_state"] = "WAIVED"
+    semantic["required_untouched_state"] = False
+    semantic["touch_invalidation_policy"] = dict(_touch_policy())
+    semantic["touch_invalidation_policy"]["TOUCH_INVALIDATES_CORRECTION"] = False
+    semantic["revocation_policy"] = {
+        "OLD_RECORD_MUTATION_FORBIDDEN": False,
+        "REVOCATION_APPEND_ONLY": False,
+    }
+    semantic["path_set_sha256"] = "0" * 64
+    semantic["record_payload_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(convergence._record_payload(semantic))
+    )
+    semantic_findings = independent_audit._full_convergence_record_contract_findings(
+        semantic,
+        path="fixture-record.json",
+    )
+    semantic_codes = {item["code"] for item in semantic_findings}
+    for expected_code in (
+        "FULL_CONVERGENCE_IDENTITY_DISPOSITION_INVALID",
+        "FULL_CONVERGENCE_RECORD_AGGREGATE_SET_INVALID",
+        "FULL_CONVERGENCE_RECORD_REVOCATION_POLICY_INVALID",
+        "FULL_CONVERGENCE_RECORD_TO_STATE_INVALID",
+        "FULL_CONVERGENCE_RECORD_TOUCH_POLICY_INVALID",
+        "FULL_CONVERGENCE_RECORD_UNTOUCHED_ATTESTATION_INVALID",
+    ):
+        _expect(
+            expected_code in semantic_codes,
+            json.dumps(semantic_findings, sort_keys=True),
+        )
+    primary_failures = convergence.validate_extension_record_document(semantic)
+    for expected_failure in (
+        "EXTENSION_RECORD_PATH_SET_SHA256_MISMATCH",
+        "EXTENSION_RECORD_REVOCATION_POLICY_INVALID",
+        "EXTENSION_RECORD_TO_STATE_INVALID",
+        "EXTENSION_RECORD_TOUCH_POLICY_INVALID",
+        "EXTENSION_RECORD_UNTOUCHED_ATTESTATION_INVALID",
+        "IDENTITY_BINDING_DISPOSITION_INVALID",
+    ):
+        _expect_failure(primary_failures, expected_failure)
+
+    authority = _record()
+    authority_head = _git(root, "rev-parse", "HEAD")
+    authority["binding_head_sha"] = authority_head
+    authority["binding_tree_sha"] = _git(
+        root,
+        "rev-parse",
+        f"{authority_head}^{{tree}}",
+    )
+    authority["authority_source_sha256"] = {
+        relative: convergence.sha256_bytes(
+            convergence._git_bytes(root, authority_head, relative) or b""
+        )
+        for relative in independent_audit.FULL_CONVERGENCE_AUTHORITY_SOURCE_PATHS
+    }
+    authority["record_payload_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(convergence._record_payload(authority))
+    )
+    authority_findings = independent_audit._full_convergence_record_contract_findings(
+        authority,
+        path="fixture-record.json",
+        root=root,
+    )
+    _expect(
+        not any(
+            item["code"]
+            == "FULL_CONVERGENCE_RECORD_AUTHORITY_SOURCE_HASH_MISMATCH"
+            for item in authority_findings
+        ),
+        json.dumps(authority_findings, sort_keys=True),
+    )
+    tampered_authority_path = (
+        independent_audit.FULL_CONVERGENCE_AUTHORITY_SOURCE_PATHS[0]
+    )
+    authority["authority_source_sha256"][tampered_authority_path] = "0" * 64
+    authority["record_payload_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(convergence._record_payload(authority))
+    )
+    authority_findings = independent_audit._full_convergence_record_contract_findings(
+        authority,
+        path="fixture-record.json",
+        root=root,
+    )
+    _expect(
+        any(
+            item["code"]
+            == "FULL_CONVERGENCE_RECORD_AUTHORITY_SOURCE_HASH_MISMATCH"
+            for item in authority_findings
+        ),
+        json.dumps(authority_findings, sort_keys=True),
+    )
+
+
+def _independent_current_manifest_binding_parity_case(root: Path) -> None:
+    manifest = _batch()
+    unauthorized_head = _git(
+        root,
+        "rev-parse",
+        f"{convergence.AUTHORIZATION_BASE_HEAD_SHA}^{{commit}}^",
+    )
+    manifest["binding_head_sha"] = unauthorized_head
+    manifest["binding_tree_sha"] = _git(
+        root,
+        "rev-parse",
+        f"{unauthorized_head}^{{tree}}",
+    )
+    manifest["batch_id"] = "batch-wildcard"
+    manifest["batch_size_target"] = "ANY_SIZE"
+    manifest["terminal_remainder_batch"] = "false"
+    manifest["descendant_history_supplement_sha256"] = "8" * 64
+    findings = independent_audit._manifest_contract_findings(
+        root,
+        root / "unused-batch-manifest.json",
+        manifest,
+        evaluated_head=_git(root, "rev-parse", "HEAD"),
+        baseline_identities={},
+        descendant_supplement_sha="9" * 64,
+    )
+    codes = {item["code"] for item in findings}
+    for expected_code in (
+        "FULL_CONVERGENCE_BATCH_AUTHORITY_MISMATCH",
+        "FULL_CONVERGENCE_BATCH_ID_INVALID",
+        "FULL_CONVERGENCE_DESCENDANT_HISTORY_MANIFEST_HASH_MISMATCH",
+        "FULL_CONVERGENCE_MANIFEST_BINDING_HEAD_NOT_AUTHORIZED_DESCENDANT",
+        "FULL_CONVERGENCE_TERMINAL_REMAINDER_FLAG_INVALID",
+    ):
+        _expect(expected_code in codes, json.dumps(findings, sort_keys=True))
+    primary_failures = convergence.validate_batch_manifest_document(manifest)
+    for expected_failure in (
+        "BATCH_MANIFEST_BATCH_ID_INVALID",
+        "BATCH_MANIFEST_BATCH_SIZE_TARGET_MISMATCH",
+        "BATCH_MANIFEST_TERMINAL_REMAINDER_FLAG_INVALID",
+    ):
+        _expect_failure(primary_failures, expected_failure)
+
+
+def _projection_contract_results(
+    binding: dict[str, Any],
+    *,
+    rule_id: str = "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+    raw_failure: str = "",
+) -> tuple[list[str], list[dict[str, Any]]]:
+    return (
+        convergence._identity_projection_failures(
+            binding,
+            rule_id=rule_id,
+            raw_failure=raw_failure,
+        ),
+        independent_audit._identity_projection_findings(
+            binding,
+            path="fixture-record.json",
+            fingerprint=_fingerprint(1),
+            rule_id=rule_id,
+            raw_failure=raw_failure,
+        ),
+    )
+
+
+def _expect_projection_rejected_by_both(
+    binding: dict[str, Any],
+    *,
+    primary_prefix: str,
+    independent_code: str,
+    rule_id: str = "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+    raw_failure: str = "",
+) -> None:
+    primary, independent = _projection_contract_results(
+        binding,
+        rule_id=rule_id,
+        raw_failure=raw_failure,
+    )
+    _expect_failure(primary, primary_prefix)
+    codes = {str(item.get("code", "")) for item in independent}
+    _expect(
+        independent_code in codes,
+        f"missing {independent_code}: {json.dumps(independent, sort_keys=True)}",
+    )
+
+
+def _expect_registry_row_rejected_by_both(
+    row: dict[str, Any],
+    *,
+    primary_prefixes: tuple[str, ...],
+    independent_codes: tuple[str, ...],
+) -> None:
+    primary = convergence._registry_row_failures(row)
+    independent = independent_audit._full_convergence_registry_row_findings(
+        row,
+        path="fixture-record.json",
+        fingerprint=_fingerprint(1),
+    )
+    _expect(
+        any(
+            any(value.startswith(prefix) for value in primary)
+            for prefix in primary_prefixes
+        ),
+        f"Primary accepted malicious Registry row: {primary}",
+    )
+    codes = {str(item.get("code", "")) for item in independent}
+    _expect(
+        any(code in codes for code in independent_codes),
+        "Independent accepted malicious Registry row: "
+        + json.dumps(independent, sort_keys=True),
+    )
+
+
+def _minimal_historical_backfill_positive_case() -> None:
+    binding = _identity_binding()
+    backfills = [
+        row
+        for row in binding["subject_projection"]["registry_rows"]
+        if row.get("authority_source_kind") == "historical_identity_backfill"
+    ]
+    _expect(len(backfills) == 1, f"minimal backfill count drifted: {backfills}")
+    _expect(
+        set(backfills[0]) == convergence.REGISTRY_HISTORICAL_BACKFILL_FIELDS,
+        f"minimal backfill fields drifted: {sorted(backfills[0])}",
+    )
+    _expect(
+        not convergence._registry_row_failures(backfills[0]),
+        str(convergence._registry_row_failures(backfills[0])),
+    )
+    independent_row_findings = (
+        independent_audit._full_convergence_registry_row_findings(
+            backfills[0],
+            path="fixture-record.json",
+            fingerprint=_fingerprint(1),
+        )
+    )
+    _expect(
+        not independent_row_findings,
+        json.dumps(independent_row_findings, sort_keys=True),
+    )
+    primary, independent = _projection_contract_results(binding)
+    _expect(not primary, str(primary))
+    _expect(not independent, json.dumps(independent, sort_keys=True))
+
+
+def _historical_backfill_field_expansion_attack_case() -> None:
+    row = _historical_backfill_row(
+        supersession=["component.current.owner"],
+        owns_tick=True,
+    )
+    _expect_registry_row_rejected_by_both(
+        row,
+        primary_prefixes=("IDENTITY_BINDING_BACKFILL_FIELD_SET_INVALID",),
+        independent_codes=(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_BACKFILL_FIELD_SET_INVALID",
+        ),
+    )
+
+
+def _registry_role_matrix_attack_case() -> None:
+    fake_role = _component_inventory_row(
+        component_id="component.fake.role",
+        path="scripts/fake/role.gd",
+        role="FORGED_OWNER",
+        owner_component_id="component.current.owner",
+        owner_path="scripts/current/owner.gd",
+    )
+    _expect_registry_row_rejected_by_both(
+        fake_role,
+        primary_prefixes=("IDENTITY_BINDING_REGISTRY_ROLE_INVALID",),
+        independent_codes=(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_ROLE_INVALID",
+        ),
+    )
+
+    consumer_authority = _component_inventory_row(
+        component_id="component.fake.consumer",
+        path="scripts/fake/consumer.gd",
+        role="CONSUMER",
+        owner_component_id="component.current.owner",
+        owner_path="scripts/current/owner.gd",
+        writes_authority=True,
+        owns_tick=True,
+    )
+    _expect_registry_row_rejected_by_both(
+        consumer_authority,
+        primary_prefixes=(
+            "IDENTITY_BINDING_REGISTRY_NONOWNER_OWNERSHIP_INVALID",
+            "IDENTITY_BINDING_REGISTRY_NONOWNER_WRITE_INVALID",
+        ),
+        independent_codes=(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONOWNER_OWNERSHIP_INVALID",
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONOWNER_WRITE_INVALID",
+        ),
+    )
+
+
+def _lineage_substitution_binding(disposition: str) -> dict[str, Any]:
+    binding = _identity_binding()
+    binding["recommended_disposition"] = disposition
+    binding["superseded_by"] = []
+    binding["supersedes"] = []
+    binding["authority_selectors"]["supersession_ids"] = []
+    binding["subject_projection"]["supersession_rows"] = []
+    inventory = next(
+        row
+        for row in binding["subject_projection"]["registry_rows"]
+        if row.get("authority_source_kind") == "component_inventory"
+    )
+    backfill = next(
+        row
+        for row in binding["subject_projection"]["registry_rows"]
+        if row.get("authority_source_kind") == "historical_identity_backfill"
+    )
+    inventory["supersedes"] = []
+    backfill["current_disposition"] = disposition
+    backfill["supersession"] = []
+    if disposition == "HISTORICAL_ACTIVE_LINEAGE_REGISTERED":
+        binding["historical_production_reachability"] = "PRODUCTION_REACHABLE"
+        binding["retired_status"] = "ACTIVE_LINEAGE"
+        backfill["production_reachability"] = "PRODUCTION_REACHABLE"
+    elif disposition == "HISTORICAL_RETIRED_NONREACHABLE":
+        binding["current_production_reachability"] = "NONREACHABLE"
+        binding["current_role"] = "RETIRED"
+        binding["historical_production_reachability"] = "NONREACHABLE"
+        binding["historical_role"] = "RETIRED"
+        binding["retired_status"] = "RETIRED_NONREACHABLE"
+        inventory.update({
+            "component_role": "RETIRED",
+            "owns_identity": False,
+            "production_reachable": False,
+            "reuse_disposition": "REFERENCE_ONLY",
+            "writes_authority": False,
+        })
+        backfill["historical_role"] = "RETIRED"
+        backfill["production_reachability"] = "NONREACHABLE"
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    return binding
+
+
+def _unrelated_lineage_substitution_attack_case() -> None:
+    for disposition in (
+        "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+        "HISTORICAL_RETIRED_NONREACHABLE",
+    ):
+        binding = _lineage_substitution_binding(disposition)
+        _expect_projection_rejected_by_both(
+            binding,
+            primary_prefix="IDENTITY_BINDING_UNAUTHORIZED_LINEAGE_SUBSTITUTION",
+            independent_code=(
+                "FULL_CONVERGENCE_IDENTITY_UNAUTHORIZED_LINEAGE_SUBSTITUTION"
+            ),
+        )
+
+
+def _active_plus_test_only_attack_case() -> None:
+    binding = _lineage_substitution_binding(
+        "HISTORICAL_ACTIVE_LINEAGE_REGISTERED"
+    )
+    binding["test_only_status"] = "TEST_ONLY"
+    primary = convergence._identity_disposition_failures(
+        binding,
+        rule_id="HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+    )
+    _expect_failure(primary, "IDENTITY_BINDING_DISPOSITION_STATE_MATRIX_INVALID")
+    record = _record()
+    record["identity_binding_by_failure"][_fingerprint(1)] = binding
+    record["record_payload_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(convergence._record_payload(record))
+    )
+    findings = independent_audit._full_convergence_record_contract_findings(
+        record,
+        path="fixture-record.json",
+    )
+    codes = {str(item.get("code", "")) for item in findings}
+    _expect(
+        "FULL_CONVERGENCE_IDENTITY_DISPOSITION_STATE_MATRIX_INVALID" in codes,
+        json.dumps(findings, sort_keys=True),
+    )
+
+
+def _authority_primary_key_attack_case(kind: str) -> None:
+    binding = _identity_binding()
+    if kind == "registry":
+        row = copy.deepcopy(binding["subject_projection"]["registry_rows"][0])
+        row["path"] = "scripts/current/malicious_duplicate_owner.gd"
+        binding["subject_projection"]["registry_rows"].append(row)
+        primary_prefix = "IDENTITY_BINDING_REGISTRY_PRIMARY_KEY_NOT_UNIQUE"
+        independent_code = (
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_PRIMARY_KEY_NOT_UNIQUE"
+        )
+    elif kind == "dynamic":
+        binding["authority_selectors"]["dynamic_reference_ids"] = [
+            "dynamic.sample"
+        ]
+        binding["subject_projection"]["dynamic_reference_rows"] = [
+            {"dynamic_reference_id": "dynamic.sample"},
+            {"dynamic_reference_id": "dynamic.sample"},
+        ]
+        primary_prefix = (
+            "IDENTITY_BINDING_DYNAMIC_REFERENCE_PRIMARY_KEY_NOT_UNIQUE"
+        )
+        independent_code = (
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_PRIMARY_KEY_NOT_UNIQUE"
+        )
+    elif kind == "supersession":
+        binding["subject_projection"]["supersession_rows"].append(
+            copy.deepcopy(binding["subject_projection"]["supersession_rows"][0])
+        )
+        primary_prefix = (
+            "IDENTITY_BINDING_SUPERSESSION_PRIMARY_KEY_NOT_UNIQUE"
+        )
+        independent_code = (
+            "FULL_CONVERGENCE_IDENTITY_SUPERSESSION_PRIMARY_KEY_NOT_UNIQUE"
+        )
+    elif kind == "retirement":
+        binding["authority_selectors"]["retirement_ids"] = [
+            "retirement.sample"
+        ]
+        retirement = {
+            "component_id": "component.history.sample",
+            "domain_id": "domain.sample",
+            "dual_write_count": 0,
+            "fallback_count": 0,
+            "production_reachable": False,
+            "retired_status": "RETIRED_NONREACHABLE",
+            "retirement_id": "retirement.sample",
+        }
+        binding["subject_projection"]["supersession_rows"].extend([
+            retirement,
+            copy.deepcopy(retirement),
+        ])
+        primary_prefix = "IDENTITY_BINDING_RETIREMENT_PRIMARY_KEY_NOT_UNIQUE"
+        independent_code = (
+            "FULL_CONVERGENCE_IDENTITY_RETIREMENT_PRIMARY_KEY_NOT_UNIQUE"
+        )
+    else:
+        raise AssertionError(f"unknown authority kind: {kind}")
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    _expect_projection_rejected_by_both(
+        binding,
+        primary_prefix=primary_prefix,
+        independent_code=independent_code,
+    )
+
+
+def _supersedes_wildcard_attack_case() -> None:
+    binding = _identity_binding()
+    inventory = next(
+        row
+        for row in binding["subject_projection"]["registry_rows"]
+        if row.get("authority_source_kind") == "component_inventory"
+    )
+    inventory["supersedes"] = ["*"]
+    binding["supersedes"] = ["*"]
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    _expect_projection_rejected_by_both(
+        binding,
+        primary_prefix="IDENTITY_BINDING_REGISTRY_RELATION_SET_INVALID:supersedes",
+        independent_code=(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_RELATION_SET_INVALID"
+        ),
+    )
+
+
+def _historical_backfill_exact_identity_attack_case() -> None:
+    binding = _identity_binding()
+    backfill = next(
+        row
+        for row in binding["subject_projection"]["registry_rows"]
+        if row.get("authority_source_kind") == "historical_identity_backfill"
+    )
+    backfill["source_blob"] = "4" * 64
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    _expect_projection_rejected_by_both(
+        binding,
+        primary_prefix="IDENTITY_BINDING_HISTORICAL_BACKFILL_ROW_NOT_UNIQUE",
+        independent_code=(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_ROW_NOT_UNIQUE"
+        ),
+    )
+
+
+def _dynamic_reference_fixture_row(source_bytes: bytes) -> dict[str, Any]:
+    targets = ["res://targets/a.tscn"]
+    return {
+        "callsite_contract": {
+            "allowed_argument_constants": ["TARGET_A"],
+            "external_or_unknown_invocation_count": 0,
+            "helper_function": "_load_optional",
+            "required_invocation_count": 1,
+            "required_loader_sites": [{
+                "column": 9,
+                "line": 7,
+                "loader": "load",
+                "reference_expression": "path",
+            }],
+        },
+        "dynamic_reference_id": "dynamic.selftest.optional_load",
+        "failure_policy": {
+            "future_site_auto_resolution_count": 0,
+            "source_blob_change_invalidates": True,
+            "source_location_change_invalidates": True,
+            "target_set_change_invalidates": True,
+            "unknown_callsite_fails_closed": True,
+            "wildcard_count": 0,
+        },
+        "loader": "load",
+        "production_reachable": True,
+        "reference_expression": "path",
+        "resolution_method": "EXACT_CONSTANT_CALL_GRAPH_MANIFEST",
+        "resolved_targets": targets,
+        "runtime_probe": {
+            "expected_target_count": 1,
+            "probe_id": "dynamic_probe_test",
+            "required_before_production_claim": True,
+            "test_path": "tests/dynamic_probe_test.gd",
+        },
+        "source_blob_sha256": convergence.sha256_bytes(source_bytes),
+        "source_line_or_ast_location": {
+            "column": 9,
+            "containing_function": "_load_optional",
+            "line": 7,
+        },
+        "source_path": "scripts/dynamic_source.gd",
+        "target_set_sha256": convergence._dynamic_target_set_sha256(targets),
+    }
+
+
+def _dynamic_reference_repo_forgery_attack_case() -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-dynamic-forgery-") as temporary:
+        root = Path(temporary)
+        _git(root, "init", "--quiet")
+        _git(root, "config", "user.email", "selftest@example.invalid")
+        _git(root, "config", "user.name", "V076 Selftest")
+        source = (
+            'const TARGET_A := "res://targets/a.tscn"\n'
+            "\n"
+            "func _ready():\n"
+            "    _load_optional(TARGET_A)\n"
+            "\n"
+            "func _load_optional(path):\n"
+            "        load(path)\n"
+        ).encode("utf-8")
+        source_path = root / "scripts/dynamic_source.gd"
+        source_path.parent.mkdir(parents=True)
+        source_path.write_bytes(source)
+        target_path = root / "targets/a.tscn"
+        target_path.parent.mkdir(parents=True)
+        target_path.write_text("[gd_scene format=3]\n", encoding="utf-8")
+        test_path = root / "tests/dynamic_probe_test.gd"
+        test_path.parent.mkdir(parents=True)
+        test_path.write_text("extends SceneTree\n", encoding="utf-8")
+        _git(root, "add", "scripts", "targets", "tests")
+        _git(root, "commit", "--quiet", "-m", "dynamic fixture")
+        head = _git(root, "rev-parse", "HEAD")
+        valid_projection = {
+            "dynamic_reference_rows": [_dynamic_reference_fixture_row(source)]
+        }
+        primary_valid = convergence._dynamic_projection_repo_failures(
+            root,
+            head,
+            valid_projection,
+            source_commit=head,
+        )
+        independent_valid = independent_audit._dynamic_projection_repo_findings(
+            root,
+            head,
+            valid_projection,
+            source_commit=head,
+            path="fixture-record.json",
+            fingerprint=_fingerprint(1),
+        )
+        _expect(not primary_valid, str(primary_valid))
+        _expect(
+            not independent_valid,
+            json.dumps(independent_valid, sort_keys=True),
+        )
+
+        attacks = []
+        wrong_location = copy.deepcopy(valid_projection)
+        wrong_location["dynamic_reference_rows"][0][
+            "source_line_or_ast_location"
+        ]["line"] = 6
+        attacks.append((
+            wrong_location,
+            "DYNAMIC_REFERENCE_SOURCE_LOCATION_MISMATCH",
+            "FULL_CONVERGENCE_DYNAMIC_REFERENCE_SOURCE_LOCATION_MISMATCH",
+        ))
+        wrong_constant = copy.deepcopy(valid_projection)
+        wrong_constant["dynamic_reference_rows"][0]["callsite_contract"][
+            "allowed_argument_constants"
+        ] = ["FORGED_TARGET"]
+        attacks.append((
+            wrong_constant,
+            "DYNAMIC_REFERENCE_CALLSITE_TARGET_BINDING_MISMATCH",
+            "FULL_CONVERGENCE_DYNAMIC_REFERENCE_CALLSITE_TARGET_BINDING_MISMATCH",
+        ))
+        wrong_target = copy.deepcopy(valid_projection)
+        wrong_target["dynamic_reference_rows"][0]["resolved_targets"] = [
+            "res://targets/missing.tscn"
+        ]
+        wrong_target["dynamic_reference_rows"][0]["target_set_sha256"] = (
+            convergence._dynamic_target_set_sha256([
+                "res://targets/missing.tscn"
+            ])
+        )
+        attacks.append((
+            wrong_target,
+            "DYNAMIC_REFERENCE_TARGET_MISSING",
+            "FULL_CONVERGENCE_DYNAMIC_REFERENCE_TARGET_MISSING",
+        ))
+        for projection, primary_prefix, independent_code in attacks:
+            primary = convergence._dynamic_projection_repo_failures(
+                root,
+                head,
+                projection,
+                source_commit=head,
+            )
+            independent = independent_audit._dynamic_projection_repo_findings(
+                root,
+                head,
+                projection,
+                source_commit=head,
+                path="fixture-record.json",
+                fingerprint=_fingerprint(1),
+            )
+            _expect_failure(primary, primary_prefix)
+            codes = {str(item.get("code", "")) for item in independent}
+            _expect(
+                independent_code in codes,
+                f"missing {independent_code}: "
+                + json.dumps(independent, sort_keys=True),
+            )
+
+
+def _duplicate_evidence_forgery_attack_case(root: Path) -> None:
+    canonical_fingerprint = _fingerprint(1)
+    duplicate_fingerprint = _fingerprint(2)
+    identities = {
+        canonical_fingerprint: {
+            "bucket": "HISTORICAL",
+            "raw_failure": "HISTORY_SAMPLE:path:scripts/history/sample.gd:1111111:2222222",
+            "rule_id": "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+            "subject_kind": "path",
+            "subject_value": "scripts/history/sample.gd",
+            "transition_new_prefix": "1111111",
+            "transition_old_prefix": "2222222",
+        },
+        duplicate_fingerprint: {
+            "bucket": "HISTORICAL",
+            "raw_failure": "HISTORY_SAMPLE:path:scripts/history/sample.gd:3333333:4444444",
+            "rule_id": "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+            "subject_kind": "path",
+            "subject_value": "scripts/history/sample.gd",
+            "transition_new_prefix": "3333333",
+            "transition_old_prefix": "4444444",
+        },
+    }
+    binding = _lineage_substitution_binding(
+        "HISTORICAL_ACTIVE_LINEAGE_REGISTERED"
+    )
+    binding["recommended_disposition"] = "HISTORICAL_DUPLICATE_OBSERVATION"
+    backfill = next(
+        row
+        for row in binding["subject_projection"]["registry_rows"]
+        if row.get("authority_source_kind") == "historical_identity_backfill"
+    )
+    backfill["current_disposition"] = "HISTORICAL_DUPLICATE_OBSERVATION"
+    binding["duplicate_of_failure_fingerprint"] = canonical_fingerprint
+    binding["duplicate_identity_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(
+            convergence._duplicate_identity_payload(
+                identities[canonical_fingerprint]
+            )
+        )
+    )
+    binding["duplicate_reason"] = (
+        "SAME_RULE_AND_SUBJECT_DISTINCT_TRANSITION_OBSERVATION"
+    )
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    head = _git(root, "rev-parse", "HEAD")
+
+    attacks = (
+        (
+            "target",
+            {"duplicate_of_failure_fingerprint": _fingerprint(3)},
+            "IDENTITY_DUPLICATE_OBSERVATION_AUTHORITY_MISMATCH",
+        ),
+        (
+            "digest",
+            {"duplicate_identity_sha256": "0" * 64},
+            "IDENTITY_DUPLICATE_OBSERVATION_AUTHORITY_MISMATCH",
+        ),
+        (
+            "reason",
+            {"duplicate_reason": "FORGED_DUPLICATE_REASON"},
+            "IDENTITY_BINDING_DUPLICATE_EVIDENCE_INVALID",
+        ),
+    )
+    for label, mutation, primary_prefix in attacks:
+        attacked_binding = copy.deepcopy(binding)
+        attacked_binding.update(mutation)
+        record = _record([duplicate_fingerprint])
+        record["identity_binding_by_failure"] = {
+            duplicate_fingerprint: attacked_binding
+        }
+        record["binding_head_sha"] = head
+        record["binding_tree_sha"] = _git(root, "rev-parse", f"{head}^{{tree}}")
+        record["authority_source_sha256"] = {
+            relative: convergence.sha256_bytes(
+                convergence._git_bytes(root, head, relative) or b""
+            )
+            for relative in convergence.AUTHORITY_SOURCE_PATHS
+        }
+        record["record_payload_sha256"] = convergence.sha256_bytes(
+            convergence.canonical_bytes(convergence._record_payload(record))
+        )
+        primary = convergence.validate_extension_record_against_repo(
+            root,
+            record,
+            evaluated_head=head,
+            authorized_identities=identities,
+        )
+        _expect_failure(primary, primary_prefix)
+        independent = independent_audit._duplicate_observation_findings(
+            duplicate_fingerprint,
+            attacked_binding,
+            identities,
+            path="fixture-record.json",
+        )
+        codes = {str(item.get("code", "")) for item in independent}
+        _expect(
+            "FULL_CONVERGENCE_IDENTITY_DUPLICATE_OBSERVATION_AUTHORITY_MISMATCH"
+            in codes,
+            f"Independent accepted forged duplicate {label}: "
+            + json.dumps(independent, sort_keys=True),
+        )
+
+
+def _expect_both_codes(
+    primary: list[str],
+    independent: list[dict[str, Any]],
+    *,
+    primary_prefixes: tuple[str, ...],
+    independent_codes: tuple[str, ...],
+) -> None:
+    for prefix in primary_prefixes:
+        _expect_failure(primary, prefix)
+    codes = {str(item.get("code", "")) for item in independent}
+    for code in independent_codes:
+        _expect(
+            code in codes,
+            f"missing {code}: {json.dumps(independent, sort_keys=True)}",
+        )
+
+
+def _dynamic_identity_binding() -> dict[str, Any]:
+    source = (
+        'const TARGET_A := "res://targets/a.tscn"\n'
+        "\n"
+        "func _ready():\n"
+        "    _load_optional(TARGET_A)\n"
+        "\n"
+        "func _load_optional(path):\n"
+        "        load(path)\n"
+    ).encode("utf-8")
+    binding = _identity_binding()
+    binding["recommended_disposition"] = (
+        "HISTORICAL_DYNAMIC_REFERENCE_SUPERSEDED"
+    )
+    binding["dynamic_reference_status"] = "SUPERSEDED"
+    binding["authority_selectors"]["dynamic_reference_ids"] = [
+        "dynamic.selftest.optional_load"
+    ]
+    dynamic_row = _dynamic_reference_fixture_row(source)
+    dynamic_row["source_path"] = "scripts/history/sample.gd"
+    binding["subject_projection"]["dynamic_reference_rows"] = [dynamic_row]
+    backfill = next(
+        row
+        for row in binding["subject_projection"]["registry_rows"]
+        if row.get("authority_source_kind") == "historical_identity_backfill"
+    )
+    backfill["current_disposition"] = (
+        "HISTORICAL_DYNAMIC_REFERENCE_SUPERSEDED"
+    )
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    return binding
+
+
+def _bool_supersession_count_attack_case() -> None:
+    binding = _identity_binding()
+    binding["subject_projection"]["supersession_rows"][0][
+        "dual_write_count"
+    ] = False
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    _expect_projection_rejected_by_both(
+        binding,
+        primary_prefix="IDENTITY_BINDING_SUPERSESSION_AUTHORITY_MISMATCH",
+        independent_code=(
+            "FULL_CONVERGENCE_IDENTITY_SUPERSESSION_AUTHORITY_MISMATCH"
+        ),
+    )
+
+
+def _bool_dynamic_count_attack_case() -> None:
+    binding = _dynamic_identity_binding()
+    row = binding["subject_projection"]["dynamic_reference_rows"][0]
+    row["callsite_contract"]["required_invocation_count"] = True
+    row["callsite_contract"]["external_or_unknown_invocation_count"] = False
+    row["runtime_probe"]["expected_target_count"] = True
+    row["failure_policy"]["future_site_auto_resolution_count"] = False
+    row["failure_policy"]["wildcard_count"] = False
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    primary, independent = _projection_contract_results(
+        binding,
+        rule_id="HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+    )
+    _expect_both_codes(
+        primary,
+        independent,
+        primary_prefixes=(
+            "IDENTITY_BINDING_DYNAMIC_REFERENCE_CALLSITE_CONTRACT_INVALID",
+            "IDENTITY_BINDING_DYNAMIC_REFERENCE_RUNTIME_PROBE_INVALID",
+            "IDENTITY_BINDING_DYNAMIC_REFERENCE_FAILURE_POLICY_INVALID",
+        ),
+        independent_codes=(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_CALLSITE_CONTRACT_INVALID",
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_RUNTIME_PROBE_INVALID",
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_FAILURE_POLICY_INVALID",
+        ),
+    )
+
+
+def _bool_dynamic_location_attack_case() -> None:
+    binding = _dynamic_identity_binding()
+    row = binding["subject_projection"]["dynamic_reference_rows"][0]
+    row["source_line_or_ast_location"]["line"] = True
+    row["source_line_or_ast_location"]["column"] = True
+    loader_site = row["callsite_contract"]["required_loader_sites"][0]
+    loader_site["line"] = True
+    loader_site["column"] = True
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    primary, independent = _projection_contract_results(
+        binding,
+        rule_id="HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+    )
+    _expect_both_codes(
+        primary,
+        independent,
+        primary_prefixes=(
+            "IDENTITY_BINDING_DYNAMIC_REFERENCE_METADATA_INVALID",
+            "IDENTITY_BINDING_DYNAMIC_REFERENCE_LOADER_SITE_INVALID",
+        ),
+        independent_codes=(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_METADATA_INVALID",
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_LOADER_SITE_INVALID",
+        ),
+    )
+
+
+def _bool_record_failure_count_attack_case() -> None:
+    record = _record()
+    record["failure_count"] = True
+    record["record_payload_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(convergence._record_payload(record))
+    )
+    primary = convergence.validate_extension_record_document(record)
+    independent = independent_audit._full_convergence_record_contract_findings(
+        record,
+        path="fixture-record.json",
+    )
+    _expect_both_codes(
+        primary,
+        independent,
+        primary_prefixes=("EXTENSION_RECORD_FINGERPRINT_COUNT_MISMATCH",),
+        independent_codes=(
+            "FULL_CONVERGENCE_RECORD_FINGERPRINT_DIGEST_INVALID",
+        ),
+    )
+
+
+def _bool_batch_count_attack_case(root: Path) -> None:
+    manifest = _batch(1, terminal=True)
+    manifest["failure_count"] = True
+    manifest["batch_unknown_count"] = False
+    manifest["batch_wildcard_count"] = False
+    manifest["current_failure_false_accept_count"] = False
+    head = _git(root, "rev-parse", "HEAD")
+    manifest["binding_head_sha"] = head
+    manifest["binding_tree_sha"] = _git(root, "rev-parse", f"{head}^{{tree}}")
+    primary = convergence.validate_batch_manifest_document(manifest)
+    independent = independent_audit._manifest_contract_findings(
+        root,
+        root / "unused-bool-batch-manifest.json",
+        manifest,
+        evaluated_head=head,
+        baseline_identities={},
+        descendant_supplement_sha=manifest[
+            "descendant_history_supplement_sha256"
+        ],
+    )
+    _expect_failure(primary, "BATCH_MANIFEST_FINGERPRINT_COUNT_MISMATCH")
+    for field in (
+        "batch_unknown_count",
+        "batch_wildcard_count",
+        "current_failure_false_accept_count",
+    ):
+        _expect_failure(
+            primary,
+            f"BATCH_MANIFEST_{field.upper()}_MISMATCH",
+        )
+    independent_codes = {
+        str(item.get("code", "")) for item in independent
+    }
+    _expect(
+        "FULL_CONVERGENCE_MANIFEST_FINGERPRINT_COUNT_MISMATCH"
+        in independent_codes,
+        json.dumps(independent, sort_keys=True),
+    )
+    authority_fields = {
+        str(item.get("evidence", {}).get("field", ""))
+        for item in independent
+        if item.get("code") == "FULL_CONVERGENCE_BATCH_AUTHORITY_MISMATCH"
+        and isinstance(item.get("evidence"), dict)
+    }
+    _expect(
+        {
+            "batch_unknown_count",
+            "batch_wildcard_count",
+            "current_failure_false_accept_count",
+        }.issubset(authority_fields),
+        json.dumps(independent, sort_keys=True),
+    )
+
+
+def _bool_supplement_zero_count_attack_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(
+        prefix="v076-fc-bool-supplement-counts-"
+    ) as temporary:
+        fixture = Path(temporary)
+        _copy_real_reconciliation_fixture(root, fixture)
+        supplement_path = fixture / REAL_DESCENDANT_SUPPLEMENT_REL
+        supplement = convergence.load_json_strict(supplement_path)
+        fields = (
+            "disposition_wildcard_count",
+            "raw_current_delta_failure_count",
+            "raw_failure_detection_suppressed_count",
+        )
+        for field in fields:
+            supplement[field] = False
+        _write_json(supplement_path, supplement)
+        primary = _validate_real_reconciliation(fixture)
+        for field in fields:
+            _expect_failure(
+                primary["failures"],
+                f"DESCENDANT_HISTORY_SUPPLEMENT_{field.upper()}_TYPE_INVALID",
+            )
+        baseline = independent_audit._json(
+            fixture / convergence.BASELINE_REPORT_REL
+        )
+        independent = independent_audit._descendant_history_supplement_findings(
+            fixture,
+            supplement_path=supplement_path,
+            raw_report_path=fixture / REAL_DESCENDANT_RAW_REL,
+            scanner_path=fixture / convergence.DESCENDANT_HISTORY_SCANNER_REL,
+            evaluated_head=_git(fixture, "rev-parse", "HEAD"),
+            baseline_report=baseline,
+            baseline_sets=(
+                independent_audit._authorized_failure_fingerprint_sets(
+                    baseline
+                )
+            ),
+        )[0]
+        authority_fields = {
+            str(item.get("evidence", {}).get("field", ""))
+            for item in independent
+            if item.get("code")
+            == "FULL_CONVERGENCE_DESCENDANT_HISTORY_AUTHORITY_MISMATCH"
+            and isinstance(item.get("evidence"), dict)
+        }
+        _expect(
+            set(fields).issubset(authority_fields),
+            json.dumps(independent, sort_keys=True),
+        )
+
+
+def _diagnostic_only_active_lineage_attack_case() -> None:
+    binding = _identity_binding()
+    binding.update({
+        "current_component_id": "component.diagonly",
+        "current_owner_id": "component.current.owner",
+        "current_path": "tools/diagonly.gd",
+        "current_production_reachability": "PRODUCTION_REACHABLE",
+        "current_role": "DIAGNOSTIC_ONLY",
+        "historical_component_id": "component.diagonly",
+        "historical_owner_id": "component.current.owner",
+        "historical_path": "tools/diagonly.gd",
+        "historical_production_reachability": "PRODUCTION_REACHABLE",
+        "historical_role": "DIAGNOSTIC_ONLY",
+        "recommended_disposition": "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+        "retired_status": "ACTIVE_LINEAGE",
+        "superseded_by": [],
+        "supersedes": [],
+    })
+    binding["authority_selectors"] = {
+        "component_ids": ["component.current.owner", "component.diagonly"],
+        "dynamic_reference_ids": [],
+        "paths": ["tools/diagonly.gd"],
+        "retirement_ids": [],
+        "supersession_ids": [],
+    }
+    binding["subject_projection"] = {
+        "dynamic_reference_rows": [],
+        "owner_map_lines": [],
+        "registry_rows": [
+            _component_inventory_row(
+                component_id="component.current.owner",
+                path="scripts/current/owner.gd",
+            ),
+            _component_inventory_row(
+                component_id="component.diagonly",
+                path="tools/diagonly.gd",
+                role="DIAGNOSTIC_ONLY",
+                owner_component_id="component.current.owner",
+                owner_path="scripts/current/owner.gd",
+                production_reachable=True,
+            ),
+        ],
+        "supersession_rows": [],
+    }
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    _expect_projection_rejected_by_both(
+        binding,
+        primary_prefix=(
+            "IDENTITY_BINDING_REGISTRY_NONPRODUCTION_ROLE_REACHABLE"
+        ),
+        independent_code=(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONPRODUCTION_ROLE_REACHABLE"
+        ),
+    )
+
+
+def _historical_backfill_missing_field_attack_case() -> None:
+    complete = _historical_backfill_row(
+        supersession=["component.current.owner"]
+    )
+    for field in sorted(complete):
+        row = copy.deepcopy(complete)
+        row.pop(field)
+        primary = convergence._registry_row_failures(row)
+        independent = (
+            independent_audit._full_convergence_registry_row_findings(
+                row,
+                path="fixture-record.json",
+                fingerprint=_fingerprint(1),
+            )
+        )
+        if field == "authority_source_kind":
+            _expect_both_codes(
+                primary,
+                independent,
+                primary_prefixes=(
+                    "IDENTITY_BINDING_REGISTRY_SOURCE_KIND_INVALID",
+                ),
+                independent_codes=(
+                    "FULL_CONVERGENCE_IDENTITY_REGISTRY_SOURCE_KIND_INVALID",
+                ),
+            )
+        else:
+            _expect_both_codes(
+                primary,
+                independent,
+                primary_prefixes=(
+                    "IDENTITY_BINDING_BACKFILL_FIELD_SET_INVALID",
+                ),
+                independent_codes=(
+                    "FULL_CONVERGENCE_IDENTITY_REGISTRY_BACKFILL_FIELD_SET_INVALID",
+                ),
+            )
+
+
+def _historical_backfill_no_inventory_fallback_attack_case() -> None:
+    binding = _identity_binding()
+    backfill = next(
+        row
+        for row in binding["subject_projection"]["registry_rows"]
+        if row.get("authority_source_kind") == "historical_identity_backfill"
+    )
+    backfill["source_blob"] = "4" * 64
+    binding["subject_projection"]["registry_rows"].append(
+        _component_inventory_row(
+            component_id="component.history.sample",
+            path="scripts/history/sample.gd",
+            role="CONSUMER",
+            owner_component_id="component.current.owner",
+            owner_path="scripts/current/owner.gd",
+            production_reachable=False,
+            superseded_by=["component.current.owner"],
+        )
+    )
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    _expect_projection_rejected_by_both(
+        binding,
+        primary_prefix="IDENTITY_BINDING_HISTORICAL_BACKFILL_ROW_NOT_UNIQUE",
+        independent_code="FULL_CONVERGENCE_IDENTITY_REGISTRY_ROW_NOT_UNIQUE",
+    )
+
+
+def _historical_backfill_composite_key_attack_case() -> None:
+    binding = _identity_binding()
+    backfill = next(
+        row
+        for row in binding["subject_projection"]["registry_rows"]
+        if row.get("authority_source_kind") == "historical_identity_backfill"
+    )
+    binding["subject_projection"]["registry_rows"].append(
+        copy.deepcopy(backfill)
+    )
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    _expect_projection_rejected_by_both(
+        binding,
+        primary_prefix="IDENTITY_BINDING_BACKFILL_PRIMARY_KEY_NOT_UNIQUE",
+        independent_code=(
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_BACKFILL_PRIMARY_KEY_NOT_UNIQUE"
+        ),
+    )
+
+
+def _registry_closed_role_matrix_case() -> None:
+    valid_rows = (
+        _component_inventory_row(
+            component_id="component.role.owner",
+            path="scripts/roles/owner.gd",
+        ),
+        _component_inventory_row(
+            component_id="component.role.reducer",
+            path="scripts/roles/reducer.gd",
+            role="REDUCER",
+            owner_component_id="component.current.owner",
+            owner_path="scripts/current/owner.gd",
+            writes_authority=True,
+        ),
+        _component_inventory_row(
+            component_id="component.role.consumer",
+            path="scripts/roles/consumer.gd",
+            role="CONSUMER",
+            owner_component_id="component.current.owner",
+            owner_path="scripts/current/owner.gd",
+        ),
+        _component_inventory_row(
+            component_id="component.role.diagnostic",
+            path="tools/roles/diagnostic.gd",
+            role="DIAGNOSTIC_BENCH",
+            owner_component_id="component.current.owner",
+            owner_path="scripts/current/owner.gd",
+            production_reachable=False,
+            owns_presentation=True,
+            reuse_disposition="REUSE_AS_TEST",
+        ),
+        _component_inventory_row(
+            component_id="component.role.test_support",
+            path="tests/roles/test_support.gd",
+            role="TEST_SUPPORT",
+            owner_component_id="component.current.owner",
+            owner_path="scripts/current/owner.gd",
+            production_reachable=False,
+            reuse_disposition="REUSE_AS_TEST",
+        ),
+    )
+    for row in valid_rows:
+        primary = convergence._registry_row_failures(row)
+        independent = (
+            independent_audit._full_convergence_registry_row_findings(
+                row,
+                path="fixture-record.json",
+                fingerprint=_fingerprint(1),
+            )
+        )
+        _expect(not primary, str(primary))
+        _expect(not independent, json.dumps(independent, sort_keys=True))
+
+    attacks = (
+        (
+            _component_inventory_row(
+                component_id="component.role.bad_owner",
+                path="scripts/roles/bad_owner.gd",
+                writes_authority=False,
+            ),
+            ("IDENTITY_BINDING_REGISTRY_OWNER_AUTHORITY_INVALID",),
+            ("FULL_CONVERGENCE_IDENTITY_REGISTRY_OWNER_AUTHORITY_INVALID",),
+        ),
+        (
+            _component_inventory_row(
+                component_id="component.role.bad_reducer",
+                path="scripts/roles/bad_reducer.gd",
+                role="REDUCER",
+                owner_component_id="component.current.owner",
+                owner_path="scripts/current/owner.gd",
+                writes_authority=True,
+                owns_rng=True,
+            ),
+            ("IDENTITY_BINDING_REGISTRY_NONOWNER_OWNERSHIP_INVALID",),
+            (
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONOWNER_OWNERSHIP_INVALID",
+            ),
+        ),
+        (
+            _component_inventory_row(
+                component_id="component.role.bad_consumer",
+                path="scripts/roles/bad_consumer.gd",
+                role="CONSUMER",
+                owner_component_id="component.current.owner",
+                owner_path="scripts/current/owner.gd",
+                writes_authority=True,
+            ),
+            ("IDENTITY_BINDING_REGISTRY_NONOWNER_WRITE_INVALID",),
+            ("FULL_CONVERGENCE_IDENTITY_REGISTRY_NONOWNER_WRITE_INVALID",),
+        ),
+        (
+            _component_inventory_row(
+                component_id="component.role.bad_diagnostic",
+                path="tools/roles/bad_diagnostic.gd",
+                role="DIAGNOSTIC_BENCH",
+                owner_component_id="component.current.owner",
+                owner_path="scripts/current/owner.gd",
+                production_reachable=True,
+                owns_rng=True,
+                reuse_disposition="REUSE_AS_TEST",
+            ),
+            (
+                "IDENTITY_BINDING_REGISTRY_DIAGNOSTIC_OWNERSHIP_INVALID",
+                "IDENTITY_BINDING_REGISTRY_NONPRODUCTION_ROLE_REACHABLE",
+            ),
+            (
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_DIAGNOSTIC_OWNERSHIP_INVALID",
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONPRODUCTION_ROLE_REACHABLE",
+            ),
+        ),
+        (
+            _component_inventory_row(
+                component_id="component.role.bad_test_support",
+                path="tests/roles/bad_test_support.gd",
+                role="TEST_SUPPORT",
+                owner_component_id="component.current.owner",
+                owner_path="scripts/current/owner.gd",
+                production_reachable=True,
+                reuse_disposition="ADAPT_AS_CONSUMER",
+            ),
+            (
+                "IDENTITY_BINDING_REGISTRY_NONPRODUCTION_ROLE_REACHABLE",
+                "IDENTITY_BINDING_REGISTRY_TEST_DISPOSITION_INVALID",
+            ),
+            (
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_NONPRODUCTION_ROLE_REACHABLE",
+                "FULL_CONVERGENCE_IDENTITY_REGISTRY_TEST_DISPOSITION_INVALID",
+            ),
+        ),
+    )
+    for row, primary_prefixes, independent_codes in attacks:
+        _expect_both_codes(
+            convergence._registry_row_failures(row),
+            independent_audit._full_convergence_registry_row_findings(
+                row,
+                path="fixture-record.json",
+                fingerprint=_fingerprint(1),
+            ),
+            primary_prefixes=primary_prefixes,
+            independent_codes=independent_codes,
+        )
+
+
+def _dynamic_target_digest_attack_case() -> None:
+    binding = _dynamic_identity_binding()
+    binding["subject_projection"]["dynamic_reference_rows"][0][
+        "target_set_sha256"
+    ] = "0" * 64
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+    _expect_projection_rejected_by_both(
+        binding,
+        primary_prefix="IDENTITY_BINDING_DYNAMIC_REFERENCE_TARGET_SET_INVALID",
+        independent_code=(
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_TARGET_SET_INVALID"
+        ),
+        rule_id="HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+    )
+
+
 def build_cases(root: Path) -> list[Case]:
     cases: list[Case] = []
     cases.append(Case("01", "new schema is exact and authorized", lambda: _expect(not convergence.validate_schema(root), str(convergence.validate_schema(root)))))
@@ -1258,7 +3238,7 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("05", "current rule cannot receive historical correction", lambda: (lambda record: (_expect_failure(convergence.validate_extension_record_document(record), "EXTENSION_RECORD_RULE_CLASS_INVALID")))(dict(_record(), rule_ids=["UNCLASSIFIED_NEW_COMPONENT"], failure_classes=["UNCLASSIFIED_NEW_COMPONENT"], allowed_rule_ids=["UNCLASSIFIED_NEW_COMPONENT"]))))
     cases.append(Case("06", "future automatic correction remains forbidden", lambda: (lambda record: (_expect_failure(convergence.validate_extension_record_document(record), "EXTENSION_RECORD_FUTURE_AUTO_CORRECTION_ENABLED")))(dict(_record(), future_failure_policy={"NEW_FAILURE_REQUIRES_NEW_RECORD": False}))))
     cases.append(Case("07", "subject projection digest is mandatory", lambda: (lambda record: (record["identity_binding_by_failure"][_fingerprint(1)].update({"subject_projection_sha256": "0" * 64}), record.update({"record_payload_sha256": "0" * 64}), _expect_failure(convergence.validate_extension_record_document(record), "IDENTITY_BINDING_PROJECTION_HASH_MISMATCH")))(_record())))
-    cases.append(Case("08", "wildcard subject selector is rejected", lambda: (lambda selector: _expect_failure(convergence._selector_failures(selector), "SUBJECT_SELECTOR_NOT_EXACT"))({"component_ids": [], "paths": ["scripts/*"], "retirement_ids": [], "supersession_ids": []})))
+    cases.append(Case("08", "wildcard subject selector is rejected", lambda: (lambda selector: _expect_failure(convergence._selector_failures(selector), "SUBJECT_SELECTOR_NOT_EXACT"))({"component_ids": [], "dynamic_reference_ids": [], "paths": ["scripts/*"], "retirement_ids": [], "supersession_ids": []})))
     cases.append(Case("09", "valid 25-fingerprint first batch continues legacy terminal", lambda: _expect(not convergence.validate_batch_manifest_document(_batch()), str(convergence.validate_batch_manifest_document(_batch())))))
     cases.append(Case("10", "first batch cannot restart its correction chain", lambda: (lambda manifest: (_expect_failure(convergence.validate_batch_manifest_document(manifest), "BATCH_MANIFEST_FIRST_BATCH_LEGACY_CHAIN_ANCHOR_MISMATCH")))(dict(_batch(), record_chain_start_sha256="8" * 64))))
     cases.append(Case("11", "batch above fifty fingerprints is rejected", lambda: _expect_failure(convergence.validate_batch_manifest_document(_batch(51)), "BATCH_MANIFEST_SIZE_OUT_OF_RANGE")))
@@ -1290,6 +3270,43 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("37", "current failures and unsealed future HISTORY rows cannot enter the supplement", lambda: _descendant_supplement_current_and_future_negative_case(root)))
     cases.append(Case("38", "primary and independent audits reject missing inputs and source blob drift", lambda: _descendant_supplement_binding_negative_case(root)))
     cases.append(Case("39", "batch and record schemas require the exact supplement byte digest", lambda: (lambda record, manifest: (record.pop("descendant_history_supplement_sha256"), manifest.pop("descendant_history_supplement_sha256"), _expect_failure(convergence.validate_extension_record_document(record), "EXTENSION_RECORD_FIELD_SET_MISMATCH"), _expect_failure(convergence.validate_batch_manifest_document(manifest), "BATCH_MANIFEST_FIELD_SET_MISMATCH")))(_record(), _batch())))
+    cases.append(Case("40", "effective resolver requires the complete explicit full-convergence input set", lambda: _effective_all_or_none_case(root)))
+    cases.append(Case("41", "effective resolver requires exact terminal historical coverage", _effective_terminal_coverage_case))
+    cases.append(Case("42", "unregistered future HISTORY rows remain active current failures", _effective_novel_history_is_active_case))
+    cases.append(Case("43", "missing authorized historical Raw rows fail closed as suppression", _effective_missing_history_fails_closed_case))
+    cases.append(Case("44", "legacy corrections remain exact and valid on the current descendant Head", lambda: _legacy_current_binding_revalidation_case(root)))
+    cases.append(Case("45", "legacy preflight failure clears the entire verified correction set", lambda: _legacy_preflight_failure_clears_verified_set_case(root)))
+    cases.append(Case("46", "the real 510-to-501 reconciliation preserves 19 exact dispositions and 10 novel identities", lambda: _real_missing19_novel10_positive_case(root)))
+    cases.append(Case("47", "missing, successor-drifted, and false-target dispositions fail closed", lambda: _real_disposition_negative_case(root)))
+    cases.append(Case("48", "a dispositioned frozen raw identity cannot silently reappear", lambda: _disposed_identity_reappearance_fails_case(root)))
+    cases.append(Case("49", "terminal coverage is exactly 489 live records and excludes all 19 dispositions", lambda: _real_live_terminal_coverage_case(root)))
+    cases.append(Case("50", "independent record audit duplicates closed fields, dispositions, state, invalidation, revocation, aggregate digests, and authority bytes", lambda: _independent_record_contract_parity_case(root)))
+    cases.append(Case("51", "independent current-manifest audit binds authorized ancestry and the explicit supplement digest", lambda: _independent_current_manifest_binding_parity_case(root)))
+    cases.append(Case("52", "minimal historical identity backfill is accepted by both auditors", _minimal_historical_backfill_positive_case))
+    cases.append(Case("53", "historical backfill cannot expand into Owner authority fields", _historical_backfill_field_expansion_attack_case))
+    cases.append(Case("54", "Registry fake roles and Consumer authority claims fail both auditors", _registry_role_matrix_attack_case))
+    cases.append(Case("55", "ACTIVE and RETIRED identities cannot substitute unrelated current components", _unrelated_lineage_substitution_attack_case))
+    cases.append(Case("56", "ACTIVE plus TEST_ONLY is rejected by the closed state matrix", _active_plus_test_only_attack_case))
+    cases.append(Case("57", "Registry component primary key is exact-cardinality", lambda: _authority_primary_key_attack_case("registry")))
+    cases.append(Case("58", "dynamic-reference primary key is exact-cardinality", lambda: _authority_primary_key_attack_case("dynamic")))
+    cases.append(Case("59", "supersession primary key is exact-cardinality", lambda: _authority_primary_key_attack_case("supersession")))
+    cases.append(Case("60", "retirement primary key is exact-cardinality", lambda: _authority_primary_key_attack_case("retirement")))
+    cases.append(Case("61", "supersedes relations reject wildcard authority", _supersedes_wildcard_attack_case))
+    cases.append(Case("62", "historical backfill cannot drift from its exact source commit and blob", _historical_backfill_exact_identity_attack_case))
+    cases.append(Case("63", "dynamic locations, constants, and targets are rechecked against Git bytes", _dynamic_reference_repo_forgery_attack_case))
+    cases.append(Case("64", "duplicate target, digest, and reason forgeries fail both auditors", lambda: _duplicate_evidence_forgery_attack_case(root)))
+    cases.append(Case("65", "boolean supersession counts fail both auditors", _bool_supersession_count_attack_case))
+    cases.append(Case("66", "boolean dynamic-reference counts fail both auditors", _bool_dynamic_count_attack_case))
+    cases.append(Case("67", "boolean dynamic-reference locations fail both auditors", _bool_dynamic_location_attack_case))
+    cases.append(Case("68", "boolean record failure_count fails both auditors", _bool_record_failure_count_attack_case))
+    cases.append(Case("69", "boolean batch counts fail both auditors", lambda: _bool_batch_count_attack_case(root)))
+    cases.append(Case("70", "boolean descendant supplement zero counts fail both auditors", lambda: _bool_supplement_zero_count_attack_case(root)))
+    cases.append(Case("71", "production-reachable DIAGNOSTIC_ONLY active lineage fails both auditors", _diagnostic_only_active_lineage_attack_case))
+    cases.append(Case("72", "historical backfill requires every closed field", _historical_backfill_missing_field_attack_case))
+    cases.append(Case("73", "component inventory cannot backfill a missing historical identity", _historical_backfill_no_inventory_fallback_attack_case))
+    cases.append(Case("74", "historical backfill composite keys are unique", _historical_backfill_composite_key_attack_case))
+    cases.append(Case("75", "registry roles obey the closed ownership matrix", _registry_closed_role_matrix_case))
+    cases.append(Case("76", "dynamic-reference target digests fail both auditors", _dynamic_target_digest_attack_case))
     return cases
 
 
