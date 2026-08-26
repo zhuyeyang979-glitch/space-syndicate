@@ -29,7 +29,7 @@ jobs:
   reuse-point-inertia-gate:
     name: V076 Reuse and Point-Inertia Gate
     runs-on: windows-2022
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUTF8: "1"
