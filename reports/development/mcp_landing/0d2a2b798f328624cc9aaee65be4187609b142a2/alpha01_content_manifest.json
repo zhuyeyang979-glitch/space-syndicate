@@ -1,0 +1,26 @@
+{
+  "schema_version": "space_syndicate.mcp_product_landing_receipt.v1",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "base_head": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "base_tree": "3f78cdbb64d5764b16aa65c0cd470e56285efc0b",
+  "landing_commit": "0d2a2b798f328624cc9aaee65be4187609b142a2",
+  "landing_tree": "e8e5ddc2a523b3bd4397683ffa756a1118725461",
+  "file_path": "res://resources/content/alpha01/alpha01_content_manifest.tres",
+  "file_type": "godot_resource",
+  "mcp_tool": "patch_script",
+  "mcp_operation": "replace the unique expected_mechanic_registry_sha256 binding",
+  "before_sha256": "96bf2de042fb951991aafa95c9a48cb95303c3fb2616b819a2e36ae37d4669a4",
+  "after_sha256": "302bffb7912b2890ef8b02e37dc85f9d011341dde2d5d5aa2a3685f0245902ff",
+  "mcp_validate_operation": "execute_code:ResourceLoader.load:CACHE_MODE_IGNORE",
+  "mcp_validate_result": "PASS: Resource loaded and expected registry SHA equals b4036ba9cc8e64f9ae6e078ff10d4d9ffb73e320446d3386005a12d6110403d2",
+  "mcp_validate_response_sha256": "4b0a22aebf015d549eb543a2eb09e28da460ea199b16a99b1c1d28b151a0d81c",
+  "real_scene_validation_required": true,
+  "real_scene_paths": [
+    "res://scenes/main.tscn"
+  ],
+  "real_scene_validation_result": "PASS",
+  "runtime_capture_path": "res://reports/development/mcp_landing/0d2a2b798f328624cc9aaee65be4187609b142a2/main_runtime.png",
+  "runtime_capture_sha256": "3e66463cb523eb8eb7651cb1d2ddcf2327eca347ba218ee8ce09dd8e27cbbf7d",
+  "direct_filesystem_product_edit_count": 0
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": "space_syndicate.mcp_product_landing_receipt.v1",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "base_head": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "base_tree": "3f78cdbb64d5764b16aa65c0cd470e56285efc0b",
+  "landing_commit": "0d2a2b798f328624cc9aaee65be4187609b142a2",
+  "landing_tree": "e8e5ddc2a523b3bd4397683ffa756a1118725461",
+  "file_path": "res://scripts/map_view.gd",
+  "file_type": "gdscript",
+  "mcp_tool": "patch_script",
+  "mcp_operation": "insert unique class_name SpaceSyndicateMapViewBase after extends Control",
+  "before_sha256": "ce247f7706444069e5cd65fe61b9d5a721a04151acf237a2b665b5f4f20aaa30",
+  "after_sha256": "98419c35ec7a3f5b50ff306befc9ce6df8168ca7816443c0ce3f1950752b6969",
+  "mcp_validate_operation": "validate_script",
+  "mcp_validate_result": "PASS: isolated GDScript validator returned zero diagnostics",
+  "mcp_validate_response_sha256": "757cb6b9474413913b4884117f409beb368c0c45539ff8b5517f0c6240f8b42b",
+  "real_scene_validation_required": true,
+  "real_scene_paths": [
+    "res://scenes/main.tscn"
+  ],
+  "real_scene_validation_result": "PASS",
+  "runtime_capture_path": "res://reports/development/mcp_landing/0d2a2b798f328624cc9aaee65be4187609b142a2/main_runtime.png",
+  "runtime_capture_sha256": "3e66463cb523eb8eb7651cb1d2ddcf2327eca347ba218ee8ce09dd8e27cbbf7d",
+  "direct_filesystem_product_edit_count": 0
+}
