@@ -829,7 +829,7 @@
     },
     {
       "stage_id": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP09_MONSTER_CUTOVER",
-      "ledger_status": "CURRENT_DELTA_GREEN",
+      "ledger_status": "REGRESSED_WITH_EVIDENCE",
       "head_sha": "46f985a23686291100cdd8ea10706983d1147514",
       "tree_sha": "330a83b92cd1af6382d98590744ee3449328cc5b",
       "change_class": "CROSS_DOMAIN_INTEGRATION",
@@ -948,11 +948,23 @@
         "step11_asset_consequence_cutover",
         "alpha07_per_card_certification",
         "full_repository_reproof"
-      ]
+      ],
+      "regression": {
+        "failure_evidence": "reports/reuse/full_convergence/production_revalidation_pending_9f8659c8.json#GOLDEN_PRODUCTION_FALSE_GREEN:STEP09",
+        "failure_evidence_json_pointer": "/revalidations/0",
+        "failure_evidence_sha256": "e8ec5c9f91630a7a69b1e28a8b2a93662a4c414a866a823f9225c2629663d534",
+        "origin_commit": "f8340207d785e7b35ea7451048e5d71d0325232c",
+        "origin_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+        "affected_commit": "ce3b644dedaa752b09e97fadf3c7880889ea7e9f",
+        "affected_tree_sha": "4350218e4076da3fb0c8f04dfbe7b690eefc73d2",
+        "affected_owner": "component.current.v075_runtime_owner",
+        "repair_plan": "Re-run STEP09 against the exact current product subject in the real production composition and append a fresh receipt before restoring any production claim.",
+        "prior_status": "CURRENT_DELTA_GREEN"
+      }
     },
     {
       "stage_id": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP11_ASSET_CONSEQUENCE_CUTOVER",
-      "ledger_status": "CURRENT_DELTA_GREEN",
+      "ledger_status": "REGRESSED_WITH_EVIDENCE",
       "head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
       "tree_sha": "cd55e424756f12a2b8cf5993fd4f9141f233cbbb",
       "change_class": "CROSS_DOMAIN_INTEGRATION",
@@ -1074,11 +1086,23 @@
         "step12_ai_privacy_cutover",
         "alpha07_per_card_certification",
         "full_repository_reproof"
-      ]
+      ],
+      "regression": {
+        "failure_evidence": "reports/reuse/full_convergence/production_revalidation_pending_9f8659c8.json#GOLDEN_PRODUCTION_FALSE_GREEN:STEP11",
+        "failure_evidence_json_pointer": "/revalidations/1",
+        "failure_evidence_sha256": "e8ec5c9f91630a7a69b1e28a8b2a93662a4c414a866a823f9225c2629663d534",
+        "origin_commit": "f8340207d785e7b35ea7451048e5d71d0325232c",
+        "origin_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+        "affected_commit": "ce3b644dedaa752b09e97fadf3c7880889ea7e9f",
+        "affected_tree_sha": "4350218e4076da3fb0c8f04dfbe7b690eefc73d2",
+        "affected_owner": "component.current.v075_runtime_owner",
+        "repair_plan": "Re-run STEP11 against the exact current product subject in the real production composition and append a fresh receipt before restoring any production claim.",
+        "prior_status": "CURRENT_DELTA_GREEN"
+      }
     },
     {
       "stage_id": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP12_AI_PRIVACY_CUTOVER",
-      "ledger_status": "CURRENT_DELTA_GREEN",
+      "ledger_status": "REGRESSED_WITH_EVIDENCE",
       "head_sha": "e458525fe579b7d552daeb64129b3d002ed3fa35",
       "tree_sha": "dddd7834240c296c84578ef2cccdb5627b9a3fd5",
       "change_class": "CROSS_DOMAIN_INTEGRATION",
@@ -1194,7 +1218,19 @@
         "step13_victory_audit",
         "alpha07_per_card_certification",
         "full_repository_reproof"
-      ]
+      ],
+      "regression": {
+        "failure_evidence": "reports/reuse/full_convergence/production_revalidation_pending_9f8659c8.json#GOLDEN_PRODUCTION_FALSE_GREEN:STEP12",
+        "failure_evidence_json_pointer": "/revalidations/2",
+        "failure_evidence_sha256": "e8ec5c9f91630a7a69b1e28a8b2a93662a4c414a866a823f9225c2629663d534",
+        "origin_commit": "f8340207d785e7b35ea7451048e5d71d0325232c",
+        "origin_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+        "affected_commit": "ce3b644dedaa752b09e97fadf3c7880889ea7e9f",
+        "affected_tree_sha": "4350218e4076da3fb0c8f04dfbe7b690eefc73d2",
+        "affected_owner": "component.current.v075_runtime_owner",
+        "repair_plan": "Re-run STEP12 against the exact current product subject in the real production composition and append a fresh receipt before restoring any production claim.",
+        "prior_status": "CURRENT_DELTA_GREEN"
+      }
     },
     {
       "stage_id": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT_READINESS",

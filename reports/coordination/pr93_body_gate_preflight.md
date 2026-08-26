@@ -27,8 +27,8 @@ pass, production-green claim, Commercial M1 Green, or STEP13 advancement.
 
 No second screen, track, hand, catalog, card execution path, receipt owner,
 clock, RNG, map, tutorial, asset registry, animation director, or gameplay
-Owner was added by the current-subject registration. Stage 3 remains isolated
-green with current delta evidence; this checkpoint does not reclassify it as
+Owner was added by the current-subject registration. Stage 3 remains isolated green
+with current delta evidence; this checkpoint does not reclassify it as
 production or human green. STEP09, STEP11, and STEP12 are
 REGRESSED_WITH_EVIDENCE pending current-subject production revalidation. Their
 prior production receipts remain immutable historical evidence only. No production
