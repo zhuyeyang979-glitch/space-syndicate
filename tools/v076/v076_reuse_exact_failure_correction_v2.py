@@ -4079,6 +4079,9 @@ def _parser() -> argparse.ArgumentParser:
             "generate-records",
             "resolve",
             "seal-evidence",
+            "verify-legacy-epoch",
+            "verify-full-convergence-baseline",
+            "verify-full-convergence-batch",
         ),
     )
     parser.add_argument("--project", type=Path, default=Path.cwd())
@@ -4091,6 +4094,21 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--report-json", type=Path, default=None)
     parser.add_argument("--report-md", type=Path, default=None)
+    parser.add_argument(
+        "--batch-manifest",
+        type=Path,
+        default=None,
+        help="explicit FULL_CONVERGENCE batch manifest; directory discovery is never authority",
+    )
+    parser.add_argument(
+        "--previous-batch-manifest",
+        type=Path,
+        default=None,
+        help=(
+            "explicit immediate predecessor manifest for a non-initial "
+            "FULL_CONVERGENCE batch; never inferred by directory discovery"
+        ),
+    )
     parser.add_argument("--head-ref", default=AUTHORIZED_HEAD_SHA)
     parser.add_argument(
         "--verify-only",
@@ -4105,6 +4123,36 @@ def main(argv: list[str] | None = None) -> int:
     root = args.project.resolve()
     output_root = (args.output_root or root).resolve()
     current_head = _resolve_commit(root, args.head_ref)
+    if args.command.startswith("verify-full-convergence") or args.command == "verify-legacy-epoch":
+        import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
+
+        if args.command == "verify-legacy-epoch":
+            result = convergence.verify_legacy_anchor(root)
+        elif args.command == "verify-full-convergence-baseline":
+            if not args.raw_report:
+                raise SystemExit("verify-full-convergence-baseline requires --raw-report")
+            result = convergence.validate_authorized_baseline(args.raw_report.resolve())
+            result["schema_failures"] = convergence.validate_schema(root)
+            if result["schema_failures"]:
+                result["status"] = "FAIL"
+        else:
+            if not args.batch_manifest:
+                raise SystemExit("verify-full-convergence-batch requires --batch-manifest")
+            if not args.raw_report:
+                raise SystemExit("verify-full-convergence-batch requires --raw-report")
+            result = convergence.validate_batch_manifest_against_repo(
+                root,
+                args.batch_manifest.resolve(),
+                evaluated_head=current_head,
+                baseline_report_path=args.raw_report.resolve(),
+                previous_batch_manifest_path=(
+                    args.previous_batch_manifest.resolve()
+                    if args.previous_batch_manifest is not None
+                    else None
+                ),
+            )
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0 if result.get("status") == "PASS" else 1
     if args.command == "freeze-baseline":
         if not args.raw_report:
             raise SystemExit("freeze-baseline requires --raw-report")
