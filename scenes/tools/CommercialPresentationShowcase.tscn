@@ -100,10 +100,19 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_script")
+metadata/fixture_class = "PRESENTATION_FIXTURE"
+metadata/natural_gameplay = false
+metadata/human_green = false
+metadata/fixture_bridge_schema = "V076CommercialPresentationFixtureBridgeV1"
+metadata/fixture_bridge_instance_count = 1
 
 [node name="ProductionMain" parent="." instance=ExtResource("1_main")]
 unique_name_in_owner = true
 layout_mode = 1
+metadata/showcase_host_role = "PRODUCTION_PRESENTATION_HOST_ONLY"
+metadata/showcase_may_start_session = false
+metadata/showcase_may_request_save = false
+metadata/showcase_may_draw_rng = false
 
 [node name="ShowcaseVisualLayer" type="CanvasLayer" parent="."]
 layer = 126

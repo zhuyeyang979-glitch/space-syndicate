@@ -22,6 +22,11 @@ const EPISODE_PLAN_PATH := (
 )
 const PRODUCTION_MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const FIXTURE_CLASS := "PRESENTATION_FIXTURE"
+const FIXTURE_BRIDGE_SCHEMA := "V076CommercialPresentationFixtureBridgeV1"
+const FIXTURE_BRIDGE_METHOD := (
+	"VerticalSliceShowcase.submit_presentation_fixture"
+)
+const FIXTURE_BRIDGE_HOST_ROLE := "PRODUCTION_PRESENTATION_HOST_ONLY"
 const FIXTURE_BANNER_TEXT := (
 	"PRESENTATION_FIXTURE — NOT NATURAL GAMEPLAY / NOT HUMAN GREEN"
 )
@@ -320,6 +325,21 @@ func _audit_production_composition(
 		"the unique Director belongs to the real production GameScreen"
 	)
 	_expect(
+		showcase.get_meta("fixture_class", "") == FIXTURE_CLASS
+			and not bool(showcase.get_meta("natural_gameplay", true))
+			and int(showcase.get_meta("fixture_bridge_instance_count", 0)) == 1
+			and str(production_main.get_meta("showcase_host_role", ""))
+				== FIXTURE_BRIDGE_HOST_ROLE
+			and not bool(production_main.get_meta(
+				"showcase_may_start_session", true
+			))
+			and not bool(production_main.get_meta(
+				"showcase_may_request_save", true
+			))
+			and not bool(production_main.get_meta("showcase_may_draw_rng", true)),
+		"scene metadata seals fixture classification and host-only production main"
+	)
+	_expect(
 		int(contract.get("showcase_gameplay_owner_count", -1)) == 0
 			and int(contract.get("showcase_rng_owner_count", -1)) == 0
 			and int(contract.get("showcase_tick_owner_count", -1)) == 0
@@ -328,16 +348,49 @@ func _audit_production_composition(
 			and int(contract.get("showcase_settlement_owner_count", -1)) == 0,
 		"Showcase owns no gameplay, RNG, Tick, card-zone, facility, or settlement authority"
 	)
+	var fixture_bridge := contract.get("fixture_bridge", {}) as Dictionary
+	_expect(
+		int(contract.get("fixture_bridge_instance_count", 0)) == 1
+			and str(contract.get("fixture_bridge_schema", ""))
+				== FIXTURE_BRIDGE_SCHEMA
+			and str(contract.get("fixture_bridge_method", ""))
+				== FIXTURE_BRIDGE_METHOD
+			and str(contract.get("production_main_role", ""))
+				== FIXTURE_BRIDGE_HOST_ROLE
+			and str(fixture_bridge.get("schema", ""))
+				== FIXTURE_BRIDGE_SCHEMA
+			and int(fixture_bridge.get("bridge_instance_count", 0)) == 1,
+		"Showcase exposes exactly one canonical fixture bridge"
+	)
 	_expect(
 		(contract.get("card_table_fixture_cue_ids", []) as Array)
 			== CARD_TABLE_FIXTURE_RECEIPT_KIND_BY_CUE.keys()
-			and str(contract.get("card_table_fixture_bridge_method", ""))
-				== "V075GameScreen.enqueue_card_table_presentation"
-			and str(contract.get("showcase_fixture_consumer_method", ""))
-				== "V075GameScreen.enqueue_commercial_showcase_presentation_fixture"
-			and str(contract.get("final_settlement_fixture_surface_method", ""))
-				== "V075GameScreen.present_final_settlement_fixture",
-		"card-table fixture cues use the unique Screen bridge and dedicated settlement surface"
+			and (contract.get("fixture_host_adapter_methods", []) as Array) == [
+				"V075GameScreen.enqueue_card_table_presentation",
+				"V075GameScreen.enqueue_commercial_showcase_presentation_fixture",
+				"V075GameScreen.present_final_settlement_fixture",
+			],
+		"the one bridge owns all typed fixture-only host adapters"
+	)
+	var lifecycle_before := fixture_bridge.get("lifecycle_before", {}) as Dictionary
+	var lifecycle_after := fixture_bridge.get("lifecycle_after", {}) as Dictionary
+	_expect(
+		bool(fixture_bridge.get("host_lifecycle_unchanged", false))
+			and int(lifecycle_before.get("session_sequence", -1)) == 0
+			and int(lifecycle_before.get("new_game_publication_count", -1)) == 0
+			and str(lifecycle_before.get("last_published_session_id", "")).is_empty()
+			and not bool(lifecycle_before.get(
+				"new_game_transaction_in_progress", true
+			))
+			and int(lifecycle_before.get("save_request_count", -1)) == 0
+			and int(lifecycle_before.get("load_request_count", -1)) == 0
+			and int(lifecycle_before.get(
+				"production_save_slot_write_count", -1
+			)) == 0
+			and int(lifecycle_before.get("kernel_current_tick", -1)) == 0
+			and str(lifecycle_before.get("kernel_rng_state_sha256", "")).length()
+				== 64,
+		"fixture host starts no Session/Save/RNG/Tick lifecycle"
 	)
 	var showcase_owner_audit := contract.get(
 		"showcase_authority_owner_audit", {}
@@ -399,6 +452,96 @@ func _audit_production_composition(
 
 
 func _audit_fail_closed_guards(showcase: Control) -> void:
+	var fixture_episode := showcase.call(
+		"_episode_for_id", "acquire_to_deck"
+	) as Dictionary
+	var fixture_receipt := showcase.call(
+		"_fixture_receipt", fixture_episode
+	) as Dictionary
+	var fixture_projection := showcase.call(
+		"_fixture_projection", fixture_episode
+	) as Dictionary
+	var director_before_forgery := showcase.call(
+		"animation_debug_snapshot"
+	) as Dictionary
+	var forged_natural := fixture_receipt.duplicate(true)
+	forged_natural["natural_gameplay"] = true
+	forged_natural.erase("receipt_fingerprint")
+	forged_natural["receipt_fingerprint"] = (
+		PresentationReceiptIdentity.canonical_sha256(forged_natural)
+	)
+	var forged_natural_result := showcase.call(
+		"submit_presentation_fixture",
+		forged_natural,
+		fixture_projection,
+		"acquire_to_deck"
+	) as Dictionary
+	_expect(
+		not bool(forged_natural_result.get("accepted", true))
+			and str(forged_natural_result.get("reason_code", ""))
+				== "showcase_fixture_bridge_classification_invalid"
+			and str(forged_natural_result.get("fixture_class", ""))
+				== FIXTURE_CLASS
+			and not bool(forged_natural_result.get("natural_gameplay", true)),
+		"single bridge rejects a resealed natural-gameplay forgery"
+	)
+	var forged_identity := fixture_receipt.duplicate(true)
+	forged_identity["receipt_id"] = "forged/fixture/receipt"
+	forged_identity.erase("receipt_fingerprint")
+	forged_identity["receipt_fingerprint"] = (
+		PresentationReceiptIdentity.canonical_sha256(forged_identity)
+	)
+	var forged_identity_result := showcase.call(
+		"submit_presentation_fixture",
+		forged_identity,
+		fixture_projection,
+		"acquire_to_deck"
+	) as Dictionary
+	_expect(
+		not bool(forged_identity_result.get("accepted", true))
+			and str(forged_identity_result.get("reason_code", ""))
+				== "showcase_fixture_bridge_seal_invalid",
+		"single bridge rejects a self-consistent but noncanonical fixture identity"
+	)
+	var forbidden_generic_count := 0
+	for card_episode_id in [
+		"hand_hover", "public_play", "public_resolution", "final_settlement",
+	]:
+		var card_episode := showcase.call(
+			"_episode_for_id", card_episode_id
+		) as Dictionary
+		var card_receipt := showcase.call(
+			"_fixture_receipt", card_episode
+		) as Dictionary
+		var card_projection := showcase.call(
+			"_fixture_projection", card_episode
+		) as Dictionary
+		var forbidden_generic := showcase.call(
+			"_submit_generic_fixture_host",
+			card_receipt,
+			card_projection
+		) as Dictionary
+		if (
+			not bool(forbidden_generic.get("accepted", true))
+			and str(forbidden_generic.get("reason_code", ""))
+				== "showcase_card_table_generic_route_forbidden"
+		):
+			forbidden_generic_count += 1
+	_expect(
+		forbidden_generic_count == CARD_TABLE_FIXTURE_RECEIPT_KIND_BY_CUE.size(),
+		"all four card-table cues fail closed before the generic host route"
+	)
+	var director_after_forgery := showcase.call(
+		"animation_debug_snapshot"
+	) as Dictionary
+	_expect(
+		int(director_before_forgery.get("queued_cue_count", -1))
+			== int(director_after_forgery.get("queued_cue_count", -2))
+			and int(director_before_forgery.get("receipt_rejection_count", -1))
+				== int(director_after_forgery.get("receipt_rejection_count", -2)),
+		"forged/bypass probes never reach the production Director"
+	)
+
 	var detached_root := Node.new()
 	var duplicate_runtime := Node.new()
 	duplicate_runtime.set_script(load(
@@ -582,6 +725,25 @@ func _audit_episode(showcase: Control, row: Dictionary) -> void:
 			and int(terminal.get("finish_count", 0)) == 1,
 		"episode %s queues and finishes exactly once" % episode_id
 	)
+	var terminal_bridge := terminal.get("fixture_bridge", {}) as Dictionary
+	var terminal_route_counts := terminal_bridge.get("route_counts", {}) as Dictionary
+	var terminal_route := str(terminal_bridge.get("last_route", ""))
+	var terminal_route_row := terminal_route_counts.get(
+		terminal_route, {}
+	) as Dictionary
+	_expect(
+		str(terminal_bridge.get("schema", "")) == FIXTURE_BRIDGE_SCHEMA
+			and bool(terminal_bridge.get("host_lifecycle_unchanged", false))
+			and int(terminal_route_row.get("submit_count", 0)) >= 1
+			and int(terminal_route_row.get("replay_count", 0)) >= 1
+			and int(terminal_route_row.get("finish_count", 0)) >= 1
+			and int(terminal_bridge.get("fixture_created_session_count", -1)) == 0
+			and int(terminal_bridge.get("fixture_save_request_count", -1)) == 0
+			and int(terminal_bridge.get("fixture_rng_draw_count", -1)) == 0
+			and int(terminal_bridge.get("fixture_tick_advance_count", -1)) == 0,
+		"episode %s completes through one bridge without Session/Save/RNG/Tick"
+			% episode_id
+	)
 	var director_debug_variant: Variant = showcase.call(
 		"animation_debug_snapshot"
 	)
@@ -679,6 +841,29 @@ func _audit_frame_evidence(
 			and int(evidence.get("presentation_director_instance_count", 0)) == 1
 			and bool(evidence.get("uses_production_director", false)),
 		"%s/%s continues to use one real main and one Director"
+			% [episode_id, phase]
+	)
+	var fixture_bridge := evidence.get("fixture_bridge", {}) as Dictionary
+	var expected_fixture_route := "GENERIC_DIRECTOR_FIXTURE"
+	if episode_id in ["main_menu", "loading"]:
+		expected_fixture_route = "PRODUCT_SHELL_FIXTURE"
+	elif CARD_TABLE_FIXTURE_RECEIPT_KIND_BY_CUE.has(expected_cue_id):
+		expected_fixture_route = "CARD_TABLE_FIXTURE"
+	_expect(
+		str(fixture_bridge.get("schema", "")) == FIXTURE_BRIDGE_SCHEMA
+			and int(fixture_bridge.get("bridge_instance_count", 0)) == 1
+			and str(fixture_bridge.get("bridge_method", ""))
+				== FIXTURE_BRIDGE_METHOD
+			and str(fixture_bridge.get("production_main_role", ""))
+				== FIXTURE_BRIDGE_HOST_ROLE
+			and str(fixture_bridge.get("last_route", ""))
+				== expected_fixture_route
+			and bool(fixture_bridge.get("host_lifecycle_unchanged", false))
+			and int(fixture_bridge.get("fixture_created_session_count", -1)) == 0
+			and int(fixture_bridge.get("fixture_save_request_count", -1)) == 0
+			and int(fixture_bridge.get("fixture_rng_draw_count", -1)) == 0
+			and int(fixture_bridge.get("fixture_tick_advance_count", -1)) == 0,
+		"%s/%s traverses the one sealed read-only fixture bridge"
 			% [episode_id, phase]
 	)
 

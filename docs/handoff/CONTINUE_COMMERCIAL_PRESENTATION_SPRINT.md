@@ -27,10 +27,11 @@
 - Worktree:
   `D:\SpaceSyndicateWorktrees\v076\770d741f\continuous-playable-vertical-slice`
 - Branch: `codex/v076-continuous-playable-vertical-slice-770d741f`
-- Validated predecessor HEAD: `362d65a1e03550800d68cb95b13f4425ee54e868`
-- Validated predecessor tree: `8e828f02305f3745030e37213e78622b4c06b3a2`
-- The final report/handoff commit follows that evaluated predecessor; the final
-  remote-head Reuse totals must come from the post-handoff rerun.
+- Current committed HEAD: `6e1825a34070de043a03bcff0af6b1a1587bed65`
+- Current committed tree: `d4e53342527d1f7a9bfcb6cf6225f69654713b87`
+- The report/handoff files remain an uncommitted worktree delta above that
+  evaluated HEAD; final remote-head Reuse totals must come from the post-commit
+  rerun.
 - The dirty task-owned worktree and all existing local commits must be
   preserved. Do not reset, restore, checkout paths, stash, clean, delete unknown
   files, or rewrite history.
@@ -40,8 +41,8 @@
 - Asset registry: 61 entries (11 internal, 41 production, 20 reference-only),
   35 direct-commercial verified, 9 attribution-required;
   `ASSET_LICENSE_GATE=PASS` and query selftest `PASS`.
-- Showcase focused test: `984/984 PASS`, latest run
-  `20260826-034634-965-vertical_slice_showcase_test-2b8a02e7`.
+- Showcase focused test: `1043/1043 PASS`, latest run
+  `20260826-073214-749-vertical_slice_showcase_test-6bddc8c5`.
 - Headed fixture capture: run
   `20260826-030019-680-showcase_frame_capture-db746429`, 13 episodes / 39 PNG,
   1600x960, zero errors, diagnostics, and residual processes.
@@ -59,7 +60,7 @@
 ## Production-main automated Card-table sentinel
 
 - `892/892 PASS`, run
-  `20260826-033556-831-v076_alpha07_card_table_flow_readiness_test-5889d5cb`.
+  `20260826-072626-974-v076_alpha07_card_table_flow_readiness_test-ac2ea97e`.
 - Startup: 2.446 seconds; first AI Action Feed: 3.724 seconds.
 - Three authoritative track handoffs, four action windows, second commodity
   exact-once acquisition, and 43 public resolutions are covered.
@@ -75,8 +76,35 @@
 These results are automated production-main evidence only. They do not permit
 Human Green or resume the consolidated human retest.
 
+The four natural production Cue proof is `243/243 PASS` with zero failures;
+its Victory run is
+`20260826-072836-255-v076_production_victory_audit_readiness_test-4313fd95`.
+
 The showcase capture p95 includes screenshot I/O and is informational only. Do
 not substitute it for the formal Phase 7 performance gate.
+
+## Natural production headed bundle
+
+- `PASS_AUTOMATED_NATURAL_PRODUCTION_HEADED_ONLY`, recorded_at_utc
+  `2026-08-26T07:25:08.0332615Z`.
+- Headed card-table run:
+  `20260826-072049-300-v076_production_natural_card_table_headed_capture-273179c8`,
+  9 frames, `exact_window_match=true`, `diagnostic_count=0`,
+  `task_introduced_error_count=0`, `residual_process_count=0`.
+- Headed final-settlement run:
+  `20260826-072301-691-v076_production_natural_final_settlement_headed_capture-8d8d46a6`,
+  3 frames, `exact_window_match=true`, `diagnostic_count=0`,
+  `task_introduced_error_count=0`, `residual_process_count=0`.
+- The bundle is `natural_gameplay_automation=true`, `human_executed=false`,
+  `human_confirmed=false`, `human_green=false`, `production_green=false`,
+  `commercial_m1_green=false`, with `STEP13_STATUS=PENDING`,
+  `STEP14_STATUS=PENDING`, and `STEP15_STATUS=PENDING`.
+- Canonical evidence:
+  `reports/presentation/commercial_m1/natural_production_cue_proof.json`,
+  `reports/presentation/commercial_m1/production_natural_headed/20260826-072048-956-1cfe8c443d7f/manifest.json`,
+  and `reports/presentation/commercial_m1/production_natural_headed/20260826-072048-956-1cfe8c443d7f/runner_report.json`.
+  The headed bundle is natural-production automation only and does not support
+  fixture claims.
 
 ## Fixture-only visual acceptance
 
@@ -98,9 +126,9 @@ Commercial M1 Green, production green, or Human Green.
 ## Hard stop
 
 The Reuse/Point-Inertia selftest is `120/120 PASS` with false-green count 0,
-but the full validation through committed predecessor
-`362d65a1e03550800d68cb95b13f4425ee54e868` is `FAIL` with 565 failures, 509
-historical failures, and 62 transitions.
+but the full committed-HEAD validation at
+`6e1825a34070de043a03bcff0af6b1a1587bed65` is `FAIL` with 620 failures, 509
+historical failures, and 65 transitions.
 
 The prior 445/407 classification established a lower bound of at least 22
 failures outside the existing append-only correction mechanisms. The current

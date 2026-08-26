@@ -10,7 +10,7 @@ Asset-license, static-continuity, formal Phase 7 performance, production-main
 Card-table automation, headed-capture automation, and independent fixture
 visual review are green in their own scopes. Commercial Presentation M1 as a
 whole is **not green**: the latest evaluated committed-history
-Reuse/Point-Inertia validation has 565 failures, and the currently authorized
+Reuse/Point-Inertia validation has 620 failures, and the currently authorized
 correction mechanisms still cannot resolve the previously proven lower bound
 of at least 22 failures without a new decision.
 
@@ -39,8 +39,8 @@ of at least 22 failures without a new decision.
 
 ## Presentation fixture and visual review
 
-- Focused showcase test: `984/984 PASS`, latest run
-  `20260826-034634-965-vertical_slice_showcase_test-2b8a02e7`.
+- Focused showcase test: `1043/1043 PASS`, latest run
+  `20260826-073214-749-vertical_slice_showcase_test-6bddc8c5`.
 - Headed capture: run
   `20260826-030019-680-showcase_frame_capture-db746429`, 13 episodes, 39 PNGs,
   1600x960, with zero runner errors, diagnostics, or residual processes.
@@ -67,7 +67,7 @@ of at least 22 failures without a new decision.
 ## Automated production-main Card-table sentinel
 
 - `892/892 PASS`, run
-  `20260826-033556-831-v076_alpha07_card_table_flow_readiness_test-5889d5cb`.
+  `20260826-072626-974-v076_alpha07_card_table_flow_readiness_test-ac2ea97e`.
 - Startup: 2.446 seconds; first AI Action Feed visibility: 3.724 seconds.
 - Three authoritative track handoffs, four action windows, a second commodity
   acquisition, and 43 public resolutions complete through the existing
@@ -104,13 +104,37 @@ production green, or Commercial M1 Green.
   threshold source nor evidence for a production performance claim.
 - Version continuity selftest: `105/105 PASS`; gate: `PASS_STATIC` with zero
   failures.
+- Four natural production Cue proof: `243/243 PASS`, zero failures; card-table
+  run `20260826-072626-974-v076_alpha07_card_table_flow_readiness_test-ac2ea97e`
+  and Victory run
+  `20260826-072836-255-v076_production_victory_audit_readiness_test-4313fd95`.
+
+## Natural production headed bundle
+
+- `PASS_AUTOMATED_NATURAL_PRODUCTION_HEADED_ONLY`, recorded_at_utc
+  `2026-08-26T07:25:08.0332615Z`.
+- Headed card-table run:
+  `20260826-072049-300-v076_production_natural_card_table_headed_capture-273179c8`,
+  9 frames, `exact_window_match=true`, `diagnostic_count=0`,
+  `task_introduced_error_count=0`, `residual_process_count=0`.
+- Headed final-settlement run:
+  `20260826-072301-691-v076_production_natural_final_settlement_headed_capture-8d8d46a6`,
+  3 frames, `exact_window_match=true`, `diagnostic_count=0`,
+  `task_introduced_error_count=0`, `residual_process_count=0`.
+- The bundle is `natural_gameplay_automation=true`, `human_executed=false`,
+  `human_confirmed=false`, `human_green=false`, `production_green=false`,
+  `commercial_m1_green=false`, with `STEP13_STATUS=PENDING`,
+  `STEP14_STATUS=PENDING`, and `STEP15_STATUS=PENDING`.
+- Evidence: [natural_production_cue_proof.json](natural_production_cue_proof.json),
+  [production_natural_headed/20260826-072048-956-1cfe8c443d7f/manifest.json](production_natural_headed/20260826-072048-956-1cfe8c443d7f/manifest.json),
+  and [production_natural_headed/20260826-072048-956-1cfe8c443d7f/runner_report.json](production_natural_headed/20260826-072048-956-1cfe8c443d7f/runner_report.json).
 
 ## Reuse/Point-Inertia hard stop
 
 - Selftest: `120/120 PASS`, false-green count 0.
-- Full validation through committed predecessor
-  `362d65a1e03550800d68cb95b13f4425ee54e868`: `FAIL`, 565 failures, 509
-  historical failures, 62 transitions.
+- Full committed-HEAD validation at
+  `6e1825a34070de043a03bcff0af6b1a1587bed65`: `FAIL`, 620 failures, 509
+  historical failures, 65 transitions.
 - The prior 445/407 audit established a lower bound of at least 22 failures that
   cannot be resolved by the existing append-only correction mechanisms. The
   new grouped commits do not create an authorized correction path, so that
@@ -120,9 +144,9 @@ production green, or Commercial M1 Green.
 - No new governance task is authorized by this checkpoint. The correct status
   is therefore `TRUE_HARD_STOP_REQUIRING_USER_DECISION`.
 
-The final report/handoff commit necessarily follows the evaluated predecessor;
-it does not claim its own transition was included in the 565/509/62 counts. The
-final remote-head totals are published only after a second complete rerun.
+The report/handoff files remain an uncommitted worktree delta above that
+evaluated HEAD, so the 620/509/65 counts describe the committed HEAD only. A
+post-commit current-HEAD rerun remains mandatory before any release action.
 
 ## Next allowed step
 

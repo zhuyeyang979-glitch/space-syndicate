@@ -10,6 +10,10 @@ const DEFAULT_EVIDENCE_ROOT := (
 	"res://reports/presentation/commercial_m1"
 )
 const FIXTURE_CLASS := "PRESENTATION_FIXTURE"
+const FIXTURE_BRIDGE_SCHEMA := "V076CommercialPresentationFixtureBridgeV1"
+const FIXTURE_BRIDGE_METHOD := (
+	"VerticalSliceShowcase.submit_presentation_fixture"
+)
 const FIXTURE_BANNER_TEXT := (
 	"PRESENTATION_FIXTURE — NOT NATURAL GAMEPLAY / NOT HUMAN GREEN"
 )
@@ -80,6 +84,14 @@ func _run() -> void:
 		and int(contract.get("frame_count", 0)) == 39,
 		"Showcase contract exposes 13 episodes and 39 evidence frames"
 	)
+	_expect(
+		int(contract.get("fixture_bridge_instance_count", 0)) == 1
+		and str(contract.get("fixture_bridge_schema", ""))
+			== FIXTURE_BRIDGE_SCHEMA
+		and str(contract.get("fixture_bridge_method", ""))
+			== FIXTURE_BRIDGE_METHOD,
+		"Showcase exposes one canonical fixture bridge"
+	)
 
 	for episode_variant in episodes:
 		if not (episode_variant is Dictionary):
@@ -90,6 +102,8 @@ func _run() -> void:
 
 	var performance := showcase.call("performance_snapshot") as Dictionary
 	var director_debug := showcase.call("animation_debug_snapshot") as Dictionary
+	var final_contract := showcase.call("get_showcase_contract") as Dictionary
+	var fixture_bridge := final_contract.get("fixture_bridge", {}) as Dictionary
 	_expect(
 		int(director_debug.get("receipt_collision_count", -1)) == 0
 		and int(director_debug.get("receipt_rejection_count", -1)) == 0
@@ -115,6 +129,7 @@ func _run() -> void:
 		"director_performance": performance,
 		"episode_count": _episode_records.size(),
 		"frame_count": _captured_frame_count,
+		"fixture_bridge": fixture_bridge,
 	}), "performance report writes atomically")
 	_expect(_write_json("%s/animation_exact_once_report.json" % evidence_root, {
 		"schema": "V076CommercialPresentationExactOnceReportV1",
@@ -137,7 +152,17 @@ func _run() -> void:
 		"animation_authority_sequence_delta": int(director_debug.get(
 			"animation_authority_sequence_delta", -1
 		)),
+		"fixture_bridge": fixture_bridge,
 	}), "animation exact-once report writes atomically")
+	_expect(_write_json("%s/fixture_bridge_report.json" % evidence_root, {
+		"schema": "V076CommercialPresentationFixtureBridgeReportV1",
+		"status": "PASS" if _failures.is_empty() else "FAIL",
+		"fixture_class": FIXTURE_CLASS,
+		"natural_gameplay": false,
+		"human_green": false,
+		"production_green": false,
+		"bridge": fixture_bridge,
+	}), "fixture bridge report writes atomically")
 	_expect(_write_json("%s/showcase_capture_manifest.json" % evidence_root, {
 		"schema": "V076CommercialPresentationCaptureManifestV1",
 		"status": "AUTOMATION_GREEN_PENDING_VISUAL_REVIEW" if _failures.is_empty() else "FAIL",
@@ -159,6 +184,7 @@ func _run() -> void:
 		"frame_count": _captured_frame_count,
 		"episodes": _episode_records,
 		"frames": _capture_records,
+		"fixture_bridge": fixture_bridge,
 		"headed_client_capture_path": headed_capture_path,
 		"headed_client_probe_requested": not ready_path.is_empty(),
 	}), "showcase capture manifest writes atomically")
@@ -263,6 +289,19 @@ func _capture_episode(
 			_zero_mutation_evidence(evidence),
 			"%s %s has zero presentation mutation deltas" % [episode_id, phase]
 		)
+		var fixture_bridge := evidence.get("fixture_bridge", {}) as Dictionary
+		_expect(
+			str(fixture_bridge.get("schema", "")) == FIXTURE_BRIDGE_SCHEMA
+			and int(fixture_bridge.get("bridge_instance_count", 0)) == 1
+			and str(fixture_bridge.get("bridge_method", ""))
+				== FIXTURE_BRIDGE_METHOD
+			and bool(fixture_bridge.get("host_lifecycle_unchanged", false))
+			and int(fixture_bridge.get("fixture_created_session_count", -1)) == 0
+			and int(fixture_bridge.get("fixture_save_request_count", -1)) == 0
+			and int(fixture_bridge.get("fixture_rng_draw_count", -1)) == 0
+			and int(fixture_bridge.get("fixture_tick_advance_count", -1)) == 0,
+			"%s %s uses one read-only fixture bridge" % [episode_id, phase]
+		)
 	var replay := showcase.call("replay_active_receipt") as Dictionary
 	var finished := bool(showcase.call("finish_episode"))
 	var final_evidence := showcase.call("get_episode_evidence") as Dictionary
@@ -316,6 +355,7 @@ func _capture_episode(
 		"frames": frame_records,
 		"replay": replay,
 		"finished": finished,
+		"fixture_bridge": final_evidence.get("fixture_bridge", {}),
 		"final_evidence": final_evidence,
 	}
 	var evidence_path := "%s/evidence.json" % episode_root
@@ -352,6 +392,7 @@ func _capture_episode(
 			"authority_projection_consistent", false
 		)),
 		"zero_mutation": _zero_mutation_evidence(final_evidence),
+		"fixture_bridge": final_evidence.get("fixture_bridge", {}),
 		"remaining_active_count": int((showcase.call(
 			"animation_debug_snapshot"
 		) as Dictionary).get("queued_cue_count", -1)),

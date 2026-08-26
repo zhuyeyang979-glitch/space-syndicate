@@ -21,6 +21,15 @@ const FIXTURE_BANNER_TEXT := (
 )
 const FRAME_PHASES := ["start", "mid", "end"]
 const FIXTURE_SCHEMA := "V076CommercialPresentationShowcaseFixtureV1"
+## There is exactly one Showcase -> production-host boundary.  The host may
+## expose several typed presentation surfaces (card-table, settlement, and the
+## general Director), but the Showcase never calls those surfaces directly
+## from episode orchestration.  All ingress is normalized by this bridge.
+const FIXTURE_BRIDGE_SCHEMA := "V076CommercialPresentationFixtureBridgeV1"
+const FIXTURE_BRIDGE_METHOD := (
+	"VerticalSliceShowcase.submit_presentation_fixture"
+)
+const FIXTURE_BRIDGE_HOST_ROLE := "PRODUCTION_PRESENTATION_HOST_ONLY"
 const CARD_TABLE_FIXTURE_RECEIPT_KIND_BY_CUE := {
 	"CARD_SELECT": "card_selection_receipt",
 	"CARD_PLAY_PUBLIC": "public_card_play_receipt",
@@ -229,6 +238,16 @@ var _source_anchor_resolution_count := 0
 var _target_anchor_resolution_count := 0
 var _prepare_rejection_reason := ""
 var _active_fixture_source_id := ""
+var _fixture_bridge_submit_count := 0
+var _fixture_bridge_replay_count := 0
+var _fixture_bridge_finish_count := 0
+var _fixture_bridge_rejection_count := 0
+var _fixture_bridge_duplicate_suppressed_count := 0
+var _fixture_bridge_route_counts: Dictionary = {}
+var _fixture_bridge_last_route := ""
+var _fixture_bridge_last_result: Dictionary = {}
+var _fixture_bridge_lifecycle_before: Dictionary = {}
+var _fixture_bridge_lifecycle_after: Dictionary = {}
 
 
 func _ready() -> void:
@@ -238,6 +257,8 @@ func _ready() -> void:
 	_fixture_banner.visible = true
 	_fixture_proxy.visible = false
 	_apply_production_presentation_policy()
+	_fixture_bridge_lifecycle_before = _host_lifecycle_snapshot()
+	_fixture_bridge_lifecycle_after = _fixture_bridge_lifecycle_before.duplicate(true)
 
 
 func _resolve_production_nodes() -> void:
@@ -341,32 +362,19 @@ func prepare_episode(episode_id: String) -> bool:
 		_prepare_rejection_reason = "showcase_authority_guard_invalid"
 		return false
 	_authority_hash_before = str(authority_guard.get("snapshot_sha256", ""))
-	var cue_id := str(episode.get("cue_id", ""))
-	if cue_id.is_empty():
-		_active_cue = _surface_transition_cue(episode)
-		_register_local_fixture_receipt(_active_receipt)
-	elif _is_card_table_fixture_cue(cue_id):
-		if not _enqueue_card_table_fixture_episode(episode):
-			return false
-	else:
-		if not _game_screen.has_method(
-			"enqueue_commercial_showcase_presentation_fixture"
-		):
-			_prepare_rejection_reason = "showcase_screen_fixture_consumer_missing"
-			return false
-		var fixture_result := _game_screen.call(
-			"enqueue_commercial_showcase_presentation_fixture",
-			_active_receipt.duplicate(true),
-			_active_projection.duplicate(true)
-		) as Dictionary
-		_active_cue = (fixture_result.get("queued_cue", {}) as Dictionary).duplicate(true)
-		if _active_cue.is_empty():
-			_prepare_rejection_reason = str(fixture_result.get(
-				"reason_code",
-				"showcase_screen_fixture_consumer_rejected"
-			))
-			return false
-		_enqueue_count = 1
+	var bridge_result := submit_presentation_fixture(
+		_active_receipt,
+		_active_projection,
+		episode_id
+	)
+	if not bool(bridge_result.get("accepted", false)):
+		_prepare_rejection_reason = str(bridge_result.get(
+			"reason_code",
+			"showcase_fixture_bridge_rejected"
+		))
+		return false
+	_active_cue = (bridge_result.get("queued_cue", {}) as Dictionary).duplicate(true)
+	_enqueue_count = 1
 	_apply_surface_episode_once("start")
 	_apply_proxy_progress(0.0)
 	_start_proxy_rect = Rect2()
@@ -397,23 +405,10 @@ func set_episode_frame(episode_id: String, phase: String) -> bool:
 func finish_episode() -> bool:
 	if _active_receipt.is_empty() or _finish_count > 0:
 		return false
-	var cue_id := str(_active_episode.get("cue_id", ""))
-	var finished := true
-	if _is_card_table_fixture_cue(cue_id):
-		finished = _finish_card_table_fixture_episode(cue_id)
-	elif not cue_id.is_empty():
-		finished = bool(_game_screen.call(
-			"finish_commercial_showcase_presentation_fixture",
-			str(_active_receipt.get("receipt_id", ""))
-		))
-	elif (
-		str(_active_episode.get("surface_kind", "")) == "loading"
-		and _loading_overlay != null
-		and _loading_overlay.has_method("is_presentation_fixture_loading")
-		and bool(_loading_overlay.call("is_presentation_fixture_loading"))
-		and _loading_overlay.has_method("end_presentation_fixture")
-	):
-		finished = bool(_loading_overlay.call("end_presentation_fixture"))
+	var finish_result := finish_presentation_fixture(
+		str(_active_receipt.get("receipt_id", ""))
+	)
+	var finished := bool(finish_result.get("accepted", false))
 	if finished:
 		_finish_count = 1
 	return finished
@@ -422,14 +417,95 @@ func finish_episode() -> bool:
 func replay_active_receipt() -> Dictionary:
 	if _active_receipt.is_empty():
 		return {"suppressed": false, "reason_code": "no_active_receipt"}
-	var cue_id := str(_active_episode.get("cue_id", ""))
-	if cue_id.is_empty():
-		var receipt_id := str(_active_receipt.get("receipt_id", ""))
+	_last_replay_result = replay_presentation_fixture(
+		_active_receipt,
+		_active_projection,
+		str(_active_episode.get("id", ""))
+	)
+	return _last_replay_result.duplicate(true)
+
+
+## The one canonical Showcase ingress.  Callers cannot select a production
+## route: the sealed episode identity determines the fixture-only adapter.
+func submit_presentation_fixture(
+	receipt: Dictionary,
+	projection: Dictionary,
+	episode_id: String
+) -> Dictionary:
+	var validation := _validate_fixture_submission(
+		receipt,
+		projection,
+		episode_id
+	)
+	if not bool(validation.get("valid", false)):
+		return _fixture_bridge_rejection(str(validation.get(
+			"reason_code",
+			"showcase_fixture_bridge_contract_invalid"
+		)))
+	var episode := validation.get("episode", {}) as Dictionary
+	var route := _fixture_route_for_episode(episode)
+	if route.is_empty():
+		return _fixture_bridge_rejection(
+			"showcase_fixture_bridge_route_unavailable"
+		)
+	_fixture_bridge_submit_count += 1
+	_fixture_bridge_last_route = route
+	_bump_fixture_bridge_route(route, "submit_count")
+	var result: Dictionary = {}
+	match route:
+		"PRODUCT_SHELL_FIXTURE":
+			_active_cue = _surface_transition_cue(episode)
+			_register_local_fixture_receipt(receipt)
+			result = {
+				"accepted": true,
+				"reason_code": "showcase_fixture_surface_registered",
+				"queued_cue": _active_cue.duplicate(true),
+			}
+		"CARD_TABLE_FIXTURE":
+			if _enqueue_card_table_fixture_episode(episode):
+				result = {
+					"accepted": true,
+					"reason_code": "showcase_card_table_fixture_registered",
+					"queued_cue": _active_cue.duplicate(true),
+				}
+			else:
+				result = {
+					"accepted": false,
+					"reason_code": _prepare_rejection_reason,
+				}
+		"GENERIC_DIRECTOR_FIXTURE":
+			result = _submit_generic_fixture_host(receipt, projection)
+	_fixture_bridge_lifecycle_after = _host_lifecycle_snapshot()
+	return _fixture_bridge_result(route, result)
+
+
+func replay_presentation_fixture(
+	receipt: Dictionary,
+	projection: Dictionary,
+	episode_id: String
+) -> Dictionary:
+	if episode_id != str(_active_episode.get("id", "")):
+		return _fixture_bridge_rejection(
+			"showcase_fixture_bridge_replay_episode_mismatch"
+		)
+	if not _active_fixture_envelope_valid(receipt, projection):
+		return _fixture_bridge_rejection(
+			"showcase_fixture_bridge_replay_contract_invalid"
+		)
+	var route := _fixture_route_for_episode(_active_episode)
+	_fixture_bridge_replay_count += 1
+	_fixture_bridge_last_route = route
+	_bump_fixture_bridge_route(route, "replay_count")
+	var result: Dictionary = {}
+	if route == "PRODUCT_SHELL_FIXTURE":
+		var receipt_id := str(receipt.get("receipt_id", ""))
 		var suppressed := _local_receipt_ledger.has(receipt_id)
 		if suppressed:
 			_local_duplicate_suppressed_count += 1
-		_last_replay_result = {
+		result = {
+			"accepted": false,
 			"suppressed": suppressed,
+			"duplicate": suppressed,
 			"reason_code": (
 				"fixture_surface_receipt_duplicate_suppressed"
 				if suppressed
@@ -438,50 +514,107 @@ func replay_active_receipt() -> Dictionary:
 			"queued_count_before": _enqueue_count,
 			"queued_count_after": _enqueue_count,
 		}
-		return _last_replay_result.duplicate(true)
-	if _is_card_table_fixture_cue(cue_id):
+	elif route == "CARD_TABLE_FIXTURE":
 		var before := _screen_card_table_debug()
 		var duplicate := _game_screen.call(
 			"enqueue_card_table_presentation",
-			_active_receipt.duplicate(true),
-			_active_projection.duplicate(true),
+			receipt.duplicate(true),
+			projection.duplicate(true),
 			FIXTURE_CLASS
 		) as Dictionary
 		var after := _screen_card_table_debug()
-		_last_replay_result = {
+		result = {
+			"accepted": bool(duplicate.get("accepted", false)),
 			"suppressed": (
 				not bool(duplicate.get("accepted", false))
 				and bool(duplicate.get("duplicate", false))
 			),
+			"duplicate": bool(duplicate.get("duplicate", false)),
 			"reason_code": str(duplicate.get("reason_code", "")),
 			"queued_count_before": int(before.get("queued_count", -1)),
 			"queued_count_after": int(after.get("queued_count", -1)),
 			"duplicate_count_before": int(before.get("duplicate_count", -1)),
 			"duplicate_count_after": int(after.get("duplicate_count", -1)),
 		}
-		return _last_replay_result.duplicate(true)
-	var before := _director_debug()
-	var duplicate_result := _game_screen.call(
-		"enqueue_commercial_showcase_presentation_fixture",
-		_active_receipt.duplicate(true),
-		_active_projection.duplicate(true)
-	) as Dictionary
-	var after := _director_debug()
-	_last_replay_result = {
-		"suppressed": (
-			not bool(duplicate_result.get("accepted", false))
-			and bool(duplicate_result.get("duplicate", false))
+	else:
+		var before := _director_debug()
+		var duplicate_result := _submit_generic_fixture_host(receipt, projection)
+		var after := _director_debug()
+		result = {
+			"accepted": bool(duplicate_result.get("accepted", false)),
+			"suppressed": (
+				not bool(duplicate_result.get("accepted", false))
+				and bool(duplicate_result.get("duplicate", false))
+			),
+			"duplicate": bool(duplicate_result.get("duplicate", false)),
+			"reason_code": str(duplicate_result.get(
+				"reason_code",
+				after.get("last_rejection_reason", "")
+			)),
+			"queued_count_before": int(before.get("queued_cue_count", -1)),
+			"queued_count_after": int(after.get("queued_cue_count", -1)),
+			"duplicate_count_before": int(before.get("receipt_duplicate_count", -1)),
+			"duplicate_count_after": int(after.get("receipt_duplicate_count", -1)),
+		}
+	if bool(result.get("suppressed", false)):
+		_fixture_bridge_duplicate_suppressed_count += 1
+		_bump_fixture_bridge_route(route, "duplicate_suppressed_count")
+	_fixture_bridge_lifecycle_after = _host_lifecycle_snapshot()
+	return _fixture_bridge_result(route, result)
+
+
+func finish_presentation_fixture(receipt_id: String) -> Dictionary:
+	var normalized := receipt_id.strip_edges()
+	if (
+		normalized.is_empty()
+		or normalized != str(_active_receipt.get("receipt_id", ""))
+	):
+		return _fixture_bridge_rejection(
+			"showcase_fixture_bridge_finish_identity_mismatch"
+		)
+	var route := _fixture_route_for_episode(_active_episode)
+	var cue_id := str(_active_episode.get("cue_id", ""))
+	var finished := false
+	if route == "PRODUCT_SHELL_FIXTURE":
+		finished = true
+		if (
+			str(_active_episode.get("surface_kind", "")) == "loading"
+			and _loading_overlay != null
+			and _loading_overlay.has_method("is_presentation_fixture_loading")
+			and bool(_loading_overlay.call("is_presentation_fixture_loading"))
+			and _loading_overlay.has_method("end_presentation_fixture")
+		):
+			finished = bool(_loading_overlay.call("end_presentation_fixture"))
+	elif route == "CARD_TABLE_FIXTURE":
+		finished = _finish_card_table_fixture_episode(cue_id)
+	elif route == "GENERIC_DIRECTOR_FIXTURE":
+		finished = (
+			_game_screen != null
+			and _game_screen.has_method(
+				"finish_commercial_showcase_presentation_fixture"
+			)
+			and bool(_game_screen.call(
+				"finish_commercial_showcase_presentation_fixture",
+				normalized
+			))
+		)
+	var result := {
+		"accepted": finished,
+		"reason_code": (
+			"showcase_fixture_bridge_finished"
+			if finished
+			else "showcase_fixture_bridge_finish_rejected"
 		),
-		"reason_code": str(duplicate_result.get(
-			"reason_code",
-			after.get("last_rejection_reason", "")
-		)),
-		"queued_count_before": int(before.get("queued_cue_count", -1)),
-		"queued_count_after": int(after.get("queued_cue_count", -1)),
-		"duplicate_count_before": int(before.get("receipt_duplicate_count", -1)),
-		"duplicate_count_after": int(after.get("receipt_duplicate_count", -1)),
 	}
-	return _last_replay_result.duplicate(true)
+	if finished:
+		_fixture_bridge_finish_count += 1
+		_bump_fixture_bridge_route(route, "finish_count")
+	else:
+		_fixture_bridge_rejection_count += 1
+		_bump_fixture_bridge_route(route, "rejection_count")
+	_fixture_bridge_last_route = route
+	_fixture_bridge_lifecycle_after = _host_lifecycle_snapshot()
+	return _fixture_bridge_result(route, result)
 
 
 func get_episode_evidence() -> Dictionary:
@@ -524,6 +657,7 @@ func get_episode_evidence() -> Dictionary:
 		"receipt": _active_receipt.duplicate(true),
 		"animation_cue": _active_cue.duplicate(true),
 		"projection": _active_projection.duplicate(true),
+		"fixture_bridge": _fixture_bridge_debug_snapshot(),
 		"card_table_fixture_bridge_applicable": _is_card_table_fixture_cue(
 			str(_active_episode.get("cue_id", ""))
 		),
@@ -633,18 +767,19 @@ func get_showcase_contract() -> Dictionary:
 		"showcase_authority_owner_audit": showcase_owner_audit,
 		"uses_production_main": _production_main != null,
 		"uses_production_director": _director != null,
+		"production_main_role": FIXTURE_BRIDGE_HOST_ROLE,
+		"fixture_bridge_instance_count": 1,
+		"fixture_bridge_schema": FIXTURE_BRIDGE_SCHEMA,
+		"fixture_bridge_method": FIXTURE_BRIDGE_METHOD,
+		"fixture_bridge": _fixture_bridge_debug_snapshot(),
 		"card_table_fixture_cue_ids": (
 			CARD_TABLE_FIXTURE_RECEIPT_KIND_BY_CUE.keys()
 		),
-		"card_table_fixture_bridge_method": (
-			"V075GameScreen.enqueue_card_table_presentation"
-		),
-		"showcase_fixture_consumer_method": (
-			"V075GameScreen.enqueue_commercial_showcase_presentation_fixture"
-		),
-		"final_settlement_fixture_surface_method": (
-			"V075GameScreen.present_final_settlement_fixture"
-		),
+		"fixture_host_adapter_methods": [
+			"V075GameScreen.enqueue_card_table_presentation",
+			"V075GameScreen.enqueue_commercial_showcase_presentation_fixture",
+			"V075GameScreen.present_final_settlement_fixture",
+		],
 		"reduced_motion": reduced_motion,
 	}
 
@@ -843,6 +978,248 @@ func _update_episode_label() -> void:
 	]
 
 
+func _validate_fixture_submission(
+	receipt: Dictionary,
+	projection: Dictionary,
+	episode_id: String
+) -> Dictionary:
+	var normalized_id := episode_id.strip_edges()
+	var episode := _episode_for_id(normalized_id)
+	if episode.is_empty():
+		return {
+			"valid": false,
+			"reason_code": "showcase_fixture_bridge_episode_unknown",
+		}
+	var expected_receipt := _fixture_receipt(episode)
+	var expected_projection := _fixture_projection(episode)
+	if (
+		str(receipt.get("fixture_class", "")) != FIXTURE_CLASS
+		or str(receipt.get("receipt_source_class", "")) != FIXTURE_CLASS
+		or bool(receipt.get("natural_gameplay", true))
+		or bool(receipt.get("authority_receipt", true))
+		or not bool(receipt.get("fixture_sealed", false))
+		or bool(receipt.get("gameplay_green", true))
+		or bool(receipt.get("production_green", true))
+		or bool(receipt.get("human_green", true))
+		or str(receipt.get("fixture_source", "")) != CANONICAL_SCENE_PATH
+		or str(projection.get("fixture_class", "")) != FIXTURE_CLASS
+		or bool(projection.get("natural_gameplay", true))
+		or bool(projection.get("production_green", true))
+		or bool(projection.get("human_green", true))
+	):
+		return {
+			"valid": false,
+			"reason_code": "showcase_fixture_bridge_classification_invalid",
+		}
+	if (
+		not _receipt_fingerprint_valid(receipt)
+		or PresentationReceiptIdentity.canonical_sha256(receipt)
+			!= PresentationReceiptIdentity.canonical_sha256(expected_receipt)
+		or PresentationReceiptIdentity.canonical_sha256(projection)
+			!= PresentationReceiptIdentity.canonical_sha256(expected_projection)
+	):
+		return {
+			"valid": false,
+			"reason_code": "showcase_fixture_bridge_seal_invalid",
+		}
+	return {"valid": true, "episode": episode}
+
+
+func _active_fixture_envelope_valid(
+	receipt: Dictionary,
+	projection: Dictionary
+) -> bool:
+	return (
+		not _active_receipt.is_empty()
+		and not _active_projection.is_empty()
+		and str(receipt.get("fixture_class", "")) == FIXTURE_CLASS
+		and str(receipt.get("receipt_source_class", FIXTURE_CLASS)) == FIXTURE_CLASS
+		and not bool(receipt.get("natural_gameplay", true))
+		and not bool(receipt.get("authority_receipt", false))
+		and bool(receipt.get("fixture_sealed", false))
+		and not bool(receipt.get("gameplay_green", true))
+		and not bool(receipt.get("production_green", true))
+		and not bool(receipt.get("human_green", true))
+		and str(projection.get("fixture_class", "")) == FIXTURE_CLASS
+		and not bool(projection.get("natural_gameplay", true))
+		and _receipt_fingerprint_valid(receipt)
+		and PresentationReceiptIdentity.canonical_sha256(receipt)
+			== PresentationReceiptIdentity.canonical_sha256(_active_receipt)
+		and PresentationReceiptIdentity.canonical_sha256(projection)
+			== PresentationReceiptIdentity.canonical_sha256(_active_projection)
+	)
+
+
+func _fixture_route_for_episode(episode: Dictionary) -> String:
+	var cue_id := str(episode.get("cue_id", "")).strip_edges()
+	if cue_id.is_empty():
+		return "PRODUCT_SHELL_FIXTURE"
+	if _is_card_table_fixture_cue(cue_id):
+		return "CARD_TABLE_FIXTURE"
+	return "GENERIC_DIRECTOR_FIXTURE"
+
+
+func _submit_generic_fixture_host(
+	receipt: Dictionary,
+	projection: Dictionary
+) -> Dictionary:
+	## Fail closed if any of the four typed card-table cues attempts to bypass
+	## its dedicated fixture surface through the generic Director consumer.
+	var cue_id := str(receipt.get("cue_id", "")).strip_edges()
+	if _is_card_table_fixture_cue(cue_id):
+		return {
+			"accepted": false,
+			"reason_code": "showcase_card_table_generic_route_forbidden",
+		}
+	if (
+		_game_screen == null
+		or not _game_screen.has_method(
+			"enqueue_commercial_showcase_presentation_fixture"
+		)
+	):
+		return {
+			"accepted": false,
+			"reason_code": "showcase_screen_fixture_consumer_missing",
+		}
+	return _game_screen.call(
+		"enqueue_commercial_showcase_presentation_fixture",
+		receipt.duplicate(true),
+		projection.duplicate(true)
+	) as Dictionary
+
+
+func _fixture_bridge_result(route: String, raw_result: Dictionary) -> Dictionary:
+	var result := raw_result.duplicate(true)
+	result["schema"] = FIXTURE_BRIDGE_SCHEMA
+	result["bridge_method"] = FIXTURE_BRIDGE_METHOD
+	result["bridge_instance_count"] = 1
+	result["route"] = route
+	result["fixture_class"] = FIXTURE_CLASS
+	result["natural_gameplay"] = false
+	result["authority_receipt"] = false
+	result["gameplay_green"] = false
+	result["human_green"] = false
+	result["production_green"] = false
+	result["production_main_role"] = FIXTURE_BRIDGE_HOST_ROLE
+	result["host_lifecycle_unchanged"] = _fixture_host_lifecycle_unchanged()
+	_fixture_bridge_last_result = result.duplicate(true)
+	return result
+
+
+func _fixture_bridge_rejection(reason_code: String) -> Dictionary:
+	_fixture_bridge_rejection_count += 1
+	var result := {
+		"accepted": false,
+		"suppressed": false,
+		"duplicate": false,
+		"reason_code": reason_code,
+	}
+	return _fixture_bridge_result("REJECTED", result)
+
+
+func _bump_fixture_bridge_route(route: String, counter: String) -> void:
+	var row := _fixture_bridge_route_counts.get(route, {}) as Dictionary
+	row[counter] = int(row.get(counter, 0)) + 1
+	_fixture_bridge_route_counts[route] = row
+
+
+func _host_lifecycle_snapshot() -> Dictionary:
+	var composition_debug: Dictionary = {}
+	if _runtime_composition != null and _runtime_composition.has_method(
+		"debug_snapshot"
+	):
+		composition_debug = _runtime_composition.call("debug_snapshot") as Dictionary
+	var ruleset_debug := composition_debug.get("ruleset", {}) as Dictionary
+	var guard := _authority_guard_snapshot()
+	return {
+		"schema": "V076CommercialShowcaseHostLifecycleSnapshotV1",
+		"session_sequence": int(composition_debug.get("session_sequence", -1)),
+		"new_game_publication_count": int(composition_debug.get(
+			"new_game_publication_count", -1
+		)),
+		"last_published_session_id": str(composition_debug.get(
+			"last_published_session_id", ""
+		)),
+		"new_game_transaction_in_progress": bool(composition_debug.get(
+			"new_game_transaction_in_progress", true
+		)),
+		"save_request_count": int(ruleset_debug.get("save_request_count", -1)),
+		"load_request_count": int(ruleset_debug.get("load_request_count", -1)),
+		"production_save_slot_write_count": int(ruleset_debug.get(
+			"production_save_slot_write_count", -1
+		)),
+		"kernel_current_tick": int(guard.get("kernel_current_tick", -1)),
+		"kernel_next_authority_sequence": int(guard.get(
+			"kernel_next_authority_sequence", -1
+		)),
+		"kernel_rng_state_sha256": str(guard.get(
+			"kernel_rng_state_sha256", ""
+		)),
+		"authority_snapshot_sha256": str(guard.get("snapshot_sha256", "")),
+	}
+
+
+func _fixture_host_lifecycle_unchanged() -> bool:
+	if (
+		_fixture_bridge_lifecycle_before.is_empty()
+		or _fixture_bridge_lifecycle_after.is_empty()
+	):
+		return false
+	# The full authority snapshot hash is proved per episode by the existing
+	# authority guard.  This bridge-specific witness independently seals the
+	# lifecycle values that could otherwise fake a "presentation" by starting a
+	# Session, requesting Save/Load, advancing Tick/sequence, or drawing RNG.
+	for key in [
+		"session_sequence",
+		"new_game_publication_count",
+		"last_published_session_id",
+		"new_game_transaction_in_progress",
+		"save_request_count",
+		"load_request_count",
+		"production_save_slot_write_count",
+		"kernel_current_tick",
+		"kernel_next_authority_sequence",
+		"kernel_rng_state_sha256",
+	]:
+		if _fixture_bridge_lifecycle_before.get(key) != (
+			_fixture_bridge_lifecycle_after.get(key)
+		):
+			return false
+	return true
+
+
+func _fixture_bridge_debug_snapshot() -> Dictionary:
+	return {
+		"schema": FIXTURE_BRIDGE_SCHEMA,
+		"bridge_method": FIXTURE_BRIDGE_METHOD,
+		"bridge_instance_count": 1,
+		"production_main_role": FIXTURE_BRIDGE_HOST_ROLE,
+		"fixture_class": FIXTURE_CLASS,
+		"natural_gameplay": false,
+		"authority_receipt": false,
+		"gameplay_green": false,
+		"human_green": false,
+		"production_green": false,
+		"submit_count": _fixture_bridge_submit_count,
+		"replay_count": _fixture_bridge_replay_count,
+		"finish_count": _fixture_bridge_finish_count,
+		"rejection_count": _fixture_bridge_rejection_count,
+		"duplicate_suppressed_count": (
+			_fixture_bridge_duplicate_suppressed_count
+		),
+		"route_counts": _fixture_bridge_route_counts.duplicate(true),
+		"last_route": _fixture_bridge_last_route,
+		"last_result": _fixture_bridge_last_result.duplicate(true),
+		"lifecycle_before": _fixture_bridge_lifecycle_before.duplicate(true),
+		"lifecycle_after": _fixture_bridge_lifecycle_after.duplicate(true),
+		"host_lifecycle_unchanged": _fixture_host_lifecycle_unchanged(),
+		"fixture_created_session_count": 0,
+		"fixture_save_request_count": 0,
+		"fixture_rng_draw_count": 0,
+		"fixture_tick_advance_count": 0,
+	}
+
+
 func _is_card_table_fixture_cue(cue_id: String) -> bool:
 	return CARD_TABLE_FIXTURE_RECEIPT_KIND_BY_CUE.has(cue_id.strip_edges())
 
@@ -979,6 +1356,16 @@ func _receipt_fingerprint_valid_or_add(receipt: Dictionary) -> bool:
 		receipt["receipt_fingerprint"] = canonical
 		return true
 	return supplied == canonical
+
+
+func _receipt_fingerprint_valid(receipt: Dictionary) -> bool:
+	var supplied := str(receipt.get("receipt_fingerprint", ""))
+	var source := receipt.duplicate(true)
+	source.erase("receipt_fingerprint")
+	return (
+		supplied.length() == 64
+		and supplied == PresentationReceiptIdentity.canonical_sha256(source)
+	)
 
 
 func _episode_for_id(episode_id: String) -> Dictionary:

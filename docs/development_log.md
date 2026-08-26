@@ -10035,3 +10035,23 @@ deleted. Evidence and the remaining action inventory are recorded in
   `STEP13=PENDING`, STEP14/15 are not started, and the headed window remains
   open for the human short retest. Append-only evidence is under
   `reports/playtest/alpha07_human_candidate_3_card_table_flow/`.
+
+## 2026-08-26 — Commercial Presentation M1 natural Cue evidence and hard stop
+
+- Kept the single `V076CommercialPresentationFixtureBridgeV1` boundary for the
+  13-episode Showcase and retained the production main scene as a presentation
+  host only. The focused fixture gate passes `1043/1043`; all fixture receipts
+  remain sealed as non-natural, non-production, and non-human evidence.
+- Added two thin headed observers over the existing production-main drivers.
+  The four natural Cue bundle covers `CARD_SELECT`, `CARD_PLAY_PUBLIC`,
+  `CARD_RESOLUTION_FOCUS`, and `FINAL_SETTLEMENT` in 12 frames at 1600x960,
+  with zero fixture receipts, diagnostics, task-introduced errors, or residual
+  project processes. Visual inspection confirms all three terminal frames show
+  the real Settlement Overlay rather than the commercial menu.
+- The independent natural production proof passes `243/243`, while preserving
+  `human_green=false`, `commercial_m1_green=false`, and STEP13-15 `PENDING`.
+  Reuse/Point-Inertia selftest remains `120/120 PASS`, but committed-HEAD
+  validation at `6e1825a34070de043a03bcff0af6b1a1587bed65` fails with 620 total
+  failures, including 509 committed-history failures across 65 transitions.
+  Therefore Draft PR #93 stays at `TRUE_HARD_STOP_REQUIRING_USER_DECISION`;
+  no Ready, merge, tag, cutover, or Human Green transition is authorized.
