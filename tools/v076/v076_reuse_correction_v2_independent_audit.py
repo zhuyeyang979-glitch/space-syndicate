@@ -43,6 +43,13 @@ FULL_CONVERGENCE_SCHEMA_SHA = "6e23a7b9285fcf3ac29bd8aa78393ba243b482d880f8b0ade
 FULL_CONVERGENCE_SCHEMA = Path(
     "docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json"
 )
+FULL_CONVERGENCE_SUCCESSOR_SCHEMA = Path(
+    "docs/architecture/reuse_corrections/v2/"
+    "schema_full_convergence_20260827_successor_v3.json"
+)
+FULL_CONVERGENCE_SUCCESSOR_SCHEMA_SHA = (
+    "995d18eee41202dd3db10412c1df7edd9ad4c84ecfc2caab967cce71ffb0545a"
+)
 FULL_CONVERGENCE_BASELINE_REPORT = Path(
     "reports/reuse/correction_v2/epochs/full_convergence_20260827/"
     "baseline_raw_failure_report.json"
@@ -63,7 +70,41 @@ DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION = (
     "descendant_history_supplement.v2"
 )
 DESCENDANT_HISTORY_SUPPLEMENT_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_002"
+DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION = (
+    "space_syndicate.v076.reuse_exact_failure_correction.v2."
+    "descendant_history_supplement.v3"
+)
+DESCENDANT_HISTORY_SUPPLEMENT_V3_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_003"
 DESCENDANT_HISTORY_SCANNER = Path("tools/v076/v076_reuse_point_inertia_gate.py")
+PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT = Path(
+    "reports/reuse/correction_v2/epochs/full_convergence_20260827/"
+    "descendant_history_supplement_570d6e3c.json"
+)
+PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_SHA = (
+    "65dcc1276767a1c2009fb2157041db2058783ca6ab23e49a3cafdc149b41fe82"
+)
+PREVIOUS_DESCENDANT_HISTORY_RAW = Path(
+    "reports/reuse/correction_v2/epochs/full_convergence_20260827/"
+    "descendant_history_raw_570d6e3c.json"
+)
+PREVIOUS_DESCENDANT_HISTORY_RAW_SHA = "72545ff3f19be36f47da40bdff693ba02d507c0e90feab622f9b470f98973fa9"
+PREVIOUS_DESCENDANT_HISTORY_HEAD = "570d6e3c95b291f019351f5a3a325fc28cb57c80"
+PREVIOUS_DESCENDANT_HISTORY_TREE = "e33db0d93844da7a804a5f33f8dadd8c3797260e"
+PREVIOUS_DESCENDANT_HISTORY_SCANNER_SHA = (
+    "f20759401008da5e22156a22af1d4bdcf527670cdfdc9cc73c76281d6783625a"
+)
+DESCENDANT_HISTORY_V3_RAW = Path(
+    "reports/reuse/correction_v2/epochs/full_convergence_20260827/"
+    "descendant_history_raw_da48a74b_003.json"
+)
+DESCENDANT_HISTORY_V3_SUPPLEMENT = Path(
+    "reports/reuse/correction_v2/epochs/full_convergence_20260827/"
+    "descendant_history_supplement_da48a74b_003.json"
+)
+DESCENDANT_HISTORY_V3_RAW_HEAD = "da48a74b3d12af9040230ea659b1663bd9eb2cbe"
+DESCENDANT_HISTORY_V3_RAW_TREE = "2fa166e7aa8f7a3bcc33028fad9517ee2e8738a9"
+DESCENDANT_HISTORY_V3_RAW_SHA = "812bd75c2e81d21a1a13305d45bf1045b1518b964f83ae88c2dd4f29ecf8dfac"
+DESCENDANT_HISTORY_V3_SCANNER_SHA = "09bc04b52058cdafb7e966ca36230dc153dd637b829b766677ac542be02a9885"
 DYNAMIC_REFERENCE_MANIFEST = Path("docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json")
 EXACT_SUCCESSOR_FINGERPRINT_MAPPING = "EXACT_SUCCESSOR_FINGERPRINT_MAPPING"
 EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT = "EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT"
@@ -581,6 +622,31 @@ DESCENDANT_HISTORY_SUPPLEMENT_FIELDS = {
     "wildcard_membership_allowed",
 }
 
+DESCENDANT_HISTORY_SCANNER_EVOLUTION_FIELDS = {
+    "evolution_kind",
+    "from_raw_report_head_sha",
+    "from_raw_report_tree_sha",
+    "from_scanner_tool_sha256",
+    "removed_rule_count",
+    "scanner_change_commit_count",
+    "scanner_change_commit_sequence_sha256",
+    "scanner_change_commit_shas",
+    "scanner_history_depth_reduction_count",
+    "scanner_scope_reduction_count",
+    "scanner_severity_downgrade_count",
+    "scanner_tool_path",
+    "to_raw_report_head_sha",
+    "to_raw_report_tree_sha",
+    "to_scanner_tool_sha256",
+    "weakening_allowed",
+}
+
+DESCENDANT_HISTORY_SUPPLEMENT_V3_FIELDS = DESCENDANT_HISTORY_SUPPLEMENT_FIELDS | {
+    "previous_supplement_path",
+    "previous_supplement_sha256",
+    "scanner_evolution",
+}
+
 
 def _sha_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -919,7 +985,7 @@ def _exact_repo_relative(root: Path, path: Path) -> str:
         return ""
 
 
-def _descendant_history_supplement_findings(
+def _descendant_history_supplement_core_findings(
     root: Path,
     *,
     supplement_path: Path | None,
@@ -928,6 +994,10 @@ def _descendant_history_supplement_findings(
     evaluated_head: str,
     baseline_report: dict[str, Any],
     baseline_sets: dict[str, set[str]],
+    require_live_scanner_bytes: bool = True,
+    expected_schema_version: str = DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION,
+    expected_supplement_id: str = DESCENDANT_HISTORY_SUPPLEMENT_ID,
+    expected_fields: set[str] = DESCENDANT_HISTORY_SUPPLEMENT_FIELDS,
 ) -> tuple[
     list[dict[str, Any]],
     set[str],
@@ -980,14 +1050,14 @@ def _descendant_history_supplement_findings(
             "supplement is not one strict JSON object",
         )
         return findings, set(), {}, set(), supplement_sha, ""
-    if set(supplement) != DESCENDANT_HISTORY_SUPPLEMENT_FIELDS:
+    if set(supplement) != expected_fields:
         add(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_SUPPLEMENT_FIELD_SET_INVALID",
             "supplement field set differs from the closed contract",
         )
     for field, expected in (
-        ("schema_version", DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION),
-        ("supplement_id", DESCENDANT_HISTORY_SUPPLEMENT_ID),
+        ("schema_version", expected_schema_version),
+        ("supplement_id", expected_supplement_id),
         ("authorization_id", FULL_CONVERGENCE_AUTHORIZATION_ID),
         ("authorization_base_head_sha", FULL_CONVERGENCE_BASE_HEAD),
         ("baseline_report_sha256", FULL_CONVERGENCE_BASELINE_SHA),
@@ -1152,9 +1222,8 @@ def _descendant_history_supplement_findings(
         scanner_sha = ""
     scanner_at_head = _git_bytes(root, report_head, DESCENDANT_HISTORY_SCANNER.as_posix())
     scanner_at_head_sha = _sha_bytes(scanner_at_head) if scanner_at_head is not None else ""
-    if (
-        supplement.get("scanner_tool_sha256") != scanner_sha
-        or scanner_sha != scanner_at_head_sha
+    if supplement.get("scanner_tool_sha256") != scanner_at_head_sha or (
+        require_live_scanner_bytes and scanner_sha != scanner_at_head_sha
     ):
         add(
             "FULL_CONVERGENCE_DESCENDANT_HISTORY_SCANNER_HASH_MISMATCH",
@@ -1569,6 +1638,255 @@ def _descendant_history_supplement_findings(
         supplement_sha,
         report_head,
     )
+
+
+def _descendant_history_successor_v3_findings(
+    root: Path,
+    *,
+    supplement_path: Path,
+    raw_report_path: Path,
+    scanner_path: Path,
+    evaluated_head: str,
+    baseline_report: dict[str, Any],
+    baseline_sets: dict[str, set[str]],
+    expected_raw_head: str = DESCENDANT_HISTORY_V3_RAW_HEAD,
+    expected_raw_tree: str = DESCENDANT_HISTORY_V3_RAW_TREE,
+    expected_raw_sha: str = DESCENDANT_HISTORY_V3_RAW_SHA,
+    expected_scanner_sha: str = DESCENDANT_HISTORY_V3_SCANNER_SHA,
+) -> list[dict[str, Any]]:
+    """Independently audit the v3 predecessor chain and scanner evolution."""
+
+    findings: list[dict[str, Any]] = []
+
+    def add(code: str, message: str, **evidence: Any) -> None:
+        findings.append(_finding(code, "P0", message, **evidence))
+
+    if (
+        _exact_repo_relative(root, supplement_path) != DESCENDANT_HISTORY_V3_SUPPLEMENT.as_posix()
+        or _exact_repo_relative(root, raw_report_path) != DESCENDANT_HISTORY_V3_RAW.as_posix()
+    ):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_PATH_INVALID", "active v3 paths are not exact")
+
+    try:
+        supplement = _json(supplement_path)
+        previous_path = root / PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT
+        previous = _json(previous_path)
+        successor_schema_path = root / FULL_CONVERGENCE_SUCCESSOR_SCHEMA
+        successor_schema = _json(successor_schema_path)
+    except (OSError, ValueError):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_JSON_INVALID", "v3 or predecessor is invalid")
+        return findings
+    if (
+        _sha_file(successor_schema_path) != FULL_CONVERGENCE_SUCCESSOR_SCHEMA_SHA
+        or successor_schema.get("active_descendant_history_supplement_schema_version")
+        != DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION
+        or successor_schema.get("active_descendant_history_supplement_id")
+        != DESCENDANT_HISTORY_SUPPLEMENT_V3_ID
+    ):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_SCHEMA_INVALID", "successor schema bytes or identity drifted")
+    if set(supplement) != DESCENDANT_HISTORY_SUPPLEMENT_V3_FIELDS:
+        add("FULL_CONVERGENCE_DESCENDANT_V3_FIELD_SET_INVALID", "v3 field set is not closed")
+    sealed = {
+        "raw_report_head_sha": expected_raw_head,
+        "raw_report_tree_sha": expected_raw_tree,
+        "raw_report_sha256": expected_raw_sha,
+        "scanner_tool_sha256": expected_scanner_sha,
+        "raw_failure_count": 501,
+        "raw_historical_failure_count": 501,
+        "raw_current_delta_failure_count": 0,
+    }
+    if any(supplement.get(field) != value for field, value in sealed.items()):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_SEALED_RAW_INVALID", "sealed da48 Raw identity drifted")
+    if (
+        supplement.get("schema_version") != DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION
+        or supplement.get("supplement_id") != DESCENDANT_HISTORY_SUPPLEMENT_V3_ID
+    ):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_IDENTITY_INVALID", "v3 schema or ID was reused")
+    if (
+        supplement.get("previous_supplement_path")
+        != PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT.as_posix()
+        or supplement.get("previous_supplement_sha256")
+        != PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_SHA
+        or _sha_file(previous_path) != PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_SHA
+    ):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_PREDECESSOR_SEAL_INVALID", "v2 predecessor bytes drifted")
+    previous_raw_path = root / PREVIOUS_DESCENDANT_HISTORY_RAW
+    try:
+        previous_raw = _json(previous_raw_path)
+        previous_raw_sha = _sha_file(previous_raw_path)
+    except (OSError, ValueError):
+        previous_raw = {}
+        previous_raw_sha = ""
+    committed_previous = _git_bytes(
+        root, evaluated_head, PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT.as_posix()
+    )
+    committed_previous_raw = _git_bytes(
+        root, evaluated_head, PREVIOUS_DESCENDANT_HISTORY_RAW.as_posix()
+    )
+    historical_scanner = _git_bytes(
+        root, PREVIOUS_DESCENDANT_HISTORY_HEAD, DESCENDANT_HISTORY_SCANNER.as_posix()
+    )
+    if (
+        committed_previous is None
+        or _sha_bytes(committed_previous) != PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_SHA
+        or committed_previous_raw is None
+        or _sha_bytes(committed_previous_raw) != PREVIOUS_DESCENDANT_HISTORY_RAW_SHA
+        or previous_raw_sha != PREVIOUS_DESCENDANT_HISTORY_RAW_SHA
+        or previous.get("schema_version") != DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION
+        or previous.get("supplement_id") != DESCENDANT_HISTORY_SUPPLEMENT_ID
+        or previous.get("raw_report_path") != PREVIOUS_DESCENDANT_HISTORY_RAW.as_posix()
+        or previous.get("raw_report_sha256") != PREVIOUS_DESCENDANT_HISTORY_RAW_SHA
+        or previous.get("raw_report_head_sha") != PREVIOUS_DESCENDANT_HISTORY_HEAD
+        or previous.get("raw_report_tree_sha") != PREVIOUS_DESCENDANT_HISTORY_TREE
+        or previous_raw.get("head_sha") != PREVIOUS_DESCENDANT_HISTORY_HEAD
+        or historical_scanner is None
+        or _sha_bytes(historical_scanner) != PREVIOUS_DESCENDANT_HISTORY_SCANNER_SHA
+    ):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_PREDECESSOR_CHAIN_INVALID", "v2 predecessor chain is not exact")
+    previous_descendants = set(previous.get("descendant_history_fingerprints", []))
+    current_descendants = set(supplement.get("descendant_history_fingerprints", []))
+    if not previous_descendants.issubset(current_descendants):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_PREVIOUS_IDENTITY_DROPPED", "v3 drops a v2 identity")
+    previous_dispositions = previous.get("frozen_identity_disposition_by_failure")
+    current_dispositions = supplement.get("frozen_identity_disposition_by_failure")
+    stable_fields = (
+        "disposition", "failure_fingerprint", "raw_failure", "rule_id",
+        "subject_kind", "subject_value", "successor_failure_fingerprint",
+        "transition_new_sha", "transition_old_sha", "wildcard_count",
+    )
+    if not isinstance(previous_dispositions, dict) or not isinstance(current_dispositions, dict):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_DISPOSITION_SET_INVALID", "disposition chain is invalid")
+    else:
+        for fingerprint, old_row in previous_dispositions.items():
+            new_row = current_dispositions.get(fingerprint)
+            if not isinstance(old_row, dict) or not isinstance(new_row, dict) or any(
+                old_row.get(field) != new_row.get(field) for field in stable_fields
+            ):
+                add(
+                    "FULL_CONVERGENCE_DESCENDANT_V3_DISPOSITION_DRIFT",
+                    "one frozen predecessor disposition drifted",
+                    fingerprint=fingerprint,
+                )
+    evolution = supplement.get("scanner_evolution")
+    if not isinstance(evolution, dict) or set(evolution) != DESCENDANT_HISTORY_SCANNER_EVOLUTION_FIELDS:
+        add("FULL_CONVERGENCE_DESCENDANT_V3_SCANNER_EVOLUTION_FIELDS_INVALID", "scanner evolution is open")
+        evolution = evolution if isinstance(evolution, dict) else {}
+    count_fields = (
+        "removed_rule_count",
+        "scanner_change_commit_count",
+        "scanner_history_depth_reduction_count",
+        "scanner_scope_reduction_count",
+        "scanner_severity_downgrade_count",
+    )
+    for field in count_fields:
+        if type(evolution.get(field)) is not int:
+            add("FULL_CONVERGENCE_DESCENDANT_V3_SCANNER_COUNT_TYPE_INVALID", "bool is not an integer", field=field)
+    expected = {
+        "evolution_kind": "FAIL_CLOSED_VALIDATION_STRENGTHENING",
+        "from_raw_report_head_sha": PREVIOUS_DESCENDANT_HISTORY_HEAD,
+        "from_raw_report_tree_sha": PREVIOUS_DESCENDANT_HISTORY_TREE,
+        "from_scanner_tool_sha256": PREVIOUS_DESCENDANT_HISTORY_SCANNER_SHA,
+        "removed_rule_count": 0,
+        "scanner_history_depth_reduction_count": 0,
+        "scanner_scope_reduction_count": 0,
+        "scanner_severity_downgrade_count": 0,
+        "scanner_tool_path": DESCENDANT_HISTORY_SCANNER.as_posix(),
+        "to_raw_report_head_sha": supplement.get("raw_report_head_sha"),
+        "to_raw_report_tree_sha": supplement.get("raw_report_tree_sha"),
+        "to_scanner_tool_sha256": supplement.get("scanner_tool_sha256"),
+        "weakening_allowed": False,
+    }
+    if any(evolution.get(field) != value for field, value in expected.items()):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_SCANNER_EVOLUTION_INVALID", "scanner evolution weakens or drifts")
+    to_head = str(supplement.get("raw_report_head_sha", ""))
+    commits = [
+        value
+        for value in _git(
+            root,
+            "rev-list",
+            "--reverse",
+            f"{PREVIOUS_DESCENDANT_HISTORY_HEAD}..{to_head}",
+            "--",
+            DESCENDANT_HISTORY_SCANNER.as_posix(),
+        ).splitlines()
+        if value
+    ]
+    declared = evolution.get("scanner_change_commit_shas")
+    rendered = [str(value) for value in declared] if isinstance(declared, list) else []
+    digest = _sha_bytes(("\n".join(commits) + "\n").encode("utf-8"))
+    if (
+        not commits
+        or rendered != commits
+        or not _is_exact_int_equal(evolution.get("scanner_change_commit_count"), len(commits))
+        or evolution.get("scanner_change_commit_sequence_sha256") != digest
+    ):
+        add("FULL_CONVERGENCE_DESCENDANT_V3_SCANNER_SEQUENCE_INVALID", "scanner commit sequence is not exact")
+    return findings
+
+
+def _descendant_history_supplement_findings(
+    root: Path,
+    *,
+    supplement_path: Path | None,
+    raw_report_path: Path | None,
+    scanner_path: Path | None,
+    evaluated_head: str,
+    baseline_report: dict[str, Any],
+    baseline_sets: dict[str, set[str]],
+    require_live_scanner_bytes: bool = True,
+    expected_v3_raw_head: str = DESCENDANT_HISTORY_V3_RAW_HEAD,
+    expected_v3_raw_tree: str = DESCENDANT_HISTORY_V3_RAW_TREE,
+    expected_v3_raw_sha: str = DESCENDANT_HISTORY_V3_RAW_SHA,
+    expected_v3_scanner_sha: str = DESCENDANT_HISTORY_V3_SCANNER_SHA,
+) -> tuple[list[dict[str, Any]], set[str], dict[str, dict[str, str]], set[str], str, str]:
+    try:
+        document = _json(supplement_path) if supplement_path is not None else {}
+    except (OSError, ValueError):
+        document = {}
+    is_v3 = (
+        supplement_path is not None
+        and _exact_repo_relative(root, supplement_path)
+        == DESCENDANT_HISTORY_V3_SUPPLEMENT.as_posix()
+    )
+    result = _descendant_history_supplement_core_findings(
+        root,
+        supplement_path=supplement_path,
+        raw_report_path=raw_report_path,
+        scanner_path=scanner_path,
+        evaluated_head=evaluated_head,
+        baseline_report=baseline_report,
+        baseline_sets=baseline_sets,
+        require_live_scanner_bytes=require_live_scanner_bytes,
+        expected_schema_version=(
+            DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION
+            if is_v3 else DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION
+        ),
+        expected_supplement_id=(
+            DESCENDANT_HISTORY_SUPPLEMENT_V3_ID
+            if is_v3 else DESCENDANT_HISTORY_SUPPLEMENT_ID
+        ),
+        expected_fields=(
+            DESCENDANT_HISTORY_SUPPLEMENT_V3_FIELDS
+            if is_v3 else DESCENDANT_HISTORY_SUPPLEMENT_FIELDS
+        ),
+    )
+    if is_v3 and supplement_path is not None and raw_report_path is not None and scanner_path is not None:
+        result[0].extend(
+            _descendant_history_successor_v3_findings(
+                root,
+                supplement_path=supplement_path,
+                raw_report_path=raw_report_path,
+                scanner_path=scanner_path,
+                evaluated_head=evaluated_head,
+                baseline_report=baseline_report,
+                baseline_sets=baseline_sets,
+                expected_raw_head=expected_v3_raw_head,
+                expected_raw_tree=expected_v3_raw_tree,
+                expected_raw_sha=expected_v3_raw_sha,
+                expected_scanner_sha=expected_v3_scanner_sha,
+            )
+        )
+    return result
 
 
 def _selector_is_exact(selector: Any) -> bool:

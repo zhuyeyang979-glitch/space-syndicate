@@ -47,12 +47,61 @@ DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION = (
     "descendant_history_supplement.v2"
 )
 DESCENDANT_HISTORY_SUPPLEMENT_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_002"
+DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION = (
+    "space_syndicate.v076.reuse_exact_failure_correction.v2."
+    "descendant_history_supplement.v3"
+)
+DESCENDANT_HISTORY_SUPPLEMENT_V3_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_003"
 
-SCHEMA_REL = Path("docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json")
+PREDECESSOR_SCHEMA_REL = Path(
+    "docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json"
+)
+PREDECESSOR_SCHEMA_SHA256 = "6e23a7b9285fcf3ac29bd8aa78393ba243b482d880f8b0ade425501861c63d46"
+SCHEMA_REL = PREDECESSOR_SCHEMA_REL
+SUCCESSOR_SCHEMA_REL = Path(
+    "docs/architecture/reuse_corrections/v2/"
+    "schema_full_convergence_20260827_successor_v3.json"
+)
+SUCCESSOR_SCHEMA_SHA256 = "995d18eee41202dd3db10412c1df7edd9ad4c84ecfc2caab967cce71ffb0545a"
 RECORD_ROOT_REL = Path("docs/architecture/reuse_corrections/v2/records/full_convergence_20260827")
 EPOCH_ROOT_REL = Path("reports/reuse/correction_v2/epochs/full_convergence_20260827")
 BASELINE_REPORT_REL = EPOCH_ROOT_REL / "baseline_raw_failure_report.json"
 DESCENDANT_HISTORY_SCANNER_REL = Path("tools/v076/v076_reuse_point_inertia_gate.py")
+PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_REL = (
+    EPOCH_ROOT_REL / "descendant_history_supplement_570d6e3c.json"
+)
+PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_SHA256 = (
+    "65dcc1276767a1c2009fb2157041db2058783ca6ab23e49a3cafdc149b41fe82"
+)
+PREVIOUS_DESCENDANT_HISTORY_RAW_REL = (
+    EPOCH_ROOT_REL / "descendant_history_raw_570d6e3c.json"
+)
+PREVIOUS_DESCENDANT_HISTORY_RAW_SHA256 = (
+    "72545ff3f19be36f47da40bdff693ba02d507c0e90feab622f9b470f98973fa9"
+)
+PREVIOUS_DESCENDANT_HISTORY_RAW_HEAD = "570d6e3c95b291f019351f5a3a325fc28cb57c80"
+PREVIOUS_DESCENDANT_HISTORY_RAW_TREE = "e33db0d93844da7a804a5f33f8dadd8c3797260e"
+PREVIOUS_DESCENDANT_HISTORY_SCANNER_SHA256 = (
+    "f20759401008da5e22156a22af1d4bdcf527670cdfdc9cc73c76281d6783625a"
+)
+DESCENDANT_HISTORY_V3_RAW_REL = (
+    EPOCH_ROOT_REL / "descendant_history_raw_da48a74b_003.json"
+)
+DESCENDANT_HISTORY_V3_SUPPLEMENT_REL = (
+    EPOCH_ROOT_REL / "descendant_history_supplement_da48a74b_003.json"
+)
+DESCENDANT_HISTORY_V3_RAW_HEAD = "da48a74b3d12af9040230ea659b1663bd9eb2cbe"
+DESCENDANT_HISTORY_V3_RAW_TREE = "2fa166e7aa8f7a3bcc33028fad9517ee2e8738a9"
+DESCENDANT_HISTORY_V3_RAW_SHA256 = (
+    "812bd75c2e81d21a1a13305d45bf1045b1518b964f83ae88c2dd4f29ecf8dfac"
+)
+DESCENDANT_HISTORY_V3_SCANNER_SHA256 = (
+    "09bc04b52058cdafb7e966ca36230dc153dd637b829b766677ac542be02a9885"
+)
+DESCENDANT_HISTORY_V3_RAW_FAILURE_COUNT = 501
+DESCENDANT_HISTORY_V3_RAW_HISTORICAL_COUNT = 501
+DESCENDANT_HISTORY_V3_RAW_CURRENT_COUNT = 0
+DESCENDANT_HISTORY_V3_REGISTERED_IDENTITY_COUNT = 520
 DYNAMIC_REFERENCE_MANIFEST_REL = Path("docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json")
 EXACT_SUCCESSOR_FINGERPRINT_MAPPING = "EXACT_SUCCESSOR_FINGERPRINT_MAPPING"
 EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT = "EXACT_SCANNER_FALSE_COMPONENT_RETIREMENT"
@@ -170,6 +219,32 @@ DESCENDANT_HISTORY_SUPPLEMENT_FIELDS = tuple(sorted((
     "schema_version",
     "supplement_id",
     "wildcard_membership_allowed",
+)))
+
+DESCENDANT_HISTORY_SCANNER_EVOLUTION_FIELDS = tuple(sorted((
+    "evolution_kind",
+    "from_raw_report_head_sha",
+    "from_raw_report_tree_sha",
+    "from_scanner_tool_sha256",
+    "removed_rule_count",
+    "scanner_change_commit_count",
+    "scanner_change_commit_sequence_sha256",
+    "scanner_change_commit_shas",
+    "scanner_history_depth_reduction_count",
+    "scanner_scope_reduction_count",
+    "scanner_severity_downgrade_count",
+    "scanner_tool_path",
+    "to_raw_report_head_sha",
+    "to_raw_report_tree_sha",
+    "to_scanner_tool_sha256",
+    "weakening_allowed",
+)))
+
+DESCENDANT_HISTORY_SUPPLEMENT_V3_FIELDS = tuple(sorted((
+    *DESCENDANT_HISTORY_SUPPLEMENT_FIELDS,
+    "previous_supplement_path",
+    "previous_supplement_sha256",
+    "scanner_evolution",
 )))
 
 BATCH_ARTIFACT_SPECS = {
@@ -994,7 +1069,7 @@ def _exact_repo_relative(root: Path, path: Path) -> str:
         return ""
 
 
-def validate_descendant_history_supplement(
+def _validate_descendant_history_supplement_core(
     root: Path,
     supplement_path: Path | None,
     raw_report_path: Path | None,
@@ -1002,6 +1077,10 @@ def validate_descendant_history_supplement(
     *,
     evaluated_head: str,
     baseline_report_path: Path,
+    expected_schema_version: str,
+    expected_supplement_id: str,
+    expected_fields: tuple[str, ...],
+    require_live_scanner_bytes: bool = True,
 ) -> dict[str, Any]:
     """Validate one explicit, byte-sealed descendant HISTORY reconciliation.
 
@@ -1056,16 +1135,16 @@ def validate_descendant_history_supplement(
     if not isinstance(supplement, dict):
         supplement = {}
         failures.append("DESCENDANT_HISTORY_SUPPLEMENT_NOT_OBJECT")
-    if set(supplement) != set(DESCENDANT_HISTORY_SUPPLEMENT_FIELDS):
+    if set(supplement) != set(expected_fields):
         failures.append("DESCENDANT_HISTORY_SUPPLEMENT_FIELD_SET_MISMATCH")
-    for field in DESCENDANT_HISTORY_SUPPLEMENT_FIELDS:
+    for field in expected_fields:
         if field.endswith("_count") and not _is_int(supplement.get(field)):
             failures.append(
                 f"DESCENDANT_HISTORY_SUPPLEMENT_{field.upper()}_TYPE_INVALID"
             )
     for field, expected in (
-        ("schema_version", DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION),
-        ("supplement_id", DESCENDANT_HISTORY_SUPPLEMENT_ID),
+        ("schema_version", expected_schema_version),
+        ("supplement_id", expected_supplement_id),
         ("authorization_id", AUTHORIZATION_ID),
         ("authorization_base_head_sha", AUTHORIZATION_BASE_HEAD_SHA),
         ("baseline_report_sha256", AUTHORIZED_BASELINE_REPORT_SHA256),
@@ -1239,9 +1318,8 @@ def validate_descendant_history_supplement(
     scanner_at_report_sha = (
         sha256_bytes(scanner_at_report) if scanner_at_report is not None else ""
     )
-    if (
-        supplement.get("scanner_tool_sha256") != scanner_sha
-        or scanner_sha != scanner_at_report_sha
+    if supplement.get("scanner_tool_sha256") != scanner_at_report_sha or (
+        require_live_scanner_bytes and scanner_sha != scanner_at_report_sha
     ):
         failures.append("DESCENDANT_HISTORY_SCANNER_SHA256_MISMATCH")
     baseline_scanner_bytes = _git_bytes(
@@ -1622,6 +1700,354 @@ def validate_descendant_history_supplement(
         "raw_report_head_sha": report_head,
         "frozen_current_identity_count": len(frozen_identities) - len(frozen_sets["historical"]),
     }
+
+
+def validate_frozen_descendant_history_predecessor(
+    root: Path,
+    *,
+    evaluated_head: str,
+    baseline_report_path: Path,
+) -> dict[str, Any]:
+    """Validate the immutable 570d v2 receipt without treating it as live."""
+
+    supplement_path = root / PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_REL
+    raw_report_path = root / PREVIOUS_DESCENDANT_HISTORY_RAW_REL
+    failures: list[str] = []
+    try:
+        supplement_bytes = supplement_path.read_bytes()
+        raw_bytes = raw_report_path.read_bytes()
+    except OSError:
+        supplement_bytes = b""
+        raw_bytes = b""
+        failures.append("DESCENDANT_HISTORY_PREDECESSOR_INPUT_MISSING")
+    if sha256_bytes(supplement_bytes) != PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_SHA256:
+        failures.append("DESCENDANT_HISTORY_PREDECESSOR_SUPPLEMENT_SHA256_MISMATCH")
+    if sha256_bytes(raw_bytes) != PREVIOUS_DESCENDANT_HISTORY_RAW_SHA256:
+        failures.append("DESCENDANT_HISTORY_PREDECESSOR_RAW_SHA256_MISMATCH")
+    committed_supplement = _git_bytes(
+        root, evaluated_head, PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_REL.as_posix()
+    )
+    committed_raw = _git_bytes(
+        root, evaluated_head, PREVIOUS_DESCENDANT_HISTORY_RAW_REL.as_posix()
+    )
+    if committed_supplement != supplement_bytes or committed_raw != raw_bytes:
+        failures.append("DESCENDANT_HISTORY_PREDECESSOR_COMMITTED_BYTES_MISMATCH")
+    try:
+        supplement = load_json_strict(supplement_path)
+        raw_report = load_json_strict(raw_report_path)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        supplement = {}
+        raw_report = {}
+        failures.append("DESCENDANT_HISTORY_PREDECESSOR_JSON_INVALID")
+    for field, expected in (
+        ("schema_version", DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION),
+        ("supplement_id", DESCENDANT_HISTORY_SUPPLEMENT_ID),
+        ("raw_report_path", PREVIOUS_DESCENDANT_HISTORY_RAW_REL.as_posix()),
+        ("raw_report_sha256", PREVIOUS_DESCENDANT_HISTORY_RAW_SHA256),
+        ("raw_report_head_sha", PREVIOUS_DESCENDANT_HISTORY_RAW_HEAD),
+        ("raw_report_tree_sha", PREVIOUS_DESCENDANT_HISTORY_RAW_TREE),
+        ("scanner_tool_sha256", PREVIOUS_DESCENDANT_HISTORY_SCANNER_SHA256),
+    ):
+        if supplement.get(field) != expected:
+            failures.append(f"DESCENDANT_HISTORY_PREDECESSOR_{field.upper()}_MISMATCH")
+    if raw_report.get("head_sha") != PREVIOUS_DESCENDANT_HISTORY_RAW_HEAD:
+        failures.append("DESCENDANT_HISTORY_PREDECESSOR_RAW_HEAD_MISMATCH")
+    scanner_bytes = _git_bytes(
+        root,
+        PREVIOUS_DESCENDANT_HISTORY_RAW_HEAD,
+        DESCENDANT_HISTORY_SCANNER_REL.as_posix(),
+    )
+    if (
+        scanner_bytes is None
+        or sha256_bytes(scanner_bytes) != PREVIOUS_DESCENDANT_HISTORY_SCANNER_SHA256
+    ):
+        failures.append("DESCENDANT_HISTORY_PREDECESSOR_SCANNER_BLOB_MISMATCH")
+    result = _validate_descendant_history_supplement_core(
+        root,
+        supplement_path,
+        raw_report_path,
+        root / DESCENDANT_HISTORY_SCANNER_REL,
+        evaluated_head=evaluated_head,
+        baseline_report_path=baseline_report_path,
+        expected_schema_version=DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION,
+        expected_supplement_id=DESCENDANT_HISTORY_SUPPLEMENT_ID,
+        expected_fields=DESCENDANT_HISTORY_SUPPLEMENT_FIELDS,
+        require_live_scanner_bytes=False,
+    )
+    result["failures"] = sorted(set(result.get("failures", [])) | set(failures))
+    result["status"] = "PASS" if not result["failures"] else "FAIL"
+    return result
+
+
+def validate_descendant_history_successor_schema(root: Path) -> list[str]:
+    failures: list[str] = []
+    path = root / SUCCESSOR_SCHEMA_REL
+    try:
+        schema = load_json_strict(path)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        return ["DESCENDANT_HISTORY_V3_SCHEMA_INVALID"]
+    if sha256_file(path) != SUCCESSOR_SCHEMA_SHA256:
+        failures.append("DESCENDANT_HISTORY_V3_SCHEMA_SHA256_MISMATCH")
+    predecessor_path = root / PREDECESSOR_SCHEMA_REL
+    if (
+        not predecessor_path.is_file()
+        or sha256_file(predecessor_path) != PREDECESSOR_SCHEMA_SHA256
+        or schema.get("previous_schema_path") != PREDECESSOR_SCHEMA_REL.as_posix()
+        or schema.get("previous_schema_sha256") != PREDECESSOR_SCHEMA_SHA256
+    ):
+        failures.append("DESCENDANT_HISTORY_V3_PREDECESSOR_SCHEMA_SEAL_INVALID")
+    expected = {
+        "active_descendant_history_supplement_schema_version": DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION,
+        "active_descendant_history_supplement_id": DESCENDANT_HISTORY_SUPPLEMENT_V3_ID,
+        "frozen_predecessor_supplement_path": PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_REL.as_posix(),
+        "frozen_predecessor_supplement_sha256": PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_SHA256,
+        "directory_discovery_allowed": False,
+        "wildcard_membership_allowed": False,
+        "future_failure_auto_membership_allowed": False,
+        "old_evidence_mutation_allowed": False,
+        "previous_descendant_identity_drop_allowed": False,
+        "scanner_weakening_allowed": False,
+        "active_raw_report_path": DESCENDANT_HISTORY_V3_RAW_REL.as_posix(),
+        "active_raw_report_sha256": DESCENDANT_HISTORY_V3_RAW_SHA256,
+        "active_raw_report_head_sha": DESCENDANT_HISTORY_V3_RAW_HEAD,
+        "active_raw_report_tree_sha": DESCENDANT_HISTORY_V3_RAW_TREE,
+        "active_scanner_sha256": DESCENDANT_HISTORY_V3_SCANNER_SHA256,
+        "active_raw_failure_count": DESCENDANT_HISTORY_V3_RAW_FAILURE_COUNT,
+        "active_raw_historical_failure_count": DESCENDANT_HISTORY_V3_RAW_HISTORICAL_COUNT,
+        "active_raw_current_failure_count": DESCENDANT_HISTORY_V3_RAW_CURRENT_COUNT,
+        "active_registered_identity_count": DESCENDANT_HISTORY_V3_REGISTERED_IDENTITY_COUNT,
+    }
+    if any(schema.get(field) != value for field, value in expected.items()):
+        failures.append("DESCENDANT_HISTORY_V3_SCHEMA_AUTHORITY_MISMATCH")
+    if tuple(sorted(schema.get("scanner_evolution_required_fields", []))) != (
+        DESCENDANT_HISTORY_SCANNER_EVOLUTION_FIELDS
+    ):
+        failures.append("DESCENDANT_HISTORY_V3_SCHEMA_SCANNER_FIELDS_MISMATCH")
+    if set(schema.get("successor_required_additional_fields", [])) != {
+        "previous_supplement_path", "previous_supplement_sha256", "scanner_evolution"
+    }:
+        failures.append("DESCENDANT_HISTORY_V3_SCHEMA_ADDITIONAL_FIELDS_MISMATCH")
+    return failures
+
+
+def _validate_descendant_history_supplement_v3(
+    root: Path,
+    supplement_path: Path | None,
+    raw_report_path: Path | None,
+    scanner_path: Path | None,
+    *,
+    evaluated_head: str,
+    baseline_report_path: Path,
+    expected_raw_head: str = DESCENDANT_HISTORY_V3_RAW_HEAD,
+    expected_raw_tree: str = DESCENDANT_HISTORY_V3_RAW_TREE,
+    expected_raw_sha256: str = DESCENDANT_HISTORY_V3_RAW_SHA256,
+    expected_scanner_sha256: str = DESCENDANT_HISTORY_V3_SCANNER_SHA256,
+) -> dict[str, Any]:
+    result = _validate_descendant_history_supplement_core(
+        root,
+        supplement_path,
+        raw_report_path,
+        scanner_path,
+        evaluated_head=evaluated_head,
+        baseline_report_path=baseline_report_path,
+        expected_schema_version=DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION,
+        expected_supplement_id=DESCENDANT_HISTORY_SUPPLEMENT_V3_ID,
+        expected_fields=DESCENDANT_HISTORY_SUPPLEMENT_V3_FIELDS,
+    )
+    failures = list(result.get("failures", []))
+    failures.extend(validate_descendant_history_successor_schema(root))
+    if supplement_path is None:
+        return result
+    if _exact_repo_relative(root, supplement_path) != DESCENDANT_HISTORY_V3_SUPPLEMENT_REL.as_posix():
+        failures.append("DESCENDANT_HISTORY_V3_SUPPLEMENT_PATH_MISMATCH")
+    if raw_report_path is None or _exact_repo_relative(
+        root, raw_report_path
+    ) != DESCENDANT_HISTORY_V3_RAW_REL.as_posix():
+        failures.append("DESCENDANT_HISTORY_V3_RAW_REPORT_PATH_MISMATCH")
+    try:
+        supplement = load_json_strict(supplement_path)
+        previous = load_json_strict(root / PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_REL)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        failures.append("DESCENDANT_HISTORY_V3_PREDECESSOR_JSON_INVALID")
+        supplement = {}
+        previous = {}
+    sealed_raw_expectations = {
+        "raw_report_head_sha": expected_raw_head,
+        "raw_report_tree_sha": expected_raw_tree,
+        "raw_report_sha256": expected_raw_sha256,
+        "scanner_tool_sha256": expected_scanner_sha256,
+        "raw_failure_count": DESCENDANT_HISTORY_V3_RAW_FAILURE_COUNT,
+        "raw_historical_failure_count": DESCENDANT_HISTORY_V3_RAW_HISTORICAL_COUNT,
+        "raw_current_delta_failure_count": DESCENDANT_HISTORY_V3_RAW_CURRENT_COUNT,
+    }
+    for field, expected in sealed_raw_expectations.items():
+        if supplement.get(field) != expected:
+            failures.append(f"DESCENDANT_HISTORY_V3_SEALED_{field.upper()}_MISMATCH")
+    if len(result.get("registered_historical_fingerprints", set())) != (
+        DESCENDANT_HISTORY_V3_REGISTERED_IDENTITY_COUNT
+    ):
+        failures.append("DESCENDANT_HISTORY_V3_REGISTERED_IDENTITY_COUNT_MISMATCH")
+    predecessor = validate_frozen_descendant_history_predecessor(
+        root,
+        evaluated_head=evaluated_head,
+        baseline_report_path=baseline_report_path,
+    )
+    if predecessor.get("status") != "PASS":
+        failures.extend(
+            f"DESCENDANT_HISTORY_V3_PREDECESSOR_INVALID:{value}"
+            for value in predecessor.get("failures", [])
+        )
+    if (
+        supplement.get("previous_supplement_path")
+        != PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_REL.as_posix()
+    ):
+        failures.append("DESCENDANT_HISTORY_V3_PREVIOUS_SUPPLEMENT_PATH_MISMATCH")
+    if (
+        supplement.get("previous_supplement_sha256")
+        != PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_SHA256
+    ):
+        failures.append("DESCENDANT_HISTORY_V3_PREVIOUS_SUPPLEMENT_SHA256_MISMATCH")
+
+    previous_descendants = {
+        str(value) for value in previous.get("descendant_history_fingerprints", [])
+    }
+    current_descendants = {
+        str(value) for value in supplement.get("descendant_history_fingerprints", [])
+    }
+    if not previous_descendants.issubset(current_descendants):
+        failures.append("DESCENDANT_HISTORY_V3_PREVIOUS_DESCENDANT_IDENTITY_DROPPED")
+    previous_dispositions = previous.get("frozen_identity_disposition_by_failure", {})
+    current_dispositions = supplement.get("frozen_identity_disposition_by_failure", {})
+    stable_fields = (
+        "disposition", "failure_fingerprint", "raw_failure", "rule_id",
+        "subject_kind", "subject_value", "successor_failure_fingerprint",
+        "transition_new_sha", "transition_old_sha", "wildcard_count",
+    )
+    if not isinstance(previous_dispositions, dict) or not isinstance(current_dispositions, dict):
+        failures.append("DESCENDANT_HISTORY_V3_PREDECESSOR_DISPOSITION_SET_INVALID")
+    else:
+        for fingerprint, old_row in previous_dispositions.items():
+            new_row = current_dispositions.get(fingerprint)
+            if not isinstance(old_row, dict) or not isinstance(new_row, dict) or any(
+                old_row.get(field) != new_row.get(field) for field in stable_fields
+            ):
+                failures.append(
+                    f"DESCENDANT_HISTORY_V3_PREDECESSOR_DISPOSITION_DRIFT:{fingerprint}"
+                )
+
+    evolution = supplement.get("scanner_evolution")
+    if not isinstance(evolution, dict) or set(evolution) != set(
+        DESCENDANT_HISTORY_SCANNER_EVOLUTION_FIELDS
+    ):
+        failures.append("DESCENDANT_HISTORY_V3_SCANNER_EVOLUTION_FIELD_SET_MISMATCH")
+        evolution = evolution if isinstance(evolution, dict) else {}
+    for field in (
+        "removed_rule_count",
+        "scanner_change_commit_count",
+        "scanner_history_depth_reduction_count",
+        "scanner_scope_reduction_count",
+        "scanner_severity_downgrade_count",
+    ):
+        if not _is_int(evolution.get(field)):
+            failures.append(f"DESCENDANT_HISTORY_V3_{field.upper()}_TYPE_INVALID")
+    expected_scalars = {
+        "evolution_kind": "FAIL_CLOSED_VALIDATION_STRENGTHENING",
+        "from_raw_report_head_sha": PREVIOUS_DESCENDANT_HISTORY_RAW_HEAD,
+        "from_raw_report_tree_sha": PREVIOUS_DESCENDANT_HISTORY_RAW_TREE,
+        "from_scanner_tool_sha256": PREVIOUS_DESCENDANT_HISTORY_SCANNER_SHA256,
+        "removed_rule_count": 0,
+        "scanner_history_depth_reduction_count": 0,
+        "scanner_scope_reduction_count": 0,
+        "scanner_severity_downgrade_count": 0,
+        "scanner_tool_path": DESCENDANT_HISTORY_SCANNER_REL.as_posix(),
+        "to_raw_report_head_sha": supplement.get("raw_report_head_sha"),
+        "to_raw_report_tree_sha": supplement.get("raw_report_tree_sha"),
+        "to_scanner_tool_sha256": supplement.get("scanner_tool_sha256"),
+        "weakening_allowed": False,
+    }
+    for field, expected in expected_scalars.items():
+        if evolution.get(field) != expected:
+            failures.append(f"DESCENDANT_HISTORY_V3_{field.upper()}_MISMATCH")
+    to_head = str(supplement.get("raw_report_head_sha", ""))
+    try:
+        change_commits = [
+            value
+            for value in _git(
+                root,
+                "rev-list",
+                "--reverse",
+                f"{PREVIOUS_DESCENDANT_HISTORY_RAW_HEAD}..{to_head}",
+                "--",
+                DESCENDANT_HISTORY_SCANNER_REL.as_posix(),
+            ).splitlines()
+            if value
+        ]
+    except ValueError:
+        change_commits = []
+        failures.append("DESCENDANT_HISTORY_V3_SCANNER_EVOLUTION_GIT_INVALID")
+    declared_commits = evolution.get("scanner_change_commit_shas")
+    rendered_commits = (
+        [str(value) for value in declared_commits]
+        if isinstance(declared_commits, list)
+        else []
+    )
+    sequence_sha = sha256_bytes(("\n".join(change_commits) + "\n").encode("utf-8"))
+    if not change_commits or rendered_commits != change_commits:
+        failures.append("DESCENDANT_HISTORY_V3_SCANNER_CHANGE_COMMIT_SEQUENCE_MISMATCH")
+    if not _is_exact_int(evolution.get("scanner_change_commit_count"), len(change_commits)):
+        failures.append("DESCENDANT_HISTORY_V3_SCANNER_CHANGE_COMMIT_COUNT_MISMATCH")
+    if evolution.get("scanner_change_commit_sequence_sha256") != sequence_sha:
+        failures.append("DESCENDANT_HISTORY_V3_SCANNER_CHANGE_COMMIT_DIGEST_MISMATCH")
+    to_scanner = _git_bytes(root, to_head, DESCENDANT_HISTORY_SCANNER_REL.as_posix())
+    if (
+        to_scanner is None
+        or sha256_bytes(to_scanner) != evolution.get("to_scanner_tool_sha256")
+    ):
+        failures.append("DESCENDANT_HISTORY_V3_TO_SCANNER_BLOB_MISMATCH")
+    failures = sorted(set(failures))
+    result["failures"] = failures
+    result["status"] = "PASS" if not failures else "FAIL"
+    return result
+
+
+def validate_descendant_history_supplement(
+    root: Path,
+    supplement_path: Path | None,
+    raw_report_path: Path | None,
+    scanner_path: Path | None,
+    *,
+    evaluated_head: str,
+    baseline_report_path: Path,
+) -> dict[str, Any]:
+    try:
+        document = load_json_strict(supplement_path) if supplement_path is not None else {}
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        document = {}
+    is_v3_path = (
+        supplement_path is not None
+        and _exact_repo_relative(root, supplement_path)
+        == DESCENDANT_HISTORY_V3_SUPPLEMENT_REL.as_posix()
+    )
+    if is_v3_path:
+        return _validate_descendant_history_supplement_v3(
+            root,
+            supplement_path,
+            raw_report_path,
+            scanner_path,
+            evaluated_head=evaluated_head,
+            baseline_report_path=baseline_report_path,
+        )
+    return _validate_descendant_history_supplement_core(
+        root,
+        supplement_path,
+        raw_report_path,
+        scanner_path,
+        evaluated_head=evaluated_head,
+        baseline_report_path=baseline_report_path,
+        expected_schema_version=DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION,
+        expected_supplement_id=DESCENDANT_HISTORY_SUPPLEMENT_ID,
+        expected_fields=DESCENDANT_HISTORY_SUPPLEMENT_FIELDS,
+    )
 
 
 def _artifact_common_failures(

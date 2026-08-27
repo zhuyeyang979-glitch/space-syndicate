@@ -8,6 +8,7 @@ import copy
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,7 @@ from typing import Any, Callable
 import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
 import v076_reuse_correction_v2_independent_audit as independent_audit
 import v076_reuse_exact_failure_correction_v2 as legacy_resolver
+import v076_reuse_full_convergence_descendant_supplement_builder as successor_builder
 
 
 REAL_DESCENDANT_RAW_REL = (
@@ -1689,6 +1691,7 @@ def _copy_real_reconciliation_fixture(root: Path, fixture: Path) -> None:
     _expect(clone.returncode == 0, clone.stderr)
     for relative in (
         convergence.SCHEMA_REL,
+        convergence.SUCCESSOR_SCHEMA_REL,
         convergence.BASELINE_REPORT_REL,
         REAL_DESCENDANT_RAW_REL,
         REAL_DESCENDANT_SUPPLEMENT_REL,
@@ -1696,12 +1699,256 @@ def _copy_real_reconciliation_fixture(root: Path, fixture: Path) -> None:
         _copy_locked(root, fixture, relative.as_posix())
 
 
+def _write_v3_successor_fixture(root: Path, fixture: Path) -> dict[str, Any]:
+    _copy_real_reconciliation_fixture(root, fixture)
+    head = _git(fixture, "rev-parse", "HEAD")
+    tree = _git(fixture, "rev-parse", "HEAD^{tree}")
+    scanner_path = fixture / convergence.DESCENDANT_HISTORY_SCANNER_REL
+    scanner_sha = convergence.sha256_file(scanner_path)
+    raw = convergence.load_json_strict(fixture / REAL_DESCENDANT_RAW_REL)
+    raw.update({
+        "head_ref": head,
+        "head_sha": head,
+        "include_worktree": False,
+        "evaluated_source": "COMMITTED_HEAD",
+        "merge_base_sha": convergence.AUTHORIZATION_BASE_HEAD_SHA,
+    })
+    raw_rel = convergence.DESCENDANT_HISTORY_V3_RAW_REL
+    raw_path = fixture / raw_rel
+    _write_json(raw_path, raw)
+    raw_sha = convergence.sha256_file(raw_path)
+    supplement = convergence.load_json_strict(fixture / REAL_DESCENDANT_SUPPLEMENT_REL)
+    supplement.update({
+        "previous_supplement_path": convergence.PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_REL.as_posix(),
+        "previous_supplement_sha256": convergence.PREVIOUS_DESCENDANT_HISTORY_SUPPLEMENT_SHA256,
+        "raw_report_head_sha": head,
+        "raw_report_path": raw_rel.as_posix(),
+        "raw_report_sha256": raw_sha,
+        "raw_report_tree_sha": tree,
+        "scanner_tool_sha256": scanner_sha,
+        "schema_version": convergence.DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION,
+        "supplement_id": convergence.DESCENDANT_HISTORY_SUPPLEMENT_V3_ID,
+    })
+    for row in supplement["frozen_identity_disposition_by_failure"].values():
+        row["live_scanner_tool_sha256"] = scanner_sha
+        row["evidence"]["live_raw_report_sha256"] = raw_sha
+    commits = [
+        value
+        for value in _git(
+            fixture,
+            "rev-list",
+            "--reverse",
+            f"{convergence.PREVIOUS_DESCENDANT_HISTORY_RAW_HEAD}..{head}",
+            "--",
+            convergence.DESCENDANT_HISTORY_SCANNER_REL.as_posix(),
+        ).splitlines()
+        if value
+    ]
+    supplement["scanner_evolution"] = {
+        "evolution_kind": "FAIL_CLOSED_VALIDATION_STRENGTHENING",
+        "from_raw_report_head_sha": convergence.PREVIOUS_DESCENDANT_HISTORY_RAW_HEAD,
+        "from_raw_report_tree_sha": convergence.PREVIOUS_DESCENDANT_HISTORY_RAW_TREE,
+        "from_scanner_tool_sha256": convergence.PREVIOUS_DESCENDANT_HISTORY_SCANNER_SHA256,
+        "removed_rule_count": 0,
+        "scanner_change_commit_count": len(commits),
+        "scanner_change_commit_sequence_sha256": convergence.sha256_bytes(
+            ("\n".join(commits) + "\n").encode("utf-8")
+        ),
+        "scanner_change_commit_shas": commits,
+        "scanner_history_depth_reduction_count": 0,
+        "scanner_scope_reduction_count": 0,
+        "scanner_severity_downgrade_count": 0,
+        "scanner_tool_path": convergence.DESCENDANT_HISTORY_SCANNER_REL.as_posix(),
+        "to_raw_report_head_sha": head,
+        "to_raw_report_tree_sha": tree,
+        "to_scanner_tool_sha256": scanner_sha,
+        "weakening_allowed": False,
+    }
+    supplement_rel = convergence.DESCENDANT_HISTORY_V3_SUPPLEMENT_REL
+    supplement_path = fixture / supplement_rel
+    _write_json(supplement_path, supplement)
+    return {
+        "raw_path": raw_path,
+        "scanner_path": scanner_path,
+        "supplement": supplement,
+        "supplement_path": supplement_path,
+        "head": head,
+        "tree": tree,
+        "raw_sha": raw_sha,
+        "scanner_sha": scanner_sha,
+    }
+
+
+def _v3_successor_positive_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-v3-positive-") as temporary:
+        fixture = Path(temporary)
+        sealed = _write_v3_successor_fixture(root, fixture)
+        result = convergence._validate_descendant_history_supplement_v3(
+            fixture,
+            sealed["supplement_path"],
+            sealed["raw_path"],
+            sealed["scanner_path"],
+            evaluated_head=sealed["head"],
+            baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+            expected_raw_head=sealed["head"],
+            expected_raw_tree=sealed["tree"],
+            expected_raw_sha256=sealed["raw_sha"],
+            expected_scanner_sha256=sealed["scanner_sha"],
+        )
+        _expect(result["status"] == "PASS", json.dumps(result["failures"]))
+        baseline = independent_audit._json(fixture / convergence.BASELINE_REPORT_REL)
+        findings = independent_audit._descendant_history_supplement_findings(
+            fixture,
+            supplement_path=sealed["supplement_path"],
+            raw_report_path=sealed["raw_path"],
+            scanner_path=sealed["scanner_path"],
+            evaluated_head=sealed["head"],
+            baseline_report=baseline,
+            baseline_sets=independent_audit._authorized_failure_fingerprint_sets(baseline),
+            expected_v3_raw_head=sealed["head"],
+            expected_v3_raw_tree=sealed["tree"],
+            expected_v3_raw_sha=sealed["raw_sha"],
+            expected_v3_scanner_sha=sealed["scanner_sha"],
+        )[0]
+        _expect(not findings, json.dumps(findings, sort_keys=True))
+
+
+def _v3_successor_negative_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-v3-negative-") as temporary:
+        fixture = Path(temporary)
+        sealed = _write_v3_successor_fixture(root, fixture)
+        baseline = independent_audit._json(fixture / convergence.BASELINE_REPORT_REL)
+        baseline_sets = independent_audit._authorized_failure_fingerprint_sets(baseline)
+        attacks = []
+        reused_id = copy.deepcopy(sealed["supplement"])
+        reused_id["supplement_id"] = convergence.DESCENDANT_HISTORY_SUPPLEMENT_ID
+        attacks.append((reused_id, "DESCENDANT_HISTORY_SUPPLEMENT_SUPPLEMENT_ID_MISMATCH"))
+        predecessor_drift = copy.deepcopy(sealed["supplement"])
+        predecessor_drift["previous_supplement_sha256"] = "0" * 64
+        attacks.append((predecessor_drift, "DESCENDANT_HISTORY_V3_PREVIOUS_SUPPLEMENT_SHA256_MISMATCH"))
+        dropped = copy.deepcopy(sealed["supplement"])
+        dropped_fingerprint = dropped["descendant_history_fingerprints"].pop()
+        dropped["descendant_history_failure_count"] -= 1
+        dropped["descendant_history_fingerprint_set_sha256"] = convergence._line_set_sha(
+            dropped["descendant_history_fingerprints"]
+        )
+        dropped["identity_binding_by_failure"].pop(dropped_fingerprint)
+        attacks.append((dropped, "DESCENDANT_HISTORY_V3_PREVIOUS_DESCENDANT_IDENTITY_DROPPED"))
+        bool_count = copy.deepcopy(sealed["supplement"])
+        bool_count["scanner_evolution"]["removed_rule_count"] = False
+        attacks.append((bool_count, "DESCENDANT_HISTORY_V3_REMOVED_RULE_COUNT_TYPE_INVALID"))
+        sequence = copy.deepcopy(sealed["supplement"])
+        sequence["scanner_evolution"]["scanner_change_commit_shas"] = []
+        attacks.append((sequence, "DESCENDANT_HISTORY_V3_SCANNER_CHANGE_COMMIT_SEQUENCE_MISMATCH"))
+        for document, expected in attacks:
+            _write_json(sealed["supplement_path"], document)
+            result = convergence._validate_descendant_history_supplement_v3(
+                fixture,
+                sealed["supplement_path"],
+                sealed["raw_path"],
+                sealed["scanner_path"],
+                evaluated_head=sealed["head"],
+                baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+                expected_raw_head=sealed["head"],
+                expected_raw_tree=sealed["tree"],
+                expected_raw_sha256=sealed["raw_sha"],
+                expected_scanner_sha256=sealed["scanner_sha"],
+            )
+            _expect_failure(result["failures"], expected)
+            independent = independent_audit._descendant_history_supplement_findings(
+                fixture,
+                supplement_path=sealed["supplement_path"],
+                raw_report_path=sealed["raw_path"],
+                scanner_path=sealed["scanner_path"],
+                evaluated_head=sealed["head"],
+                baseline_report=baseline,
+                baseline_sets=baseline_sets,
+                expected_v3_raw_head=sealed["head"],
+                expected_v3_raw_tree=sealed["tree"],
+                expected_v3_raw_sha=sealed["raw_sha"],
+                expected_v3_scanner_sha=sealed["scanner_sha"],
+            )[0]
+            _expect(independent, f"independent accepted {expected}")
+        downgrade = convergence.load_json_strict(fixture / REAL_DESCENDANT_SUPPLEMENT_REL)
+        _write_json(sealed["supplement_path"], downgrade)
+        downgraded = convergence.validate_descendant_history_supplement(
+            fixture,
+            sealed["supplement_path"],
+            sealed["raw_path"],
+            sealed["scanner_path"],
+            evaluated_head=sealed["head"],
+            baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+        )
+        _expect_failure(
+            downgraded["failures"],
+            "DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION_MISMATCH",
+        )
+        _write_json(sealed["supplement_path"], sealed["supplement"])
+        schema_path = fixture / convergence.SUCCESSOR_SCHEMA_REL
+        schema = convergence.load_json_strict(schema_path)
+        schema["active_descendant_history_supplement_id"] = convergence.DESCENDANT_HISTORY_SUPPLEMENT_ID
+        _write_json(schema_path, schema)
+        result = convergence._validate_descendant_history_supplement_v3(
+            fixture,
+            sealed["supplement_path"],
+            sealed["raw_path"],
+            sealed["scanner_path"],
+            evaluated_head=sealed["head"],
+            baseline_report_path=fixture / convergence.BASELINE_REPORT_REL,
+            expected_raw_head=sealed["head"],
+            expected_raw_tree=sealed["tree"],
+            expected_raw_sha256=sealed["raw_sha"],
+            expected_scanner_sha256=sealed["scanner_sha"],
+        )
+        _expect_failure(result["failures"], "DESCENDANT_HISTORY_V3_SCHEMA_SHA256_MISMATCH")
+
+
+def _v3_builder_append_only_negative_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-v3-builder-") as temporary:
+        fixture = Path(temporary)
+        output = fixture / "already-exists.json"
+        output.write_text("sentinel\n", encoding="utf-8")
+        command = [
+            sys.executable,
+            str(root / "tools/v076/v076_reuse_full_convergence_descendant_supplement_builder.py"),
+            "--project", str(root),
+            "--baseline-report", str(root / convergence.BASELINE_REPORT_REL),
+            "--raw-report", str(root / REAL_DESCENDANT_RAW_REL),
+            "--scanner", str(root / convergence.DESCENDANT_HISTORY_SCANNER_REL),
+            "--previous-supplement", str(root / REAL_DESCENDANT_SUPPLEMENT_REL),
+            "--output", str(output),
+        ]
+        completed = subprocess.run(command, check=False, capture_output=True, text=True)
+        _expect(completed.returncode != 0, "builder overwrote an existing output")
+        _expect("OUTPUT_ALREADY_EXISTS" in completed.stderr, completed.stderr)
+        _expect(output.read_text(encoding="utf-8") == "sentinel\n", "existing output drifted")
+        atomic_output = fixture / "atomic.json"
+        atomic_temp = atomic_output.with_suffix(".json.tmp")
+        atomic_temp.write_bytes(b"owned-temp")
+        try:
+            successor_builder._publish_exclusive(b"new", atomic_output)
+            raise AssertionError("builder overwrote an existing temp")
+        except FileExistsError:
+            pass
+        _expect(atomic_temp.read_bytes() == b"owned-temp", "preexisting temp drifted")
+        atomic_temp.unlink()
+        atomic_output.write_bytes(b"owned-output")
+        try:
+            successor_builder._publish_exclusive(b"new", atomic_output)
+            raise AssertionError("builder overwrote an output race")
+        except FileExistsError:
+            pass
+        _expect(atomic_output.read_bytes() == b"owned-output", "racing output drifted")
+        _expect(not atomic_temp.exists(), "builder leaked its temporary file")
+        atomic_output.unlink()
+        successor_builder._publish_exclusive(b"published", atomic_output)
+        _expect(atomic_output.read_bytes() == b"published", "exclusive publish failed")
+        _expect(not atomic_temp.exists(), "successful publish leaked temp")
+
+
 def _validate_real_reconciliation(root: Path) -> dict[str, Any]:
-    return convergence.validate_descendant_history_supplement(
+    return convergence.validate_frozen_descendant_history_predecessor(
         root,
-        root / REAL_DESCENDANT_SUPPLEMENT_REL,
-        root / REAL_DESCENDANT_RAW_REL,
-        root / convergence.DESCENDANT_HISTORY_SCANNER_REL,
         evaluated_head=_git(root, "rev-parse", "HEAD"),
         baseline_report_path=root / convergence.BASELINE_REPORT_REL,
     )
@@ -1743,6 +1990,7 @@ def _real_missing19_novel10_positive_case(root: Path) -> None:
         baseline_sets=independent_audit._authorized_failure_fingerprint_sets(
             baseline
         ),
+        require_live_scanner_bytes=False,
     )
     _expect(not independent[0], json.dumps(independent[0], sort_keys=True))
     _expect(len(independent[1]) == 10, "independent novel != 10")
@@ -3307,6 +3555,9 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("74", "historical backfill composite keys are unique", _historical_backfill_composite_key_attack_case))
     cases.append(Case("75", "registry roles obey the closed ownership matrix", _registry_closed_role_matrix_case))
     cases.append(Case("76", "dynamic-reference target digests fail both auditors", _dynamic_target_digest_attack_case))
+    cases.append(Case("77", "v3 successor preserves the exact v2 seal and scanner lineage", lambda: _v3_successor_positive_case(root)))
+    cases.append(Case("78", "v3 rejects ID reuse, predecessor drift, identity drop, bool counts, and sequence drift", lambda: _v3_successor_negative_case(root)))
+    cases.append(Case("79", "v3 builder refuses to overwrite an existing append-only output", lambda: _v3_builder_append_only_negative_case(root)))
     return cases
 
 
