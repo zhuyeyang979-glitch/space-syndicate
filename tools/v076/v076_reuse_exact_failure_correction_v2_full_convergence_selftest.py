@@ -1703,6 +1703,26 @@ def _write_v3_successor_fixture(root: Path, fixture: Path) -> dict[str, Any]:
     _copy_real_reconciliation_fixture(root, fixture)
     _git(fixture, "config", "user.email", "selftest@example.invalid")
     _git(fixture, "config", "user.name", "V076 Selftest")
+    successor_path = fixture / convergence.SUCCESSOR_SCHEMA_REL
+    successor_bytes = convergence._git_bytes(
+        root,
+        _git(root, "rev-parse", "HEAD^{commit}"),
+        convergence.SUCCESSOR_SCHEMA_REL.as_posix(),
+    )
+    _expect(successor_bytes is not None, "successor schema is not committed")
+    _expect(
+        convergence.sha256_bytes(successor_bytes) == convergence.SUCCESSOR_SCHEMA_SHA256,
+        "committed successor schema seal mismatch",
+    )
+    successor_path.write_bytes(successor_bytes)
+    stale_successor = convergence.load_json_strict(successor_path)
+    stale_successor["active_registered_identity_count"] = (
+        int(stale_successor["active_registered_identity_count"]) + 1
+    )
+    _write_json(successor_path, stale_successor)
+    _git(fixture, "add", "--", convergence.SUCCESSOR_SCHEMA_REL.as_posix())
+    _git(fixture, "commit", "--quiet", "-m", "commit stale successor schema predecessor")
+    successor_path.write_bytes(successor_bytes)
     _git(
         fixture,
         "add",
