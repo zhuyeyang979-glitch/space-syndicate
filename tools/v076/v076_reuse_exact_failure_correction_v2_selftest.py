@@ -1475,6 +1475,34 @@ def run_selftest() -> dict[str, Any]:
         published_seal_verify_only_end_to_end,
     ))
 
+    def scanner_successor_allowlist_is_fail_closed() -> None:
+        relative = correction.SCANNER_CORE_PATHS[0]
+        saved = correction.SCANNER_SUCCESSOR_SHA256_BY_PATH[relative]
+        correction.SCANNER_SUCCESSOR_SHA256_BY_PATH[relative] = "0" * 64
+        try:
+            try:
+                correction._verify_published_seal_revision(
+                    project, project,
+                    existing_selftest_receipt={
+                        "REUSE_POINT_INERTIA_GATE_SELFTEST_STATUS": "PASS",
+                        "REUSE_POINT_INERTIA_GATE_SELFTEST_CASE_COUNT": 143,
+                        "REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT": 143,
+                    },
+                )
+            except ValueError as exc:
+                _assert("SEAL_SCANNER_SUCCESSOR_HASH_MISMATCH" in str(exc), str(exc))
+                return
+            raise CaseFailure("unregistered scanner successor was accepted")
+        finally:
+            correction.SCANNER_SUCCESSOR_SHA256_BY_PATH[relative] = saved
+
+    cases.append(Case(
+        "112",
+        "scanner successor bytes require an explicit authorized hash",
+        "FAIL",
+        scanner_successor_allowlist_is_fail_closed,
+    ))
+
     def seal_count_mismatch() -> None:
         counts = dict(correction.EXPECTED_SEAL_COUNTS)
         counts["RAW_FAILURE_COUNT"] -= 1
@@ -1751,7 +1779,7 @@ def run_selftest() -> dict[str, Any]:
         "76", "78", "79", "80", "81", "82", "86", "88", "89",
         "90", "91",
         "93", "94", "95", "96", "97", "98", "99", "100",
-        "101", "102", "103", "104", "105", "106", "108", "109", "110", "111",
+        "101", "102", "103", "104", "105", "106", "108", "109", "110", "111", "112",
     }
     false_green = sum(
         result.status == "FAIL" and result.case_id in false_green_sensitive_ids

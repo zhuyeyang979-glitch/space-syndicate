@@ -216,6 +216,17 @@ SCANNER_CORE_PATHS = (
     "tools/v076/v076_reuse_point_inertia_gate_selftest.py",
     "tools/rules/check_v06_mechanic_authority.py",
 )
+SCANNER_SUCCESSOR_SHA256_BY_PATH = {
+    "tools/v076/v076_reuse_point_inertia_gate.py": "09bc04b52058cdafb7e966ca36230dc153dd637b829b766677ac542be02a9885",
+    "tools/v076/v076_reuse_point_inertia_gate_selftest.py": "08ad4dff7267d9d28bc21885df126ef303dcea06827d3fa6d616b5e1521c0003",
+    "tools/rules/check_v06_mechanic_authority.py": "a7bdb3b4a5109439a61cafb6a4149373b220f80552a1e95a7fccb2caf84ae1ea",
+}
+EVOLVABLE_SEAL_INPUT_PATHS = frozenset({
+    "tools/v076/v076_reuse_exact_failure_correction_v2.py",
+    "tools/v076/v076_reuse_exact_failure_correction_v2_selftest.py",
+    "tools/v076/v076_reuse_correction_v2_independent_audit.py",
+    ".github/workflows/v076-reuse-point-inertia-gate.yml",
+})
 ORCHESTRATOR_PATHS = (
     ".github/workflows/v076-reuse-point-inertia-gate.yml",
     "tools/v076/v076_reuse_exact_failure_correction_v2.py",
@@ -4887,7 +4898,6 @@ def _verify_published_seal_revision(
     if not isinstance(rows, list) or not rows:
         raise ValueError("SEAL_REVISION_INPUT_SET_INVALID")
     seen_paths: set[str] = set()
-    evolvable_prefixes = ("tools/", ".github/workflows/")
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError("SEAL_REVISION_INPUT_ROW_INVALID")
@@ -4915,7 +4925,10 @@ def _verify_published_seal_revision(
         # Reports, records and schemas are append-only historical evidence.
         # Tool and workflow source may evolve, but its current bytes are never
         # substituted into the old sealed row above.
-        if not relative.startswith(evolvable_prefixes) and current != historical:
+        if relative in SCANNER_SUCCESSOR_SHA256_BY_PATH:
+            if sha256_bytes(current) != SCANNER_SUCCESSOR_SHA256_BY_PATH[relative]:
+                raise ValueError(f"SEAL_SCANNER_SUCCESSOR_HASH_MISMATCH:{relative}")
+        elif relative not in EVOLVABLE_SEAL_INPUT_PATHS and current != historical:
             raise ValueError(f"SEAL_IMMUTABLE_INPUT_DRIFT:{relative}")
         sidecar_path = normalize_path(str(row.get("sidecar_path", "")))
         sidecar_sha = str(row.get("sidecar_sha256", ""))
