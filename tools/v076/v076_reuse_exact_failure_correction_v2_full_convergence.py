@@ -56,13 +56,16 @@ DESCENDANT_HISTORY_SUPPLEMENT_V3_ID = "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260
 PREDECESSOR_SCHEMA_REL = Path(
     "docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json"
 )
-PREDECESSOR_SCHEMA_SHA256 = "6e23a7b9285fcf3ac29bd8aa78393ba243b482d880f8b0ade425501861c63d46"
+# This is the SHA-256 of the committed Git blob, not of a platform-smudged
+# worktree rendering.  Git's text/eol checkout policy may materialize this
+# tracked JSON with CRLF on Windows while the committed blob remains LF.
+PREDECESSOR_SCHEMA_SHA256 = "87acd3a0eaa9ac75e7d5f6ffbd502f8a385275749d3a9ba5eae57a2b3f6b90df"
 SCHEMA_REL = PREDECESSOR_SCHEMA_REL
 SUCCESSOR_SCHEMA_REL = Path(
     "docs/architecture/reuse_corrections/v2/"
     "schema_full_convergence_20260827_successor_v3.json"
 )
-SUCCESSOR_SCHEMA_SHA256 = "995d18eee41202dd3db10412c1df7edd9ad4c84ecfc2caab967cce71ffb0545a"
+SUCCESSOR_SCHEMA_SHA256 = "019bc57dcf92415c00b35b691f7adad9e736770bcf927622cb6db16b966c4543"
 RECORD_ROOT_REL = Path("docs/architecture/reuse_corrections/v2/records/full_convergence_20260827")
 EPOCH_ROOT_REL = Path("reports/reuse/correction_v2/epochs/full_convergence_20260827")
 BASELINE_REPORT_REL = EPOCH_ROOT_REL / "baseline_raw_failure_report.json"
@@ -119,7 +122,7 @@ LEGACY_SCHEMA_REL = Path("docs/architecture/reuse_corrections/v2/schema.json")
 
 # Filled from the committed schema artifact.  Keeping it in code prevents a
 # schema plus freshly rewritten sidecar from silently broadening authority.
-AUTHORIZED_SCHEMA_SHA256 = "6e23a7b9285fcf3ac29bd8aa78393ba243b482d880f8b0ade425501861c63d46"
+AUTHORIZED_SCHEMA_SHA256 = PREDECESSOR_SCHEMA_SHA256
 
 AUTHORITY_SOURCE_PATHS = (
     "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
@@ -1069,6 +1072,98 @@ def _exact_repo_relative(root: Path, path: Path) -> str:
         return ""
 
 
+def _resolve_evaluated_head(root: Path, evaluated_head: str | None) -> str:
+    """Resolve the exact commit used for a committed-blob authority check."""
+
+    candidate = evaluated_head or ""
+    if not candidate:
+        try:
+            candidate = _git(root, "rev-parse", "HEAD")
+        except ValueError:
+            return ""
+    return candidate if _is_commit(candidate) else ""
+
+
+def _committed_blob_bytes(
+    root: Path,
+    relative: str,
+    *,
+    evaluated_head: str | None,
+) -> bytes | None:
+    """Read one exact blob from the evaluated Git tree.
+
+    This deliberately bypasses the platform worktree/smudge representation;
+    the SHA-256 authority for a tracked artifact is the bytes returned by
+    ``git show <head>:<path>``.
+    """
+
+    head = _resolve_evaluated_head(root, evaluated_head)
+    if not head:
+        return None
+    return _git_bytes(root, head, normalize_path(relative))
+
+
+def _git_object_id(root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), *args],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="ascii",
+        errors="replace",
+    )
+    value = result.stdout.strip()
+    return value if result.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", value) else ""
+
+
+def _committed_blob_seal_failures(
+    root: Path,
+    path: Path,
+    expected_sha256: str,
+    *,
+    evaluated_head: str | None,
+    code_prefix: str,
+) -> list[str]:
+    """Return fail-closed findings for a committed blob plus its worktree.
+
+    The committed hash is always computed from Git blob bytes.  Git itself
+    applies the path's declared clean filters to the worktree copy and hashes
+    that canonical result; equality with the evaluated tree object therefore
+    accepts configured LF/CRLF checkout materialization while rejecting every
+    content change that Git would stage.
+    """
+
+    relative = _exact_repo_relative(root, path)
+    if not relative:
+        return [f"{code_prefix}_PATH_INVALID"]
+    head = _resolve_evaluated_head(root, evaluated_head)
+    committed = _committed_blob_bytes(
+        root,
+        relative,
+        evaluated_head=head,
+    )
+    if committed is None:
+        return [f"{code_prefix}_COMMITTED_BLOB_MISSING"]
+    failures: list[str] = []
+    if sha256_bytes(committed) != expected_sha256:
+        failures.append(f"{code_prefix}_COMMITTED_BLOB_SHA256_MISMATCH")
+    if not path.is_file():
+        failures.append(f"{code_prefix}_WORKTREE_MISSING")
+    else:
+        tree_oid = _git_object_id(root, "rev-parse", f"{head}:{relative}")
+        clean_oid = _git_object_id(
+            root,
+            "hash-object",
+            f"--path={relative}",
+            "--",
+            relative,
+        )
+        if not tree_oid or clean_oid != tree_oid:
+            failures.append(f"{code_prefix}_WORKTREE_CONTENT_DRIFT")
+    return sorted(set(failures))
+
+
 def _validate_descendant_history_supplement_core(
     root: Path,
     supplement_path: Path | None,
@@ -1779,23 +1874,43 @@ def validate_frozen_descendant_history_predecessor(
     return result
 
 
-def validate_descendant_history_successor_schema(root: Path) -> list[str]:
+def validate_descendant_history_successor_schema(
+    root: Path,
+    *,
+    evaluated_head: str | None = None,
+) -> list[str]:
     failures: list[str] = []
     path = root / SUCCESSOR_SCHEMA_REL
     try:
         schema = load_json_strict(path)
     except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
         return ["DESCENDANT_HISTORY_V3_SCHEMA_INVALID"]
-    if sha256_file(path) != SUCCESSOR_SCHEMA_SHA256:
+    successor_seal_failures = _committed_blob_seal_failures(
+        root,
+        path,
+        SUCCESSOR_SCHEMA_SHA256,
+        evaluated_head=evaluated_head,
+        code_prefix="DESCENDANT_HISTORY_V3_SCHEMA",
+    )
+    if successor_seal_failures:
         failures.append("DESCENDANT_HISTORY_V3_SCHEMA_SHA256_MISMATCH")
+        failures.extend(successor_seal_failures)
     predecessor_path = root / PREDECESSOR_SCHEMA_REL
     if (
-        not predecessor_path.is_file()
-        or sha256_file(predecessor_path) != PREDECESSOR_SCHEMA_SHA256
-        or schema.get("previous_schema_path") != PREDECESSOR_SCHEMA_REL.as_posix()
+        schema.get("previous_schema_path") != PREDECESSOR_SCHEMA_REL.as_posix()
         or schema.get("previous_schema_sha256") != PREDECESSOR_SCHEMA_SHA256
     ):
         failures.append("DESCENDANT_HISTORY_V3_PREDECESSOR_SCHEMA_SEAL_INVALID")
+    predecessor_seal_failures = _committed_blob_seal_failures(
+        root,
+        predecessor_path,
+        PREDECESSOR_SCHEMA_SHA256,
+        evaluated_head=evaluated_head,
+        code_prefix="DESCENDANT_HISTORY_V3_PREDECESSOR_SCHEMA",
+    )
+    if predecessor_seal_failures:
+        failures.append("DESCENDANT_HISTORY_V3_PREDECESSOR_SCHEMA_SEAL_INVALID")
+        failures.extend(predecessor_seal_failures)
     expected = {
         "active_descendant_history_supplement_schema_version": DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION,
         "active_descendant_history_supplement_id": DESCENDANT_HISTORY_SUPPLEMENT_V3_ID,
@@ -1855,7 +1970,12 @@ def _validate_descendant_history_supplement_v3(
         expected_fields=DESCENDANT_HISTORY_SUPPLEMENT_V3_FIELDS,
     )
     failures = list(result.get("failures", []))
-    failures.extend(validate_descendant_history_successor_schema(root))
+    failures.extend(
+        validate_descendant_history_successor_schema(
+            root,
+            evaluated_head=evaluated_head,
+        )
+    )
     if supplement_path is None:
         return result
     if _exact_repo_relative(root, supplement_path) != DESCENDANT_HISTORY_V3_SUPPLEMENT_REL.as_posix():
@@ -2255,14 +2375,21 @@ def _classification_record_disposition_failures(
     return sorted(set(failures))
 
 
-def validate_schema(root: Path) -> list[str]:
+def validate_schema(root: Path, *, evaluated_head: str | None = None) -> list[str]:
     path = root / SCHEMA_REL
     if not path.is_file():
         return ["FULL_CONVERGENCE_SCHEMA_MISSING"]
     if AUTHORIZED_SCHEMA_SHA256 == "TO_BE_FILLED":
         return ["FULL_CONVERGENCE_SCHEMA_HASH_NOT_AUTHORIZED"]
-    if sha256_file(path) != AUTHORIZED_SCHEMA_SHA256:
-        return ["FULL_CONVERGENCE_SCHEMA_HASH_MISMATCH"]
+    schema_seal_failures = _committed_blob_seal_failures(
+        root,
+        path,
+        AUTHORIZED_SCHEMA_SHA256,
+        evaluated_head=evaluated_head,
+        code_prefix="FULL_CONVERGENCE_SCHEMA",
+    )
+    if schema_seal_failures:
+        return sorted({"FULL_CONVERGENCE_SCHEMA_HASH_MISMATCH", *schema_seal_failures})
     try:
         schema = load_json_strict(path)
     except (OSError, ValueError, json.JSONDecodeError):
@@ -4519,7 +4646,7 @@ def validate_batch_manifest_against_repo(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
 ) -> dict[str, Any]:
-    failures = validate_schema(root)
+    failures = validate_schema(root, evaluated_head=evaluated_head)
     legacy = verify_legacy_anchor(root)
     failures.extend(legacy["failures"])
     try:

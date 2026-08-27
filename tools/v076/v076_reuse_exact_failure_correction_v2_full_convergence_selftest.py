@@ -1701,6 +1701,18 @@ def _copy_real_reconciliation_fixture(root: Path, fixture: Path) -> None:
 
 def _write_v3_successor_fixture(root: Path, fixture: Path) -> dict[str, Any]:
     _copy_real_reconciliation_fixture(root, fixture)
+    _git(fixture, "config", "user.email", "selftest@example.invalid")
+    _git(fixture, "config", "user.name", "V076 Selftest")
+    _git(
+        fixture,
+        "add",
+        "--",
+        convergence.PREDECESSOR_SCHEMA_REL.as_posix(),
+        convergence.SUCCESSOR_SCHEMA_REL.as_posix(),
+        convergence.BASELINE_REPORT_REL.as_posix(),
+    )
+    if _git(fixture, "diff", "--cached", "--name-only"):
+        _git(fixture, "commit", "--quiet", "-m", "commit sealed schema fixture")
     head = _git(fixture, "rev-parse", "HEAD")
     tree = _git(fixture, "rev-parse", "HEAD^{tree}")
     scanner_path = fixture / convergence.DESCENDANT_HISTORY_SCANNER_REL
@@ -1944,6 +1956,165 @@ def _v3_builder_append_only_negative_case(root: Path) -> None:
         successor_builder._publish_exclusive(b"published", atomic_output)
         _expect(atomic_output.read_bytes() == b"published", "exclusive publish failed")
         _expect(not atomic_temp.exists(), "successful publish leaked temp")
+
+
+def _schema_blob_fixture(root: Path, fixture: Path) -> tuple[Path, str, bytes]:
+    """Commit the real LF predecessor blob into a minimal isolated repo."""
+
+    _git(fixture, "init", "--quiet")
+    _git(fixture, "config", "user.email", "selftest@example.invalid")
+    _git(fixture, "config", "user.name", "V076 Selftest")
+    relative = convergence.PREDECESSOR_SCHEMA_REL.as_posix()
+    source_head = _git(root, "rev-parse", "HEAD")
+    committed = convergence._git_bytes(root, source_head, relative)
+    _expect(committed is not None, "real predecessor schema blob is missing")
+    _expect(
+        convergence.sha256_bytes(committed) == convergence.PREDECESSOR_SCHEMA_SHA256,
+        "real predecessor schema blob digest drifted",
+    )
+    path = fixture / convergence.PREDECESSOR_SCHEMA_REL
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(committed)
+    _git(fixture, "add", "--", relative)
+    _git(fixture, "commit", "--quiet", "-m", "sealed predecessor schema")
+    return path, _git(fixture, "rev-parse", "HEAD"), committed
+
+
+def _schema_blob_lf_crlf_portability_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-schema-eol-") as temporary:
+        fixture = Path(temporary)
+        path, head, committed = _schema_blob_fixture(root, fixture)
+
+        def assert_accepted(label: str) -> None:
+            primary = convergence._committed_blob_seal_failures(
+                fixture,
+                path,
+                convergence.PREDECESSOR_SCHEMA_SHA256,
+                evaluated_head=head,
+                code_prefix="SELFTEST_SCHEMA",
+            )
+            _expect(not primary, f"primary rejected {label}: {primary}")
+            independent = independent_audit._sealed_tree_blob_finding(
+                fixture,
+                path,
+                evaluated_head=head,
+                expected_sha=independent_audit.FULL_CONVERGENCE_SCHEMA_SHA,
+                code="SELFTEST_SCHEMA_DRIFT",
+                message="schema drift",
+            )
+            _expect(independent is None, f"independent rejected {label}: {independent}")
+
+        path.write_bytes(committed)
+        assert_accepted("LF")
+        path.write_bytes(committed.replace(b"\n", b"\r\n"))
+        assert_accepted("CRLF")
+
+        path.write_bytes(committed.replace(b"wildcard_allowed", b"wildcard_changed", 1))
+        primary = convergence._committed_blob_seal_failures(
+            fixture,
+            path,
+            convergence.PREDECESSOR_SCHEMA_SHA256,
+            evaluated_head=head,
+            code_prefix="SELFTEST_SCHEMA",
+        )
+        _expect_failure(primary, "SELFTEST_SCHEMA_WORKTREE_CONTENT_DRIFT")
+        independent = independent_audit._sealed_tree_blob_finding(
+            fixture,
+            path,
+            evaluated_head=head,
+            expected_sha=independent_audit.FULL_CONVERGENCE_SCHEMA_SHA,
+            code="SELFTEST_SCHEMA_DRIFT",
+            message="schema drift",
+        )
+        _expect(independent is not None, "independent accepted real worktree drift")
+
+
+def _schema_committed_predecessor_drift_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-schema-commit-drift-") as temporary:
+        fixture = Path(temporary)
+        path, _, committed = _schema_blob_fixture(root, fixture)
+        path.write_bytes(committed.replace(b"wildcard_allowed", b"wildcard_changed", 1))
+        _git(fixture, "add", "--", convergence.PREDECESSOR_SCHEMA_REL.as_posix())
+        _git(fixture, "commit", "--quiet", "-m", "drift predecessor schema")
+        drift_head = _git(fixture, "rev-parse", "HEAD")
+        primary = convergence._committed_blob_seal_failures(
+            fixture,
+            path,
+            convergence.PREDECESSOR_SCHEMA_SHA256,
+            evaluated_head=drift_head,
+            code_prefix="SELFTEST_SCHEMA",
+        )
+        _expect_failure(primary, "SELFTEST_SCHEMA_COMMITTED_BLOB_SHA256_MISMATCH")
+        independent = independent_audit._sealed_tree_blob_finding(
+            fixture,
+            path,
+            evaluated_head=drift_head,
+            expected_sha=independent_audit.FULL_CONVERGENCE_SCHEMA_SHA,
+            code="SELFTEST_SCHEMA_DRIFT",
+            message="schema drift",
+        )
+        _expect(independent is not None, "independent accepted committed predecessor drift")
+
+
+def _v3_schema_committed_binding_negative_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-v3-schema-binding-") as temporary:
+        fixture = Path(temporary)
+        sealed = _write_v3_successor_fixture(root, fixture)
+        good_head = sealed["head"]
+        previous_head = _git(fixture, "rev-parse", f"{good_head}^1")
+
+        primary = convergence.validate_descendant_history_successor_schema(
+            fixture,
+            evaluated_head=previous_head,
+        )
+        _expect_failure(
+            primary,
+            "DESCENDANT_HISTORY_V3_SCHEMA_COMMITTED_BLOB_SHA256_MISMATCH",
+        )
+        baseline = independent_audit._json(fixture / convergence.BASELINE_REPORT_REL)
+        findings = independent_audit._descendant_history_successor_v3_findings(
+            fixture,
+            supplement_path=sealed["supplement_path"],
+            raw_report_path=sealed["raw_path"],
+            scanner_path=sealed["scanner_path"],
+            evaluated_head=previous_head,
+            baseline_report=baseline,
+            baseline_sets=independent_audit._authorized_failure_fingerprint_sets(baseline),
+            expected_raw_head=sealed["head"],
+            expected_raw_tree=sealed["tree"],
+            expected_raw_sha=sealed["raw_sha"],
+            expected_scanner_sha=sealed["scanner_sha"],
+        )
+        _expect(
+            any(row["code"] == "FULL_CONVERGENCE_DESCENDANT_V3_SCHEMA_INVALID" for row in findings),
+            "independent accepted a successor from the wrong evaluated Head",
+        )
+
+        schema_path = fixture / convergence.SUCCESSOR_SCHEMA_REL
+        original = convergence.load_json_strict(schema_path)
+        attacks = []
+        stale_previous = copy.deepcopy(original)
+        stale_previous["previous_schema_sha256"] = "0" * 64
+        attacks.append(stale_previous)
+        closed_field_drift = copy.deepcopy(original)
+        closed_field_drift["unexpected_authority"] = True
+        attacks.append(closed_field_drift)
+        for attack in attacks:
+            _write_json(schema_path, attack)
+            primary = convergence.validate_descendant_history_successor_schema(
+                fixture,
+                evaluated_head=good_head,
+            )
+            _expect(primary, "primary accepted successor schema worktree drift")
+            independent = independent_audit._sealed_tree_blob_finding(
+                fixture,
+                schema_path,
+                evaluated_head=good_head,
+                expected_sha=independent_audit.FULL_CONVERGENCE_SUCCESSOR_SCHEMA_SHA,
+                code="SELFTEST_SUCCESSOR_SCHEMA_DRIFT",
+                message="successor schema drift",
+            )
+            _expect(independent is not None, "independent accepted successor schema drift")
 
 
 def _validate_real_reconciliation(root: Path) -> dict[str, Any]:
@@ -3558,6 +3729,9 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("77", "v3 successor preserves the exact v2 seal and scanner lineage", lambda: _v3_successor_positive_case(root)))
     cases.append(Case("78", "v3 rejects ID reuse, predecessor drift, identity drop, bool counts, and sequence drift", lambda: _v3_successor_negative_case(root)))
     cases.append(Case("79", "v3 builder refuses to overwrite an existing append-only output", lambda: _v3_builder_append_only_negative_case(root)))
+    cases.append(Case("80", "committed schema seals accept LF and CRLF only and reject worktree content drift", lambda: _schema_blob_lf_crlf_portability_case(root)))
+    cases.append(Case("81", "committed predecessor schema drift fails both auditors", lambda: _schema_committed_predecessor_drift_case(root)))
+    cases.append(Case("82", "successor schema is committed at the evaluated Head and rejects stale or open authority", lambda: _v3_schema_committed_binding_negative_case(root)))
     return cases
 
 

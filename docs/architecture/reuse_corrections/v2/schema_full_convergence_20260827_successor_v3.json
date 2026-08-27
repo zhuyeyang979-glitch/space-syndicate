@@ -3,7 +3,7 @@
   "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
   "authorization_base_head_sha": "d701a81dce693b584d52fbfca3e0e78b521ad775",
   "previous_schema_path": "docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json",
-  "previous_schema_sha256": "6e23a7b9285fcf3ac29bd8aa78393ba243b482d880f8b0ade425501861c63d46",
+  "previous_schema_sha256": "87acd3a0eaa9ac75e7d5f6ffbd502f8a385275749d3a9ba5eae57a2b3f6b90df",
   "active_descendant_history_supplement_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.descendant_history_supplement.v3",
   "active_descendant_history_supplement_id": "FULL_CONVERGENCE_DESCENDANT_HISTORY_20260827_003",
   "active_raw_report_path": "reports/reuse/correction_v2/epochs/full_convergence_20260827/descendant_history_raw_da48a74b_003.json",

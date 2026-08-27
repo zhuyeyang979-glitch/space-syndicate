@@ -39,7 +39,7 @@ FULL_CONVERGENCE_AUTHORIZATION_ID = (
 FULL_CONVERGENCE_BASE_HEAD = "d701a81dce693b584d52fbfca3e0e78b521ad775"
 FULL_CONVERGENCE_BASELINE_SHA = "cfb84c08abacb294ea54ffc975f691869b33ac47a5d6a9f28377c54534f19166"
 FULL_CONVERGENCE_FAILURE_SET_SHA = "dd3b9f88319ba008dafa0de8be14d4e7427a3cb02d7b3e11ed6d50e2c80893ef"
-FULL_CONVERGENCE_SCHEMA_SHA = "6e23a7b9285fcf3ac29bd8aa78393ba243b482d880f8b0ade425501861c63d46"
+FULL_CONVERGENCE_SCHEMA_SHA = "87acd3a0eaa9ac75e7d5f6ffbd502f8a385275749d3a9ba5eae57a2b3f6b90df"
 FULL_CONVERGENCE_SCHEMA = Path(
     "docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json"
 )
@@ -48,7 +48,7 @@ FULL_CONVERGENCE_SUCCESSOR_SCHEMA = Path(
     "schema_full_convergence_20260827_successor_v3.json"
 )
 FULL_CONVERGENCE_SUCCESSOR_SCHEMA_SHA = (
-    "995d18eee41202dd3db10412c1df7edd9ad4c84ecfc2caab967cce71ffb0545a"
+    "019bc57dcf92415c00b35b691f7adad9e736770bcf927622cb6db16b966c4543"
 )
 FULL_CONVERGENCE_BASELINE_REPORT = Path(
     "reports/reuse/correction_v2/epochs/full_convergence_20260827/"
@@ -693,6 +693,58 @@ def _git_bytes(root: Path, commit: str, relative: str) -> bytes | None:
         stderr=subprocess.PIPE,
     )
     return bytes(result.stdout) if result.returncode == 0 else None
+
+
+def _sealed_tree_blob_finding(
+    root: Path,
+    path: Path,
+    *,
+    evaluated_head: str,
+    expected_sha: str,
+    code: str,
+    message: str,
+) -> dict[str, Any] | None:
+    """Independently seal a tracked artifact to its evaluated-tree blob.
+
+    The authority digest is over committed blob bytes.  The worktree copy must
+    still clean-filter to the same Git object id so local edits cannot hide
+    behind a valid commit while configured checkout EOL conversion stays
+    portable.
+    """
+
+    relative = _exact_repo_relative(root, path)
+    committed = (
+        _git_bytes(root, evaluated_head, relative)
+        if relative and _is_commit(evaluated_head)
+        else None
+    )
+    tree_oid = (
+        _git(root, "rev-parse", f"{evaluated_head}:{relative}")
+        if relative and _is_commit(evaluated_head)
+        else ""
+    )
+    clean_oid = (
+        _git(root, "hash-object", f"--path={relative}", "--", relative)
+        if relative and path.is_file()
+        else ""
+    )
+    if (
+        committed is None
+        or _sha_bytes(committed) != expected_sha
+        or re.fullmatch(r"[0-9a-f]{40}", tree_oid) is None
+        or clean_oid != tree_oid
+    ):
+        return _finding(
+            code,
+            "P0",
+            message,
+            path=relative or str(path),
+            expected_sha256=expected_sha,
+            committed_sha256=(
+                _sha_bytes(committed) if committed is not None else "MISSING"
+            ),
+        )
+    return None
 
 
 def _is_sha256(value: Any) -> bool:
@@ -1676,14 +1728,44 @@ def _descendant_history_successor_v3_findings(
     except (OSError, ValueError):
         add("FULL_CONVERGENCE_DESCENDANT_V3_JSON_INVALID", "v3 or predecessor is invalid")
         return findings
+    successor_schema_finding = _sealed_tree_blob_finding(
+        root,
+        successor_schema_path,
+        evaluated_head=evaluated_head,
+        expected_sha=FULL_CONVERGENCE_SUCCESSOR_SCHEMA_SHA,
+        code="FULL_CONVERGENCE_DESCENDANT_V3_SCHEMA_INVALID",
+        message="successor schema committed blob or worktree content drifted",
+    )
     if (
-        _sha_file(successor_schema_path) != FULL_CONVERGENCE_SUCCESSOR_SCHEMA_SHA
+        successor_schema_finding is not None
         or successor_schema.get("active_descendant_history_supplement_schema_version")
         != DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION
         or successor_schema.get("active_descendant_history_supplement_id")
         != DESCENDANT_HISTORY_SUPPLEMENT_V3_ID
     ):
         add("FULL_CONVERGENCE_DESCENDANT_V3_SCHEMA_INVALID", "successor schema bytes or identity drifted")
+    if successor_schema_finding is not None:
+        findings.append(successor_schema_finding)
+    if (
+        successor_schema.get("previous_schema_path")
+        != FULL_CONVERGENCE_SCHEMA.as_posix()
+        or successor_schema.get("previous_schema_sha256")
+        != FULL_CONVERGENCE_SCHEMA_SHA
+    ):
+        add(
+            "FULL_CONVERGENCE_DESCENDANT_V3_PREDECESSOR_SCHEMA_SEAL_INVALID",
+            "successor schema does not bind the exact predecessor blob",
+        )
+    predecessor_schema_finding = _sealed_tree_blob_finding(
+        root,
+        root / FULL_CONVERGENCE_SCHEMA,
+        evaluated_head=evaluated_head,
+        expected_sha=FULL_CONVERGENCE_SCHEMA_SHA,
+        code="FULL_CONVERGENCE_DESCENDANT_V3_PREDECESSOR_SCHEMA_SEAL_INVALID",
+        message="predecessor schema committed blob or worktree content drifted",
+    )
+    if predecessor_schema_finding is not None:
+        findings.append(predecessor_schema_finding)
     if set(supplement) != DESCENDANT_HISTORY_SUPPLEMENT_V3_FIELDS:
         add("FULL_CONVERGENCE_DESCENDANT_V3_FIELD_SET_INVALID", "v3 field set is not closed")
     sealed = {
@@ -5516,12 +5598,16 @@ def audit_full_convergence_batch(
         for fingerprint, identity in live_historical_identities.items()
     }
     schema_path = root / FULL_CONVERGENCE_SCHEMA
-    if not schema_path.is_file() or _sha_file(schema_path) != FULL_CONVERGENCE_SCHEMA_SHA:
-        findings.append(_finding(
-            "FULL_CONVERGENCE_SCHEMA_DRIFT",
-            "P0",
-            "full-convergence schema bytes differ from the authorized digest",
-        ))
+    schema_finding = _sealed_tree_blob_finding(
+        root,
+        schema_path,
+        evaluated_head=evaluated_head,
+        expected_sha=FULL_CONVERGENCE_SCHEMA_SHA,
+        code="FULL_CONVERGENCE_SCHEMA_DRIFT",
+        message="full-convergence schema committed blob or worktree content drifted",
+    )
+    if schema_finding is not None:
+        findings.append(schema_finding)
     seal_path = root / LEGACY_SEAL_PATH
     if not seal_path.is_file() or _sha_file(seal_path) != LEGACY_SEAL_SHA:
         findings.append(_finding(

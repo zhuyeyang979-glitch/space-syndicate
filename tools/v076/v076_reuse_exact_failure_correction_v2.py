@@ -92,6 +92,12 @@ PREVIOUS_AUTHORIZATION_MANIFEST_SHA256 = (
     "ada661f73a81d53586d3b50b3a964f66e2ed9baa00073472ddbf2a5573aad15c"
 )
 SEAL_REVISION_ID = "CI_PORTABILITY_V2"
+# The CI_PORTABILITY_V2 seal was published from this exact successor commit.
+# Verification must reconstruct tool bindings from its committed Git blobs,
+# rather than hashing whatever line-ending-normalized/evolved bytes happen to
+# be materialized in the current checkout.  This keeps the old seal immutable
+# while allowing later scanner evolution to be validated as a new head.
+SEAL_REVISION_HEAD_SHA = "d701a81dce693b584d52fbfca3e0e78b521ad775"
 SEAL_REVISION_DIR_REL = Path(
     "reports/reuse/correction_v2/seals/ci_portability_v2"
 )
@@ -3832,6 +3838,46 @@ def _seal_artifact_binding(
     return binding
 
 
+def _seal_tool_binding(
+    root: Path,
+    relative: str,
+    *,
+    verify_only: bool,
+    tracked_files: dict[Path, str],
+) -> dict[str, Any]:
+    """Bind a tool using the immutable seal-revision Git blob when verifying.
+
+    ``CI_PORTABILITY_V2`` predates the current scanner evolution.  Its sealed
+    manifest therefore describes the bytes at ``SEAL_REVISION_HEAD_SHA``.  A
+    clean checkout may materialize those bytes with CRLF, and the current head
+    may legitimately contain a successor scanner; neither condition is
+    allowed to rewrite the historical binding.  We still require the current
+    committed path to exist so a deleted successor cannot be mistaken for the
+    historical tool.  Generation (non-verify mode) continues to bind the live
+    worktree bytes for any future seal revision.
+    """
+    normalized = normalize_path(relative)
+    if verify_only:
+        historical = _bytes_at(root, SEAL_REVISION_HEAD_SHA, normalized)
+        if historical is None:
+            raise ValueError(f"SEAL_HISTORICAL_TOOL_MISSING:{normalized}")
+        current = _bytes_at(root, "HEAD", normalized)
+        if current is None:
+            raise ValueError(f"SEAL_SUCCESSOR_TOOL_MISSING:{normalized}")
+        # Deliberately do not add the live path to ``tracked_files``: its
+        # successor bytes are not part of the CI_PORTABILITY_V2 manifest.
+        return {
+            "path": normalized,
+            "sha256": sha256_bytes(historical),
+            "byte_count": len(historical),
+        }
+    return _seal_artifact_binding(
+        root / normalized,
+        display_path=normalized,
+        tracked_files=tracked_files,
+    )
+
+
 def _validate_exact_count_projection(actual: dict[str, int]) -> None:
     mismatches = [
         f"{field}:expected={expected}:actual={actual.get(field)!r}"
@@ -4133,9 +4179,10 @@ def _collect_seal_evidence(
     def bind_tool(relative: str) -> dict[str, Any]:
         if relative in tool_bindings:
             return tool_bindings[relative]
-        binding = _seal_artifact_binding(
-            root / relative,
-            display_path=relative,
+        binding = _seal_tool_binding(
+            root,
+            relative,
+            verify_only=verify_only,
             tracked_files=tracked_files,
         )
         bindings.append(binding)
@@ -4737,12 +4784,212 @@ def _publish_or_verify_seal_outputs(
             raise RuntimeError(f"SEALED_ARTIFACT_POST_WRITE_MISMATCH:{relative.as_posix()}")
 
 
+def _verify_published_seal_revision(
+    root: Path,
+    output_root: Path,
+    *,
+    existing_selftest_receipt: dict[str, Any],
+) -> dict[str, Any]:
+    """Verify the frozen V2 seal without rebuilding it from successor tools.
+
+    The published seal is a historical statement about the exact committed
+    blobs at ``SEAL_REVISION_HEAD_SHA``.  Recomputing its manifest with the
+    current scanner, resolver, auditor, workflow, or expanded self-test would
+    either reject legitimate successor evolution or (worse) relabel successor
+    bytes as the historical V2 inputs.  Verification instead byte-locks the
+    published manifest/plan and every frozen evidence artifact in Git, while
+    separately requiring the current scanner self-test to be green.
+    """
+    root = root.resolve()
+    if output_root.resolve() != root:
+        raise ValueError("SEAL_OUTPUT_ROOT_MUST_EQUAL_PROJECT_ROOT")
+    historical_head = _resolve_commit(root, SEAL_REVISION_HEAD_SHA)
+    current_head = _resolve_commit(root, "HEAD")
+    if not _is_ancestor(root, historical_head, current_head):
+        raise ValueError("SEAL_REVISION_NOT_ANCESTOR_OF_CURRENT_HEAD")
+
+    status = existing_selftest_receipt.get(
+        "REUSE_POINT_INERTIA_GATE_SELFTEST_STATUS"
+    )
+    case_count = existing_selftest_receipt.get(
+        "REUSE_POINT_INERTIA_GATE_SELFTEST_CASE_COUNT"
+    )
+    pass_count = existing_selftest_receipt.get(
+        "REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT"
+    )
+    if (
+        status != "PASS"
+        or not isinstance(case_count, int)
+        or isinstance(case_count, bool)
+        or not isinstance(pass_count, int)
+        or isinstance(pass_count, bool)
+        or case_count <= 0
+        or pass_count != case_count
+    ):
+        raise ValueError("SEAL_CURRENT_SCANNER_SELFTEST_NOT_PASS")
+
+    revision_paths = (
+        AUTHORIZATION_MANIFEST_REL,
+        AUTHORIZATION_MANIFEST_REL.with_suffix(".sha256"),
+        APPLICATION_PLAN_REL,
+        APPLICATION_PLAN_REL.with_suffix(".sha256"),
+    )
+    revision_payloads: dict[Path, bytes] = {}
+    for relative in revision_paths:
+        historical = _bytes_at(root, historical_head, relative.as_posix())
+        current = _bytes_at(root, current_head, relative.as_posix())
+        if historical is None:
+            raise ValueError(f"SEAL_REVISION_ARTIFACT_MISSING:{relative.as_posix()}")
+        if current != historical:
+            raise ValueError(f"SEAL_REVISION_ARTIFACT_DRIFT:{relative.as_posix()}")
+        revision_payloads[relative] = historical
+
+    try:
+        manifest = json.loads(
+            revision_payloads[AUTHORIZATION_MANIFEST_REL].decode("utf-8-sig")
+        )
+        plan = json.loads(revision_payloads[APPLICATION_PLAN_REL].decode("utf-8-sig"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("SEAL_REVISION_JSON_INVALID") from exc
+    if not isinstance(manifest, dict) or not isinstance(plan, dict):
+        raise ValueError("SEAL_REVISION_JSON_NOT_OBJECT")
+    if revision_payloads[AUTHORIZATION_MANIFEST_REL] != _canonical_bytes(manifest):
+        raise ValueError("SEAL_REVISION_MANIFEST_NOT_CANONICAL")
+    if revision_payloads[APPLICATION_PLAN_REL] != _canonical_bytes(plan):
+        raise ValueError("SEAL_REVISION_PLAN_NOT_CANONICAL")
+    if (
+        manifest.get("schema_version") != EVIDENCE_MANIFEST_SCHEMA_VERSION
+        or manifest.get("authorization_id") != AUTHORIZATION_ID
+        or manifest.get("seal_revision_id") != SEAL_REVISION_ID
+    ):
+        raise ValueError("SEAL_REVISION_MANIFEST_IDENTITY_INVALID")
+    manifest_sha = sha256_bytes(revision_payloads[AUTHORIZATION_MANIFEST_REL])
+    plan_sha = sha256_bytes(revision_payloads[APPLICATION_PLAN_REL])
+    if plan.get("CORRECTION_AUTHORIZATION_MANIFEST_SHA256") != manifest_sha:
+        raise ValueError("SEAL_REVISION_PLAN_MANIFEST_BINDING_MISMATCH")
+    if (
+        plan.get("schema_version") != APPLICATION_PLAN_SCHEMA_VERSION
+        or plan.get("authorization_id") != AUTHORIZATION_ID
+        or plan.get("seal_revision_id") != SEAL_REVISION_ID
+    ):
+        raise ValueError("SEAL_REVISION_PLAN_IDENTITY_INVALID")
+    for relative in (AUTHORIZATION_MANIFEST_REL, APPLICATION_PLAN_REL):
+        expected = (
+            sha256_bytes(revision_payloads[relative])
+            + "  "
+            + relative.name
+            + "\n"
+        ).encode("ascii")
+        if revision_payloads[relative.with_suffix(".sha256")] != expected:
+            raise ValueError(f"SEAL_REVISION_SIDECAR_INVALID:{relative.as_posix()}")
+
+    rows = manifest.get("sealed_inputs")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("SEAL_REVISION_INPUT_SET_INVALID")
+    seen_paths: set[str] = set()
+    evolvable_prefixes = ("tools/", ".github/workflows/")
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("SEAL_REVISION_INPUT_ROW_INVALID")
+        relative = normalize_path(str(row.get("path", "")))
+        digest = str(row.get("sha256", ""))
+        byte_count = row.get("byte_count")
+        if (
+            not relative
+            or relative in seen_paths
+            or not re.fullmatch(r"[0-9a-f]{64}", digest)
+            or not isinstance(byte_count, int)
+            or isinstance(byte_count, bool)
+            or byte_count < 0
+        ):
+            raise ValueError(f"SEAL_REVISION_INPUT_BINDING_INVALID:{relative}")
+        seen_paths.add(relative)
+        historical = _bytes_at(root, historical_head, relative)
+        if historical is None:
+            raise ValueError(f"SEAL_REVISION_INPUT_MISSING:{relative}")
+        if sha256_bytes(historical) != digest or len(historical) != byte_count:
+            raise ValueError(f"SEAL_REVISION_INPUT_HASH_MISMATCH:{relative}")
+        current = _bytes_at(root, current_head, relative)
+        if current is None:
+            raise ValueError(f"SEAL_SUCCESSOR_INPUT_MISSING:{relative}")
+        # Reports, records and schemas are append-only historical evidence.
+        # Tool and workflow source may evolve, but its current bytes are never
+        # substituted into the old sealed row above.
+        if not relative.startswith(evolvable_prefixes) and current != historical:
+            raise ValueError(f"SEAL_IMMUTABLE_INPUT_DRIFT:{relative}")
+        sidecar_path = normalize_path(str(row.get("sidecar_path", "")))
+        sidecar_sha = str(row.get("sidecar_sha256", ""))
+        if sidecar_path or sidecar_sha:
+            if not sidecar_path or not re.fullmatch(r"[0-9a-f]{64}", sidecar_sha):
+                raise ValueError(f"SEAL_REVISION_INPUT_SIDECAR_INVALID:{relative}")
+            historical_sidecar = _bytes_at(root, historical_head, sidecar_path)
+            current_sidecar = _bytes_at(root, current_head, sidecar_path)
+            if (
+                historical_sidecar is None
+                or sha256_bytes(historical_sidecar) != sidecar_sha
+                or current_sidecar != historical_sidecar
+            ):
+                raise ValueError(f"SEAL_REVISION_INPUT_SIDECAR_DRIFT:{relative}")
+
+    # The historical scanner manifest remains authoritative for its own three
+    # core paths; successor source is deliberately not compared to these old
+    # digests.  This proves the old rows without confusing them with HEAD.
+    scanner_manifest_bytes = _bytes_at(
+        root,
+        historical_head,
+        SCANNER_MANIFEST_REL.as_posix(),
+    )
+    try:
+        scanner_manifest = json.loads(scanner_manifest_bytes.decode("utf-8-sig"))
+    except (AttributeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("SEAL_HISTORICAL_SCANNER_MANIFEST_INVALID") from exc
+    scanner_rows = scanner_manifest.get("files") if isinstance(scanner_manifest, dict) else None
+    if not isinstance(scanner_rows, list):
+        raise ValueError("SEAL_HISTORICAL_SCANNER_ROWS_INVALID")
+    scanner_by_path = {
+        normalize_path(str(row.get("path", ""))): str(row.get("sha256", ""))
+        for row in scanner_rows
+        if isinstance(row, dict)
+    }
+    if set(scanner_by_path) != set(SCANNER_CORE_PATHS):
+        raise ValueError("SEAL_HISTORICAL_SCANNER_PATH_SET_DRIFT")
+    for relative in SCANNER_CORE_PATHS:
+        historical = _bytes_at(root, historical_head, relative)
+        if historical is None or sha256_bytes(historical) != scanner_by_path[relative]:
+            raise ValueError(f"SEAL_HISTORICAL_SCANNER_HASH_MISMATCH:{relative}")
+
+    # Do not use the cached resolver here: this is the post-verification
+    # mutation check and must observe a fresh ref value.
+    if _git(root, "rev-parse", "HEAD", check=False).strip() != current_head:
+        raise ValueError("POST_MANIFEST_INPUT_MUTATION_COUNT=1")
+    counts = {
+        field: manifest.get(field)
+        for field in EXPECTED_SEAL_COUNTS
+    }
+    _validate_exact_count_projection(counts)
+    return {
+        "status": "VERIFIED",
+        "authorization_manifest_sha256": manifest_sha,
+        "application_plan_sha256": plan_sha,
+        "POST_MANIFEST_INPUT_MUTATION_COUNT": 0,
+        "REUSE_GATE_STATUS": "FAIL",
+        "FINAL_STATUS": "HARD_STOP",
+        **counts,
+    }
+
+
 def seal_evidence(root: Path, output_root: Path, *, verify_only: bool) -> dict[str, Any]:
     root = root.resolve()
     output_root = output_root.resolve()
     if output_root != root:
         raise ValueError("SEAL_OUTPUT_ROOT_MUST_EQUAL_PROJECT_ROOT")
     existing_receipt, existing_payload = _run_existing_reuse_selftest(root)
+    if verify_only:
+        return _verify_published_seal_revision(
+            root,
+            output_root,
+            existing_selftest_receipt=existing_receipt,
+        )
     evidence = _collect_seal_evidence(
         root,
         output_root,

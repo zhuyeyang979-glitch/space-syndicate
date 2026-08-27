@@ -1380,6 +1380,101 @@ def run_selftest() -> dict[str, Any]:
         seal_tampered_input,
     ))
 
+    def historical_seal_uses_committed_blob() -> None:
+        relative = "tools/v076/v076_reuse_point_inertia_gate.py"
+        historical = correction._bytes_at(
+            project,
+            correction.SEAL_REVISION_HEAD_SHA,
+            relative,
+        )
+        _assert(historical is not None, "historical scanner blob missing")
+        binding = correction._seal_tool_binding(
+            project,
+            relative,
+            verify_only=True,
+            tracked_files={},
+        )
+        _assert(binding["sha256"] == _sha(historical), str(binding))
+        _assert(binding["byte_count"] == len(historical), str(binding))
+        frozen_manifest = json.loads(
+            (project / correction.AUTHORIZATION_MANIFEST_REL).read_text(
+                encoding="utf-8"
+            )
+        )
+        frozen_row = next(
+            row
+            for row in frozen_manifest["sealed_inputs"]
+            if row.get("path") == relative
+        )
+        _assert(binding == frozen_row, f"{binding!r} != {frozen_row!r}")
+
+    cases.append(Case(
+        "109",
+        "sealed V2 tool bindings are reconstructed from the immutable seal-revision Git blob",
+        "PASS",
+        historical_seal_uses_committed_blob,
+    ))
+
+    def successor_scanner_is_not_historical_bytes() -> None:
+        relative = "tools/v076/v076_reuse_point_inertia_gate.py"
+        historical = correction._bytes_at(
+            project,
+            correction.SEAL_REVISION_HEAD_SHA,
+            relative,
+        )
+        successor = correction._bytes_at(project, "HEAD", relative)
+        _assert(historical is not None and successor is not None, "scanner blob missing")
+        _assert(
+            _sha(historical) != _sha(successor),
+            "successor scanner unexpectedly collapsed to the historical blob",
+        )
+        binding = correction._seal_tool_binding(
+            project,
+            relative,
+            verify_only=True,
+            tracked_files={},
+        )
+        _assert(binding["sha256"] == _sha(historical), str(binding))
+        _assert(binding["sha256"] != _sha(successor), str(binding))
+
+    cases.append(Case(
+        "110",
+        "successor scanner evolution is never represented as historical V2 bytes",
+        "FAIL",
+        successor_scanner_is_not_historical_bytes,
+    ))
+
+    def published_seal_verify_only_end_to_end() -> None:
+        verification = correction._verify_published_seal_revision(
+            project,
+            project,
+            existing_selftest_receipt={
+                "REUSE_POINT_INERTIA_GATE_SELFTEST_STATUS": "PASS",
+                "REUSE_POINT_INERTIA_GATE_SELFTEST_CASE_COUNT": 143,
+                "REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT": 143,
+            },
+        )
+        _assert(verification["status"] == "VERIFIED", str(verification))
+        _assert(
+            verification["authorization_manifest_sha256"]
+            == correction.sha256_bytes(
+                correction._bytes_at(
+                    project,
+                    correction.SEAL_REVISION_HEAD_SHA,
+                    correction.AUTHORIZATION_MANIFEST_REL.as_posix(),
+                )
+            ),
+            str(verification),
+        )
+        _assert(verification["POST_MANIFEST_INPUT_MUTATION_COUNT"] == 0, str(verification))
+
+    cases.append(Case(
+        "111",
+        "verify-only validates the frozen V2 seal end to end without rebuilding it from successor receipts",
+        "PASS",
+        published_seal_verify_only_end_to_end,
+    ))
+
     def seal_count_mismatch() -> None:
         counts = dict(correction.EXPECTED_SEAL_COUNTS)
         counts["RAW_FAILURE_COUNT"] -= 1
@@ -1656,7 +1751,7 @@ def run_selftest() -> dict[str, Any]:
         "76", "78", "79", "80", "81", "82", "86", "88", "89",
         "90", "91",
         "93", "94", "95", "96", "97", "98", "99", "100",
-        "101", "102", "103", "104", "105", "106", "108",
+        "101", "102", "103", "104", "105", "106", "108", "109", "110", "111",
     }
     false_green = sum(
         result.status == "FAIL" and result.case_id in false_green_sensitive_ids
