@@ -19,9 +19,14 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from . import (
+        v076_historical_delta_metadata_independent_audit
+        as _historical_delta_metadata_independent_audit,
+    )
     from . import v076_post_touch_revalidation as _post_touch
     from . import v076_subject_projection_revalidation_independent_audit as _subject_projection_revalidation
 except ImportError:
+    import v076_historical_delta_metadata_independent_audit as _historical_delta_metadata_independent_audit
     import v076_post_touch_revalidation as _post_touch
     import v076_subject_projection_revalidation_independent_audit as _subject_projection_revalidation
 
@@ -46,6 +51,14 @@ FULL_CONVERGENCE_AUTHORIZATION_ID = (
 FULL_CONVERGENCE_BASE_HEAD = "d701a81dce693b584d52fbfca3e0e78b521ad775"
 FULL_CONVERGENCE_BASELINE_SHA = "cfb84c08abacb294ea54ffc975f691869b33ac47a5d6a9f28377c54534f19166"
 FULL_CONVERGENCE_FAILURE_SET_SHA = "dd3b9f88319ba008dafa0de8be14d4e7427a3cb02d7b3e11ed6d50e2c80893ef"
+FULL_CONVERGENCE_PRIMARY_HISTORICAL_COUNT = 501
+FULL_CONVERGENCE_HISTORICAL_DELTA_METADATA_COUNT = 86
+FULL_CONVERGENCE_COMBINED_HISTORICAL_COUNT = 587
+FULL_CONVERGENCE_LEGACY_CORRECTED_COUNT = 12
+FULL_CONVERGENCE_TERMINAL_CHAIN_COUNT = 489
+FULL_CONVERGENCE_TERMINAL_BATCH_ID = "batch-013"
+FULL_CONVERGENCE_TERMINAL_VALIDATED_BATCH_COUNT = 13
+FULL_CONVERGENCE_TERMINAL_BATCH_FAILURE_COUNT = 11
 FULL_CONVERGENCE_SCHEMA_SHA = "87acd3a0eaa9ac75e7d5f6ffbd502f8a385275749d3a9ba5eae57a2b3f6b90df"
 FULL_CONVERGENCE_SCHEMA = Path(
     "docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827.json"
@@ -5927,6 +5940,542 @@ def _suppress_subject_projection_revalidation_findings(
     return kept
 
 
+def _exact_fingerprint_set_sha(values: set[str] | list[str]) -> str:
+    """Hash one canonical exact set while keeping the empty set byte-empty."""
+
+    rendered = sorted(str(value) for value in values)
+    payload = b"" if not rendered else ("\n".join(rendered) + "\n").encode("utf-8")
+    return _sha_bytes(payload)
+
+
+def _empty_historical_delta_metadata_authority(
+    *,
+    status: str,
+    failures: list[str] | None = None,
+    independent_status: str = "NOT_PROVIDED",
+    diagnostic_authorized: set[str] | None = None,
+    diagnostic_verified: set[str] | None = None,
+) -> dict[str, Any]:
+    diagnostic_authorized = diagnostic_authorized or set()
+    diagnostic_verified = diagnostic_verified or set()
+    return {
+        "status": status,
+        "failures": sorted(set(failures or [])),
+        "independent_status": independent_status,
+        "primary_projection_comparison_status": "NOT_COMPARED",
+        "primary_projection_digest_match": False,
+        "authority_projection_sha256": "",
+        "ledger_path": "",
+        "ledger_sha256": "",
+        "raw_report_sha256": "",
+        "raw_report_head_sha": "",
+        "scanner_sha256": "",
+        "metadata_record_count": 0,
+        "correction_record_count": 0,
+        "component_count": 0,
+        "authorized_failure_count": 0,
+        "authorized_failure_set_sha256": _exact_fingerprint_set_sha(set()),
+        "verified_failure_count": 0,
+        "verified_failure_set_sha256": _exact_fingerprint_set_sha(set()),
+        "authorized_historical_fingerprints": [],
+        "verified_historical_fingerprints": [],
+        "record_summaries": [],
+        "diagnostic_authorized_failure_count": len(diagnostic_authorized),
+        "diagnostic_authorized_failure_set_sha256": (
+            _exact_fingerprint_set_sha(diagnostic_authorized)
+        ),
+        "diagnostic_verified_failure_count": len(diagnostic_verified),
+        "diagnostic_verified_failure_set_sha256": (
+            _exact_fingerprint_set_sha(diagnostic_verified)
+        ),
+    }
+
+
+def _historical_delta_metadata_authority_projection(
+    root: Path,
+    ledger_path: Path,
+    *,
+    evaluated_head: str,
+    independent_receipt: dict[str, Any],
+) -> tuple[dict[str, Any], set[str], set[str], list[dict[str, Any]]]:
+    """Project authority only from committed ledger/record bytes at one Head."""
+
+    validator = _historical_delta_metadata_independent_audit
+    head = validator._exact_commit(root, evaluated_head)
+    ledger, ledger_bytes = validator._committed_document(
+        root,
+        head,
+        validator.LEDGER_PATH,
+    )
+    try:
+        relative_ledger = ledger_path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError as exc:
+        raise ValueError("HISTORICAL_DELTA_METADATA_LEDGER_OUTSIDE_REPOSITORY") from exc
+    if relative_ledger != validator.LEDGER_PATH:
+        raise ValueError("HISTORICAL_DELTA_METADATA_LEDGER_PATH_MISMATCH")
+
+    records = ledger.get("records")
+    if not isinstance(records, list):
+        raise ValueError("HISTORICAL_DELTA_METADATA_RECORD_LIST_INVALID")
+    identities: dict[str, dict[str, str]] = {}
+    component_ids: set[str] = set()
+    source_commits: set[str] = set()
+    for record in records:
+        if not isinstance(record, dict):
+            raise ValueError("HISTORICAL_DELTA_METADATA_RECORD_INVALID")
+        source_commit = str(record.get("source_commit", ""))
+        bindings = record.get("failure_bindings")
+        if not isinstance(bindings, list):
+            raise ValueError("HISTORICAL_DELTA_METADATA_FAILURE_BINDING_LIST_INVALID")
+        for binding in bindings:
+            if not isinstance(binding, dict):
+                raise ValueError("HISTORICAL_DELTA_METADATA_FAILURE_BINDING_INVALID")
+            fingerprint = str(binding.get("failure_fingerprint", ""))
+            component_id = str(binding.get("component_id", ""))
+            if (
+                not re.fullmatch(r"V2F-[0-9a-f]{64}", fingerprint)
+                or fingerprint in identities
+                or not component_id
+                or not source_commit
+            ):
+                raise ValueError(
+                    "HISTORICAL_DELTA_METADATA_AUTHORIZED_IDENTITY_INVALID"
+                )
+            component_ids.add(component_id)
+            source_commits.add(source_commit)
+            identities[fingerprint] = {
+                "failure_fingerprint": fingerprint,
+                "raw_failure": str(binding.get("raw_failure", "")),
+                "rule_id": str(binding.get("rule_id", "")),
+                "source_commit": source_commit,
+                "component_id": component_id,
+                "path": str(binding.get("source_component_path", "")),
+                "target": "historical",
+                "authority_origin": "HISTORICAL_DELTA_METADATA_LEDGER",
+            }
+
+    verified: set[str] = set()
+    record_summaries: list[dict[str, Any]] = []
+    correction_bindings = ledger.get("correction_record_bindings")
+    if not isinstance(correction_bindings, list):
+        raise ValueError(
+            "HISTORICAL_DELTA_METADATA_CORRECTION_BINDING_LIST_INVALID"
+        )
+    for binding in correction_bindings:
+        if not isinstance(binding, dict):
+            raise ValueError("HISTORICAL_DELTA_METADATA_CORRECTION_BINDING_INVALID")
+        relative = str(binding.get("path", ""))
+        correction, correction_bytes = validator._committed_document(
+            root,
+            head,
+            relative,
+        )
+        fingerprints = {
+            str(value) for value in correction.get("failure_fingerprints", [])
+        }
+        if verified & fingerprints:
+            raise ValueError(
+                "HISTORICAL_DELTA_METADATA_VERIFIED_FINGERPRINT_REUSE"
+            )
+        verified.update(fingerprints)
+        record_summaries.append({
+            "correction_id": str(correction.get("correction_id", "")),
+            "path": _normalize_path(relative),
+            "record_sha256": validator._sha(correction_bytes),
+            "record_payload_sha256": str(
+                correction.get("record_payload_sha256", "")
+            ),
+            "failure_fingerprints": sorted(fingerprints),
+        })
+    record_summaries.sort(key=lambda value: (value["path"], value["correction_id"]))
+    authorized = set(identities)
+    counts = {
+        "metadata_record_count": len(records),
+        "source_transition_count": len(source_commits),
+        "correction_record_count": len(correction_bindings),
+        "component_count": len(component_ids),
+        "authorized_failure_count": len(authorized),
+        "verified_failure_count": len(verified),
+    }
+    projection = {
+        "schema_version": (
+            "space_syndicate.v076.historical_delta_metadata."
+            "standalone_independent_authority_projection.v1"
+        ),
+        "evaluated_head_sha": head,
+        "evaluated_tree_sha": _git(root, "rev-parse", f"{head}^{{tree}}"),
+        "ledger_path": validator.LEDGER_PATH,
+        "ledger_sha256": validator._sha(ledger_bytes),
+        "raw_report_sha256": str(independent_receipt.get("raw_report_sha256", "")),
+        "raw_report_head_sha": str(ledger.get("raw_report_head_sha", "")),
+        "scanner_sha256": str(independent_receipt.get("scanner_sha256", "")),
+        **counts,
+        "authorized_failure_set_sha256": _exact_fingerprint_set_sha(authorized),
+        "verified_failure_set_sha256": _exact_fingerprint_set_sha(verified),
+        "authorized_identity_by_fingerprint": {
+            fingerprint: identities[fingerprint]
+            for fingerprint in sorted(identities)
+        },
+        "verified_historical_fingerprints": sorted(verified),
+        "record_summaries": record_summaries,
+    }
+    return projection, authorized, verified, record_summaries
+
+
+def _validate_historical_delta_metadata_authority(
+    root: Path,
+    ledger_path: Path | None,
+    *,
+    evaluated_head: str,
+) -> dict[str, Any]:
+    """Run the standalone HDM audit and rebuild its authority from Git bytes."""
+
+    if ledger_path is None:
+        return _empty_historical_delta_metadata_authority(status="NOT_PROVIDED")
+    validator = _historical_delta_metadata_independent_audit
+    try:
+        receipt = validator.audit_ledger(
+            root,
+            ledger_path,
+            evaluated_head=evaluated_head,
+            primary_projection=None,
+        )
+    except Exception as exc:
+        return _empty_historical_delta_metadata_authority(
+            status="FAIL",
+            failures=[
+                "HISTORICAL_DELTA_METADATA_INDEPENDENT_EXCEPTION:"
+                f"{type(exc).__name__}:{exc}"
+            ],
+            independent_status="NO_GO",
+        )
+    if not isinstance(receipt, dict):
+        return _empty_historical_delta_metadata_authority(
+            status="FAIL",
+            failures=["HISTORICAL_DELTA_METADATA_INDEPENDENT_RESULT_INVALID"],
+            independent_status="NO_GO",
+        )
+    failures = [
+        f"HISTORICAL_DELTA_METADATA_INDEPENDENT:{value}"
+        for value in receipt.get("failures", [])
+    ]
+    independent_status = str(receipt.get("status", "NO_GO"))
+    if independent_status != "GO":
+        failures.append("HISTORICAL_DELTA_METADATA_INDEPENDENT_GATE_NOT_GO")
+        return _empty_historical_delta_metadata_authority(
+            status="FAIL",
+            failures=failures,
+            independent_status=independent_status,
+        )
+    try:
+        projection, authorized, verified, record_summaries = (
+            _historical_delta_metadata_authority_projection(
+                root,
+                ledger_path,
+                evaluated_head=evaluated_head,
+                independent_receipt=receipt,
+            )
+        )
+    except Exception as exc:
+        return _empty_historical_delta_metadata_authority(
+            status="FAIL",
+            failures=failures + [
+                "HISTORICAL_DELTA_METADATA_AUTHORITY_PROJECTION_FAILED:"
+                f"{type(exc).__name__}:{exc}"
+            ],
+            independent_status=independent_status,
+        )
+
+    for field, expected in (
+        ("authorized_failure_count", len(authorized)),
+        ("authorized_failure_set_sha256", _exact_fingerprint_set_sha(authorized)),
+        ("verified_failure_count", len(verified)),
+        ("verified_failure_set_sha256", _exact_fingerprint_set_sha(verified)),
+        ("component_count", projection["component_count"]),
+        ("metadata_record_count", projection["metadata_record_count"]),
+        ("correction_record_count", projection["correction_record_count"]),
+    ):
+        if receipt.get(field) != expected:
+            failures.append(
+                "HISTORICAL_DELTA_METADATA_INDEPENDENT_"
+                f"{field.upper()}_MISMATCH"
+            )
+    if authorized != verified:
+        failures.append("HISTORICAL_DELTA_METADATA_VERIFIED_SET_MISMATCH")
+    if len(authorized) != FULL_CONVERGENCE_HISTORICAL_DELTA_METADATA_COUNT:
+        failures.append("HISTORICAL_DELTA_METADATA_EXACT_COUNT_MISMATCH")
+    if failures:
+        return _empty_historical_delta_metadata_authority(
+            status="FAIL",
+            failures=failures,
+            independent_status=independent_status,
+            diagnostic_authorized=authorized,
+            diagnostic_verified=verified,
+        )
+    return {
+        "status": "PASS",
+        "failures": [],
+        "independent_status": independent_status,
+        "primary_projection_comparison_status": "NOT_COMPARED",
+        "primary_projection_digest_match": False,
+        "authority_projection_sha256": _sha_bytes(_canonical(projection)),
+        "ledger_path": projection["ledger_path"],
+        "ledger_sha256": projection["ledger_sha256"],
+        "raw_report_sha256": projection["raw_report_sha256"],
+        "raw_report_head_sha": projection["raw_report_head_sha"],
+        "scanner_sha256": projection["scanner_sha256"],
+        "metadata_record_count": projection["metadata_record_count"],
+        "correction_record_count": projection["correction_record_count"],
+        "component_count": projection["component_count"],
+        "authorized_failure_count": len(authorized),
+        "authorized_failure_set_sha256": _exact_fingerprint_set_sha(authorized),
+        "verified_failure_count": len(verified),
+        "verified_failure_set_sha256": _exact_fingerprint_set_sha(verified),
+        "authorized_historical_fingerprints": sorted(authorized),
+        "verified_historical_fingerprints": sorted(verified),
+        "record_summaries": record_summaries,
+        "diagnostic_authorized_failure_count": len(authorized),
+        "diagnostic_authorized_failure_set_sha256": (
+            _exact_fingerprint_set_sha(authorized)
+        ),
+        "diagnostic_verified_failure_count": len(verified),
+        "diagnostic_verified_failure_set_sha256": (
+            _exact_fingerprint_set_sha(verified)
+        ),
+    }
+
+
+def _terminal_coverage_projection(
+    *,
+    batch_id: str,
+    terminal_remainder_batch: bool,
+    terminal_batch_failure_count: int,
+    validated_batch_count: int,
+    primary_historical: set[str],
+    historical_delta_metadata_authority: dict[str, Any],
+    legacy_fingerprints: set[str],
+    chain_fingerprints: set[str],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Prove the closed 501 + 86 = 587 terminal partition exactly once."""
+
+    hdm = (
+        {
+            str(value)
+            for value in historical_delta_metadata_authority.get(
+                "authorized_historical_fingerprints", []
+            )
+        }
+        if historical_delta_metadata_authority.get("status") == "PASS"
+        else set()
+    )
+    combined = primary_historical | hdm
+    primary_hdm_overlap = primary_historical & hdm
+    legacy_hdm_overlap = legacy_fingerprints & hdm
+    chain_hdm_overlap = chain_fingerprints & hdm
+    chain_legacy_overlap = chain_fingerprints & legacy_fingerprints
+    legacy_outside_primary = legacy_fingerprints - primary_historical
+    expected_chain = combined - legacy_fingerprints - hdm
+    missing = expected_chain - chain_fingerprints
+    extra = chain_fingerprints - expected_chain
+    terminal_candidate = bool(
+        terminal_remainder_batch
+        or batch_id == FULL_CONVERGENCE_TERMINAL_BATCH_ID
+        or validated_batch_count >= FULL_CONVERGENCE_TERMINAL_VALIDATED_BATCH_COUNT
+    )
+    findings: list[dict[str, Any]] = []
+
+    def reject(code: str, message: str, **evidence: Any) -> None:
+        findings.append(_finding(code, "P0", message, **evidence))
+
+    if terminal_candidate:
+        if not terminal_remainder_batch:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_REMAINDER_FLAG_REQUIRED",
+                "batch-013 must be the explicit terminal remainder",
+            )
+        if batch_id != FULL_CONVERGENCE_TERMINAL_BATCH_ID:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_BATCH_ID_MISMATCH",
+                "the only authorized terminal batch is batch-013",
+                actual=batch_id,
+                expected=FULL_CONVERGENCE_TERMINAL_BATCH_ID,
+            )
+        if validated_batch_count != FULL_CONVERGENCE_TERMINAL_VALIDATED_BATCH_COUNT:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_BATCH_COUNT_MISMATCH",
+                "terminal authority requires exactly thirteen validated batches",
+                actual=validated_batch_count,
+                expected=FULL_CONVERGENCE_TERMINAL_VALIDATED_BATCH_COUNT,
+            )
+        if terminal_batch_failure_count != FULL_CONVERGENCE_TERMINAL_BATCH_FAILURE_COUNT:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_BATCH_FAILURE_COUNT_MISMATCH",
+                "batch-013 must contain the frozen eleven-fingerprint remainder",
+                actual=terminal_batch_failure_count,
+                expected=FULL_CONVERGENCE_TERMINAL_BATCH_FAILURE_COUNT,
+            )
+        ledger_status = str(historical_delta_metadata_authority.get("status", ""))
+        if ledger_status == "NOT_PROVIDED":
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_HISTORICAL_DELTA_METADATA_LEDGER_REQUIRED",
+                "terminal authority requires the explicit HDM ledger",
+            )
+        elif ledger_status != "PASS":
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_HISTORICAL_DELTA_METADATA_LEDGER_NOT_PASS",
+                "terminal authority requires a GO independent HDM audit",
+                status=ledger_status,
+            )
+        for actual, expected, code, label in (
+            (
+                len(primary_historical),
+                FULL_CONVERGENCE_PRIMARY_HISTORICAL_COUNT,
+                "FULL_CONVERGENCE_TERMINAL_PRIMARY_COUNT_MISMATCH",
+                "primary historical authority",
+            ),
+            (
+                len(hdm),
+                FULL_CONVERGENCE_HISTORICAL_DELTA_METADATA_COUNT,
+                "FULL_CONVERGENCE_TERMINAL_HDM_COUNT_MISMATCH",
+                "HDM authority",
+            ),
+            (
+                len(combined),
+                FULL_CONVERGENCE_COMBINED_HISTORICAL_COUNT,
+                "FULL_CONVERGENCE_TERMINAL_COMBINED_COUNT_MISMATCH",
+                "combined historical authority",
+            ),
+            (
+                len(legacy_fingerprints),
+                FULL_CONVERGENCE_LEGACY_CORRECTED_COUNT,
+                "FULL_CONVERGENCE_TERMINAL_LEGACY_COUNT_MISMATCH",
+                "legacy correction authority",
+            ),
+            (
+                len(expected_chain),
+                FULL_CONVERGENCE_TERMINAL_CHAIN_COUNT,
+                "FULL_CONVERGENCE_TERMINAL_EXPECTED_CHAIN_COUNT_MISMATCH",
+                "expected full-convergence chain",
+            ),
+            (
+                len(chain_fingerprints),
+                FULL_CONVERGENCE_TERMINAL_CHAIN_COUNT,
+                "FULL_CONVERGENCE_TERMINAL_CHAIN_COUNT_MISMATCH",
+                "validated full-convergence chain",
+            ),
+        ):
+            if actual != expected:
+                reject(code, f"{label} has the wrong exact cardinality", actual=actual, expected=expected)
+        if primary_hdm_overlap:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_PRIMARY_HDM_OVERLAP",
+                "primary and HDM authorities must be disjoint",
+                overlap_count=len(primary_hdm_overlap),
+            )
+        if legacy_hdm_overlap:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_LEGACY_HDM_OVERLAP",
+                "legacy and HDM correction authorities must be disjoint",
+                overlap_count=len(legacy_hdm_overlap),
+            )
+        if chain_hdm_overlap:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_CHAIN_HDM_OVERLAP",
+                "the full-convergence chain must exclude HDM-owned fingerprints",
+                overlap_count=len(chain_hdm_overlap),
+            )
+        if chain_legacy_overlap:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_CHAIN_LEGACY_OVERLAP",
+                "the full-convergence chain must exclude legacy-owned fingerprints",
+                overlap_count=len(chain_legacy_overlap),
+            )
+        if legacy_outside_primary:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_LEGACY_OUTSIDE_PRIMARY",
+                "every frozen legacy correction must belong to primary authority",
+                outside_count=len(legacy_outside_primary),
+            )
+        if missing:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_COVERAGE_MISSING",
+                "the terminal chain omits authorized primary failures",
+                missing_count=len(missing),
+            )
+        if extra:
+            reject(
+                "FULL_CONVERGENCE_TERMINAL_COVERAGE_EXTRA",
+                "the terminal chain contains unauthorized or partition-owned failures",
+                extra_count=len(extra),
+            )
+
+    projection = {
+        "status": (
+            "NOT_APPLICABLE"
+            if not terminal_candidate
+            else ("PASS" if not findings else "FAIL")
+        ),
+        "terminal_candidate": terminal_candidate,
+        "terminal_remainder_batch": terminal_remainder_batch,
+        "terminal_batch_id": batch_id,
+        "expected_terminal_batch_id": FULL_CONVERGENCE_TERMINAL_BATCH_ID,
+        "terminal_batch_failure_count": terminal_batch_failure_count,
+        "expected_terminal_batch_failure_count": (
+            FULL_CONVERGENCE_TERMINAL_BATCH_FAILURE_COUNT
+        ),
+        "validated_batch_count": validated_batch_count,
+        "expected_validated_batch_count": (
+            FULL_CONVERGENCE_TERMINAL_VALIDATED_BATCH_COUNT
+        ),
+        "primary_historical_count": len(primary_historical),
+        "primary_historical_set_sha256": (
+            _exact_fingerprint_set_sha(primary_historical)
+        ),
+        "historical_delta_metadata_count": len(hdm),
+        "historical_delta_metadata_set_sha256": _exact_fingerprint_set_sha(hdm),
+        "combined_historical_count": len(combined),
+        "combined_historical_set_sha256": _exact_fingerprint_set_sha(combined),
+        "legacy_corrected_count": len(legacy_fingerprints),
+        "legacy_corrected_set_sha256": (
+            _exact_fingerprint_set_sha(legacy_fingerprints)
+        ),
+        "expected_chain_count": len(expected_chain),
+        "expected_chain_set_sha256": _exact_fingerprint_set_sha(expected_chain),
+        "validated_chain_count": len(chain_fingerprints),
+        "validated_chain_set_sha256": (
+            _exact_fingerprint_set_sha(chain_fingerprints)
+        ),
+        "primary_hdm_overlap_count": len(primary_hdm_overlap),
+        "primary_hdm_overlap_set_sha256": (
+            _exact_fingerprint_set_sha(primary_hdm_overlap)
+        ),
+        "primary_hdm_overlap_fingerprints": sorted(primary_hdm_overlap),
+        "legacy_hdm_overlap_count": len(legacy_hdm_overlap),
+        "legacy_hdm_overlap_set_sha256": (
+            _exact_fingerprint_set_sha(legacy_hdm_overlap)
+        ),
+        "legacy_hdm_overlap_fingerprints": sorted(legacy_hdm_overlap),
+        "chain_hdm_overlap_count": len(chain_hdm_overlap),
+        "chain_hdm_overlap_set_sha256": _exact_fingerprint_set_sha(chain_hdm_overlap),
+        "chain_hdm_overlap_fingerprints": sorted(chain_hdm_overlap),
+        "chain_legacy_overlap_count": len(chain_legacy_overlap),
+        "chain_legacy_overlap_set_sha256": _exact_fingerprint_set_sha(chain_legacy_overlap),
+        "chain_legacy_overlap_fingerprints": sorted(chain_legacy_overlap),
+        "legacy_outside_primary_count": len(legacy_outside_primary),
+        "legacy_outside_primary_set_sha256": (
+            _exact_fingerprint_set_sha(legacy_outside_primary)
+        ),
+        "legacy_outside_primary_fingerprints": sorted(legacy_outside_primary),
+        "coverage_missing_count": len(missing),
+        "coverage_missing_set_sha256": _exact_fingerprint_set_sha(missing),
+        "coverage_missing_fingerprints": sorted(missing),
+        "coverage_extra_count": len(extra),
+        "coverage_extra_set_sha256": _exact_fingerprint_set_sha(extra),
+        "coverage_extra_fingerprints": sorted(extra),
+    }
+    return findings, projection
+
+
 def audit_full_convergence_batch(
     root: Path,
     manifest_path: Path,
@@ -5939,6 +6488,7 @@ def audit_full_convergence_batch(
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
+    historical_delta_metadata_ledger_path: Path | None = None,
 ) -> dict[str, Any]:
     """Independently verify one explicit new-epoch batch and its legacy anchor.
 
@@ -6106,6 +6656,29 @@ def audit_full_convergence_batch(
     explicit_batch_chain = list(reversed(predecessor_chain)) + [
         (manifest_path, manifest)
     ]
+    historical_delta_metadata_authority = (
+        _validate_historical_delta_metadata_authority(
+            root,
+            historical_delta_metadata_ledger_path,
+            evaluated_head=evaluated_head,
+        )
+    )
+    if (
+        historical_delta_metadata_ledger_path is not None
+        and historical_delta_metadata_authority.get("status") != "PASS"
+    ):
+        failures = historical_delta_metadata_authority.get("failures", [])
+        if not failures:
+            failures = ["HISTORICAL_DELTA_METADATA_AUTHORITY_NOT_PASS"]
+        findings.extend(
+            _finding(
+                "FULL_CONVERGENCE_HISTORICAL_DELTA_METADATA_LEDGER_INVALID",
+                "P0",
+                "the explicit HDM ledger failed its standalone independent audit",
+                failure=str(failure),
+            )
+            for failure in failures
+        )
     post_touch_findings, post_touch_trusted, post_touch_summary = _post_touch_sidecar_findings(
         root,
         post_touch_revalidation_path,
@@ -6624,12 +7197,27 @@ def audit_full_convergence_batch(
                 "a record fingerprint is absent from the frozen historical-failure set",
                 fingerprint=fingerprint,
             ))
+    terminal_findings, terminal_coverage = _terminal_coverage_projection(
+        batch_id=str(manifest.get("batch_id", "")),
+        terminal_remainder_batch=(
+            manifest.get("terminal_remainder_batch") is True
+        ),
+        terminal_batch_failure_count=len(set(all_fingerprints)),
+        validated_batch_count=len(predecessor_chain) + 1,
+        primary_historical=set(baseline_fingerprints["historical"]),
+        historical_delta_metadata_authority=(
+            historical_delta_metadata_authority
+        ),
+        legacy_fingerprints=legacy_fingerprints,
+        chain_fingerprints=(predecessor_fingerprints | set(all_fingerprints)),
+    )
+    findings.extend(terminal_findings)
     findings = _suppress_post_touch_findings(findings, post_touch_trusted)
     findings = _suppress_subject_projection_revalidation_findings(
         findings, subject_revalidation_trusted
     )
     return {
-        "schema_version": "space_syndicate.v076.reuse_correction_v2.full_convergence_independent_audit.v1",
+        "schema_version": "space_syndicate.v076.reuse_correction_v2.full_convergence_independent_audit.v2",
         "authorization_id": FULL_CONVERGENCE_AUTHORIZATION_ID,
         "authorization_base_head_sha": FULL_CONVERGENCE_BASE_HEAD,
         "authorized_head_sha": FULL_CONVERGENCE_BASE_HEAD,
@@ -6647,6 +7235,10 @@ def audit_full_convergence_batch(
         "descendant_history_authorized_fingerprint_count": len(descendant_fingerprints),
         "post_touch_revalidation": post_touch_summary,
         "subject_projection_revalidation": subject_revalidation_summary,
+        "historical_delta_metadata_ledger": (
+            historical_delta_metadata_authority
+        ),
+        "terminal_coverage": terminal_coverage,
         "live_historical_correction_authority_count": len(
             baseline_fingerprints["historical"]
         ),
@@ -6738,6 +7330,12 @@ def main(argv: list[str] | None = None) -> int:
         help="explicit Registry-metadata subject-projection successor manifest; never discovered implicitly",
     )
     parser.add_argument(
+        "--historical-delta-metadata-ledger",
+        type=Path,
+        default=None,
+        help="explicit append-only HDM authority ledger; mandatory for terminal coverage",
+    )
+    parser.add_argument(
         "--evaluated-head-ref",
         default="HEAD",
         help="Head used for subject-projection invalidation in full-convergence mode",
@@ -6757,6 +7355,14 @@ def main(argv: list[str] | None = None) -> int:
     ):
         parser.error(
             "--subject-projection-revalidation requires "
+            "--full-convergence-batch-manifest and its complete full-convergence input set"
+        )
+    if (
+        args.historical_delta_metadata_ledger is not None
+        and args.full_convergence_batch_manifest is None
+    ):
+        parser.error(
+            "--historical-delta-metadata-ledger requires "
             "--full-convergence-batch-manifest and its complete full-convergence input set"
         )
     root = args.project.resolve()
@@ -6803,6 +7409,10 @@ def main(argv: list[str] | None = None) -> int:
             subject_projection_revalidation_path=(
                 args.subject_projection_revalidation.resolve()
                 if args.subject_projection_revalidation is not None else None
+            ),
+            historical_delta_metadata_ledger_path=(
+                args.historical_delta_metadata_ledger.resolve()
+                if args.historical_delta_metadata_ledger is not None else None
             ),
         )
         (out / "audit_full_convergence_batch.json").write_bytes(_canonical(report))

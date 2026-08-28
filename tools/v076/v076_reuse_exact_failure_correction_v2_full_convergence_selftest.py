@@ -2572,6 +2572,201 @@ def _terminal_historical_delta_metadata_ledger_omission_case(root: Path) -> None
     _expect(ledger["record_summaries"] == [], str(ledger))
 
 
+def _independent_terminal_partition_fixture() -> tuple[
+    set[str], set[str], set[str], set[str], dict[str, Any]
+]:
+    primary = {_fingerprint(10000 + index) for index in range(501)}
+    hdm = {_fingerprint(20000 + index) for index in range(86)}
+    legacy = set(sorted(primary)[:12])
+    chain = primary - legacy
+    authority = {
+        "status": "PASS",
+        "authorized_historical_fingerprints": sorted(hdm),
+    }
+    return primary, hdm, legacy, chain, authority
+
+
+def _independent_terminal_exact_partition_case() -> None:
+    primary, hdm, legacy, chain, authority = (
+        _independent_terminal_partition_fixture()
+    )
+    findings, receipt = independent_audit._terminal_coverage_projection(
+        batch_id="batch-013",
+        terminal_remainder_batch=True,
+        terminal_batch_failure_count=11,
+        validated_batch_count=13,
+        primary_historical=primary,
+        historical_delta_metadata_authority=authority,
+        legacy_fingerprints=legacy,
+        chain_fingerprints=chain,
+    )
+    _expect(findings == [], str(findings))
+    _expect(receipt["status"] == "PASS", str(receipt))
+    _expect(receipt["primary_historical_count"] == 501, str(receipt))
+    _expect(receipt["historical_delta_metadata_count"] == 86, str(receipt))
+    _expect(receipt["combined_historical_count"] == 587, str(receipt))
+    _expect(receipt["legacy_corrected_count"] == 12, str(receipt))
+    _expect(receipt["expected_chain_count"] == 489, str(receipt))
+    _expect(receipt["validated_chain_count"] == 489, str(receipt))
+    _expect(receipt["coverage_missing_count"] == 0, str(receipt))
+    _expect(receipt["coverage_extra_count"] == 0, str(receipt))
+    empty_sha = hashlib.sha256(b"").hexdigest()
+    _expect(receipt["coverage_missing_set_sha256"] == empty_sha, str(receipt))
+    _expect(receipt["coverage_extra_set_sha256"] == empty_sha, str(receipt))
+    _expect(receipt["legacy_hdm_overlap_set_sha256"] == empty_sha, str(receipt))
+    _expect(
+        receipt["combined_historical_set_sha256"]
+        == independent_audit._exact_fingerprint_set_sha(primary | hdm),
+        str(receipt),
+    )
+
+
+def _independent_terminal_ledger_omission_case() -> None:
+    primary, _, legacy, chain, _ = _independent_terminal_partition_fixture()
+    findings, receipt = independent_audit._terminal_coverage_projection(
+        batch_id="batch-013",
+        terminal_remainder_batch=True,
+        terminal_batch_failure_count=11,
+        validated_batch_count=13,
+        primary_historical=primary,
+        historical_delta_metadata_authority={"status": "NOT_PROVIDED"},
+        legacy_fingerprints=legacy,
+        chain_fingerprints=chain,
+    )
+    codes = {finding["code"] for finding in findings}
+    _expect(
+        "FULL_CONVERGENCE_TERMINAL_HISTORICAL_DELTA_METADATA_LEDGER_REQUIRED"
+        in codes,
+        str(findings),
+    )
+    _expect(
+        "FULL_CONVERGENCE_TERMINAL_HDM_COUNT_MISMATCH" in codes,
+        str(findings),
+    )
+    _expect(receipt["status"] == "FAIL", str(receipt))
+    _expect(receipt["historical_delta_metadata_count"] == 0, str(receipt))
+    _expect(receipt["combined_historical_count"] == 501, str(receipt))
+
+
+def _independent_terminal_equal_cardinality_tamper_case() -> None:
+    primary, _, legacy, chain, authority = (
+        _independent_terminal_partition_fixture()
+    )
+    missing = min(chain)
+    extra = _fingerprint(30000)
+    tampered = (chain - {missing}) | {extra}
+    findings, receipt = independent_audit._terminal_coverage_projection(
+        batch_id="batch-013",
+        terminal_remainder_batch=True,
+        terminal_batch_failure_count=11,
+        validated_batch_count=13,
+        primary_historical=primary,
+        historical_delta_metadata_authority=authority,
+        legacy_fingerprints=legacy,
+        chain_fingerprints=tampered,
+    )
+    codes = {finding["code"] for finding in findings}
+    _expect(
+        "FULL_CONVERGENCE_TERMINAL_COVERAGE_MISSING" in codes,
+        str(findings),
+    )
+    _expect(
+        "FULL_CONVERGENCE_TERMINAL_COVERAGE_EXTRA" in codes,
+        str(findings),
+    )
+    _expect(receipt["validated_chain_count"] == 489, str(receipt))
+    _expect(receipt["coverage_missing_fingerprints"] == [missing], str(receipt))
+    _expect(receipt["coverage_extra_fingerprints"] == [extra], str(receipt))
+    _expect(
+        receipt["expected_chain_set_sha256"]
+        != receipt["validated_chain_set_sha256"],
+        str(receipt),
+    )
+
+
+def _independent_terminal_partition_overlap_case() -> None:
+    primary, hdm, legacy, chain, _ = _independent_terminal_partition_fixture()
+    shared = min(legacy)
+    overlapping_hdm = (hdm - {min(hdm)}) | {shared}
+    authority = {
+        "status": "PASS",
+        "authorized_historical_fingerprints": sorted(overlapping_hdm),
+    }
+    findings, receipt = independent_audit._terminal_coverage_projection(
+        batch_id="batch-013",
+        terminal_remainder_batch=True,
+        terminal_batch_failure_count=11,
+        validated_batch_count=13,
+        primary_historical=primary,
+        historical_delta_metadata_authority=authority,
+        legacy_fingerprints=legacy,
+        chain_fingerprints=chain,
+    )
+    codes = {finding["code"] for finding in findings}
+    _expect(
+        "FULL_CONVERGENCE_TERMINAL_PRIMARY_HDM_OVERLAP" in codes,
+        str(findings),
+    )
+    _expect(
+        "FULL_CONVERGENCE_TERMINAL_LEGACY_HDM_OVERLAP" in codes,
+        str(findings),
+    )
+    _expect(
+        "FULL_CONVERGENCE_TERMINAL_COMBINED_COUNT_MISMATCH" in codes,
+        str(findings),
+    )
+    _expect(receipt["primary_hdm_overlap_fingerprints"] == [shared], str(receipt))
+    _expect(receipt["legacy_hdm_overlap_fingerprints"] == [shared], str(receipt))
+    _expect(receipt["combined_historical_count"] == 586, str(receipt))
+
+
+def _independent_hdm_cli_coupling_case(root: Path) -> None:
+    stderr = io.StringIO()
+    with contextlib.redirect_stderr(stderr):
+        try:
+            independent_audit.main([
+                "--project",
+                str(root),
+                "--historical-delta-metadata-ledger",
+                "explicit-ledger.json",
+            ])
+        except SystemExit as exc:
+            _expect(exc.code == 2, str(exc))
+        else:
+            raise AssertionError("standalone HDM input was accepted without FC inputs")
+    _expect(
+        "--historical-delta-metadata-ledger requires" in stderr.getvalue(),
+        stderr.getvalue(),
+    )
+
+
+def _independent_real_hdm_authority_case(root: Path) -> None:
+    head = _git(root, "rev-parse", "HEAD")
+    ledger_path = root / "docs/architecture/V076_HISTORICAL_DELTA_METADATA_LEDGER.json"
+    receipt = independent_audit._validate_historical_delta_metadata_authority(
+        root,
+        ledger_path,
+        evaluated_head=head,
+    )
+    expected_sha = "91373b8883708f835052cbebe1da8b53e33f4ef608d97b17f5ab45161cd0a8d9"
+    _expect(receipt["status"] == "PASS", str(receipt))
+    _expect(receipt["independent_status"] == "GO", str(receipt))
+    _expect(
+        receipt["primary_projection_comparison_status"] == "NOT_COMPARED",
+        str(receipt),
+    )
+    _expect(receipt["primary_projection_digest_match"] is False, str(receipt))
+    _expect(receipt["authorized_failure_count"] == 86, str(receipt))
+    _expect(receipt["verified_failure_count"] == 86, str(receipt))
+    _expect(receipt["authorized_failure_set_sha256"] == expected_sha, str(receipt))
+    _expect(receipt["verified_failure_set_sha256"] == expected_sha, str(receipt))
+    _expect(
+        receipt["authorized_historical_fingerprints"]
+        == receipt["verified_historical_fingerprints"],
+        str(receipt),
+    )
+
+
 def _broken_composite_clears_ledger_authority_case(root: Path) -> None:
     supplement_fingerprints = {
         _fingerprint(7000 + index) for index in range(501)
@@ -5842,6 +6037,12 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("105", "subject-projection trust requires primary PASS independent GO exact 82-map parity and PASS HDM", _subject_projection_dual_gate_and_parity_case))
     cases.append(Case("106", "broken nonexplicit aliased and outside-root subject-projection routes never reach trust validators", _subject_projection_routing_fail_closed_case))
     cases.append(Case("107", "subject-projection suppresses only projection drift while Post-Touch V1 keeps its exact scope", _subject_projection_suppression_scope_and_v1_compatibility_case))
+    cases.append(Case("108", "standalone terminal receipt proves exact 501 plus 86 equals 587 and thirteen-batch 489 coverage", _independent_terminal_exact_partition_case))
+    cases.append(Case("109", "standalone terminal receipt fails closed when the explicit HDM ledger is omitted", _independent_terminal_ledger_omission_case))
+    cases.append(Case("110", "equal-cardinality terminal substitution exposes one exact missing and extra fingerprint", _independent_terminal_equal_cardinality_tamper_case))
+    cases.append(Case("111", "primary HDM and legacy HDM overlaps invalidate the terminal partition", _independent_terminal_partition_overlap_case))
+    cases.append(Case("112", "standalone HDM CLI input is coupled to the complete full-convergence input set", lambda: _independent_hdm_cli_coupling_case(root)))
+    cases.append(Case("113", "real committed HDM authority independently resolves exact 86-set parity without claiming primary comparison", lambda: _independent_real_hdm_authority_case(root)))
     return cases
 
 
