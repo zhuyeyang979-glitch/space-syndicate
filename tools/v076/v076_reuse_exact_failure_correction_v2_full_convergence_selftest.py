@@ -724,6 +724,79 @@ def _nonadjacent_fingerprint_reuse_case() -> None:
         )
 
 
+def _canonical_previous_batch_chain_case() -> None:
+    batch_001 = _batch()
+    batch_002 = _batch()
+    batch_003 = _batch()
+    _retarget_batch(
+        batch_002,
+        "batch-002",
+        [_fingerprint(index) for index in range(26, 51)],
+        batch_001,
+    )
+    _retarget_batch(
+        batch_003,
+        "batch-003",
+        [_fingerprint(index) for index in range(51, 76)],
+        batch_002,
+    )
+    with tempfile.TemporaryDirectory(prefix="v076-fc-canonical-chain-") as temporary:
+        root = Path(temporary)
+        batch_001_path = root / "batch-001" / "batch-001-manifest.json"
+        batch_002_path = root / "batch-002" / "batch-002-manifest.json"
+        _write_json(batch_001_path, batch_001)
+        batch_002["previous_batch_append_sha256"] = convergence.sha256_file(
+            batch_001_path
+        )
+        _write_json(batch_002_path, batch_002)
+        batch_003["previous_batch_append_sha256"] = convergence.sha256_file(
+            batch_002_path
+        )
+        failures = convergence.validate_previous_batch_link(
+            batch_003,
+            batch_002_path,
+        )
+        _expect(not failures, str(failures))
+
+
+def _supplement_prebase_source_ancestry_case(root: Path) -> None:
+    source_commit = "62ceba063d685871ee3869707862598da00ba649"
+    supplement_head = convergence.DESCENDANT_HISTORY_V3_RAW_HEAD
+    evaluated_head = _git(root, "rev-parse", "HEAD")
+    _expect(
+        not convergence._is_ancestor(
+            root,
+            convergence.AUTHORIZATION_BASE_HEAD_SHA,
+            source_commit,
+        ),
+        "fixture source no longer predates the authorization base",
+    )
+    _expect(
+        convergence._supplement_source_commit_is_authorized(
+            root,
+            source_commit,
+            supplement_head,
+        ),
+        "exact pre-base source ancestor was rejected",
+    )
+    _expect(
+        not convergence._supplement_source_commit_is_authorized(
+            root,
+            evaluated_head,
+            supplement_head,
+        ),
+        "post-report source commit was accepted",
+    )
+    _expect(
+        not convergence._supplement_source_commit_is_authorized(
+            root,
+            source_commit,
+            "not-a-commit",
+        ),
+        "invalid supplement head was accepted",
+    )
+
+
 def _batch_artifact_binding_case() -> None:
     manifest = _batch()
     identities = {
@@ -3752,6 +3825,8 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("80", "committed schema seals accept LF and CRLF only and reject worktree content drift", lambda: _schema_blob_lf_crlf_portability_case(root)))
     cases.append(Case("81", "committed predecessor schema drift fails both auditors", lambda: _schema_committed_predecessor_drift_case(root)))
     cases.append(Case("82", "successor schema is committed at the evaluated Head and rejects stale or open authority", lambda: _v3_schema_committed_binding_negative_case(root)))
+    cases.append(Case("83", "canonical predecessor filenames remain sequence-bound across three batches", _canonical_previous_batch_chain_case))
+    cases.append(Case("84", "supplement authority accepts exact pre-base history but rejects post-report sources", lambda: _supplement_prebase_source_ancestry_case(root)))
     return cases
 
 

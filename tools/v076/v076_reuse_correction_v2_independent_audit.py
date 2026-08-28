@@ -4862,7 +4862,13 @@ def _derive_prior_manifest_path(
     prior_batch_id: str,
 ) -> Path | None:
     if current_path.parent.name == current_batch_id:
-        return current_path.parent.parent / prior_batch_id / current_path.name
+        # Keep canonical batch-NNN/batch-NNN-manifest.json names aligned with
+        # the derived prior sequence. This is an explicit path transform,
+        # not directory discovery.
+        filename = current_path.name
+        if current_batch_id in filename:
+            filename = filename.replace(current_batch_id, prior_batch_id, 1)
+        return current_path.parent.parent / prior_batch_id / filename
     if current_batch_id in current_path.name:
         return current_path.with_name(current_path.name.replace(current_batch_id, prior_batch_id, 1))
     return None

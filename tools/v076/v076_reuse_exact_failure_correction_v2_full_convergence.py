@@ -4032,6 +4032,20 @@ def _resolve_commit_prefix(root: Path, prefix: str) -> str:
     return resolved if _is_commit(resolved) and resolved.startswith(prefix) else ""
 
 
+def _supplement_source_commit_is_authorized(
+    root: Path,
+    source_commit: str,
+    supplement_head: str,
+) -> bool:
+    """Accept one exact historical source only inside the sealed report past."""
+
+    return (
+        _is_commit(source_commit)
+        and _is_commit(supplement_head)
+        and _is_ancestor(root, source_commit, supplement_head)
+    )
+
+
 def _authorized_identity_binding_failures(
     root: Path,
     fingerprint: str,
@@ -4237,9 +4251,19 @@ def validate_extension_record_against_repo(
                     supplement_head = str(
                         authorized_identity.get("supplement_raw_report_head_sha", "")
                     )
-                    if (
-                        not _is_ancestor(root, AUTHORIZATION_BASE_HEAD_SHA, source_commit)
-                        or not _is_ancestor(root, source_commit, supplement_head)
+                    # A descendant supplement discovers a historical failure
+                    # in a report evaluated after the authorization base. The
+                    # component transition itself may legitimately predate
+                    # that base (the source commit is still an exact ancestor
+                    # of the sealed supplement report head). Requiring
+                    # AUTHORIZATION_BASE_HEAD_SHA -> source_commit here would
+                    # reject precisely those valid pre-base transitions and
+                    # contradict the supplement validator's source->report
+                    # ancestry contract.
+                    if not _supplement_source_commit_is_authorized(
+                        root,
+                        source_commit,
+                        supplement_head,
                     ):
                         failures.append(
                             f"IDENTITY_SOURCE_COMMIT_NOT_AUTHORIZED_SUPPLEMENT_DESCENDANT:{fingerprint}"
@@ -4418,7 +4442,16 @@ def _derive_prior_manifest_path(
     prior_batch_id: str,
 ) -> Path | None:
     if current_path.parent.name == current_batch_id:
-        return current_path.parent.parent / prior_batch_id / current_path.name
+        # Canonical repository manifests are named after their batch
+        # (batch-NNN/batch-NNN-manifest.json). Preserve the explicit filename
+        # shape while changing only the sequence token; otherwise a canonical
+        # batch-002 predecessor incorrectly resolves to
+        # batch-001/batch-002-manifest.json. This remains sequence-bound and
+        # performs no directory discovery.
+        filename = current_path.name
+        if current_batch_id in filename:
+            filename = filename.replace(current_batch_id, prior_batch_id, 1)
+        return current_path.parent.parent / prior_batch_id / filename
     if current_batch_id in current_path.name:
         return current_path.with_name(current_path.name.replace(current_batch_id, prior_batch_id, 1))
     return None
