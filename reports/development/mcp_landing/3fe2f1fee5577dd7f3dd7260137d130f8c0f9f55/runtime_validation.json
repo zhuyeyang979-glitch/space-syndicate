@@ -1,0 +1,100 @@
+{
+  "schema_version": "space_syndicate.mcp_runtime_validation_receipt.v1",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "validated_commit": "3fe2f1fee5577dd7f3dd7260137d130f8c0f9f55",
+  "validated_tree": "1905bc00e72ccc1095bf67cd14c8438ddb5341fe",
+  "godot_version": "4.7-stable (official)",
+  "mcp_role": "Supervisor",
+  "mcp_port": 8845,
+  "project_root": "D:/SpaceSyndicateWorktrees/v076/770d741f/reuse-dynamic-bffc5c46/",
+  "scene_path": "res://scenes/main.tscn",
+  "runtime_scene_path": "/root/Main",
+  "runtime_scene_script": "res://scripts/v075_runtime/v075_application_bootstrap.gd",
+  "runtime_nodes_observed": [
+    "/root/Main/V075RuntimeComposition",
+    "/root/Main/V075GameScreen",
+    "/root/Main/V075RuntimeComposition/V076DeterministicKernel",
+    "/root/Main/V075RuntimeComposition/V076MilitaryPhysicalEtaOwnerV1",
+    "/root/Main/V075RuntimeComposition/V076PrivateDirectActionInputOwnerV1",
+    "/root/Main/V075GameScreen/V076PresentationAnimationDirector"
+  ],
+  "play_state_running": true,
+  "console_error_count": 0,
+  "runtime_event_stream": {
+    "stream_id": "1787880129-12412758-40483423705",
+    "continuity_status": "CONTIGUOUS",
+    "event_sequence_complete": true,
+    "event_sequence_gap_count": 0,
+    "event_sequence_invalid_count": 0,
+    "event_overflow_count": 0,
+    "event_evidence_complete": true
+  },
+  "capture": {
+    "captured": true,
+    "save_path": "user://v076_dynamic_bffc5c46_main_runtime.png",
+    "resolved_path": "D:/SpaceSyndicateWorktrees/v076/770d741f/reuse-dynamic-bffc5c46/.codex-godot/appdata-roaming/Godot/app_userdata/太空辛迪加/v076_dynamic_bffc5c46_main_runtime.png",
+    "width": 1600,
+    "height": 960,
+    "sha256": "3e66463cb523eb8eb7651cb1d2ddcf2327eca347ba218ee8ce09dd8e27cbbf7d"
+  },
+  "recoverable_mcp_contract_errors": [
+    {
+      "operation": "get_runtime_events",
+      "error_code": "RUNTIME_EVENT_STREAM_ID_REQUIRED",
+      "cause": "the first request supplied since_sequence without stream_id",
+      "product_error": false,
+      "recovered_by": "retry with exact stream_id 1787880129-12412758-40483423705",
+      "successful_retry_raw_response": "0046-get_runtime_events_success.jsonrpc.json"
+    },
+    {
+      "operation": "capture_runtime_view",
+      "error": "Runtime screenshot path must stay under user:// or res:// without parent-directory traversal.",
+      "cause": "the first request used an external absolute save path",
+      "product_error": false,
+      "failed_raw_response": "0043-capture_runtime_view_external_path_rejected.jsonrpc.json",
+      "recovered_by": "retry with user://v076_dynamic_bffc5c46_main_runtime.png",
+      "successful_retry_raw_response": "0047-capture_runtime_view_success.jsonrpc.json"
+    }
+  ],
+  "play_stop": {
+    "exit_play_mode_result": "Stopped the running scene.",
+    "post_exit_is_playing_scene": false,
+    "runtime_pid": 10540,
+    "runtime_process_count_after": 0,
+    "post_stop_bridge_file_classification": "STALE_LAST_RUNTIME_SNAPSHOT_NOT_CURRENT_PROCESS",
+    "post_stop_bridge_file_status": "running",
+    "post_stop_bridge_state_age_msec": 13285,
+    "realtime_exit_authority": [
+      "get_play_state is_playing_scene=false",
+      "runtime PID 10540 absent"
+    ]
+  },
+  "editor_clean_stop": {
+    "stopped": true,
+    "already_exited": false,
+    "identity_verified": true,
+    "normal_close_requested": true,
+    "forced_stop": false,
+    "editor_pid": 20816,
+    "worktree_godot_process_count_after": 0,
+    "endpoint_count_after": 0,
+    "listener_8845_after": 0,
+    "role_identity_metadata_count_after": 0
+  },
+  "raw_evidence_directory": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076_dynamic_bffc5c46_mcp_20260828T0102Z",
+  "raw_response_sha256": {
+    "play_state_running": "f664aa2819fa20a4a6acc94f9c61c566b44ec827a59350e31490a7a40e9fbc52",
+    "capture_external_path_rejected": "b89b6f2aaf6f464041830fb7f71e46c1078688480fcbff0c6ad9b3b833f7f6b9",
+    "console_errors_zero": "82677a5a9f61318ee02f9d4eea42964d4292c535176d3dd56c3aedb02b37843d",
+    "runtime_events_success": "4266c927081c0c8acb87986dd0c73765588da5b9243732566a188f80f785ef4d",
+    "capture_runtime_view_success": "997e8dee9f15e66b7f1143aa9a58f151817fc2e77d76aa9815d75740d75ecff2",
+    "exit_play_mode": "2e7a614beec760a27bfec5ecea74c6f71b8b621a0baf09ff763812bda8f4cfc1",
+    "play_state_stopped": "d69ddea060ab4be833adad89af4a3c84af660e4f227f8b31cb70d7bc30b2f82e",
+    "runtime_bridge_after_exit": "9dfddd452d8a1fb6e8b574a3e43efddf981fa0e197ffa98b22a54f7274774e00"
+  },
+  "mcp_product_file_mutation_coverage": "100_PERCENT",
+  "mcp_post_edit_validation_coverage": "100_PERCENT",
+  "direct_filesystem_product_edit_count": 0,
+  "player_visible_mcp_runtime_validation": "PASS",
+  "real_main_tscn_mcp_validation": "PASS"
+}
