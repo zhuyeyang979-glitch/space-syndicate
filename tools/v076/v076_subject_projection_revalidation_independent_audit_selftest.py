@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 import v076_subject_projection_revalidation_independent_audit as audit
@@ -131,11 +132,34 @@ def main() -> int:
 
     original_validator = integration._subject_projection_revalidation.audit_manifest_and_records
     try:
-        integration._subject_projection_revalidation.audit_manifest_and_records = lambda *args, **kwargs: valid_result
-        findings, routed, summary = integration._subject_projection_revalidation_sidecar_findings(root, root / "sidecar.json", [(root / "batch.json", {})], head, explicit_batch_chain_valid=True)
-        expect(not findings and routed == wrapper_trusted and summary["status"] == "PASS", "valid independent route rejected")
+        batch_root = root / "docs/architecture/reuse_corrections/v2/batches/full_convergence_20260827"
+        chain_13 = [
+            (batch_root / f"batch-{number:03d}" / f"batch-{number:03d}-manifest.json", {})
+            for number in range(1, 14)
+        ]
+        batch_007_relative = chain_13[6][0].resolve().relative_to(root.resolve()).as_posix()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sidecar_path = Path(temp_dir) / "sidecar.json"
+            sidecar_path.write_text(
+                json.dumps({"current_batch_manifest_path": batch_007_relative}),
+                encoding="utf-8",
+            )
+            calls: list[dict[str, object]] = []
 
-        attacks = [
+            def valid_validator(*args, **kwargs):
+                calls.append(kwargs)
+                return valid_result
+
+            integration._subject_projection_revalidation.audit_manifest_and_records = valid_validator
+            findings, routed, summary = integration._subject_projection_revalidation_sidecar_findings(
+                root, sidecar_path, chain_13, head, explicit_batch_chain_valid=True
+            )
+            expect(not findings and routed == wrapper_trusted and summary["status"] == "PASS", "valid 13-batch independent route rejected")
+            expect(len(calls) == 1, "valid route did not call validator exactly once")
+            expect(calls[0].get("current_batch_manifest_path") == chain_13[6][0].resolve(), "13-batch route selected chain tail instead of batch 007")
+            expect(calls[0].get("explicit_batch_manifest_paths") == [path for path, _ in chain_13], "complete 13-batch chain was not forwarded")
+
+            attacks = [
             None,
             "",
             True,
@@ -164,24 +188,61 @@ def main() -> int:
                     },
                 },
             },
-        ]
-        for attack in attacks:
-            integration._subject_projection_revalidation.audit_manifest_and_records = lambda *args, _attack=attack, **kwargs: _attack
-            findings, routed, summary = integration._subject_projection_revalidation_sidecar_findings(root, root / "sidecar.json", [(root / "batch.json", {})], head, explicit_batch_chain_valid=True)
-            expect(bool(findings) and findings[0]["severity"] == "P0" and not routed and summary["status"] == "FAIL", f"wrapper attack accepted: {attack!r}")
+            ]
+            for attack in attacks:
+                integration._subject_projection_revalidation.audit_manifest_and_records = lambda *args, _attack=attack, **kwargs: _attack
+                findings, routed, summary = integration._subject_projection_revalidation_sidecar_findings(root, sidecar_path, chain_13, head, explicit_batch_chain_valid=True)
+                expect(bool(findings) and findings[0]["severity"] == "P0" and not routed and summary["status"] == "FAIL", f"wrapper attack accepted: {attack!r}")
 
-        def raise_attack(*args, **kwargs):
-            raise RuntimeError("validator attack")
-        integration._subject_projection_revalidation.audit_manifest_and_records = raise_attack
-        findings, routed, summary = integration._subject_projection_revalidation_sidecar_findings(root, root / "sidecar.json", [(root / "batch.json", {})], head, explicit_batch_chain_valid=True)
-        expect(bool(findings) and not routed and summary["status"] == "FAIL", "validator exception escaped fail-closed wrapper")
+            def raise_attack(*args, **kwargs):
+                raise RuntimeError("validator attack")
+            integration._subject_projection_revalidation.audit_manifest_and_records = raise_attack
+            findings, routed, summary = integration._subject_projection_revalidation_sidecar_findings(root, sidecar_path, chain_13, head, explicit_batch_chain_valid=True)
+            expect(bool(findings) and not routed and summary["status"] == "FAIL", "validator exception escaped fail-closed wrapper")
 
-        findings, routed, summary = integration._subject_projection_revalidation_sidecar_findings(root, root / "sidecar.json", [(root / "batch.json", {})], head, explicit_batch_chain_valid=False)
-        expect(bool(findings) and not routed and summary["status"] == "FAIL", "invalid explicit chain did not fail closed")
+            routing_attacks = [
+                ({"current_batch_manifest_path": "docs/unknown.json"}, chain_13, True),
+                ({"current_batch_manifest_path": chain_13[13 - 1][0].resolve().relative_to(root.resolve()).as_posix()}, chain_13[:7], True),
+                ({"current_batch_manifest_path": batch_007_relative.replace("/", "\\")}, chain_13, True),
+                ({"current_batch_manifest_path": "res://" + batch_007_relative}, chain_13, True),
+                ({"current_batch_manifest_path": batch_007_relative.replace("/batch-007/", "//batch-007/")}, chain_13, True),
+                ({"current_batch_manifest_path": batch_007_relative.replace("/batch-007/", "/./batch-007/")}, chain_13, True),
+                ({"current_batch_manifest_path": str(chain_13[6][0].resolve())}, chain_13, True),
+                ({"current_batch_manifest_path": batch_007_relative}, chain_13, False),
+                ({"current_batch_manifest_path": batch_007_relative}, [], True),
+                ({"current_batch_manifest_path": batch_007_relative}, chain_13 + [chain_13[6]], True),
+                ({"current_batch_manifest_path": batch_007_relative}, [(Path(temp_dir) / "outside.json", {})], True),
+                ({"current_batch_manifest_path": True}, chain_13, True),
+                ({}, chain_13, True),
+                ([], chain_13, True),
+            ]
+            for document, chain, chain_valid in routing_attacks:
+                sidecar_path.write_text(json.dumps(document), encoding="utf-8")
+                call_count = 0
+
+                def forbidden_validator(*args, **kwargs):
+                    nonlocal call_count
+                    call_count += 1
+                    return valid_result
+
+                integration._subject_projection_revalidation.audit_manifest_and_records = forbidden_validator
+                findings, routed, summary = integration._subject_projection_revalidation_sidecar_findings(
+                    root, sidecar_path, chain, head, explicit_batch_chain_valid=chain_valid
+                )
+                expect(bool(findings) and findings[0]["severity"] == "P0" and not routed and summary["status"] == "FAIL", f"routing attack accepted: {document!r}")
+                expect(call_count == 0, f"routing failure invoked validator: {document!r}")
+
+            sidecar_path.write_text('{"current_batch_manifest_path":"x","current_batch_manifest_path":"y"}', encoding="utf-8")
+            call_count = 0
+            integration._subject_projection_revalidation.audit_manifest_and_records = forbidden_validator
+            findings, routed, summary = integration._subject_projection_revalidation_sidecar_findings(
+                root, sidecar_path, chain_13, head, explicit_batch_chain_valid=True
+            )
+            expect(bool(findings) and not routed and summary["status"] == "FAIL" and call_count == 0, "duplicate-key sidecar did not fail before validator")
     finally:
         integration._subject_projection_revalidation.audit_manifest_and_records = original_validator
 
-    print(json.dumps({"status": "PASS", "case_count": 56,
+    print(json.dumps({"status": "PASS", "case_count": 72,
                       "change_class_only_count": 78, "change_class_reuse_scan_count": 4}, sort_keys=True))
     return 0
 

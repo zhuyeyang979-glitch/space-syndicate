@@ -5711,6 +5711,65 @@ def _suppress_post_touch_findings(
     return kept
 
 
+def _resolve_subject_projection_batch_manifest_path(
+    root: Path,
+    sidecar_path: Path,
+    explicit_batch_chain: list[tuple[Path, dict[str, Any]]],
+    *,
+    explicit_batch_chain_valid: bool,
+) -> tuple[list[str], Path | None]:
+    """Resolve the SPR batch only from its exact sidecar declaration and chain."""
+
+    if not explicit_batch_chain_valid:
+        return ["SPR_EXPLICIT_BATCH_CHAIN_INVALID"], None
+    try:
+        sidecar = _json(sidecar_path)
+    except (OSError, UnicodeDecodeError, ValueError, json.JSONDecodeError):
+        return ["SPR_SIDECAR_MANIFEST_JSON_INVALID"], None
+    if type(sidecar) is not dict:
+        return ["SPR_SIDECAR_MANIFEST_NOT_OBJECT"], None
+    declared = sidecar.get("current_batch_manifest_path")
+    if type(declared) is not str:
+        return ["SPR_CURRENT_BATCH_PATH_DECLARATION_INVALID"], None
+
+    parts = declared.split("/")
+    canonical = (
+        bool(declared)
+        and declared == declared.strip()
+        and not declared.startswith("/")
+        and "\\" not in declared
+        and all(part not in {"", ".", ".."} for part in parts)
+        and not any(token in declared for token in ("*", "?", "[", "]", ":", "\0"))
+    )
+    if not canonical:
+        return ["SPR_CURRENT_BATCH_PATH_DECLARATION_NOT_CANONICAL"], None
+
+    root_resolved = root.resolve()
+    allowed: dict[str, Path] = {}
+    failures: list[str] = []
+    if not explicit_batch_chain:
+        failures.append("SPR_EXPLICIT_BATCH_CHAIN_EMPTY")
+    for entry in explicit_batch_chain:
+        if type(entry) is not tuple or len(entry) != 2 or not isinstance(entry[0], Path):
+            failures.append("SPR_EXPLICIT_BATCH_CHAIN_ENTRY_INVALID")
+            continue
+        resolved = entry[0].resolve()
+        try:
+            relative = resolved.relative_to(root_resolved).as_posix()
+        except ValueError:
+            failures.append("SPR_EXPLICIT_BATCH_CHAIN_PATH_OUTSIDE_ROOT")
+            continue
+        if relative in allowed:
+            failures.append("SPR_EXPLICIT_BATCH_CHAIN_DUPLICATE_PATH")
+            continue
+        allowed[relative] = resolved
+    selected = allowed.get(declared)
+    if selected is None:
+        failures.append("SPR_CURRENT_BATCH_MANIFEST_NOT_IN_EXPLICIT_CHAIN")
+    failures = sorted(set(failures))
+    return failures, None if failures else selected
+
+
 def _subject_projection_revalidation_sidecar_findings(
     root: Path,
     sidecar_path: Path | None,
@@ -5721,21 +5780,27 @@ def _subject_projection_revalidation_sidecar_findings(
 ) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
     if sidecar_path is None:
         return [], {}, {"status": "NOT_PROVIDED", "record_count": 0, "trusted_fingerprint_count": 0, "path": "", "failures": []}
-    if not explicit_batch_chain_valid:
-        code = "SPR_EXPLICIT_BATCH_CHAIN_INVALID"
+    routing_failures, current_batch_path = (
+        _resolve_subject_projection_batch_manifest_path(
+            root,
+            sidecar_path,
+            explicit_batch_chain,
+            explicit_batch_chain_valid=explicit_batch_chain_valid,
+        )
+    )
+    if routing_failures or current_batch_path is None:
         return [
             _finding(
                 "FULL_CONVERGENCE_SUBJECT_PROJECTION_REVALIDATION_INVALID",
                 "P0",
-                code,
+                ";".join(routing_failures),
                 manifest_path=str(sidecar_path),
             )
         ], {}, {
             "status": "FAIL", "record_count": 0, "trusted_fingerprint_count": 0,
-            "path": str(sidecar_path), "failures": [code],
+            "path": str(sidecar_path), "failures": routing_failures,
         }
     try:
-        current_batch_path = explicit_batch_chain[-1][0] if explicit_batch_chain else None
         result: Any = _subject_projection_revalidation.audit_manifest_and_records(
             root,
             sidecar_path,
