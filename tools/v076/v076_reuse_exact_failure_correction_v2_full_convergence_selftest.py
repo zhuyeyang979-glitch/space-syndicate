@@ -759,6 +759,272 @@ def _canonical_previous_batch_chain_case() -> None:
         _expect(not failures, str(failures))
 
 
+def _post_touch_ancestor_batch_routing_case() -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-post-touch-route-") as temporary:
+        root = Path(temporary)
+        batch_root = (
+            root
+            / "docs/architecture/reuse_corrections/v2/batches"
+            / "full_convergence_20260827"
+        )
+        predecessor_path = batch_root / "batch-004/batch-004-manifest.json"
+        current_path = batch_root / "batch-005/batch-005-manifest.json"
+        sidecar_path = (
+            root
+            / "docs/architecture/reuse_corrections/v2/revalidations"
+            / "post-touch-selftest.json"
+        )
+        predecessor = {"batch_id": "batch-004"}
+        current = {"batch_id": "batch-005"}
+        _write_json(predecessor_path, predecessor)
+        _write_json(current_path, current)
+        _write_json(sidecar_path, {
+            "current_batch_manifest_path": predecessor_path.relative_to(root).as_posix(),
+        })
+        explicit_chain = [
+            (predecessor_path, predecessor),
+            (current_path, current),
+        ]
+        failures, selected = convergence._resolve_post_touch_batch_manifest_path(
+            root,
+            sidecar_path,
+            explicit_chain,
+        )
+        _expect(not failures, str(failures))
+        _expect(
+            selected == predecessor_path.resolve(),
+            f"ancestor route mismatch: {selected}",
+        )
+        findings, independently_selected = (
+            independent_audit._resolve_post_touch_batch_manifest_path(
+                root,
+                sidecar_path,
+                explicit_chain,
+            )
+        )
+        _expect(not findings, str(findings))
+        _expect(
+            independently_selected == predecessor_path.resolve(),
+            f"independent ancestor route mismatch: {independently_selected}",
+        )
+
+
+def _post_touch_nonchain_batch_routing_case() -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-post-touch-nonchain-") as temporary:
+        root = Path(temporary)
+        batch_root = (
+            root
+            / "docs/architecture/reuse_corrections/v2/batches"
+            / "full_convergence_20260827"
+        )
+        current_path = batch_root / "batch-005/batch-005-manifest.json"
+        unrelated_path = batch_root / "batch-999/batch-999-manifest.json"
+        sidecar_path = (
+            root
+            / "docs/architecture/reuse_corrections/v2/revalidations"
+            / "post-touch-selftest.json"
+        )
+        current = {"batch_id": "batch-005"}
+        _write_json(current_path, current)
+        _write_json(unrelated_path, {"batch_id": "batch-999"})
+        _write_json(sidecar_path, {
+            "current_batch_manifest_path": unrelated_path.relative_to(root).as_posix(),
+        })
+        explicit_chain = [(current_path, current)]
+        failures, selected = convergence._resolve_post_touch_batch_manifest_path(
+            root,
+            sidecar_path,
+            explicit_chain,
+        )
+        _expect_failure(
+            failures,
+            "POST_TOUCH_CURRENT_BATCH_MANIFEST_NOT_IN_EXPLICIT_CHAIN",
+        )
+        _expect(selected is None, f"nonchain route trusted: {selected}")
+        findings, independently_selected = (
+            independent_audit._resolve_post_touch_batch_manifest_path(
+                root,
+                sidecar_path,
+                explicit_chain,
+            )
+        )
+        _expect(
+            any(
+                finding.get("code")
+                == "FULL_CONVERGENCE_POST_TOUCH_BATCH_NOT_IN_EXPLICIT_CHAIN"
+                for finding in findings
+            ),
+            str(findings),
+        )
+        _expect(
+            independently_selected is None,
+            f"independent nonchain route trusted: {independently_selected}",
+        )
+
+
+def _post_touch_malformed_sidecar_routing_case() -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-post-touch-malformed-") as temporary:
+        root = Path(temporary)
+        sidecar_path = root / "post-touch-selftest.json"
+        sidecar_path.write_text('{"current_batch_manifest_path":', encoding="utf-8")
+        failures, selected = convergence._resolve_post_touch_batch_manifest_path(
+            root,
+            sidecar_path,
+            [],
+        )
+        _expect_failure(failures, "POST_TOUCH_SIDECAR_MANIFEST_JSON_INVALID")
+        _expect(selected is None, f"malformed sidecar route trusted: {selected}")
+        findings, independently_selected = (
+            independent_audit._resolve_post_touch_batch_manifest_path(
+                root,
+                sidecar_path,
+                [],
+            )
+        )
+        _expect(
+            any(
+                finding.get("code")
+                == "FULL_CONVERGENCE_POST_TOUCH_SIDECAR_UNREADABLE"
+                for finding in findings
+            ),
+            str(findings),
+        )
+        _expect(
+            independently_selected is None,
+            f"independent malformed route trusted: {independently_selected}",
+        )
+
+
+def _post_touch_invalid_chain_never_trusts_case() -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-post-touch-broken-chain-") as temporary:
+        root = Path(temporary)
+        batch_path = (
+            root
+            / "docs/architecture/reuse_corrections/v2/batches"
+            / "full_convergence_20260827/batch-005/batch-005-manifest.json"
+        )
+        sidecar_path = root / "post-touch-selftest.json"
+        batch = {"batch_id": "batch-005"}
+        _write_json(batch_path, batch)
+        _write_json(sidecar_path, {
+            "current_batch_manifest_path": batch_path.relative_to(root).as_posix(),
+        })
+        failures, selected = convergence._resolve_post_touch_batch_manifest_path(
+            root,
+            sidecar_path,
+            [(batch_path, batch)],
+            explicit_batch_chain_valid=False,
+        )
+        _expect_failure(failures, "POST_TOUCH_EXPLICIT_BATCH_CHAIN_INVALID")
+        _expect(selected is None, f"broken primary chain route trusted: {selected}")
+
+        original_validator = independent_audit._post_touch.validate_manifest_and_records
+        fingerprint = _fingerprint(999)
+
+        def unexpected_pass(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+            raise AssertionError(
+                f"invalid chain reached post-touch trust validator for {fingerprint}"
+            )
+
+        independent_audit._post_touch.validate_manifest_and_records = unexpected_pass
+        try:
+            findings, trusted, summary = independent_audit._post_touch_sidecar_findings(
+                root,
+                sidecar_path,
+                [(batch_path, batch)],
+                "1" * 40,
+                explicit_batch_chain_valid=False,
+            )
+        finally:
+            independent_audit._post_touch.validate_manifest_and_records = original_validator
+        _expect(
+            any(
+                finding.get("code")
+                == "FULL_CONVERGENCE_POST_TOUCH_EXPLICIT_CHAIN_INVALID"
+                for finding in findings
+            ),
+            str(findings),
+        )
+        _expect(not trusted, f"broken independent chain exposed trust: {trusted}")
+        _expect(summary.get("status") == "FAIL", str(summary))
+        _expect(
+            summary.get("trusted_fingerprint_count") == 0,
+            str(summary),
+        )
+
+
+def _post_touch_path_aliases_never_route_case() -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-fc-post-touch-alias-") as temporary:
+        root = Path(temporary)
+        batch_path = (
+            root
+            / "docs/architecture/reuse_corrections/v2/batches"
+            / "full_convergence_20260827/batch-004/batch-004-manifest.json"
+        )
+        sidecar_path = root / "post-touch-selftest.json"
+        batch = {"batch_id": "batch-004"}
+        _write_json(batch_path, batch)
+        canonical = batch_path.relative_to(root).as_posix()
+        aliases = [
+            "res://" + canonical,
+            canonical.replace("/", "\\"),
+            "./" + canonical,
+            "../" + canonical,
+            canonical.replace("/", "//", 1),
+            " " + canonical,
+            canonical + " ",
+            canonical.replace("batch-004", "batch-*", 1),
+            "C:/outside/batch-004-manifest.json",
+        ]
+        original_validator = independent_audit._post_touch.validate_manifest_and_records
+
+        def unexpected_call(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+            raise AssertionError("noncanonical sidecar path reached trust validator")
+
+        independent_audit._post_touch.validate_manifest_and_records = unexpected_call
+        try:
+            for alias in aliases:
+                _write_json(sidecar_path, {"current_batch_manifest_path": alias})
+                failures, selected = (
+                    convergence._resolve_post_touch_batch_manifest_path(
+                        root,
+                        sidecar_path,
+                        [(batch_path, batch)],
+                    )
+                )
+                _expect(failures, f"primary accepted alias: {alias}")
+                _expect(selected is None, f"primary routed alias: {alias}")
+                findings, independently_selected = (
+                    independent_audit._resolve_post_touch_batch_manifest_path(
+                        root,
+                        sidecar_path,
+                        [(batch_path, batch)],
+                    )
+                )
+                _expect(findings, f"independent audit accepted alias: {alias}")
+                _expect(
+                    independently_selected is None,
+                    f"independent audit routed alias: {alias}",
+                )
+                wrapper_findings, trusted, summary = (
+                    independent_audit._post_touch_sidecar_findings(
+                        root,
+                        sidecar_path,
+                        [(batch_path, batch)],
+                        "1" * 40,
+                    )
+                )
+                _expect(wrapper_findings, f"wrapper accepted alias: {alias}")
+                _expect(not trusted, f"wrapper trusted alias: {alias}")
+                _expect(summary.get("status") == "FAIL", str(summary))
+                _expect(
+                    summary.get("trusted_fingerprint_count") == 0,
+                    str(summary),
+                )
+        finally:
+            independent_audit._post_touch.validate_manifest_and_records = original_validator
+
+
 def _supplement_prebase_source_ancestry_case(root: Path) -> None:
     source_commit = "62ceba063d685871ee3869707862598da00ba649"
     supplement_head = convergence.DESCENDANT_HISTORY_V3_RAW_HEAD
@@ -3827,6 +4093,11 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("82", "successor schema is committed at the evaluated Head and rejects stale or open authority", lambda: _v3_schema_committed_binding_negative_case(root)))
     cases.append(Case("83", "canonical predecessor filenames remain sequence-bound across three batches", _canonical_previous_batch_chain_case))
     cases.append(Case("84", "supplement authority accepts exact pre-base history but rejects post-report sources", lambda: _supplement_prebase_source_ancestry_case(root)))
+    cases.append(Case("85", "a post-touch sidecar can route only to an exact ancestor batch in the explicit current chain", _post_touch_ancestor_batch_routing_case))
+    cases.append(Case("86", "an unrelated valid batch path cannot acquire post-touch trust", _post_touch_nonchain_batch_routing_case))
+    cases.append(Case("87", "malformed post-touch sidecars fail closed in both auditors", _post_touch_malformed_sidecar_routing_case))
+    cases.append(Case("88", "an invalid explicit batch chain cannot expose post-touch trust", _post_touch_invalid_chain_never_trusts_case))
+    cases.append(Case("89", "post-touch path aliases selectors and escapes never route or expose trust", _post_touch_path_aliases_never_route_case))
     return cases
 
 

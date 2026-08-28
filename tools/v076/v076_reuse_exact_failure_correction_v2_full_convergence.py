@@ -4563,6 +4563,59 @@ def validate_previous_batch_link(
     return failures
 
 
+def _resolve_post_touch_batch_manifest_path(
+    root: Path,
+    sidecar_path: Path,
+    explicit_batch_chain: list[tuple[Path, dict[str, Any]]],
+    *,
+    explicit_batch_chain_valid: bool = True,
+) -> tuple[list[str], Path | None]:
+    """Resolve a sidecar batch anchor only from the explicit current chain.
+
+    A post-touch sidecar can legitimately revalidate a predecessor batch after
+    a later batch has been appended.  The sidecar declaration is therefore the
+    routing input, while ``explicit_batch_chain`` is the complete allowlist.
+    No directory discovery, wildcard, future batch, or unrelated valid batch
+    can acquire trust through this resolver.  The post-touch validator remains
+    responsible for the declared SHA, committed bytes, Head ordering, exact
+    fingerprint set, and live projection checks.
+    """
+
+    if not explicit_batch_chain_valid:
+        return ["POST_TOUCH_EXPLICIT_BATCH_CHAIN_INVALID"], None
+    try:
+        sidecar = load_json_strict(sidecar_path)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        return ["POST_TOUCH_SIDECAR_MANIFEST_JSON_INVALID"], None
+    if not isinstance(sidecar, dict):
+        return ["POST_TOUCH_SIDECAR_MANIFEST_NOT_OBJECT"], None
+    declared_value = sidecar.get("current_batch_manifest_path")
+    if not isinstance(declared_value, str):
+        return ["POST_TOUCH_CURRENT_BATCH_PATH_DECLARATION_INVALID"], None
+    # This is a trust-routing boundary, so aliases are not equivalent.  The
+    # sidecar must spell the canonical repository-relative POSIX path exactly;
+    # ``res://``, backslashes, whitespace, repeated separators, dot segments,
+    # selectors, and absolute paths must not be normalized into authority.
+    if declared_value != normalize_path(declared_value):
+        return ["POST_TOUCH_CURRENT_BATCH_PATH_DECLARATION_NOT_CANONICAL"], None
+    declared = declared_value
+    allowed: dict[str, Path] = {}
+    root_resolved = root.resolve()
+    failures: list[str] = []
+    for path, _ in explicit_batch_chain:
+        resolved = path.resolve()
+        try:
+            relative = resolved.relative_to(root_resolved).as_posix()
+        except ValueError:
+            failures.append("POST_TOUCH_EXPLICIT_BATCH_CHAIN_PATH_OUTSIDE_ROOT")
+            continue
+        allowed[relative] = resolved
+    selected = allowed.get(declared)
+    if selected is None:
+        failures.append("POST_TOUCH_CURRENT_BATCH_MANIFEST_NOT_IN_EXPLICIT_CHAIN")
+    return sorted(set(failures)), selected
+
+
 def _validate_manifest_binding_against_repo(
     root: Path,
     manifest: dict[str, Any],
@@ -4714,7 +4767,8 @@ def validate_batch_manifest_against_repo(
     except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
         manifest = {}
         failures.append("BATCH_MANIFEST_JSON_INVALID")
-    failures.extend(validate_batch_manifest_document(manifest))
+    manifest_document_failures = validate_batch_manifest_document(manifest)
+    failures.extend(manifest_document_failures)
     if not isinstance(manifest, dict):
         manifest = {}
     chain_failures, previous_chain = _load_previous_batch_chain(
@@ -4782,14 +4836,71 @@ def validate_batch_manifest_against_repo(
         "record_count": 0,
         "fingerprints": [],
     }
-    if post_touch_revalidation_path is not None:
-        post_touch_result = _post_touch.validate_manifest_and_records(
-            root,
-            post_touch_revalidation_path,
-            evaluated_head=evaluated_head,
-            current_batch_manifest_path=manifest_path,
-            projection_loader=subject_projection,
+    all_manifests = list(reversed(previous_chain)) + [(manifest_path, manifest)]
+    # Sidecar trust may suppress exact prior-record invalidations, so expose it
+    # only after the complete explicit batch chain has passed the same closed
+    # manifest, repository-binding, evidence-artifact, disposition, baseline,
+    # supplement, schema, and legacy preflight used by the final result.  A
+    # syntactically valid chain with an unresolved/unauthorized binding Head is
+    # not a valid trust chain.
+    pre_sidecar_manifest_failures: list[str] = []
+    for path, document in all_manifests:
+        if document.get("descendant_history_supplement_sha256") != expected_supplement_sha:
+            pre_sidecar_manifest_failures.append(
+                f"BATCH_DESCENDANT_HISTORY_SUPPLEMENT_SHA256_MISMATCH:{document.get('batch_id', '')}"
+            )
+        pre_sidecar_manifest_failures.extend(
+            _validate_manifest_binding_against_repo(
+                root,
+                document,
+                evaluated_head=evaluated_head,
+            )
         )
+        pre_sidecar_manifest_failures.extend(
+            validate_batch_artifacts(
+                path,
+                document,
+                authorized_identities=authorized_identities,
+            )
+        )
+        pre_sidecar_manifest_failures.extend(
+            _classification_record_disposition_failures(root, path, document)
+        )
+    failures.extend(pre_sidecar_manifest_failures)
+    explicit_batch_chain_valid = not failures
+    if post_touch_revalidation_path is not None:
+        routing_failures, sidecar_batch_manifest_path = (
+            _resolve_post_touch_batch_manifest_path(
+                root,
+                post_touch_revalidation_path,
+                all_manifests,
+                explicit_batch_chain_valid=explicit_batch_chain_valid,
+            )
+        )
+        if routing_failures:
+            raw_post_touch_result = {
+                "status": "FAIL",
+                "failures": [],
+                "trusted_by_fingerprint": {},
+                "record_count": 0,
+                "fingerprints": [],
+            }
+        else:
+            raw_post_touch_result = _post_touch.validate_manifest_and_records(
+                root,
+                post_touch_revalidation_path,
+                evaluated_head=evaluated_head,
+                current_batch_manifest_path=sidecar_batch_manifest_path,
+                projection_loader=subject_projection,
+            )
+        combined_post_touch_failures = sorted(set(
+            routing_failures + list(raw_post_touch_result.get("failures", []))
+        ))
+        post_touch_result = dict(raw_post_touch_result)
+        post_touch_result["failures"] = combined_post_touch_failures
+        if combined_post_touch_failures or raw_post_touch_result.get("status") != "PASS":
+            post_touch_result["status"] = "FAIL"
+            post_touch_result["trusted_by_fingerprint"] = {}
         failures.extend(
             f"POST_TOUCH_REVALIDATION_INVALID:{failure}"
             for failure in post_touch_result.get("failures", [])
@@ -4798,7 +4909,6 @@ def validate_batch_manifest_against_repo(
             failures.append("POST_TOUCH_REVALIDATION_REQUIRED_VALID_SIDECAR")
     post_touch_trusted = post_touch_result.get("trusted_by_fingerprint", {})
     legacy_fingerprints = set(legacy.get("legacy_corrected_fingerprints", []))
-    all_manifests = list(reversed(previous_chain)) + [(manifest_path, manifest)]
     global_fingerprints: set[str] = set()
     correction_ids: set[str] = set()
     current_seen: set[str] = set()

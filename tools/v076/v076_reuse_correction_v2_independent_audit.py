@@ -5527,24 +5527,129 @@ def audit_b(root: Path) -> dict[str, Any]:
     }
 
 
+def _resolve_post_touch_batch_manifest_path(
+    root: Path,
+    sidecar_path: Path,
+    explicit_batch_chain: list[tuple[Path, dict[str, Any]]],
+    *,
+    explicit_batch_chain_valid: bool = True,
+) -> tuple[list[dict[str, Any]], Path | None]:
+    """Independently constrain a sidecar anchor to the explicit batch chain."""
+
+    if not explicit_batch_chain_valid:
+        return [
+            _finding(
+                "FULL_CONVERGENCE_POST_TOUCH_EXPLICIT_CHAIN_INVALID",
+                "P0",
+                "post-touch trust is forbidden when the current explicit batch chain is invalid",
+                manifest_path=str(sidecar_path),
+            )
+        ], None
+    try:
+        sidecar = _json(sidecar_path)
+    except (OSError, ValueError):
+        return [
+            _finding(
+                "FULL_CONVERGENCE_POST_TOUCH_SIDECAR_UNREADABLE",
+                "P0",
+                "the post-touch sidecar is missing or is not strict JSON",
+                manifest_path=str(sidecar_path),
+            )
+        ], None
+    if not isinstance(sidecar, dict):
+        return [
+            _finding(
+                "FULL_CONVERGENCE_POST_TOUCH_SIDECAR_NOT_OBJECT",
+                "P0",
+                "the post-touch sidecar must be one JSON object",
+                manifest_path=str(sidecar_path),
+            )
+        ], None
+    declared_value = sidecar.get("current_batch_manifest_path")
+    if not isinstance(declared_value, str):
+        return [
+            _finding(
+                "FULL_CONVERGENCE_POST_TOUCH_BATCH_PATH_DECLARATION_INVALID",
+                "P0",
+                "the post-touch sidecar lacks one exact batch manifest path",
+                manifest_path=str(sidecar_path),
+            )
+        ], None
+    if declared_value != _normalize_path(declared_value):
+        return [
+            _finding(
+                "FULL_CONVERGENCE_POST_TOUCH_BATCH_PATH_NOT_CANONICAL",
+                "P0",
+                "post-touch batch routing forbids path normalization aliases",
+                manifest_path=str(sidecar_path),
+                declared_batch_manifest_path=declared_value,
+            )
+        ], None
+    declared = declared_value
+    allowed: dict[str, Path] = {}
+    findings: list[dict[str, Any]] = []
+    root_resolved = root.resolve()
+    for path, _ in explicit_batch_chain:
+        resolved = path.resolve()
+        try:
+            relative = resolved.relative_to(root_resolved).as_posix()
+        except ValueError:
+            findings.append(_finding(
+                "FULL_CONVERGENCE_POST_TOUCH_EXPLICIT_CHAIN_PATH_OUTSIDE_ROOT",
+                "P0",
+                "an explicit batch-chain path is outside the repository root",
+                manifest_path=str(path),
+            ))
+            continue
+        allowed[relative] = resolved
+    selected = allowed.get(declared)
+    if selected is None:
+        findings.append(_finding(
+            "FULL_CONVERGENCE_POST_TOUCH_BATCH_NOT_IN_EXPLICIT_CHAIN",
+            "P0",
+            "the sidecar-declared batch is not in the current explicit predecessor chain",
+            manifest_path=str(sidecar_path),
+            declared_batch_manifest_path=declared,
+        ))
+    return findings, selected
+
+
 def _post_touch_sidecar_findings(
     root: Path,
     sidecar_path: Path | None,
-    batch_manifest_path: Path,
+    explicit_batch_chain: list[tuple[Path, dict[str, Any]]],
     evaluated_head: str,
+    *,
+    explicit_batch_chain_valid: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
     """Validate the append-only sidecar and return trusted one-for-one map."""
 
     if sidecar_path is None:
         return [], {}, {"status": "NOT_PROVIDED", "record_count": 0, "path": ""}
-    result = _post_touch.validate_manifest_and_records(
-        root,
-        sidecar_path,
-        evaluated_head=evaluated_head,
-        current_batch_manifest_path=batch_manifest_path,
-        projection_loader=_subject_projection,
+    routing_findings, sidecar_batch_manifest_path = (
+        _resolve_post_touch_batch_manifest_path(
+            root,
+            sidecar_path,
+            explicit_batch_chain,
+            explicit_batch_chain_valid=explicit_batch_chain_valid,
+        )
     )
-    findings = [
+    if routing_findings:
+        result = {
+            "status": "FAIL",
+            "failures": [],
+            "record_count": 0,
+            "trusted_by_fingerprint": {},
+        }
+    else:
+        result = _post_touch.validate_manifest_and_records(
+            root,
+            sidecar_path,
+            evaluated_head=evaluated_head,
+            current_batch_manifest_path=sidecar_batch_manifest_path,
+            projection_loader=_subject_projection,
+        )
+    validation_findings = [
         _finding(
             "FULL_CONVERGENCE_POST_TOUCH_REVALIDATION_INVALID",
             "P0",
@@ -5553,14 +5658,27 @@ def _post_touch_sidecar_findings(
         )
         for code in result.get("failures", [])
     ]
+    findings = routing_findings + validation_findings
+    combined_failure_codes = sorted(set(
+        [str(finding.get("code", "")) for finding in routing_findings]
+        + [str(code) for code in result.get("failures", [])]
+    ))
+    status = (
+        "PASS"
+        if not routing_findings and result.get("status") == "PASS"
+        else "FAIL"
+    )
+    trusted = (
+        result.get("trusted_by_fingerprint", {}) if status == "PASS" else {}
+    )
     summary = {
-        "status": result.get("status", "FAIL"),
+        "status": status,
         "record_count": result.get("record_count", 0),
-        "trusted_fingerprint_count": len(result.get("trusted_by_fingerprint", {})),
+        "trusted_fingerprint_count": len(trusted),
         "path": str(sidecar_path),
-        "failures": result.get("failures", []),
+        "failures": combined_failure_codes,
     }
-    return findings, result.get("trusted_by_fingerprint", {}), summary
+    return findings, trusted, summary
 
 
 def _suppress_post_touch_findings(
@@ -5748,21 +5866,35 @@ def audit_full_convergence_batch(
             "the explicit batch manifest must be a JSON object",
         ))
         manifest = {}
-    post_touch_findings, post_touch_trusted, post_touch_summary = _post_touch_sidecar_findings(
-        root,
-        post_touch_revalidation_path,
-        manifest_path,
-        evaluated_head,
-    )
-    findings.extend(post_touch_findings)
-    findings.extend(_manifest_contract_findings(
+    current_manifest_contract_findings = _manifest_contract_findings(
         root,
         manifest_path,
         manifest,
         evaluated_head=evaluated_head,
         baseline_identities=baseline_identities,
         descendant_supplement_sha=descendant_supplement_sha,
-    ))
+    )
+    findings.extend(current_manifest_contract_findings)
+    chain_findings, predecessor_chain = _predecessor_chain_findings(
+        root,
+        manifest,
+        previous_batch_manifest_path,
+        evaluated_head=evaluated_head,
+        baseline_identities=baseline_identities,
+        descendant_supplement_sha=descendant_supplement_sha,
+    )
+    findings.extend(chain_findings)
+    explicit_batch_chain = list(reversed(predecessor_chain)) + [
+        (manifest_path, manifest)
+    ]
+    post_touch_findings, post_touch_trusted, post_touch_summary = _post_touch_sidecar_findings(
+        root,
+        post_touch_revalidation_path,
+        explicit_batch_chain,
+        evaluated_head,
+        explicit_batch_chain_valid=not findings,
+    )
+    findings.extend(post_touch_findings)
     manifest_fingerprints = [
         str(value) for value in manifest.get("failure_fingerprints", [])
     ]
@@ -5842,15 +5974,6 @@ def audit_full_convergence_batch(
         manifest,
         baseline_identities,
     ))
-    chain_findings, predecessor_chain = _predecessor_chain_findings(
-        root,
-        manifest,
-        previous_batch_manifest_path,
-        evaluated_head=evaluated_head,
-        baseline_identities=baseline_identities,
-        descendant_supplement_sha=descendant_supplement_sha,
-    )
-    findings.extend(chain_findings)
     predecessor_fingerprints: set[str] = set()
     predecessor_correction_ids: set[str] = set()
     predecessor_record_count = 0
