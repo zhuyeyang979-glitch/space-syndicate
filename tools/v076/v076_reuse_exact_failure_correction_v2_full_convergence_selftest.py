@@ -4082,17 +4082,19 @@ def _projection_contract_results(
     *,
     rule_id: str = "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
     raw_failure: str = "",
+    fingerprint: str = _fingerprint(1),
 ) -> tuple[list[str], list[dict[str, Any]]]:
     return (
         convergence._identity_projection_failures(
             binding,
             rule_id=rule_id,
             raw_failure=raw_failure,
+            fingerprint=fingerprint,
         ),
         independent_audit._identity_projection_findings(
             binding,
             path="fixture-record.json",
-            fingerprint=_fingerprint(1),
+            fingerprint=fingerprint,
             rule_id=rule_id,
             raw_failure=raw_failure,
         ),
@@ -4106,11 +4108,13 @@ def _expect_projection_rejected_by_both(
     independent_code: str,
     rule_id: str = "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
     raw_failure: str = "",
+    fingerprint: str = _fingerprint(1),
 ) -> None:
     primary, independent = _projection_contract_results(
         binding,
         rule_id=rule_id,
         raw_failure=raw_failure,
+        fingerprint=fingerprint,
     )
     _expect_failure(primary, primary_prefix)
     codes = {str(item.get("code", "")) for item in independent}
@@ -4274,6 +4278,426 @@ def _lineage_substitution_binding(disposition: str) -> dict[str, Any]:
         convergence.canonical_bytes(binding["subject_projection"])
     )
     return binding
+
+
+def _alpha01_active_backfill_path_link_binding(root: Path) -> dict[str, Any]:
+    selector = {
+        "component_ids": sorted([
+            convergence.ALPHA01_COMPONENT_ID,
+            convergence.ALPHA01_OWNER_COMPONENT_ID,
+        ]),
+        "dynamic_reference_ids": [],
+        "paths": sorted([
+            convergence.ALPHA01_SCRIPT_PATH,
+            convergence.ALPHA01_RESOURCE_PATH,
+        ]),
+        "retirement_ids": [],
+        "supersession_ids": [],
+    }
+    head = _git(root, "rev-parse", "HEAD")
+    projection = convergence.subject_projection(root, head, selector)
+    return {
+        "authority_selectors": selector,
+        "current_blob_sha256": convergence.ALPHA01_RESOURCE_SHA256,
+        "current_component_id": convergence.ALPHA01_COMPONENT_ID,
+        "current_owner_id": convergence.ALPHA01_OWNER_COMPONENT_ID,
+        "current_path": convergence.ALPHA01_RESOURCE_PATH,
+        "current_production_reachability": "PRODUCTION_REACHABLE",
+        "current_role": "PORT",
+        "diagnostic_only_status": "NOT_DIAGNOSTIC_ONLY",
+        "documentation_only_status": "NOT_DOCUMENTATION_ONLY",
+        "domain_id": convergence.ALPHA01_DOMAIN_ID,
+        "duplicate_identity_sha256": "",
+        "duplicate_of_failure_fingerprint": "",
+        "duplicate_reason": "",
+        "dynamic_reference_status": "NOT_DYNAMIC_REFERENCE",
+        "first_seen_commit": convergence.ALPHA01_TRANSITION_NEW_SHA,
+        "generated_evidence_status": "NOT_GENERATED_EVIDENCE",
+        "historical_blob_sha256": convergence.ALPHA01_SCRIPT_SHA256,
+        "historical_component_id": convergence.ALPHA01_COMPONENT_ID,
+        "historical_owner_id": convergence.ALPHA01_OWNER_COMPONENT_ID,
+        "historical_path": convergence.ALPHA01_SCRIPT_PATH,
+        "historical_production_reachability": "PRODUCTION_REACHABLE",
+        "historical_role": "PORT",
+        "invalidation_policy": _touch_policy(),
+        "last_seen_commit": convergence.AUTHORIZATION_BASE_HEAD_SHA,
+        "recommended_disposition": "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+        "retired_status": "ACTIVE_LINEAGE",
+        "source_commit": convergence.ALPHA01_TRANSITION_NEW_SHA,
+        "subject_projection": projection,
+        "subject_projection_sha256": convergence.sha256_bytes(
+            convergence.canonical_bytes(projection)
+        ),
+        "superseded_by": [],
+        "supersedes": [],
+        "test_only_status": "NOT_TEST_ONLY",
+    }
+
+
+def _alpha01_projection_row(
+    binding: dict[str, Any],
+    *,
+    source_kind: str,
+    component_id: str,
+) -> dict[str, Any]:
+    rows = [
+        row
+        for row in binding["subject_projection"]["registry_rows"]
+        if row.get("authority_source_kind") == source_kind
+        and row.get("component_id") == component_id
+    ]
+    _expect(
+        len(rows) == 1,
+        f"Alpha01 projection row cardinality drifted: {source_kind}:{component_id}",
+    )
+    return rows[0]
+
+
+def _refresh_projection_hash(binding: dict[str, Any]) -> None:
+    binding["subject_projection_sha256"] = convergence.sha256_bytes(
+        convergence.canonical_bytes(binding["subject_projection"])
+    )
+
+
+def _alpha01_active_backfill_path_link_positive_case(root: Path) -> None:
+    binding_result = convergence.validate_implementation_binding_v4(
+        root,
+        evaluated_head=_git(root, "rev-parse", "HEAD"),
+    )
+    _expect(binding_result.get("status") == "PASS", str(binding_result))
+    independent_binding_findings, _ = (
+        independent_audit._alpha01_successor_v4_findings(
+            root,
+            _git(root, "rev-parse", "HEAD"),
+        )
+    )
+    _expect(
+        not independent_binding_findings,
+        json.dumps(independent_binding_findings, sort_keys=True),
+    )
+    binding = _alpha01_active_backfill_path_link_binding(root)
+    disposition_failures = convergence._identity_disposition_failures(
+        binding,
+        rule_id="HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+    )
+    _expect(not disposition_failures, str(disposition_failures))
+    primary, independent = _projection_contract_results(
+        binding,
+        fingerprint=convergence.ALPHA01_ACTIVE_BACKFILL_FINGERPRINT,
+    )
+    _expect(not primary, str(primary))
+    _expect(not independent, json.dumps(independent, sort_keys=True))
+
+
+def _alpha01_active_backfill_path_link_mutation_case(root: Path) -> None:
+    exact_fingerprint = convergence.ALPHA01_ACTIVE_BACKFILL_FINGERPRINT
+
+    def mutate_row(
+        binding: dict[str, Any],
+        source_kind: str,
+        component_id: str,
+        field: str,
+        value: Any,
+    ) -> None:
+        _alpha01_projection_row(
+            binding,
+            source_kind=source_kind,
+            component_id=component_id,
+        )[field] = value
+
+    def append_row(
+        binding: dict[str, Any],
+        source_kind: str,
+        component_id: str,
+        **updates: Any,
+    ) -> None:
+        row = copy.deepcopy(_alpha01_projection_row(
+            binding,
+            source_kind=source_kind,
+            component_id=component_id,
+        ))
+        row.update(updates)
+        binding["subject_projection"]["registry_rows"].append(row)
+
+    mutations: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
+        ("source_commit", lambda b: b.update({"source_commit": "4" * 40})),
+        (
+            "historical_blob",
+            lambda b: b.update({"historical_blob_sha256": "4" * 64}),
+        ),
+        ("current_blob", lambda b: b.update({"current_blob_sha256": "5" * 64})),
+        (
+            "historical_path",
+            lambda b: b.update({"historical_path": "resources/content/alpha01/other.gd"}),
+        ),
+        (
+            "current_path",
+            lambda b: b.update({"current_path": "resources/content/alpha01/other.tres"}),
+        ),
+        (
+            "historical_component",
+            lambda b: b.update({"historical_component_id": "component.other"}),
+        ),
+        (
+            "current_component",
+            lambda b: b.update({"current_component_id": "component.other"}),
+        ),
+        ("historical_role", lambda b: b.update({"historical_role": "CONSUMER"})),
+        ("current_role", lambda b: b.update({"current_role": "CONSUMER"})),
+        (
+            "historical_owner",
+            lambda b: b.update({"historical_owner_id": "component.other.owner"}),
+        ),
+        (
+            "current_owner",
+            lambda b: b.update({"current_owner_id": "component.other.owner"}),
+        ),
+        ("domain", lambda b: b.update({"domain_id": "domain.other"})),
+        (
+            "historical_reachability",
+            lambda b: b.update({"historical_production_reachability": "NONREACHABLE"}),
+        ),
+        (
+            "current_reachability",
+            lambda b: b.update({"current_production_reachability": "NONREACHABLE"}),
+        ),
+        (
+            "selector_path_expansion",
+            lambda b: b["authority_selectors"]["paths"].append("resources/content/alpha01/extra.res"),
+        ),
+        ("supersedes", lambda b: b.update({"supersedes": ["component.other"]})),
+        (
+            "superseded_by",
+            lambda b: b.update({"superseded_by": ["component.other"]}),
+        ),
+        (
+            "backfill_disposition",
+            lambda b: mutate_row(
+                b,
+                "historical_identity_backfill",
+                convergence.ALPHA01_COMPONENT_ID,
+                "current_disposition",
+                "HISTORICAL_TEST_ONLY",
+            ),
+        ),
+        (
+            "backfill_source_commit",
+            lambda b: mutate_row(
+                b,
+                "historical_identity_backfill",
+                convergence.ALPHA01_COMPONENT_ID,
+                "source_commit",
+                "4" * 40,
+            ),
+        ),
+        (
+            "backfill_source_blob",
+            lambda b: mutate_row(
+                b,
+                "historical_identity_backfill",
+                convergence.ALPHA01_COMPONENT_ID,
+                "source_blob",
+                "4" * 64,
+            ),
+        ),
+        (
+            "backfill_supersession",
+            lambda b: mutate_row(
+                b,
+                "historical_identity_backfill",
+                convergence.ALPHA01_COMPONENT_ID,
+                "supersession",
+                ["component.other"],
+            ),
+        ),
+        (
+            "extra_historical_backfill",
+            lambda b: append_row(
+                b,
+                "historical_identity_backfill",
+                convergence.ALPHA01_COMPONENT_ID,
+                source_commit="4" * 40,
+            ),
+        ),
+        (
+            "duplicate_current_inventory",
+            lambda b: append_row(
+                b,
+                "component_inventory",
+                convergence.ALPHA01_COMPONENT_ID,
+            ),
+        ),
+        (
+            "current_registry_path",
+            lambda b: mutate_row(
+                b,
+                "component_inventory",
+                convergence.ALPHA01_COMPONENT_ID,
+                "path",
+                "resources/content/alpha01/other.tres",
+            ),
+        ),
+        (
+            "current_registry_role",
+            lambda b: mutate_row(
+                b,
+                "component_inventory",
+                convergence.ALPHA01_COMPONENT_ID,
+                "component_role",
+                "CONSUMER",
+            ),
+        ),
+        (
+            "current_registry_owner",
+            lambda b: mutate_row(
+                b,
+                "component_inventory",
+                convergence.ALPHA01_COMPONENT_ID,
+                "owner_component_id",
+                "component.other.owner",
+            ),
+        ),
+        (
+            "current_registry_domain",
+            lambda b: mutate_row(
+                b,
+                "component_inventory",
+                convergence.ALPHA01_COMPONENT_ID,
+                "domain_id",
+                "domain.other",
+            ),
+        ),
+        (
+            "current_registry_reachability",
+            lambda b: mutate_row(
+                b,
+                "component_inventory",
+                convergence.ALPHA01_COMPONENT_ID,
+                "production_reachable",
+                False,
+            ),
+        ),
+        (
+            "implementation_registry_row",
+            lambda b: mutate_row(
+                b,
+                "component_inventory",
+                convergence.ALPHA01_COMPONENT_ID,
+                "class_name",
+                "ForgedAlpha01ContentManifestResource",
+            ),
+        ),
+        (
+            "owner_path",
+            lambda b: mutate_row(
+                b,
+                "component_inventory",
+                convergence.ALPHA01_OWNER_COMPONENT_ID,
+                "path",
+                "scripts/other_owner.gd",
+            ),
+        ),
+    ]
+
+    for label, mutate in mutations:
+        candidate = _alpha01_active_backfill_path_link_binding(root)
+        mutate(candidate)
+        _refresh_projection_hash(candidate)
+        try:
+            _expect_projection_rejected_by_both(
+                candidate,
+                primary_prefix="IDENTITY_BINDING_UNAUTHORIZED_LINEAGE_SUBSTITUTION",
+                independent_code=(
+                    "FULL_CONVERGENCE_IDENTITY_UNAUTHORIZED_LINEAGE_SUBSTITUTION"
+                ),
+                fingerprint=exact_fingerprint,
+            )
+        except AssertionError as exc:
+            raise AssertionError(f"Alpha01 mutation {label} was not closed: {exc}") from exc
+
+    for label, fingerprint, rule_id in (
+        ("fingerprint", _fingerprint(2), "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"),
+        ("rule", exact_fingerprint, "HISTORY_GOLDEN_FALSE_GREEN"),
+    ):
+        candidate = _alpha01_active_backfill_path_link_binding(root)
+        try:
+            _expect_projection_rejected_by_both(
+                candidate,
+                primary_prefix="IDENTITY_BINDING_UNAUTHORIZED_LINEAGE_SUBSTITUTION",
+                independent_code=(
+                    "FULL_CONVERGENCE_IDENTITY_UNAUTHORIZED_LINEAGE_SUBSTITUTION"
+                ),
+                fingerprint=fingerprint,
+                rule_id=rule_id,
+            )
+        except AssertionError as exc:
+            raise AssertionError(f"Alpha01 mutation {label} was not closed: {exc}") from exc
+
+    def break_unique_script_link(document: dict[str, Any]) -> None:
+        document["script_link"]["unique_script_link"] = False
+
+    primary_binding_result = _v4_json_attack(
+        root,
+        convergence.ALPHA01_IMPLEMENTATION_BINDING_REL,
+        break_unique_script_link,
+    )
+    _expect(primary_binding_result.get("status") == "FAIL", str(primary_binding_result))
+    _expect_failure(
+        primary_binding_result["failures"],
+        "SUCCESSOR_V4_SCRIPT_LINK_CONTENT_INVALID",
+    )
+
+    original_json = independent_audit._json
+    target = (root / independent_audit.ALPHA01_BINDING).resolve()
+
+    def attacked_json(path: Path) -> Any:
+        value = original_json(path)
+        if path.resolve() == target:
+            value = copy.deepcopy(value)
+            break_unique_script_link(value)
+        return value
+
+    independent_audit._json = attacked_json
+    try:
+        independent_findings, _ = independent_audit._alpha01_successor_v4_findings(
+            root,
+            _git(root, "rev-parse", "HEAD"),
+        )
+    finally:
+        independent_audit._json = original_json
+    independent_codes = {
+        str(item.get("code", "")) for item in independent_findings
+    }
+    _expect(
+        "FULL_CONVERGENCE_ALPHA01_SCRIPT_LINK" in independent_codes,
+        json.dumps(independent_findings, sort_keys=True),
+    )
+
+
+def _unrelated_active_path_drift_still_rejected_case(root: Path) -> None:
+    binding = _alpha01_active_backfill_path_link_binding(root)
+    historical_alias = "resources/content/alpha01/unrelated_alias.gd"
+    current_alias = "resources/content/alpha01/unrelated_alias.tres"
+    binding["historical_path"] = historical_alias
+    binding["current_path"] = current_alias
+    binding["authority_selectors"]["paths"] = sorted([
+        historical_alias,
+        current_alias,
+    ])
+    _alpha01_projection_row(
+        binding,
+        source_kind="component_inventory",
+        component_id=convergence.ALPHA01_COMPONENT_ID,
+    )["path"] = current_alias
+    _refresh_projection_hash(binding)
+    _expect_projection_rejected_by_both(
+        binding,
+        primary_prefix="IDENTITY_BINDING_UNAUTHORIZED_LINEAGE_SUBSTITUTION",
+        independent_code=(
+            "FULL_CONVERGENCE_IDENTITY_UNAUTHORIZED_LINEAGE_SUBSTITUTION"
+        ),
+        fingerprint=convergence.ALPHA01_ACTIVE_BACKFILL_FINGERPRINT,
+    )
 
 
 def _unrelated_lineage_substitution_attack_case() -> None:
@@ -6471,6 +6895,9 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("116", "successor-v4 fingerprint-set digest drift fails closed", lambda: _successor_v4_fingerprint_set_negative_case(root)))
     cases.append(Case("117", "successor-v4 implementation-binding SHA drift fails closed", lambda: _successor_v4_binding_sha_negative_case(root)))
     cases.append(Case("118", "successor-v4 res-path target disappearance fails closed", lambda: _successor_v4_target_drift_negative_case(root)))
+    cases.append(Case("119", "exact Alpha01 historical script links to its current Resource in both auditors", lambda: _alpha01_active_backfill_path_link_positive_case(root)))
+    cases.append(Case("120", "Alpha01 active-backfill path link rejects every identity and authority mutation in both auditors", lambda: _alpha01_active_backfill_path_link_mutation_case(root)))
+    cases.append(Case("121", "unrelated same-component active path drift remains rejected", lambda: _unrelated_active_path_drift_still_rejected_case(root)))
     return cases
 
 

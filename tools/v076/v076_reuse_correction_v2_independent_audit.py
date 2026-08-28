@@ -75,6 +75,17 @@ FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA_SHA = "cba09cffe6f8699cea40a3d08a8774fdc5e4
 ALPHA01_BINDING = Path("docs/architecture/reuse_corrections/v2/implementation_bindings/alpha01_content_manifest_resource_binding_v1.json")
 ALPHA01_BINDING_SHA = "d639086f5a329f1d39386c20282eb43b9c84b597d7438af7c1d8c2085b01ed87"
 ALPHA01_FINGERPRINTS = frozenset({"V2F-97098e90fc9a19e803dad6116f516339d4d08399080e0506cde3faa1b1a5833d","V2F-d68046a34484d6bd5734a1a7574d47ac830cd768d713bac033085852ff786b21","V2F-e8f0cc33a9f313014b23de6574be6ad78ff435bfac0a0964199fdfb550c4508b","V2F-e92184eb9597cf1150d7d04c296591d0fed24006685ab7a75a90037ba8d2ab3a","V2F-f92454220b0ec6286cb2d42f3a6a824d51309dd1edc7430e60c752631f07cd09"})
+ALPHA01_ACTIVE_BACKFILL_FINGERPRINT = "V2F-0a0d12df989fa1befecff5ced1f14d00316aac109e25a7e0b7142f391dc94b61"
+ALPHA01_COMPONENT_ID = "component.current.alpha01_content_manifest"
+ALPHA01_RESOURCE_PATH = "resources/content/alpha01/alpha01_content_manifest.tres"
+ALPHA01_SCRIPT_PATH = "resources/content/alpha01/alpha01_content_manifest.gd"
+ALPHA01_OWNER_COMPONENT_ID = "component.current.v075_runtime_owner"
+ALPHA01_OWNER_PATH = "scripts/v075_runtime/v075_runtime_owner.gd"
+ALPHA01_DOMAIN_ID = "current.v075_production_combat_candidate"
+ALPHA01_TRANSITION_NEW_SHA = "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3"
+ALPHA01_SCRIPT_SHA = "a49c23e9ffdee83d51d2ac1c5f2e6ceaa0e0837a43a73d0671f202d737911a1b"
+ALPHA01_RESOURCE_SHA = "302bffb7912b2890ef8b02e37dc85f9d011341dde2d5d5aa2a3685f0245902ff"
+ALPHA01_REGISTRY_ROW_SHA = "14356a9dd5706b1ca5fecdcc3bef5d095de582bcdb70ae21590cba91e7b6cf97"
 
 def _alpha01_successor_v4_findings(root: Path, evaluated_head: str) -> tuple[list[dict[str, Any]], set[str]]:
     findings: list[dict[str, Any]] = []
@@ -3050,6 +3061,108 @@ def _full_convergence_dynamic_structure_findings(
     return findings
 
 
+def _exact_alpha01_active_backfill_path_link(
+    binding: dict[str, Any],
+    *,
+    fingerprint: str,
+    rule_id: str,
+    selector: Any,
+    inventory_rows: list[dict[str, Any]],
+    backfill_rows: list[dict[str, Any]],
+    historical_registry_row: dict[str, Any],
+    current_registry_row: dict[str, Any],
+) -> bool:
+    """Independently allow only the sealed Alpha01 script-to-Resource link."""
+
+    expected_selector = {
+        "component_ids": sorted([
+            ALPHA01_COMPONENT_ID,
+            ALPHA01_OWNER_COMPONENT_ID,
+        ]),
+        "dynamic_reference_ids": [],
+        "paths": sorted([ALPHA01_SCRIPT_PATH, ALPHA01_RESOURCE_PATH]),
+        "retirement_ids": [],
+        "supersession_ids": [],
+    }
+    expected_backfill = {
+        "authority_source_kind": "historical_identity_backfill",
+        "component_id": ALPHA01_COMPONENT_ID,
+        "current_disposition": "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+        "historical_role": "PORT",
+        "production_reachability": "PRODUCTION_REACHABLE",
+        "source_blob": ALPHA01_SCRIPT_SHA,
+        "source_commit": ALPHA01_TRANSITION_NEW_SHA,
+        "supersession": [],
+    }
+    projection = binding.get("subject_projection")
+    if (
+        fingerprint != ALPHA01_ACTIVE_BACKFILL_FINGERPRINT
+        or rule_id != "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"
+        or binding.get("recommended_disposition")
+        != "HISTORICAL_ACTIVE_LINEAGE_REGISTERED"
+        or binding.get("historical_component_id") != ALPHA01_COMPONENT_ID
+        or binding.get("current_component_id") != ALPHA01_COMPONENT_ID
+        or _normalize_path(str(binding.get("historical_path", "")))
+        != ALPHA01_SCRIPT_PATH
+        or _normalize_path(str(binding.get("current_path", "")))
+        != ALPHA01_RESOURCE_PATH
+        or binding.get("source_commit") != ALPHA01_TRANSITION_NEW_SHA
+        or binding.get("historical_blob_sha256") != ALPHA01_SCRIPT_SHA
+        or binding.get("current_blob_sha256") != ALPHA01_RESOURCE_SHA
+        or binding.get("historical_role") != "PORT"
+        or binding.get("current_role") != "PORT"
+        or binding.get("historical_owner_id") != ALPHA01_OWNER_COMPONENT_ID
+        or binding.get("current_owner_id") != ALPHA01_OWNER_COMPONENT_ID
+        or binding.get("domain_id") != ALPHA01_DOMAIN_ID
+        or binding.get("historical_production_reachability")
+        != "PRODUCTION_REACHABLE"
+        or binding.get("current_production_reachability")
+        != "PRODUCTION_REACHABLE"
+        or binding.get("supersedes") != []
+        or binding.get("superseded_by") != []
+        or selector != expected_selector
+        or not isinstance(projection, dict)
+        or projection.get("dynamic_reference_rows") != []
+        or projection.get("supersession_rows") != []
+        or len(inventory_rows) != 2
+        or backfill_rows != [expected_backfill]
+        or historical_registry_row != expected_backfill
+        or current_registry_row.get("authority_source_kind")
+        != "component_inventory"
+    ):
+        return False
+
+    # The mandatory successor-v4 audit independently validates the same row,
+    # both exact blobs, and one Script ext_resource plus one script assignment.
+    current_authority_row = {
+        key: value
+        for key, value in current_registry_row.items()
+        if key != "authority_source_kind"
+    }
+    current_row_sha = _sha_bytes(json.dumps(
+        current_authority_row,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8"))
+    if current_row_sha != ALPHA01_REGISTRY_ROW_SHA:
+        return False
+    owner_rows = [
+        row
+        for row in inventory_rows
+        if row.get("component_id") == ALPHA01_OWNER_COMPONENT_ID
+    ]
+    return (
+        len(owner_rows) == 1
+        and owner_rows[0].get("path") == ALPHA01_OWNER_PATH
+        and owner_rows[0].get("component_role") == "OWNER"
+        and owner_rows[0].get("owner_component_id")
+        == ALPHA01_OWNER_COMPONENT_ID
+        and owner_rows[0].get("domain_id") == ALPHA01_DOMAIN_ID
+        and owner_rows[0].get("production_reachable") is True
+    )
+
+
 def _identity_projection_findings(
     binding: dict[str, Any],
     *,
@@ -3401,10 +3514,26 @@ def _identity_projection_findings(
             "identity superseded_by list is not exact, sorted, and unique",
         )
         superseded_by = []
-    if disposition in FULL_CONVERGENCE_IDENTITY_NON_MIGRATION_DISPOSITIONS and (
+    component_substitution = (
         binding.get("historical_component_id") != binding.get("current_component_id")
-        or _normalize_path(str(binding.get("historical_path", "")))
+    )
+    path_substitution = (
+        _normalize_path(str(binding.get("historical_path", "")))
         != _normalize_path(str(binding.get("current_path", "")))
+    )
+    exact_alpha01_path_link = _exact_alpha01_active_backfill_path_link(
+        binding,
+        fingerprint=fingerprint,
+        rule_id=rule_id,
+        selector=selector,
+        inventory_rows=component_inventory_rows,
+        backfill_rows=historical_backfill_rows,
+        historical_registry_row=bound_registry_rows.get("historical", {}),
+        current_registry_row=bound_registry_rows.get("current", {}),
+    )
+    if disposition in FULL_CONVERGENCE_IDENTITY_NON_MIGRATION_DISPOSITIONS and (
+        component_substitution
+        or (path_substitution and not exact_alpha01_path_link)
     ):
         add(
             "FULL_CONVERGENCE_IDENTITY_UNAUTHORIZED_LINEAGE_SUBSTITUTION",

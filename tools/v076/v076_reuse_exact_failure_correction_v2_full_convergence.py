@@ -126,6 +126,10 @@ ALPHA01_BINDING_HEAD_SHA = "61c9ffb2203f99c18901ba972a44fed2b75188a6"
 ALPHA01_BINDING_TREE_SHA = "b39aa1a666351d0ee4316f86a34436026803e04f"
 ALPHA01_TRANSITION_OLD_SHA = "46b33bba77b356b100ab68bc7c3676d503049a2c"
 ALPHA01_TRANSITION_NEW_SHA = "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3"
+ALPHA01_ACTIVE_BACKFILL_FINGERPRINT = (
+    "V2F-0a0d12df989fa1befecff5ced1f14d00316aac109e25a7e0b7142f391dc94b61"
+)
+ALPHA01_DOMAIN_ID = "current.v075_production_combat_candidate"
 RECORD_ROOT_REL = Path("docs/architecture/reuse_corrections/v2/records/full_convergence_20260827")
 EPOCH_ROOT_REL = Path("reports/reuse/correction_v2/epochs/full_convergence_20260827")
 BASELINE_REPORT_REL = EPOCH_ROOT_REL / "baseline_raw_failure_report.json"
@@ -3834,6 +3838,103 @@ def _dynamic_reference_structure_failures(row: dict[str, Any]) -> list[str]:
     return sorted(set(failures))
 
 
+def _exact_alpha01_active_backfill_path_link(
+    binding: dict[str, Any],
+    *,
+    fingerprint: str,
+    rule_id: str,
+    selector: Any,
+    inventory_rows: list[dict[str, Any]],
+    backfill_rows: list[dict[str, Any]],
+    historical_registry_row: dict[str, Any],
+    current_registry_row: dict[str, Any],
+) -> bool:
+    """Allow only the sealed Alpha01 script-to-Resource lineage path link."""
+
+    expected_selector = {
+        "component_ids": sorted([
+            ALPHA01_COMPONENT_ID,
+            ALPHA01_OWNER_COMPONENT_ID,
+        ]),
+        "dynamic_reference_ids": [],
+        "paths": sorted([ALPHA01_SCRIPT_PATH, ALPHA01_RESOURCE_PATH]),
+        "retirement_ids": [],
+        "supersession_ids": [],
+    }
+    expected_backfill = {
+        "authority_source_kind": "historical_identity_backfill",
+        "component_id": ALPHA01_COMPONENT_ID,
+        "current_disposition": "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+        "historical_role": "PORT",
+        "production_reachability": "PRODUCTION_REACHABLE",
+        "source_blob": ALPHA01_SCRIPT_SHA256,
+        "source_commit": ALPHA01_TRANSITION_NEW_SHA,
+        "supersession": [],
+    }
+    projection = binding.get("subject_projection")
+    if (
+        fingerprint != ALPHA01_ACTIVE_BACKFILL_FINGERPRINT
+        or rule_id != "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"
+        or binding.get("recommended_disposition")
+        != "HISTORICAL_ACTIVE_LINEAGE_REGISTERED"
+        or binding.get("historical_component_id") != ALPHA01_COMPONENT_ID
+        or binding.get("current_component_id") != ALPHA01_COMPONENT_ID
+        or normalize_path(str(binding.get("historical_path", "")))
+        != ALPHA01_SCRIPT_PATH
+        or normalize_path(str(binding.get("current_path", "")))
+        != ALPHA01_RESOURCE_PATH
+        or binding.get("source_commit") != ALPHA01_TRANSITION_NEW_SHA
+        or binding.get("historical_blob_sha256") != ALPHA01_SCRIPT_SHA256
+        or binding.get("current_blob_sha256") != ALPHA01_RESOURCE_SHA256
+        or binding.get("historical_role") != "PORT"
+        or binding.get("current_role") != "PORT"
+        or binding.get("historical_owner_id") != ALPHA01_OWNER_COMPONENT_ID
+        or binding.get("current_owner_id") != ALPHA01_OWNER_COMPONENT_ID
+        or binding.get("domain_id") != ALPHA01_DOMAIN_ID
+        or binding.get("historical_production_reachability")
+        != "PRODUCTION_REACHABLE"
+        or binding.get("current_production_reachability")
+        != "PRODUCTION_REACHABLE"
+        or binding.get("supersedes") != []
+        or binding.get("superseded_by") != []
+        or selector != expected_selector
+        or not isinstance(projection, dict)
+        or projection.get("dynamic_reference_rows") != []
+        or projection.get("supersession_rows") != []
+        or len(inventory_rows) != 2
+        or backfill_rows != [expected_backfill]
+        or historical_registry_row != expected_backfill
+        or current_registry_row.get("authority_source_kind")
+        != "component_inventory"
+    ):
+        return False
+
+    # The successor-v4 implementation authority validates this canonical row,
+    # both exact blobs, and the Resource's single Script ext_resource plus its
+    # single script assignment before any full-convergence record is trusted.
+    current_authority_row = {
+        key: value
+        for key, value in current_registry_row.items()
+        if key != "authority_source_kind"
+    }
+    if _compact_json_sha256(current_authority_row) != ALPHA01_REGISTRY_ROW_SHA256:
+        return False
+    owner_rows = [
+        row
+        for row in inventory_rows
+        if row.get("component_id") == ALPHA01_OWNER_COMPONENT_ID
+    ]
+    return (
+        len(owner_rows) == 1
+        and owner_rows[0].get("path") == ALPHA01_OWNER_PATH
+        and owner_rows[0].get("component_role") == "OWNER"
+        and owner_rows[0].get("owner_component_id")
+        == ALPHA01_OWNER_COMPONENT_ID
+        and owner_rows[0].get("domain_id") == ALPHA01_DOMAIN_ID
+        and owner_rows[0].get("production_reachable") is True
+    )
+
+
 def _identity_projection_failures(
     binding: dict[str, Any],
     *,
@@ -4115,10 +4216,26 @@ def _identity_projection_failures(
     if superseded_by is None:
         failures.append("IDENTITY_BINDING_SUPERSEDED_BY_SET_INVALID")
         superseded_by = []
-    if disposition in IDENTITY_NON_MIGRATION_DISPOSITIONS and (
+    component_substitution = (
         binding.get("historical_component_id") != binding.get("current_component_id")
-        or normalize_path(str(binding.get("historical_path", "")))
+    )
+    path_substitution = (
+        normalize_path(str(binding.get("historical_path", "")))
         != normalize_path(str(binding.get("current_path", "")))
+    )
+    exact_alpha01_path_link = _exact_alpha01_active_backfill_path_link(
+        binding,
+        fingerprint=fingerprint,
+        rule_id=rule_id,
+        selector=selector,
+        inventory_rows=inventory_rows,
+        backfill_rows=backfill_rows,
+        historical_registry_row=bound_registry_rows.get("historical", {}),
+        current_registry_row=bound_registry_rows.get("current", {}),
+    )
+    if disposition in IDENTITY_NON_MIGRATION_DISPOSITIONS and (
+        component_substitution
+        or (path_substitution and not exact_alpha01_path_link)
     ):
         failures.append("IDENTITY_BINDING_UNAUTHORIZED_LINEAGE_SUBSTITUTION")
     historical_registry_row = bound_registry_rows.get("historical", {})
