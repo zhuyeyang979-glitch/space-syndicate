@@ -332,10 +332,24 @@ def build_candidate(root: Path, batch_id: str, staging_root: Path, output: Path,
 
 def seal_candidate(root: Path, candidate_path: Path, receipts: list[Path], staging_root: Path, output: Path) -> dict[str, Any]:
     candidate = strict_json(candidate_path)
+    static_contract = {
+        "schema_version": CANDIDATE_SCHEMA,
+        "candidate_kind": "NON_AUTHORITATIVE_REVIEW_INPUT",
+        "authorization_id": convergence.AUTHORIZATION_ID,
+        "required_review_ids": ["PRIMARY", "INDEPENDENT"],
+        "review_status": "PENDING",
+        "go_claim": False,
+        "official_batch_write_count": 0,
+        "official_record_write_count": 0,
+        "next_builder_phase": "PROJECT_EXACT_AUTHORITY_AND_BUILD_RECORDS",
+    }
     if (
         set(candidate) != CANDIDATE_FIELDS
-        or candidate.get("schema_version") != CANDIDATE_SCHEMA
-        or candidate.get("go_claim") is not False
+        or any(
+            type(candidate.get(field)) is not type(expected)
+            or candidate.get(field) != expected
+            for field, expected in static_contract.items()
+        )
     ):
         raise BuilderError("CANDIDATE_CONTRACT_INVALID")
     payload_hash = candidate.get("candidate_payload_sha256")

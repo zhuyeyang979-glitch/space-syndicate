@@ -164,6 +164,28 @@ def main() -> int:
                 expect(str(exc) == "CANDIDATE_CONTRACT_INVALID", str(exc))
             else:
                 raise AssertionError("candidate with an unknown field was accepted")
+            static_attacks = {
+                "authorization_id": "WRONG_AUTHORIZATION",
+                "candidate_kind": "AUTHORITATIVE_BATCH",
+                "required_review_ids": ["INDEPENDENT", "PRIMARY"],
+                "review_status": "PASS",
+                "official_batch_write_count": False,
+                "official_record_write_count": 999,
+                "next_builder_phase": "SKIP_VALIDATORS",
+            }
+            for field, value in static_attacks.items():
+                attack_path = temp / f"static-{field}.json"
+                attacked = json.loads(candidate_path.read_text(encoding="utf-8"))
+                attacked[field] = value
+                attacked.pop("candidate_payload_sha256")
+                attacked["candidate_payload_sha256"] = builder.sha(builder.canonical(attacked))
+                attack_path.write_bytes(builder.canonical(attacked))
+                try:
+                    builder.seal_candidate(root, attack_path, receipts, temp, temp / f"static-{field}-seal.json")
+                except builder.BuilderError as exc:
+                    expect(str(exc) == "CANDIDATE_CONTRACT_INVALID", f"{field}: {exc}")
+                else:
+                    raise AssertionError(f"candidate static field attack accepted: {field}")
 
         run("seal requires two distinct exact candidate-bound reviews", review_case)
 
