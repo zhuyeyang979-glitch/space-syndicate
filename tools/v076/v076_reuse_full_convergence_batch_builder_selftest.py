@@ -12,6 +12,15 @@ from pathlib import Path
 import v076_reuse_full_convergence_batch_builder as builder
 
 
+AUTHORITY_SOURCE_HEAD = "38aa38f9881f01d67f94280678ade39b2bbee526"
+AUTHORITY_LIVE_STATES = {
+    "SOURCE",
+    "APPLIED_UNCOMMITTED",
+    "COMMITTED",
+    "PARTIAL_OR_UNKNOWN",
+}
+
+
 def expect(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
@@ -59,6 +68,74 @@ def authority_review_payload(candidate: dict, review_id: str) -> dict:
     return payload
 
 
+def git_bytes(root: Path, *args: str) -> bytes | None:
+    process = subprocess.run(
+        ["git", *args],
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    return process.stdout if process.returncode == 0 else None
+
+
+def file_sha256(path: Path) -> str:
+    try:
+        return builder.sha(path.read_bytes())
+    except OSError:
+        return "MISSING"
+
+
+def git_payload_sha256(root: Path, revision: str) -> str:
+    payload = git_bytes(root, "show", revision)
+    return builder.sha(payload) if payload is not None else "MISSING"
+
+
+def classify_live_authority_state(root: Path, candidate: dict) -> str:
+    """Classify exact authority bytes without mutating the live worktree."""
+
+    head = builder.git(root, "rev-parse", "HEAD")
+    rows = builder._authority_target_bindings(candidate)
+    worktree_hashes = {
+        relative: file_sha256(root / Path(relative))
+        for relative in (builder.REGISTRY.as_posix(), builder.SUPERSESSION_MAP.as_posix())
+    }
+    head_hashes = {
+        relative: git_payload_sha256(root, f"HEAD:{relative}")
+        for relative in worktree_hashes
+    }
+    index_hashes = {
+        relative: git_payload_sha256(root, f":{relative}")
+        for relative in worktree_hashes
+    }
+    source = {
+        relative: rows[relative]["source_bytes_sha256"]
+        for relative in worktree_hashes
+    }
+    target = {
+        relative: rows[relative]["target_bytes_sha256"]
+        for relative in worktree_hashes
+    }
+    source_head = candidate["evaluated_head_sha"]
+    if (
+        head == source_head
+        and worktree_hashes == source
+        and head_hashes == source
+        and index_hashes == source
+    ):
+        return "SOURCE"
+    if (
+        head == source_head
+        and worktree_hashes == target
+        and head_hashes == source
+        and index_hashes == source
+    ):
+        return "APPLIED_UNCOMMITTED"
+    if worktree_hashes == target and head_hashes == target and index_hashes == target:
+        return "COMMITTED"
+    return "PARTIAL_OR_UNKNOWN"
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[2]
     cases: list[dict[str, str]] = []
@@ -104,18 +181,60 @@ def main() -> int:
 
     run("transition partitions are exact and multi-transition aware", transition_case)
 
-    with tempfile.TemporaryDirectory(prefix="v076-builder-selftest-") as temp_name:
+    with tempfile.TemporaryDirectory(prefix="v76-") as temp_name:
         temp = Path(temp_name)
+        authority_root = temp / "c"
+        cloned = subprocess.run(
+            [
+                "git", "clone", "--shared", "--no-checkout",
+                str(root), str(authority_root),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        expect(
+            cloned.returncode == 0,
+            f"shared clone failed: {cloned.stderr.decode(errors='replace').strip()}",
+        )
+        for key, value in (
+            ("core.autocrlf", "false"),
+            ("core.safecrlf", "false"),
+            ("core.longpaths", "true"),
+        ):
+            subprocess.run(
+                ["git", "config", key, value],
+                cwd=authority_root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+        subprocess.run(
+            ["git", "checkout", "--detach", AUTHORITY_SOURCE_HEAD],
+            cwd=authority_root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        expect(
+            builder.git(authority_root, "rev-parse", "HEAD") == AUTHORITY_SOURCE_HEAD,
+            "disposable authority clone did not pin the fixed source HEAD",
+        )
+        initial_clone_status = builder.git(authority_root, "status", "--porcelain")
+        expect(
+            initial_clone_status == "",
+            f"disposable authority clone is not initially clean: {initial_clone_status}",
+        )
 
         def candidate_case() -> None:
             path = temp / "candidate.json"
-            candidate = builder.build_candidate(root, "batch-008", temp, path)
+            candidate = builder.build_candidate(authority_root, "batch-008", temp, path)
             expect(path.is_file(), "candidate missing")
             expect(candidate["go_claim"] is False, str(candidate))
             expect(candidate["review_status"] == "PENDING", str(candidate))
             expect(candidate["official_batch_write_count"] == 0, str(candidate))
             try:
-                builder.build_candidate(root, "batch-008", temp, path)
+                builder.build_candidate(authority_root, "batch-008", temp, path)
             except builder.BuilderError as exc:
                 expect(str(exc) == "APPEND_ONLY_OUTPUT_ALREADY_EXISTS", str(exc))
             else:
@@ -124,15 +243,19 @@ def main() -> int:
         run("candidate is non-authoritative and append-only", candidate_case)
 
         def forbidden_case() -> None:
-            forbidden = root / builder.BATCH_ROOT / "batch-008" / "candidate.json"
+            forbidden = authority_root / builder.BATCH_ROOT / "batch-008" / "candidate.json"
             try:
-                builder._assert_output_safe(root, temp, forbidden)
+                builder._assert_output_safe(authority_root, temp, forbidden)
             except builder.BuilderError as exc:
-                expect(str(exc) == "OUTPUT_OUTSIDE_EXPLICIT_STAGING_ROOT", str(exc))
+                expect(str(exc) == "CANDIDATE_OUTPUT_INSIDE_AUTHORITY_ROOT", str(exc))
             else:
                 raise AssertionError("authority-root candidate output accepted")
             try:
-                builder._assert_output_safe(root, root / ".candidate-stage", root / ".candidate-stage" / "x.json")
+                builder._assert_output_safe(
+                    authority_root,
+                    authority_root / ".candidate-stage",
+                    authority_root / ".candidate-stage" / "x.json",
+                )
             except builder.BuilderError as exc:
                 expect(str(exc) == "STAGING_ROOT_MUST_BE_OUTSIDE_PROJECT", str(exc))
             else:
@@ -142,7 +265,9 @@ def main() -> int:
 
         def review_case() -> None:
             candidate_path = temp / "review-candidate.json"
-            candidate = builder.build_candidate(root, "batch-008", temp, candidate_path)
+            candidate = builder.build_candidate(
+                authority_root, "batch-008", temp, candidate_path
+            )
             receipts = []
             for review_id in ("PRIMARY", "INDEPENDENT"):
                 path = temp / f"{review_id}.json"
@@ -164,7 +289,9 @@ def main() -> int:
                 path.write_bytes(builder.canonical(review))
                 receipts.append(path)
             seal_path = temp / "seal.json"
-            result = builder.seal_candidate(root, candidate_path, receipts, temp, seal_path)
+            result = builder.seal_candidate(
+                authority_root, candidate_path, receipts, temp, seal_path
+            )
             expect(result["review_status"] == "DUAL_REVIEW_PASS", str(result))
             expect(result["official_batch_write_count"] == 0, str(result))
             phase1_holder.update({
@@ -176,7 +303,7 @@ def main() -> int:
             bad = temp / "bad.json"
             bad.write_bytes(receipts[0].read_bytes())
             try:
-                builder.seal_candidate(root, candidate_path, [receipts[0], bad], temp, temp / "bad-seal.json")
+                builder.seal_candidate(authority_root, candidate_path, [receipts[0], bad], temp, temp / "bad-seal.json")
             except builder.BuilderError as exc:
                 expect(str(exc) == "REVIEWER_SET_INVALID", str(exc))
             else:
@@ -188,7 +315,7 @@ def main() -> int:
             bad_review["receipt_payload_sha256"] = builder.sha(builder.canonical(bad_review))
             bool_receipt.write_bytes(builder.canonical(bad_review))
             try:
-                builder.seal_candidate(root, candidate_path, [receipts[0], bool_receipt], temp, temp / "bool-seal.json")
+                builder.seal_candidate(authority_root, candidate_path, [receipts[0], bool_receipt], temp, temp / "bool-seal.json")
             except builder.BuilderError as exc:
                 expect(str(exc).startswith("REVIEW_NOT_ACCEPTABLE:"), str(exc))
             else:
@@ -200,7 +327,7 @@ def main() -> int:
             bad_review["receipt_payload_sha256"] = builder.sha(builder.canonical(bad_review))
             wrong_authority.write_bytes(builder.canonical(bad_review))
             try:
-                builder.seal_candidate(root, candidate_path, [receipts[0], wrong_authority], temp, temp / "authority-seal.json")
+                builder.seal_candidate(authority_root, candidate_path, [receipts[0], wrong_authority], temp, temp / "authority-seal.json")
             except builder.BuilderError as exc:
                 expect(str(exc).startswith("REVIEW_NOT_ACCEPTABLE:"), str(exc))
             else:
@@ -212,7 +339,7 @@ def main() -> int:
             bad_candidate["candidate_payload_sha256"] = builder.sha(builder.canonical(bad_candidate))
             extra_field_candidate.write_bytes(builder.canonical(bad_candidate))
             try:
-                builder.seal_candidate(root, extra_field_candidate, receipts, temp, temp / "extra-field-seal.json")
+                builder.seal_candidate(authority_root, extra_field_candidate, receipts, temp, temp / "extra-field-seal.json")
             except builder.BuilderError as exc:
                 expect(str(exc) == "CANDIDATE_CONTRACT_INVALID", str(exc))
             else:
@@ -234,7 +361,7 @@ def main() -> int:
                 attacked["candidate_payload_sha256"] = builder.sha(builder.canonical(attacked))
                 attack_path.write_bytes(builder.canonical(attacked))
                 try:
-                    builder.seal_candidate(root, attack_path, receipts, temp, temp / f"static-{field}-seal.json")
+                    builder.seal_candidate(authority_root, attack_path, receipts, temp, temp / f"static-{field}-seal.json")
                 except builder.BuilderError as exc:
                     expect(str(exc) == "CANDIDATE_CONTRACT_INVALID", f"{field}: {exc}")
                 else:
@@ -243,8 +370,8 @@ def main() -> int:
         run("seal requires two distinct exact candidate-bound reviews", review_case)
 
         def batch008_projection_case() -> None:
-            head = builder.git(root, "rev-parse", "HEAD")
-            rows = builder._exact_batch008_component_rows(root, head)
+            head = builder.git(authority_root, "rev-parse", "HEAD")
+            rows = builder._exact_batch008_component_rows(authority_root, head)
             expect(len(rows) == 48, str(len(rows)))
             expect(
                 builder.sha(builder.compact_canonical(rows))
@@ -273,7 +400,7 @@ def main() -> int:
         def authority_candidate_case() -> None:
             candidate_path = temp / "authority-candidate.json"
             candidate = builder.build_authority_candidate(
-                root,
+                authority_root,
                 phase1_holder["candidate_path"],
                 phase1_holder["seal_path"],
                 temp,
@@ -297,7 +424,13 @@ def main() -> int:
                 str(targets),
             )
             expect(len(candidate["mutation_inventory"]) == 4, str(candidate))
-            authority_holder.update({"candidate": candidate, "candidate_path": candidate_path})
+            live_state = classify_live_authority_state(root, candidate)
+            expect(live_state in AUTHORITY_LIVE_STATES, live_state)
+            authority_holder.update({
+                "candidate": candidate,
+                "candidate_path": candidate_path,
+                "live_state": live_state,
+            })
 
         run("authority candidate binds sealed membership and exact two targets", authority_candidate_case)
 
@@ -308,7 +441,9 @@ def main() -> int:
             attacked["go_claim"] = 0
             write_hashed_json(bool_path, attacked, "candidate_payload_sha256")
             expect_builder_error(
-                lambda: builder._validate_authority_candidate_fresh(root, bool_path),
+                lambda: builder._validate_authority_candidate_fresh(
+                    authority_root, bool_path
+                ),
                 "AUTHORITY_CANDIDATE_CONTRACT_INVALID",
             )
 
@@ -335,7 +470,9 @@ def main() -> int:
             os.link(authority_holder["candidate_path"], hardlink_path)
             try:
                 expect_builder_error(
-                    lambda: builder._validate_authority_candidate_fresh(root, hardlink_path),
+                    lambda: builder._validate_authority_candidate_fresh(
+                        authority_root, hardlink_path
+                    ),
                     "AUTHORITY_CANDIDATE_HARDLINK_FORBIDDEN",
                 )
             finally:
@@ -348,7 +485,9 @@ def main() -> int:
             else:
                 try:
                     expect_builder_error(
-                        lambda: builder._validate_authority_candidate_fresh(root, symlink_path),
+                        lambda: builder._validate_authority_candidate_fresh(
+                            authority_root, symlink_path
+                        ),
                         "AUTHORITY_CANDIDATE_REPARSE_FORBIDDEN",
                     )
                 finally:
@@ -423,7 +562,9 @@ def main() -> int:
                 path = temp / f"authority-{review_id}.json"
                 path.write_bytes(builder.canonical(authority_review_payload(candidate, review_id)))
                 reviews.append(path)
-            snapshots = builder._validate_authority_review_set(candidate, reviews, root, temp)
+            snapshots = builder._validate_authority_review_set(
+                candidate, reviews, authority_root, temp
+            )
             expect({snapshot[0]["review_id"] for snapshot in snapshots} == {"PRIMARY", "INDEPENDENT"}, str(snapshots))
 
             bool_review_path = temp / "authority-review-bool.json"
@@ -432,20 +573,20 @@ def main() -> int:
             write_hashed_json(bool_review_path, bad_review, "receipt_payload_sha256")
             expect_builder_error(
                 lambda: builder._validate_authority_review_set(
-                    candidate, [reviews[0], bool_review_path], root, temp
+                    candidate, [reviews[0], bool_review_path], authority_root, temp
                 ),
                 "AUTHORITY_REVIEW_NOT_ACCEPTABLE",
             )
             expect_builder_error(
                 lambda: builder._validate_authority_review_set(
-                    candidate, [reviews[0], reviews[0]], root, temp
+                    candidate, [reviews[0], reviews[0]], authority_root, temp
                 ),
                 "AUTHORITY_REVIEWER_SET_INVALID",
             )
 
             seal_path = temp / "authority-seal.json"
             seal = builder.seal_authority_candidate(
-                root,
+                authority_root,
                 authority_holder["candidate_path"],
                 reviews,
                 temp,
@@ -466,7 +607,7 @@ def main() -> int:
 
         def authority_preflight_case() -> None:
             result = builder.preflight_authority_apply(
-                root,
+                authority_root,
                 authority_holder["candidate_path"],
                 authority_holder["seal_path"],
                 temp,
@@ -479,160 +620,144 @@ def main() -> int:
             attacked = copy.deepcopy(authority_holder["seal"])
             attacked["go_claim"] = 1
             write_hashed_json(attacked_seal_path, attacked, "seal_payload_sha256")
-            candidate = authority_holder["candidate"]
-            targets = {
-                row["path"]: builder._decode_authority_target(row, row["path"])
-                for row in candidate["target_files"]
-            }
-            original_candidate_validator = builder._validate_authority_candidate_fresh
-            builder._validate_authority_candidate_fresh = lambda *args, **kwargs: (
-                candidate,
-                builder.sha(authority_holder["candidate_path"].read_bytes()),
-                targets,
+            expect_builder_error(
+                lambda: builder._validate_authority_seal(
+                    authority_root,
+                    authority_holder["candidate_path"],
+                    attacked_seal_path,
+                    require_source_worktree=True,
+                ),
+                "AUTHORITY_SEAL_CONTRACT_INVALID",
             )
-            try:
-                expect_builder_error(
-                    lambda: builder._validate_authority_seal(
-                        root,
-                        authority_holder["candidate_path"],
-                        attacked_seal_path,
-                        require_source_worktree=True,
-                    ),
-                    "AUTHORITY_SEAL_CONTRACT_INVALID",
-                )
-            finally:
-                builder._validate_authority_candidate_fresh = original_candidate_validator
 
         run("authority preflight is zero-write and rejects seal bool-as-int", authority_preflight_case)
 
         def authority_verify_case() -> None:
-            head = builder.git(root, "rev-parse", "HEAD")
-            projection = builder._build_authority_projection(
-                root, head, require_worktree_parity=True
-            )
-            candidate = {
-                "batch_id": "batch-008",
-                "evaluated_head_sha": head,
-                "evaluated_tree_sha": builder.git(root, "rev-parse", "HEAD^{tree}"),
-                "candidate_payload_sha256": "0" * 64,
-                "target_files": projection["target_files"],
-            }
+            candidate = authority_holder["candidate"]
+            candidate_path = authority_holder["candidate_path"]
+            seal_path = authority_holder["seal_path"]
             target_bytes = {
                 row["path"]: builder._decode_authority_target(row, row["path"])
                 for row in candidate["target_files"]
             }
-            candidate_path = temp / "apply-state-candidate-placeholder.json"
-            seal_path = temp / "apply-state-seal-placeholder.json"
-            candidate_path.write_bytes(b"{}\n")
-            seal_path.write_bytes(b"{}\n")
-            validated = {
-                "candidate": candidate,
-                "seal": {"seal_payload_sha256": "1" * 64},
-                "target_bytes": target_bytes,
-            }
-            original = builder._validate_authority_seal
-            original_index_check = builder._require_authority_index_parity
-            builder._validate_authority_seal = lambda *args, **kwargs: validated
-            try:
-                expect_builder_error(
-                    lambda: builder.verify_authority_applied(
-                        root,
-                        candidate_path,
-                        seal_path,
-                        temp,
-                    ),
-                    "AUTHORITY_TARGET_NOT_APPLIED",
-                )
-                fake_root = temp / "verify-root"
-                for rendered, payload in target_bytes.items():
-                    path = fake_root / rendered
-                    path.parent.mkdir(parents=True, exist_ok=True)
-                    if rendered == builder.REGISTRY.as_posix():
-                        path.write_bytes(payload)
-                    else:
-                        path.write_bytes((root / Path(rendered)).read_bytes())
-                builder._require_authority_index_parity = lambda *args, **kwargs: None
-                expect_builder_error(
-                    lambda: builder.verify_authority_applied(
-                        fake_root,
-                        candidate_path,
-                        seal_path,
-                        temp,
-                    ),
-                    f"AUTHORITY_TARGET_NOT_APPLIED:{builder.SUPERSESSION_MAP.as_posix()}",
-                )
-                (fake_root / builder.SUPERSESSION_MAP).write_bytes(
-                    target_bytes[builder.SUPERSESSION_MAP.as_posix()]
-                )
-                result = builder.verify_authority_applied(
-                    fake_root,
+            expect(
+                classify_live_authority_state(authority_root, candidate) == "SOURCE",
+                "disposable authority clone did not begin at exact source bytes",
+            )
+            preflight = builder.preflight_authority_apply(
+                authority_root, candidate_path, seal_path, temp
+            )
+            expect(preflight["preflight_status"] == "EXACT_TWO_FILE_SOURCE_STATE_VERIFIED", str(preflight))
+
+            registry_path = authority_root / builder.REGISTRY
+            map_path = authority_root / builder.SUPERSESSION_MAP
+            registry_path.write_bytes(target_bytes[builder.REGISTRY.as_posix()])
+            expect(
+                classify_live_authority_state(authority_root, candidate)
+                == "PARTIAL_OR_UNKNOWN",
+                "one-file authority apply was not classified as partial",
+            )
+            expect_builder_error(
+                lambda: builder.verify_authority_applied(
+                    authority_root, candidate_path, seal_path, temp
+                ),
+                f"AUTHORITY_TARGET_NOT_APPLIED:{builder.SUPERSESSION_MAP.as_posix()}",
+            )
+            expect_builder_error(
+                lambda: builder.preflight_authority_apply(
+                    authority_root, candidate_path, seal_path, temp
+                ),
+                f"AUTHORITY_WORKTREE_DRIFT:{builder.REGISTRY.as_posix()}",
+            )
+
+            map_path.write_bytes(target_bytes[builder.SUPERSESSION_MAP.as_posix()])
+            expect(
+                classify_live_authority_state(authority_root, candidate)
+                == "APPLIED_UNCOMMITTED",
+                "exact target bytes were not classified as applied-uncommitted",
+            )
+            verified = builder.verify_authority_applied(
+                authority_root, candidate_path, seal_path, temp
+            )
+            expect(verified["verified_file_count"] == 2, str(verified))
+
+            bindings = builder._authority_target_bindings(candidate)
+            wrong_oid = bindings[builder.SUPERSESSION_MAP.as_posix()]["source_blob_oid"]
+            registry_source_oid = bindings[builder.REGISTRY.as_posix()]["source_blob_oid"]
+            subprocess.run(
+                [
+                    "git", "update-index", "--cacheinfo", "100644",
+                    wrong_oid, builder.REGISTRY.as_posix(),
+                ],
+                cwd=authority_root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+            expect_builder_error(
+                lambda: builder.verify_authority_applied(
+                    authority_root, candidate_path, seal_path, temp
+                ),
+                f"AUTHORITY_INDEX_DRIFT:{builder.REGISTRY.as_posix()}",
+            )
+            subprocess.run(
+                [
+                    "git", "update-index", "--cacheinfo", "100644",
+                    registry_source_oid, builder.REGISTRY.as_posix(),
+                ],
+                cwd=authority_root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+            verified_again = builder.verify_authority_applied(
+                authority_root, candidate_path, seal_path, temp
+            )
+            expect(verified_again["verified_file_count"] == 2, str(verified_again))
+
+            subprocess.run(
+                [
+                    "git", "add", "--",
+                    builder.REGISTRY.as_posix(),
+                    builder.SUPERSESSION_MAP.as_posix(),
+                ],
+                cwd=authority_root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "-c", "user.name=V076 Builder Selftest",
+                    "-c", "user.email=v076-builder-selftest@example.invalid",
+                    "-c", "core.hooksPath=NUL",
+                    "commit", "--no-gpg-sign", "-m",
+                    "test: temporary Batch-008 authority application",
+                ],
+                cwd=authority_root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+            expect(
+                classify_live_authority_state(authority_root, candidate) == "COMMITTED",
+                "temporary exact-target commit was not classified as committed",
+            )
+            expect_builder_error(
+                lambda: builder._validate_authority_candidate_fresh(
+                    authority_root,
                     candidate_path,
-                    seal_path,
-                    temp,
-                )
-                expect(result["verified_file_count"] == 2, str(result))
-
-                expect_builder_error(
-                    lambda: builder.preflight_authority_apply(
-                        fake_root,
-                        candidate_path,
-                        seal_path,
-                        temp,
-                    ),
-                    "AUTHORITY_SOURCE_STATE_DRIFT",
-                )
-
-                alternate_index = temp / "authority-index-only-drift"
-                map_oid = builder.git(
-                    root,
-                    "rev-parse",
-                    f"{candidate['evaluated_head_sha']}:{builder.SUPERSESSION_MAP.as_posix()}",
-                )
-                previous_index = os.environ.get("GIT_INDEX_FILE")
-                os.environ["GIT_INDEX_FILE"] = str(alternate_index)
-                try:
-                    subprocess.run(
-                        ["git", "read-tree", candidate["evaluated_head_sha"]],
-                        cwd=root,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        check=True,
-                    )
-                    subprocess.run(
-                        [
-                            "git", "update-index", "--cacheinfo", "100644",
-                            map_oid, builder.REGISTRY.as_posix(),
-                        ],
-                        cwd=root,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        check=True,
-                    )
-                    builder._require_authority_index_parity = (
-                        lambda _root, head, relative: original_index_check(
-                            root, head, relative
-                        )
-                    )
-                    expect_builder_error(
-                        lambda: builder.verify_authority_applied(
-                            fake_root,
-                            candidate_path,
-                            seal_path,
-                            temp,
-                        ),
-                        f"AUTHORITY_INDEX_DRIFT:{builder.REGISTRY.as_posix()}",
-                    )
-                finally:
-                    if previous_index is None:
-                        os.environ.pop("GIT_INDEX_FILE", None)
-                    else:
-                        os.environ["GIT_INDEX_FILE"] = previous_index
-            finally:
-                builder._validate_authority_seal = original
-                builder._require_authority_index_parity = original_index_check
+                    require_source_worktree=True,
+                ),
+                "AUTHORITY_CANDIDATE_HEAD_DRIFT",
+            )
+            authority_holder["temp_commit_head"] = builder.git(
+                authority_root, "rev-parse", "HEAD"
+            )
 
         run(
-            "authority verify rejects partial apply, repeat preflight, and index-only drift",
+            "authority lifecycle rejects partial apply, index drift, and stale candidate after commit",
             authority_verify_case,
         )
 
@@ -677,6 +802,9 @@ def main() -> int:
         "status": "PASS" if passed == len(cases) else "FAIL",
         "case_count": len(cases),
         "pass_count": passed,
+        "live_authority_state": authority_holder.get(
+            "live_state", "PARTIAL_OR_UNKNOWN"
+        ),
         "cases": cases,
     }
     print(json.dumps(report, sort_keys=True))
