@@ -617,7 +617,14 @@ def _git(root: Path, *args: str) -> str:
 
 def _git_bytes(root: Path, commit: str, relative: str) -> bytes | None:
     result = subprocess.run(
-        ["git", "-C", str(root), "show", f"{commit}:{normalize_path(relative)}"],
+        [
+            "git",
+            "-C",
+            str(root),
+            "cat-file",
+            "blob",
+            f"{commit}:{normalize_path(relative)}",
+        ],
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

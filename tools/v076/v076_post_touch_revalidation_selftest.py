@@ -462,6 +462,24 @@ def main() -> int:
             f"POST_TOUCH_PREDECESSOR_FINGERPRINT_OVERLAP:{predecessor_fp}"
         ],
     ))
+    long_relative = "docs/" + "nested/" * 24 + "committed-sidecar.json"
+    with patch.object(subject.subprocess, "run") as run_git:
+        run_git.return_value.returncode = 0
+        run_git.return_value.stdout = b"committed sidecar bytes"
+        committed_bytes = subject._git_bytes(root, "d" * 40, long_relative)
+        command = run_git.call_args.args[0]
+    checks.append((
+        "committed_bytes_use_blob_plumbing_for_long_paths",
+        committed_bytes == b"committed sidecar bytes"
+        and command == [
+            "git",
+            "-C",
+            str(root),
+            "cat-file",
+            "blob",
+            f"{'d' * 40}:{long_relative}",
+        ],
+    ))
 
     passed = sum(ok for _, ok in checks)
     for name, ok in checks:
