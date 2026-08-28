@@ -51,7 +51,7 @@ var _animation_facility_state_mutation_count := 0
 
 func _ready() -> void:
 	super._ready()
-	load_cue_catalog()
+	load_cue_catalog(CUE_CATALOG_PATH)
 	set_process(true)
 
 
