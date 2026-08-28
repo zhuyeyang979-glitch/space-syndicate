@@ -75,6 +75,57 @@ SUCCESSOR_SCHEMA_REL = Path(
     "schema_full_convergence_20260827_successor_v3.json"
 )
 SUCCESSOR_SCHEMA_SHA256 = "019bc57dcf92415c00b35b691f7adad9e736770bcf927622cb6db16b966c4543"
+SUCCESSOR_V4_SCHEMA_REL = Path(
+    "docs/architecture/reuse_corrections/v2/"
+    "schema_full_convergence_20260827_successor_v4.json"
+)
+SUCCESSOR_V4_SCHEMA_SHA256 = "cba09cffe6f8699cea40a3d08a8774fdc5e49c0d4f4ad2700ba804f15f725b1b"
+ALPHA01_IMPLEMENTATION_BINDING_REL = Path(
+    "docs/architecture/reuse_corrections/v2/implementation_bindings/"
+    "alpha01_content_manifest_resource_binding_v1.json"
+)
+# The binding is a fixed, append-only authority.  This value is refreshed
+# only after the JSON bytes are finalized; it is never discovered from a
+# directory or accepted from a caller.
+ALPHA01_IMPLEMENTATION_BINDING_SHA256 = "d639086f5a329f1d39386c20282eb43b9c84b597d7438af7c1d8c2085b01ed87"
+SUCCESSOR_V4_SCHEMA_VERSION = (
+    "space_syndicate.v076.reuse_exact_failure_correction.v2."
+    "full_convergence_schema.v4"
+)
+IMPLEMENTATION_BINDING_SCHEMA_VERSION = (
+    "space_syndicate.v076.reuse_exact_failure_correction.v2."
+    "implementation_binding.v1"
+)
+ALPHA01_COMPONENT_ID = "component.current.alpha01_content_manifest"
+ALPHA01_RESOURCE_PATH = "resources/content/alpha01/alpha01_content_manifest.tres"
+ALPHA01_SCRIPT_PATH = "resources/content/alpha01/alpha01_content_manifest.gd"
+ALPHA01_OWNER_COMPONENT_ID = "component.current.v075_runtime_owner"
+ALPHA01_OWNER_PATH = "scripts/v075_runtime/v075_runtime_owner.gd"
+ALPHA01_DYNAMIC_FINGERPRINTS = frozenset({
+    "V2F-97098e90fc9a19e803dad6116f516339d4d08399080e0506cde3faa1b1a5833d",
+    "V2F-d68046a34484d6bd5734a1a7574d47ac830cd768d713bac033085852ff786b21",
+    "V2F-e8f0cc33a9f313014b23de6574be6ad78ff435bfac0a0964199fdfb550c4508b",
+    "V2F-e92184eb9597cf1150d7d04c296591d0fed24006685ab7a75a90037ba8d2ab3a",
+    "V2F-f92454220b0ec6286cb2d42f3a6a824d51309dd1edc7430e60c752631f07cd09",
+})
+ALPHA01_DYNAMIC_FINGERPRINT_SET_SHA256 = (
+    "d40230b944d58e8948af93c60a3d61ea726bc1f7501bf6a7b980977798ecbe02"
+)
+ALPHA01_REGISTRY_ROW_SHA256 = (
+    "14356a9dd5706b1ca5fecdcc3bef5d095de582bcdb70ae21590cba91e7b6cf97"
+)
+ALPHA01_RESOURCE_SHA256 = (
+    "302bffb7912b2890ef8b02e37dc85f9d011341dde2d5d5aa2a3685f0245902ff"
+)
+ALPHA01_RESOURCE_OID = "d4d24430417c5afd3aba8b6b55794b7165d0e401"
+ALPHA01_SCRIPT_SHA256 = (
+    "a49c23e9ffdee83d51d2ac1c5f2e6ceaa0e0837a43a73d0671f202d737911a1b"
+)
+ALPHA01_SCRIPT_OID = "41275dc953ee64cd568518ae01184f9cff95f9ed"
+ALPHA01_BINDING_HEAD_SHA = "61c9ffb2203f99c18901ba972a44fed2b75188a6"
+ALPHA01_BINDING_TREE_SHA = "b39aa1a666351d0ee4316f86a34436026803e04f"
+ALPHA01_TRANSITION_OLD_SHA = "46b33bba77b356b100ab68bc7c3676d503049a2c"
+ALPHA01_TRANSITION_NEW_SHA = "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3"
 RECORD_ROOT_REL = Path("docs/architecture/reuse_corrections/v2/records/full_convergence_20260827")
 EPOCH_ROOT_REL = Path("reports/reuse/correction_v2/epochs/full_convergence_20260827")
 BASELINE_REPORT_REL = EPOCH_ROOT_REL / "baseline_raw_failure_report.json"
@@ -534,6 +585,205 @@ DYNAMIC_REFERENCE_FAILURE_POLICY_FIELDS = {
     "unknown_callsite_fails_closed",
     "wildcard_count",
 }
+
+# Successor-v4 is an additional, narrowly scoped authority.  Its closed
+# field sets are intentionally independent of the legacy v2/v3 contracts so
+# adding a future field cannot silently widen the exemption.
+SUCCESSOR_V4_SCHEMA_FIELDS = frozenset({
+    "authorization_base_head_sha",
+    "authorization_id",
+    "implementation_binding_count",
+    "implementation_binding_allowed_disposition",
+    "implementation_binding_discovery_allowed",
+    "implementation_binding_path",
+    "implementation_binding_required_fields",
+    "implementation_binding_schema_version",
+    "implementation_binding_sha256",
+    "implementation_bound_failure_count",
+    "implementation_bound_failure_fingerprint_set_sha256",
+    "implementation_bound_failure_fingerprints",
+    "new_failure_requires_new_record",
+    "old_evidence_mutation_allowed",
+    "previous_schema_path",
+    "previous_schema_sha256",
+    "registry_canonical_row_binding_required",
+    "registry_path_binding_required",
+    "resolved_dynamic_reference_requires_exact_callsite_and_targets",
+    "resource_script_link_binding_required",
+    "schema_id",
+    "schema_version",
+    "wildcard_membership_allowed",
+    "future_failure_auto_membership_allowed",
+    "dynamic_callsite_binding_required",
+    "dynamic_target_set_binding_required",
+})
+IMPLEMENTATION_BINDING_FIELDS = frozenset({
+    "authorization_base_head_sha",
+    "authorization_id",
+    "binding_head_sha",
+    "binding_id",
+    "binding_tree_sha",
+    "created_at",
+    "creator",
+    "failure_count",
+    "failure_fingerprint_set_sha256",
+    "failure_fingerprints",
+    "failure_identity_by_fingerprint",
+    "future_failure_policy",
+    "historical_transition",
+    "invalidation_policy",
+    "record_payload_sha256",
+    "recommended_disposition",
+    "registry_authority",
+    "resource_authority",
+    "schema_version",
+    "script_authority",
+    "script_link",
+    "successor_schema_path",
+    "wildcard_count",
+})
+IMPLEMENTATION_IDENTITY_FIELDS = frozenset({
+    "callsite_locations",
+    "loader",
+    "raw_failure",
+    "reference_expression",
+    "resolved_targets",
+    "runtime_probe",
+    "rule_id",
+    "source_blob_sha256",
+    "source_commit_sha",
+    "source_line_or_ast_location",
+    "source_path",
+    "subject_kind",
+    "subject_value",
+    "target_count",
+    "target_derivation_rule",
+    "target_set_sha256",
+    "transition_new_sha",
+    "transition_old_sha",
+})
+IMPLEMENTATION_RUNTIME_PROBE_FIELDS = frozenset({
+    "expected_target_count",
+    "probe_id",
+    "required_before_production_claim",
+    "test_git_blob_oid",
+    "test_path",
+    "test_sha256",
+})
+ALPHA01_EXPECTED_TARGETS_BY_FINGERPRINT = {
+    "V2F-e8f0cc33a9f313014b23de6574be6ad78ff435bfac0a0964199fdfb550c4508b": (
+        "res://scenes/runtime/GdpFormulaRuntimeController.tscn",
+        "res://scripts/runtime/commodity_card_inventory_runtime_controller.gd",
+        "res://scripts/runtime/commodity_flow_runtime_controller.gd",
+        "res://scripts/runtime/district_supply_action_port.gd",
+        "res://scripts/runtime/game_runtime_coordinator.gd",
+        "res://scripts/runtime/intel_private_command_port.gd",
+        "res://scripts/runtime/military_runtime_controller.gd",
+        "res://scripts/runtime/monster_codex_public_source_service.gd",
+        "res://scripts/runtime/monster_runtime_controller.gd",
+        "res://scripts/runtime/new_game_setup_draft_service.gd",
+        "res://scripts/runtime/product_market_runtime_controller.gd",
+        "res://scripts/runtime/region_supply_runtime_controller.gd",
+        "res://scripts/runtime/role_codex_public_source_service.gd",
+        "res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd",
+        "res://scripts/runtime/session_start_plan_builder.gd",
+    ),
+    "V2F-e92184eb9597cf1150d7d04c296591d0fed24006685ab7a75a90037ba8d2ab3a": (
+        "res://scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd",
+        "res://scripts/runtime/card_counter_settlement_runtime_service.gd",
+        "res://scripts/runtime/commodity_flow_runtime_controller.gd",
+        "res://scripts/runtime/military_runtime_controller.gd",
+        "res://scripts/runtime/monster_runtime_controller.gd",
+        "res://scripts/runtime/player_hand_interaction_runtime_service.gd",
+        "res://scripts/runtime/region_infrastructure_runtime_controller.gd",
+    ),
+    "V2F-97098e90fc9a19e803dad6116f516339d4d08399080e0506cde3faa1b1a5833d": (
+        "res://scripts/runtime/district_supply_action_port.gd",
+        "res://scripts/runtime/intel_private_command_port.gd",
+        "res://scripts/runtime/military_runtime_controller.gd",
+        "res://scripts/runtime/monster_runtime_controller.gd",
+        "res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd",
+        "res://scripts/runtime/session_start_plan_builder.gd",
+    ),
+    "V2F-f92454220b0ec6286cb2d42f3a6a824d51309dd1edc7430e60c752631f07cd09": (
+        "res://data/cards/card_runtime_catalog_v06.json",
+        "res://docs/rules/v06_mechanic_status_registry.json",
+        "res://resources/content/product_industry_catalog_v05.tres",
+        "res://scripts/runtime/monster_catalog_v06.gd",
+        "res://scripts/runtime/role_catalog_runtime_service.gd",
+    ),
+    "V2F-d68046a34484d6bd5734a1a7574d47ac830cd768d713bac033085852ff786b21": (
+        "res://scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd",
+        "res://scripts/runtime/card_counter_settlement_runtime_service.gd",
+        "res://scripts/runtime/commodity_flow_runtime_controller.gd",
+        "res://scripts/runtime/military_runtime_controller.gd",
+        "res://scripts/runtime/monster_runtime_controller.gd",
+        "res://scripts/runtime/player_hand_interaction_runtime_service.gd",
+        "res://scripts/runtime/region_infrastructure_runtime_controller.gd",
+    ),
+}
+ALPHA01_CALLSITE_EXPECTATIONS = {
+    "V2F-e8f0cc33a9f313014b23de6574be6ad78ff435bfac0a0964199fdfb550c4508b": ("FileAccess.file_exists", "path", ((650, 12, "_validate_role_passive_consumers"), (743, 11, "_validate_runtime_consumers"))),
+    "V2F-e92184eb9597cf1150d7d04c296591d0fed24006685ab7a75a90037ba8d2ab3a": ("FileAccess.get_file_as_string", "owner_path", ((544, 11, "_validate_owner_binding"),)),
+    "V2F-97098e90fc9a19e803dad6116f516339d4d08399080e0506cde3faa1b1a5833d": ("FileAccess.get_file_as_string", "path", ((653, 18, "_validate_role_passive_consumers"),)),
+    "V2F-f92454220b0ec6286cb2d42f3a6a824d51309dd1edc7430e60c752631f07cd09": ("FileAccess.open", "path", ((881, 14, "_load_json"), (889, 14, "_file_sha256"))),
+    "V2F-d68046a34484d6bd5734a1a7574d47ac830cd768d713bac033085852ff786b21": ("ResourceLoader.exists", "owner_path", ((542, 34, "_validate_owner_binding"),)),
+}
+ALPHA01_RAW_FAILURE_BY_FINGERPRINT = {
+    "V2F-e8f0cc33a9f313014b23de6574be6ad78ff435bfac0a0964199fdfb550c4508b": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.file_exists:path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+    "V2F-e92184eb9597cf1150d7d04c296591d0fed24006685ab7a75a90037ba8d2ab3a": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.get_file_as_string:owner_path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+    "V2F-97098e90fc9a19e803dad6116f516339d4d08399080e0506cde3faa1b1a5833d": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.get_file_as_string:path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+    "V2F-f92454220b0ec6286cb2d42f3a6a824d51309dd1edc7430e60c752631f07cd09": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.open:path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+    "V2F-d68046a34484d6bd5734a1a7574d47ac830cd768d713bac033085852ff786b21": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:ResourceLoader.exists:owner_path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+}
+ALPHA01_TARGET_DERIVATION_BY_FINGERPRINT = {
+    "V2F-e8f0cc33a9f313014b23de6574be6ad78ff435bfac0a0964199fdfb550c4508b": "sorted_unique(ROLE_PASSIVE_CONSUMER_EVIDENCE[*].consumer_path + RUNTIME_CONSUMER_EVIDENCE[*][*])",
+    "V2F-e92184eb9597cf1150d7d04c296591d0fed24006685ab7a75a90037ba8d2ab3a": "sorted_unique(OWNER_BINDINGS[*].owner_path)",
+    "V2F-97098e90fc9a19e803dad6116f516339d4d08399080e0506cde3faa1b1a5833d": "sorted_unique(ROLE_PASSIVE_CONSUMER_EVIDENCE[*].consumer_path)",
+    "V2F-f92454220b0ec6286cb2d42f3a6a824d51309dd1edc7430e60c752631f07cd09": "sorted_unique(SOURCE_PATHS[*])",
+    "V2F-d68046a34484d6bd5734a1a7574d47ac830cd768d713bac033085852ff786b21": "sorted_unique(OWNER_BINDINGS[*].owner_path)",
+}
+IMPLEMENTATION_REGISTRY_AUTHORITY_FIELDS = frozenset({
+    "canonical_row_sha256", "canonicalization", "component_id",
+    "component_path", "component_role", "domain_id", "owner_component_id",
+    "owner_path", "production_reachable", "reads_authority",
+    "registry_git_blob_oid", "registry_path", "registry_sha256", "row_count",
+    "row_selector", "writes_authority",
+})
+IMPLEMENTATION_CANONICALIZATION_FIELDS = frozenset({
+    "encoding", "ensure_ascii", "separators", "sort_keys", "trailing_newline",
+})
+IMPLEMENTATION_ROW_SELECTOR_FIELDS = frozenset({"component_id", "path"})
+IMPLEMENTATION_RESOURCE_AUTHORITY_FIELDS = frozenset({
+    "git_blob_oid", "path", "res_path", "resource_type", "script_class", "sha256",
+})
+IMPLEMENTATION_SCRIPT_AUTHORITY_FIELDS = frozenset({
+    "class_name", "extends", "git_blob_oid", "path", "res_path", "sha256",
+})
+IMPLEMENTATION_SCRIPT_LINK_FIELDS = frozenset({
+    "ext_resource_id", "ext_resource_type", "res_script_path",
+    "resource_path", "resource_script_class", "script_assignment",
+    "script_assignment_count", "script_ext_resource_count", "script_path",
+    "unique_script_link",
+})
+IMPLEMENTATION_TRANSITION_FIELDS = frozenset({
+    "direct_parent_required", "source_commit_sha", "source_git_blob_oid",
+    "source_path", "source_sha256", "transition_new_sha", "transition_old_sha",
+})
+IMPLEMENTATION_INVALIDATION_POLICY_FIELDS = frozenset({
+    "binding_head_change_requires_revalidation", "callsite_change_invalidates",
+    "domain_change_invalidates", "old_evidence_mutation_forbidden",
+    "owner_change_invalidates", "production_reachability_change_invalidates",
+    "registry_row_change_invalidates", "resource_git_blob_oid_change_invalidates",
+    "resource_sha256_change_invalidates", "script_git_blob_oid_change_invalidates",
+    "script_link_change_invalidates", "script_sha256_change_invalidates",
+    "target_set_change_invalidates", "transition_change_invalidates",
+    "unrelated_delta_preserves_binding",
+})
+IMPLEMENTATION_FUTURE_POLICY_FIELDS = frozenset({
+    "future_failure_auto_membership_allowed", "new_failure_requires_new_record",
+    "wildcard_membership_allowed",
+})
 
 DYNAMIC_REFERENCE_RESOLUTION_METHODS = {
     "EXACT_CONSTANT_CALL_GRAPH_MANIFEST",
@@ -1954,6 +2204,565 @@ def validate_descendant_history_successor_schema(
     return failures
 
 
+def _compact_json_sha256(value: Any) -> str:
+    """Hash canonical JSON without the legacy helper's terminal LF."""
+
+    return sha256_bytes(
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+
+
+def _v4_git_bytes(root: Path, commit: str, relative: str) -> bytes | None:
+    """Read an implementation-bound blob without allowing Git errors to escape."""
+
+    try:
+        return _git_bytes(root, commit, relative)
+    except (OSError, ValueError):
+        return None
+
+
+def _v4_git_object_id(root: Path, *args: str) -> str:
+    """Resolve an implementation-bound object id fail-closed."""
+
+    try:
+        return _git_object_id(root, *args)
+    except (OSError, ValueError):
+        return ""
+
+
+def _v4_json_at(root: Path, commit: str, relative: str) -> Any:
+    """Load implementation-bound JSON without propagating repository errors."""
+
+    try:
+        return _json_at(root, commit, relative)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        return None
+
+
+def _v4_committed_blob_seal_failures(
+    root: Path,
+    path: Path,
+    expected_sha256: str,
+    *,
+    evaluated_head: str,
+    code_prefix: str,
+) -> list[str]:
+    """Run a committed-blob seal check while preserving validator fail-closed behavior."""
+
+    try:
+        return _committed_blob_seal_failures(
+            root,
+            path,
+            expected_sha256,
+            evaluated_head=evaluated_head,
+            code_prefix=code_prefix,
+        )
+    except (OSError, ValueError):
+        return [f"{code_prefix}_GIT_VALIDATION_ERROR"]
+
+
+def _alpha01_v4_identity_failures(
+    root: Path,
+    fingerprint: str,
+    identity: Any,
+    *,
+    evaluated_head: str,
+    source_text: str,
+) -> list[str]:
+    """Validate one implementation-bound Alpha01 dynamic identity.
+
+    This is deliberately a closed, data-independent check.  A binding may
+    not broaden its selector, replace a target set, or move a callsite and
+    remain trusted merely because its own JSON was rewritten.
+    """
+
+    failures: list[str] = []
+    if not isinstance(identity, dict) or set(identity) != IMPLEMENTATION_IDENTITY_FIELDS:
+        return [f"SUCCESSOR_V4_IDENTITY_FIELD_SET_INVALID:{fingerprint}"]
+    expected = ALPHA01_CALLSITE_EXPECTATIONS.get(fingerprint)
+    expected_targets = ALPHA01_EXPECTED_TARGETS_BY_FINGERPRINT.get(fingerprint)
+    expected_raw = ALPHA01_RAW_FAILURE_BY_FINGERPRINT.get(fingerprint)
+    expected_derivation = ALPHA01_TARGET_DERIVATION_BY_FINGERPRINT.get(fingerprint)
+    if (
+        expected is None
+        or expected_targets is None
+        or expected_raw is None
+        or expected_derivation is None
+    ):
+        return [f"SUCCESSOR_V4_IDENTITY_UNAUTHORIZED_FINGERPRINT:{fingerprint}"]
+    loader, expression, expected_sites = expected
+    raw_failure = identity.get("raw_failure")
+    raw_payload = (
+        "V076_RAW_FAILURE_V2\nHISTORICAL\n"
+        f"HISTORY_DYNAMIC_REFERENCE_UNRESOLVED\n{raw_failure}\n"
+    ).encode("utf-8")
+    if (
+        raw_failure != expected_raw
+        or "V2F-" + sha256_bytes(raw_payload) != fingerprint
+    ):
+        failures.append(f"SUCCESSOR_V4_IDENTITY_RAW_FAILURE_INVALID:{fingerprint}")
+    if identity.get("rule_id") != "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED":
+        failures.append(f"SUCCESSOR_V4_IDENTITY_RULE_INVALID:{fingerprint}")
+    if identity.get("subject_kind") != "path" or identity.get("subject_value") != ALPHA01_SCRIPT_PATH:
+        failures.append(f"SUCCESSOR_V4_IDENTITY_SUBJECT_INVALID:{fingerprint}")
+    if identity.get("source_path") != ALPHA01_SCRIPT_PATH:
+        failures.append(f"SUCCESSOR_V4_IDENTITY_SOURCE_PATH_INVALID:{fingerprint}")
+    if identity.get("source_commit_sha") != ALPHA01_TRANSITION_NEW_SHA:
+        failures.append(f"SUCCESSOR_V4_IDENTITY_SOURCE_COMMIT_INVALID:{fingerprint}")
+    if identity.get("transition_old_sha") != ALPHA01_TRANSITION_OLD_SHA or identity.get("transition_new_sha") != ALPHA01_TRANSITION_NEW_SHA:
+        failures.append(f"SUCCESSOR_V4_IDENTITY_TRANSITION_INVALID:{fingerprint}")
+    if identity.get("source_blob_sha256") != ALPHA01_SCRIPT_SHA256:
+        failures.append(f"SUCCESSOR_V4_IDENTITY_SOURCE_BLOB_INVALID:{fingerprint}")
+    if identity.get("loader") != loader or identity.get("reference_expression") != expression:
+        failures.append(f"SUCCESSOR_V4_IDENTITY_LOADER_INVALID:{fingerprint}")
+    targets = identity.get("resolved_targets")
+    rendered_targets = [str(value) for value in targets] if isinstance(targets, list) else []
+    if rendered_targets != list(expected_targets) or rendered_targets != sorted(rendered_targets) or len(rendered_targets) != len(set(rendered_targets)):
+        failures.append(f"SUCCESSOR_V4_IDENTITY_TARGET_SET_INVALID:{fingerprint}")
+    if not _is_exact_int(identity.get("target_count"), len(expected_targets)) or identity.get("target_set_sha256") != _dynamic_target_set_sha256(rendered_targets):
+        failures.append(f"SUCCESSOR_V4_IDENTITY_TARGET_DIGEST_INVALID:{fingerprint}")
+    if identity.get("target_derivation_rule") != expected_derivation:
+        failures.append(f"SUCCESSOR_V4_IDENTITY_DERIVATION_RULE_INVALID:{fingerprint}")
+    locations = identity.get("callsite_locations")
+    actual_locations: list[tuple[int, int, str]] = []
+    if not isinstance(locations, list):
+        failures.append(f"SUCCESSOR_V4_IDENTITY_CALLSITE_LOCATIONS_INVALID:{fingerprint}")
+    else:
+        for site in locations:
+            if not isinstance(site, dict) or set(site) != {"line", "column", "function"}:
+                failures.append(f"SUCCESSOR_V4_IDENTITY_CALLSITE_LOCATION_INVALID:{fingerprint}")
+                continue
+            line, column, function = site.get("line"), site.get("column"), str(site.get("function", ""))
+            if type(line) is not int or type(column) is not int or line < 1 or column < 1 or not function:
+                failures.append(f"SUCCESSOR_V4_IDENTITY_CALLSITE_LOCATION_INVALID:{fingerprint}")
+                continue
+            actual_locations.append((line, column, function))
+            source_lines = source_text.splitlines()
+            source_line = source_lines[line - 1] if line <= len(source_lines) else ""
+            if not source_line or loader not in source_line or expression not in source_line or source_line.find(loader) + 1 != column:
+                failures.append(f"SUCCESSOR_V4_IDENTITY_CALLSITE_SOURCE_MISMATCH:{fingerprint}:{line}")
+            preceding = ""
+            for candidate in reversed(source_lines[: max(line - 1, 0)]):
+                match = re.match(r"\s*func\s+([A-Za-z0-9_]+)\s*\(", candidate)
+                if match:
+                    preceding = match.group(1)
+                    break
+            if preceding != function:
+                failures.append(f"SUCCESSOR_V4_IDENTITY_CALLSITE_FUNCTION_MISMATCH:{fingerprint}:{line}")
+        if tuple(actual_locations) != tuple(expected_sites):
+            failures.append(f"SUCCESSOR_V4_IDENTITY_CALLSITE_SET_MISMATCH:{fingerprint}")
+    primary = identity.get("source_line_or_ast_location")
+    if not isinstance(primary, dict) or set(primary) != {"line", "column", "containing_function"}:
+        failures.append(f"SUCCESSOR_V4_IDENTITY_PRIMARY_LOCATION_INVALID:{fingerprint}")
+    elif (
+        not _is_int(primary.get("line"))
+        or not _is_int(primary.get("column"))
+        or (
+            primary.get("line"),
+            primary.get("column"),
+            primary.get("containing_function"),
+        )
+        != expected_sites[0]
+    ):
+        failures.append(f"SUCCESSOR_V4_IDENTITY_PRIMARY_LOCATION_MISMATCH:{fingerprint}")
+    probe = identity.get("runtime_probe")
+    if not isinstance(probe, dict) or set(probe) != IMPLEMENTATION_RUNTIME_PROBE_FIELDS:
+        failures.append(f"SUCCESSOR_V4_IDENTITY_PROBE_INVALID:{fingerprint}")
+    else:
+        probe_path = str(probe.get("test_path", ""))
+        if (
+            probe.get("probe_id") != "alpha01_content_manifest_test"
+            or probe_path != "tests/alpha01_content_manifest_test.gd"
+            or probe.get("test_sha256") != "a4f53e23c8511299cae86c3a2332f4c308c5aa331812c68f8828e81bb3c342f6"
+            or probe.get("test_git_blob_oid") != "f31291622eb4b21fc789ad8980474acbdd5cd757"
+            or not _is_exact_int(
+                probe.get("expected_target_count"), len(expected_targets)
+            )
+            or probe.get("required_before_production_claim") is not True
+        ):
+            failures.append(f"SUCCESSOR_V4_IDENTITY_PROBE_CONTENT_INVALID:{fingerprint}")
+        probe_bytes = _v4_git_bytes(root, evaluated_head, probe_path)
+        if probe_bytes is None or sha256_bytes(probe_bytes) != probe.get("test_sha256") or _v4_git_object_id(root, "rev-parse", f"{evaluated_head}:{probe_path}") != probe.get("test_git_blob_oid"):
+            failures.append(f"SUCCESSOR_V4_IDENTITY_PROBE_DRIFT:{fingerprint}")
+    for target in rendered_targets:
+        git_target = target[6:] if target.startswith("res://") else ""
+        if not git_target or _v4_git_bytes(root, evaluated_head, git_target) is None:
+            failures.append(f"SUCCESSOR_V4_IDENTITY_TARGET_MISSING:{fingerprint}:{target}")
+    return sorted(set(failures))
+
+
+def validate_implementation_binding_v4(
+    root: Path,
+    *,
+    evaluated_head: str | None = None,
+) -> dict[str, Any]:
+    """Validate the fixed Alpha01 successor-v4 implementation authority."""
+
+    failures: list[str] = []
+    head = _resolve_evaluated_head(root, evaluated_head)
+    trusted: dict[str, dict[str, Any]] = {}
+    result: dict[str, Any] = {
+        "status": "FAIL",
+        "failures": failures,
+        "trusted_by_fingerprint": trusted,
+        "binding_id": "",
+        "fingerprint_count": 0,
+    }
+
+    def exact_value(actual: Any, expected: Any) -> bool:
+        if type(expected) is bool:
+            return actual is expected
+        if type(expected) is int:
+            return type(actual) is int and actual == expected
+        return actual == expected
+
+    def closed_mapping(
+        value: Any,
+        fields: frozenset[str],
+        code: str,
+    ) -> dict[str, Any]:
+        if not isinstance(value, dict) or set(value) != fields:
+            failures.append(f"{code}_FIELD_SET_INVALID")
+            return value if isinstance(value, dict) else {}
+        return value
+
+    def require_exact(
+        value: dict[str, Any],
+        expected: dict[str, Any],
+        code: str,
+    ) -> None:
+        if any(
+            not exact_value(value.get(field), expected_value)
+            for field, expected_value in expected.items()
+        ):
+            failures.append(f"{code}_CONTENT_INVALID")
+
+    if not head:
+        failures.append("SUCCESSOR_V4_EVALUATED_HEAD_INVALID")
+        return result
+    schema_path = root / SUCCESSOR_V4_SCHEMA_REL
+    binding_path = root / ALPHA01_IMPLEMENTATION_BINDING_REL
+    try:
+        schema = load_json_strict(schema_path)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        failures.append("SUCCESSOR_V4_SCHEMA_JSON_INVALID")
+        schema = {}
+    if not isinstance(schema, dict) or set(schema) != SUCCESSOR_V4_SCHEMA_FIELDS:
+        failures.append("SUCCESSOR_V4_SCHEMA_FIELD_SET_INVALID")
+        schema = schema if isinstance(schema, dict) else {}
+    failures.extend(_v4_committed_blob_seal_failures(root, schema_path, SUCCESSOR_V4_SCHEMA_SHA256, evaluated_head=head, code_prefix="SUCCESSOR_V4_SCHEMA"))
+    for field, expected in {
+        "schema_version": SUCCESSOR_V4_SCHEMA_VERSION,
+        "schema_id": "FULL_CONVERGENCE_SUCCESSOR_SCHEMA_20260827_004",
+        "authorization_id": AUTHORIZATION_ID,
+        "authorization_base_head_sha": AUTHORIZATION_BASE_HEAD_SHA,
+        "previous_schema_path": SUCCESSOR_SCHEMA_REL.as_posix(),
+        "previous_schema_sha256": SUCCESSOR_SCHEMA_SHA256,
+        "implementation_binding_schema_version": IMPLEMENTATION_BINDING_SCHEMA_VERSION,
+        "implementation_binding_path": ALPHA01_IMPLEMENTATION_BINDING_REL.as_posix(),
+        "implementation_binding_sha256": ALPHA01_IMPLEMENTATION_BINDING_SHA256,
+        "implementation_binding_count": 1,
+        "implementation_bound_failure_count": 5,
+        "implementation_bound_failure_fingerprint_set_sha256": ALPHA01_DYNAMIC_FINGERPRINT_SET_SHA256,
+        "implementation_binding_allowed_disposition": "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED",
+        "implementation_binding_discovery_allowed": False,
+        "registry_path_binding_required": True,
+        "registry_canonical_row_binding_required": True,
+        "resource_script_link_binding_required": True,
+        "dynamic_callsite_binding_required": True,
+        "dynamic_target_set_binding_required": True,
+        "resolved_dynamic_reference_requires_exact_callsite_and_targets": True,
+        "wildcard_membership_allowed": False,
+        "future_failure_auto_membership_allowed": False,
+        "old_evidence_mutation_allowed": False,
+        "new_failure_requires_new_record": True,
+    }.items():
+        if not exact_value(schema.get(field), expected):
+            failures.append(f"SUCCESSOR_V4_SCHEMA_{field.upper()}_MISMATCH")
+    if schema.get("implementation_bound_failure_fingerprints") != sorted(ALPHA01_DYNAMIC_FINGERPRINTS) or schema.get("implementation_binding_required_fields") != sorted(IMPLEMENTATION_BINDING_FIELDS):
+        failures.append("SUCCESSOR_V4_SCHEMA_BINDING_CONTRACT_MISMATCH")
+    predecessor = root / SUCCESSOR_SCHEMA_REL
+    failures.extend(_v4_committed_blob_seal_failures(root, predecessor, SUCCESSOR_SCHEMA_SHA256, evaluated_head=head, code_prefix="SUCCESSOR_V4_PREDECESSOR_SCHEMA"))
+    try:
+        binding = load_json_strict(binding_path)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        failures.append("SUCCESSOR_V4_BINDING_JSON_INVALID")
+        binding = {}
+    if not isinstance(binding, dict) or set(binding) != IMPLEMENTATION_BINDING_FIELDS:
+        failures.append("SUCCESSOR_V4_BINDING_FIELD_SET_INVALID")
+        binding = binding if isinstance(binding, dict) else {}
+    binding_seal = _v4_committed_blob_seal_failures(root, binding_path, ALPHA01_IMPLEMENTATION_BINDING_SHA256, evaluated_head=head, code_prefix="SUCCESSOR_V4_BINDING")
+    failures.extend(binding_seal)
+    try:
+        binding_head_authorized = _is_ancestor(root, AUTHORIZATION_BASE_HEAD_SHA, ALPHA01_BINDING_HEAD_SHA) and _is_ancestor(root, ALPHA01_BINDING_HEAD_SHA, head)
+    except (OSError, ValueError):
+        binding_head_authorized = False
+    if not binding_head_authorized:
+        failures.append("SUCCESSOR_V4_BINDING_HEAD_NOT_AUTHORIZED_DESCENDANT")
+    try:
+        binding_tree = _git(root, "rev-parse", f"{ALPHA01_BINDING_HEAD_SHA}^{{tree}}")
+    except (OSError, ValueError):
+        binding_tree = ""
+    if binding_tree != ALPHA01_BINDING_TREE_SHA:
+        failures.append("SUCCESSOR_V4_BINDING_TREE_AUTHORITY_MISMATCH")
+    for field, expected in {
+        "schema_version": IMPLEMENTATION_BINDING_SCHEMA_VERSION,
+        "binding_id": "ALPHA01_CONTENT_MANIFEST_RESOURCE_BINDING_V1",
+        "authorization_id": AUTHORIZATION_ID,
+        "authorization_base_head_sha": AUTHORIZATION_BASE_HEAD_SHA,
+        "binding_head_sha": ALPHA01_BINDING_HEAD_SHA,
+        "binding_tree_sha": ALPHA01_BINDING_TREE_SHA,
+        "successor_schema_path": SUCCESSOR_V4_SCHEMA_REL.as_posix(),
+        "recommended_disposition": "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED",
+        "failure_count": 5,
+        "failure_fingerprint_set_sha256": ALPHA01_DYNAMIC_FINGERPRINT_SET_SHA256,
+        "wildcard_count": 0,
+        "created_at": "2026-08-29T00:00:00Z",
+        "creator": "V076_MAIN_DEVELOPMENT_AGENT",
+    }.items():
+        if not exact_value(binding.get(field), expected):
+            failures.append(f"SUCCESSOR_V4_BINDING_{field.upper()}_MISMATCH")
+    if binding.get("failure_fingerprints") != sorted(ALPHA01_DYNAMIC_FINGERPRINTS):
+        failures.append("SUCCESSOR_V4_BINDING_FINGERPRINT_SET_MISMATCH")
+    if _compact_json_sha256({k: v for k, v in binding.items() if k != "record_payload_sha256"}) != binding.get("record_payload_sha256"):
+        failures.append("SUCCESSOR_V4_BINDING_PAYLOAD_HASH_MISMATCH")
+    registry_auth = closed_mapping(
+        binding.get("registry_authority"),
+        IMPLEMENTATION_REGISTRY_AUTHORITY_FIELDS,
+        "SUCCESSOR_V4_REGISTRY_AUTHORITY",
+    )
+    require_exact(
+        registry_auth,
+        {
+            "registry_path": "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+            "registry_sha256": "a0debdbc7fed8cd17803587c0947ac01d33a959d65f967d0fb2fd07f7bfe6a66",
+            "registry_git_blob_oid": "c65f51b06d16c298cc6696a9d91d66dca93afb10",
+            "component_id": ALPHA01_COMPONENT_ID,
+            "component_path": ALPHA01_RESOURCE_PATH,
+            "component_role": "PORT",
+            "domain_id": "current.v075_production_combat_candidate",
+            "owner_component_id": ALPHA01_OWNER_COMPONENT_ID,
+            "owner_path": ALPHA01_OWNER_PATH,
+            "production_reachable": True,
+            "reads_authority": True,
+            "writes_authority": False,
+            "canonical_row_sha256": ALPHA01_REGISTRY_ROW_SHA256,
+            "row_count": 1,
+        },
+        "SUCCESSOR_V4_REGISTRY_AUTHORITY",
+    )
+    canonicalization = closed_mapping(
+        registry_auth.get("canonicalization"),
+        IMPLEMENTATION_CANONICALIZATION_FIELDS,
+        "SUCCESSOR_V4_REGISTRY_CANONICALIZATION",
+    )
+    require_exact(
+        canonicalization,
+        {
+            "encoding": "UTF-8",
+            "sort_keys": True,
+            "separators": [",", ":"],
+            "ensure_ascii": False,
+            "trailing_newline": False,
+        },
+        "SUCCESSOR_V4_REGISTRY_CANONICALIZATION",
+    )
+    row_selector = closed_mapping(
+        registry_auth.get("row_selector"),
+        IMPLEMENTATION_ROW_SELECTOR_FIELDS,
+        "SUCCESSOR_V4_REGISTRY_ROW_SELECTOR",
+    )
+    require_exact(
+        row_selector,
+        {"component_id": ALPHA01_COMPONENT_ID, "path": ALPHA01_RESOURCE_PATH},
+        "SUCCESSOR_V4_REGISTRY_ROW_SELECTOR",
+    )
+    resource_auth = closed_mapping(
+        binding.get("resource_authority"),
+        IMPLEMENTATION_RESOURCE_AUTHORITY_FIELDS,
+        "SUCCESSOR_V4_RESOURCE_AUTHORITY",
+    )
+    require_exact(
+        resource_auth,
+        {
+            "path": ALPHA01_RESOURCE_PATH,
+            "res_path": f"res://{ALPHA01_RESOURCE_PATH}",
+            "sha256": ALPHA01_RESOURCE_SHA256,
+            "git_blob_oid": ALPHA01_RESOURCE_OID,
+            "resource_type": "Resource",
+            "script_class": "Alpha01ContentManifestResource",
+        },
+        "SUCCESSOR_V4_RESOURCE_AUTHORITY",
+    )
+    script_auth = closed_mapping(
+        binding.get("script_authority"),
+        IMPLEMENTATION_SCRIPT_AUTHORITY_FIELDS,
+        "SUCCESSOR_V4_SCRIPT_AUTHORITY",
+    )
+    require_exact(
+        script_auth,
+        {
+            "path": ALPHA01_SCRIPT_PATH,
+            "res_path": f"res://{ALPHA01_SCRIPT_PATH}",
+            "sha256": ALPHA01_SCRIPT_SHA256,
+            "git_blob_oid": ALPHA01_SCRIPT_OID,
+            "extends": "Resource",
+            "class_name": "Alpha01ContentManifestResource",
+        },
+        "SUCCESSOR_V4_SCRIPT_AUTHORITY",
+    )
+    script_link = closed_mapping(
+        binding.get("script_link"),
+        IMPLEMENTATION_SCRIPT_LINK_FIELDS,
+        "SUCCESSOR_V4_SCRIPT_LINK",
+    )
+    require_exact(
+        script_link,
+        {
+            "resource_path": ALPHA01_RESOURCE_PATH,
+            "script_path": ALPHA01_SCRIPT_PATH,
+            "res_script_path": f"res://{ALPHA01_SCRIPT_PATH}",
+            "ext_resource_type": "Script",
+            "ext_resource_id": "1_manifest",
+            "script_ext_resource_count": 1,
+            "script_assignment": 'ExtResource("1_manifest")',
+            "script_assignment_count": 1,
+            "resource_script_class": "Alpha01ContentManifestResource",
+            "unique_script_link": True,
+        },
+        "SUCCESSOR_V4_SCRIPT_LINK",
+    )
+    transition = closed_mapping(
+        binding.get("historical_transition"),
+        IMPLEMENTATION_TRANSITION_FIELDS,
+        "SUCCESSOR_V4_HISTORICAL_TRANSITION",
+    )
+    require_exact(
+        transition,
+        {
+            "transition_old_sha": ALPHA01_TRANSITION_OLD_SHA,
+            "transition_new_sha": ALPHA01_TRANSITION_NEW_SHA,
+            "source_commit_sha": ALPHA01_TRANSITION_NEW_SHA,
+            "source_path": ALPHA01_SCRIPT_PATH,
+            "source_sha256": ALPHA01_SCRIPT_SHA256,
+            "source_git_blob_oid": ALPHA01_SCRIPT_OID,
+            "direct_parent_required": True,
+        },
+        "SUCCESSOR_V4_HISTORICAL_TRANSITION",
+    )
+    invalidation_policy = closed_mapping(
+        binding.get("invalidation_policy"),
+        IMPLEMENTATION_INVALIDATION_POLICY_FIELDS,
+        "SUCCESSOR_V4_INVALIDATION_POLICY",
+    )
+    require_exact(
+        invalidation_policy,
+        {field: True for field in IMPLEMENTATION_INVALIDATION_POLICY_FIELDS},
+        "SUCCESSOR_V4_INVALIDATION_POLICY",
+    )
+    future_policy = closed_mapping(
+        binding.get("future_failure_policy"),
+        IMPLEMENTATION_FUTURE_POLICY_FIELDS,
+        "SUCCESSOR_V4_FUTURE_POLICY",
+    )
+    require_exact(
+        future_policy,
+        {
+            "future_failure_auto_membership_allowed": False,
+            "new_failure_requires_new_record": True,
+            "wildcard_membership_allowed": False,
+        },
+        "SUCCESSOR_V4_FUTURE_POLICY",
+    )
+    # Whole-file hashes/OIDs are checked at the fixed binding Head.  The
+    # exact Registry row is checked again at evaluated Head, so unrelated
+    # registry additions do not invalidate this authority.
+    registry_path = "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json"
+    registry_bytes = _v4_git_bytes(root, ALPHA01_BINDING_HEAD_SHA, registry_path)
+    if registry_bytes is None or sha256_bytes(registry_bytes) != registry_auth.get("registry_sha256") or _v4_git_object_id(root, "rev-parse", f"{ALPHA01_BINDING_HEAD_SHA}:{registry_path}") != registry_auth.get("registry_git_blob_oid"):
+        failures.append("SUCCESSOR_V4_REGISTRY_AUTHORITY_FILE_DRIFT")
+    def registry_row_at(commit: str) -> dict[str, Any] | None:
+        document = _v4_json_at(root, commit, registry_path)
+        if not isinstance(document, dict):
+            return None
+        rows = document.get("component_inventory")
+        if not isinstance(rows, list):
+            return None
+        matches = [dict(row) for row in rows if isinstance(row, dict) and row.get("component_id") == ALPHA01_COMPONENT_ID and row.get("path") == ALPHA01_RESOURCE_PATH]
+        return matches[0] if len(matches) == 1 else None
+    for commit, label in ((ALPHA01_BINDING_HEAD_SHA, "BINDING"), (head, "EVALUATED")):
+        row = registry_row_at(commit)
+        if row is None:
+            failures.append(f"SUCCESSOR_V4_{label}_REGISTRY_ROW_MISSING")
+            continue
+        if _compact_json_sha256(row) != ALPHA01_REGISTRY_ROW_SHA256:
+            failures.append(f"SUCCESSOR_V4_{label}_REGISTRY_ROW_SHA256_MISMATCH")
+        for key, expected in (("component_id", ALPHA01_COMPONENT_ID), ("path", ALPHA01_RESOURCE_PATH), ("component_role", "PORT"), ("domain_id", "current.v075_production_combat_candidate"), ("owner_component_id", ALPHA01_OWNER_COMPONENT_ID), ("production_reachable", True), ("reads_authority", True), ("writes_authority", False)):
+            if row.get(key) != expected:
+                failures.append(f"SUCCESSOR_V4_{label}_REGISTRY_{key.upper()}_MISMATCH")
+    for path, auth, label in ((ALPHA01_RESOURCE_PATH, resource_auth, "RESOURCE"), (ALPHA01_SCRIPT_PATH, script_auth, "SCRIPT")):
+        payload = _v4_git_bytes(root, ALPHA01_BINDING_HEAD_SHA, path)
+        if payload is None or sha256_bytes(payload) != auth.get("sha256") or _v4_git_object_id(root, "rev-parse", f"{ALPHA01_BINDING_HEAD_SHA}:{path}") != auth.get("git_blob_oid"):
+            failures.append(f"SUCCESSOR_V4_{label}_AUTHORITY_BLOB_DRIFT")
+        evaluated_payload = _v4_git_bytes(root, head, path)
+        if evaluated_payload is None or sha256_bytes(evaluated_payload) != auth.get("sha256") or _v4_git_object_id(root, "rev-parse", f"{head}:{path}") != auth.get("git_blob_oid"):
+            failures.append(f"SUCCESSOR_V4_{label}_EVALUATED_BLOB_DRIFT")
+    resource_payload = _v4_git_bytes(root, head, ALPHA01_RESOURCE_PATH)
+    script_payload = _v4_git_bytes(root, head, ALPHA01_SCRIPT_PATH)
+    resource_text = resource_payload.decode("utf-8-sig", errors="replace") if resource_payload is not None else ""
+    script_text = script_payload.decode("utf-8-sig", errors="replace") if script_payload is not None else ""
+    script_exts = re.findall(r'^\[ext_resource\s+type="([^"]+)"\s+path="([^"]+)"\s+id="([^"]+)"\]\s*$', resource_text, flags=re.MULTILINE)
+    matching_script_exts = [item for item in script_exts if item == ("Script", "res://" + ALPHA01_SCRIPT_PATH, "1_manifest")]
+    if resource_text.splitlines()[:1] != ['[gd_resource type="Resource" script_class="Alpha01ContentManifestResource" load_steps=4 format=3]'] or len([item for item in script_exts if item[0] == "Script"]) != 1 or len(matching_script_exts) != 1:
+        failures.append("SUCCESSOR_V4_RESOURCE_SCRIPT_EXT_RESOURCE_INVALID")
+    assignments = re.findall(r'^\s*script\s*=\s*ExtResource\("([^"]+)"\)\s*$', resource_text, flags=re.MULTILINE)
+    if assignments != ["1_manifest"]:
+        failures.append("SUCCESSOR_V4_RESOURCE_SCRIPT_ASSIGNMENT_INVALID")
+    if "extends Resource" not in script_text.splitlines()[:3] or "class_name Alpha01ContentManifestResource" not in script_text:
+        failures.append("SUCCESSOR_V4_SCRIPT_IDENTITY_INVALID")
+    source_payload = _v4_git_bytes(root, ALPHA01_TRANSITION_NEW_SHA, ALPHA01_SCRIPT_PATH)
+    source_oid = _v4_git_object_id(
+        root,
+        "rev-parse",
+        f"{ALPHA01_TRANSITION_NEW_SHA}:{ALPHA01_SCRIPT_PATH}",
+    )
+    try:
+        transition_parent = _git(
+            root,
+            "rev-parse",
+            f"{ALPHA01_TRANSITION_NEW_SHA}^1",
+        )
+    except (OSError, ValueError):
+        transition_parent = ""
+    if (
+        transition_parent != ALPHA01_TRANSITION_OLD_SHA
+        or source_payload is None
+        or sha256_bytes(source_payload) != ALPHA01_SCRIPT_SHA256
+        or source_oid != ALPHA01_SCRIPT_OID
+    ):
+        failures.append("SUCCESSOR_V4_HISTORICAL_TRANSITION_INVALID")
+    identities = binding.get("failure_identity_by_fingerprint") if isinstance(binding.get("failure_identity_by_fingerprint"), dict) else {}
+    if set(identities) != set(ALPHA01_DYNAMIC_FINGERPRINTS):
+        failures.append("SUCCESSOR_V4_IDENTITY_FINGERPRINT_SET_INVALID")
+    if script_payload is not None:
+        for fingerprint in sorted(ALPHA01_DYNAMIC_FINGERPRINTS):
+            failures.extend(_alpha01_v4_identity_failures(root, fingerprint, identities.get(fingerprint), evaluated_head=head, source_text=script_text))
+    if not failures:
+        for fingerprint in sorted(ALPHA01_DYNAMIC_FINGERPRINTS):
+            trusted[fingerprint] = {
+                "binding_id": binding.get("binding_id"),
+                "component_id": ALPHA01_COMPONENT_ID,
+                "implementation_path": ALPHA01_SCRIPT_PATH,
+                "recommended_disposition": "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED",
+            }
+    result.update({
+        "status": "PASS" if not failures else "FAIL",
+        "binding_id": str(binding.get("binding_id", "")),
+        "fingerprint_count": len(trusted),
+    })
+    return result
+
+
 def _validate_descendant_history_supplement_v3(
     root: Path,
     supplement_path: Path | None,
@@ -3030,6 +3839,8 @@ def _identity_projection_failures(
     *,
     rule_id: str,
     raw_failure: str = "",
+    fingerprint: str = "",
+    implementation_trusted: dict[str, Any] | None = None,
 ) -> list[str]:
     """Bind every identity claim to exact authority rows, not record prose."""
 
@@ -3350,7 +4161,20 @@ def _identity_projection_failures(
         for reference_id in selector_dynamic_ids
     ):
         failures.append("IDENTITY_BINDING_DYNAMIC_REFERENCE_PRIMARY_KEY_NOT_UNIQUE")
-    if dynamic_rule:
+    # The v4 implementation authority is the only narrow exception to the
+    # ordinary Dynamic Reference Manifest requirement.  It still requires an
+    # empty legacy dynamic selector/projection; all semantic proof is carried
+    # by the independently sealed v4 binding.
+    implementation_bound = bool(
+        implementation_trusted
+        and fingerprint in ALPHA01_DYNAMIC_FINGERPRINTS
+        and implementation_trusted.get("component_id") == ALPHA01_COMPONENT_ID
+        and implementation_trusted.get("implementation_path") == ALPHA01_SCRIPT_PATH
+    )
+    if dynamic_rule and implementation_bound:
+        if selector_dynamic_ids or dynamic_rows:
+            failures.append("IDENTITY_BINDING_V4_DYNAMIC_SELECTOR_NOT_EMPTY")
+    elif dynamic_rule:
         source_path = normalize_path(str(binding.get("historical_path", "")))
         source_rows = [
             row
@@ -3758,7 +4582,11 @@ def _record_payload(record: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in record.items() if key != "record_payload_sha256"}
 
 
-def validate_extension_record_document(record: Any) -> list[str]:
+def validate_extension_record_document(
+    record: Any,
+    *,
+    implementation_trusted: dict[str, Any] | None = None,
+) -> list[str]:
     if not isinstance(record, dict):
         return ["EXTENSION_RECORD_NOT_OBJECT"]
     failures: list[str] = []
@@ -3873,6 +4701,8 @@ def validate_extension_record_document(record: Any) -> list[str]:
             for failure in _identity_projection_failures(
                 binding,
                 rule_id=rule_id,
+                fingerprint=str(fingerprint),
+                implementation_trusted=(implementation_trusted or {}).get(str(fingerprint)),
             )
         )
         for key in ("source_commit", "first_seen_commit", "last_seen_commit"):
@@ -4073,6 +4903,7 @@ def _authorized_identity_binding_failures(
     identity: dict[str, str] | None,
     *,
     record_rule_ids: list[str],
+    implementation_trusted: dict[str, Any] | None = None,
 ) -> list[str]:
     failures: list[str] = []
     if not isinstance(identity, dict) or identity.get("bucket") != "HISTORICAL":
@@ -4084,6 +4915,8 @@ def _authorized_identity_binding_failures(
             binding,
             rule_id=rule_id,
             raw_failure=str(identity.get("raw_failure", "")),
+            fingerprint=fingerprint,
+            implementation_trusted=(implementation_trusted or {}).get(fingerprint),
         )
     )
     if record_rule_ids != [rule_id]:
@@ -4176,8 +5009,12 @@ def validate_extension_record_against_repo(
     *,
     evaluated_head: str,
     authorized_identities: dict[str, dict[str, str]] | None = None,
+    implementation_trusted: dict[str, dict[str, Any]] | None = None,
 ) -> list[str]:
-    failures = validate_extension_record_document(record)
+    failures = validate_extension_record_document(
+        record,
+        implementation_trusted=implementation_trusted,
+    )
     if not isinstance(record, dict):
         return failures
     binding_head = str(record.get("binding_head_sha", ""))
@@ -4222,6 +5059,7 @@ def validate_extension_record_against_repo(
                     binding,
                     identity_map.get(str(fingerprint)),
                     record_rule_ids=[str(value) for value in record.get("rule_ids", [])],
+                    implementation_trusted=(implementation_trusted or {}).get(str(fingerprint)),
                 )
             )
             if (
@@ -4934,6 +5772,7 @@ def _validate_manifest_records_against_repo(
     legacy_fingerprints: set[str],
     post_touch_trusted: dict[str, dict[str, Any]] | None = None,
     subject_projection_revalidation_trusted: dict[str, dict[str, Any]] | None = None,
+    implementation_trusted: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[list[str], set[str]]:
     failures: list[str] = []
     seen: set[str] = set()
@@ -4966,6 +5805,7 @@ def _validate_manifest_records_against_repo(
             record,
             evaluated_head=evaluated_head,
             authorized_identities=authorized_identities,
+            implementation_trusted=implementation_trusted,
         )
         trusted = post_touch_trusted or {}
         subject_projection_trusted = subject_projection_revalidation_trusted or {}
@@ -5731,6 +6571,17 @@ def validate_batch_manifest_against_repo(
         ).items()
         if isinstance(identity, dict)
     }
+    implementation_binding_result = validate_implementation_binding_v4(
+        root,
+        evaluated_head=evaluated_head,
+    )
+    failures.extend(
+        f"BATCH_IMPLEMENTATION_BINDING_V4_INVALID:{failure}"
+        for failure in implementation_binding_result.get("failures", [])
+    )
+    implementation_trusted = implementation_binding_result.get(
+        "trusted_by_fingerprint", {}
+    )
     expected_supplement_sha = supplement.get("supplement_sha256", "")
     post_touch_result: dict[str, Any] = {
         "status": "NOT_PROVIDED",
@@ -5974,6 +6825,7 @@ def validate_batch_manifest_against_repo(
             subject_projection_revalidation_trusted=(
                 subject_projection_revalidation_trusted
             ),
+            implementation_trusted=implementation_trusted,
         )
         failures.extend(record_failures)
         if path == manifest_path:
@@ -6005,4 +6857,10 @@ def validate_batch_manifest_against_repo(
             if key != "trusted_by_fingerprint"
         },
         "historical_delta_metadata_ledger": historical_delta_metadata_ledger,
+        "implementation_binding_v4": {
+            "status": implementation_binding_result.get("status", "FAIL"),
+            "binding_id": implementation_binding_result.get("binding_id", ""),
+            "trusted_fingerprint_count": len(implementation_trusted or {}),
+            "failures": implementation_binding_result.get("failures", []),
+        },
     }

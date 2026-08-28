@@ -70,6 +70,77 @@ FULL_CONVERGENCE_SUCCESSOR_SCHEMA = Path(
 FULL_CONVERGENCE_SUCCESSOR_SCHEMA_SHA = (
     "019bc57dcf92415c00b35b691f7adad9e736770bcf927622cb6db16b966c4543"
 )
+FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA = Path("docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827_successor_v4.json")
+FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA_SHA = "cba09cffe6f8699cea40a3d08a8774fdc5e49c0d4f4ad2700ba804f15f725b1b"
+ALPHA01_BINDING = Path("docs/architecture/reuse_corrections/v2/implementation_bindings/alpha01_content_manifest_resource_binding_v1.json")
+ALPHA01_BINDING_SHA = "d639086f5a329f1d39386c20282eb43b9c84b597d7438af7c1d8c2085b01ed87"
+ALPHA01_FINGERPRINTS = frozenset({"V2F-97098e90fc9a19e803dad6116f516339d4d08399080e0506cde3faa1b1a5833d","V2F-d68046a34484d6bd5734a1a7574d47ac830cd768d713bac033085852ff786b21","V2F-e8f0cc33a9f313014b23de6574be6ad78ff435bfac0a0964199fdfb550c4508b","V2F-e92184eb9597cf1150d7d04c296591d0fed24006685ab7a75a90037ba8d2ab3a","V2F-f92454220b0ec6286cb2d42f3a6a824d51309dd1edc7430e60c752631f07cd09"})
+
+def _alpha01_successor_v4_findings(root: Path, evaluated_head: str) -> tuple[list[dict[str, Any]], set[str]]:
+    findings: list[dict[str, Any]] = []
+    def fail(code: str, **evidence: Any) -> None: findings.append(_finding(code, "P0", "successor-v4 Alpha01 implementation binding invalid", **evidence))
+    schema_path = root / FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA
+    binding_path = root / ALPHA01_BINDING
+    if not schema_path.is_file() or _sha_file(schema_path) != FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA_SHA: fail("FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA_DRIFT")
+    if not binding_path.is_file() or _sha_file(binding_path) != ALPHA01_BINDING_SHA: fail("FULL_CONVERGENCE_ALPHA01_BINDING_DRIFT")
+    schema_blob = _git_bytes(root, evaluated_head, FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA.as_posix())
+    binding_blob = _git_bytes(root, evaluated_head, ALPHA01_BINDING.as_posix())
+    if schema_blob is None or _sha_bytes(schema_blob) != FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA_SHA:
+        fail("FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA_NOT_COMMITTED")
+    if binding_blob is None or _sha_bytes(binding_blob) != ALPHA01_BINDING_SHA:
+        fail("FULL_CONVERGENCE_ALPHA01_BINDING_NOT_COMMITTED")
+    try: schema = _json(schema_path); binding = _json(binding_path)
+    except (OSError, ValueError): return findings, set()
+    if set(schema) != {"schema_version","schema_id","authorization_id","authorization_base_head_sha","previous_schema_path","previous_schema_sha256","implementation_binding_schema_version","implementation_binding_path","implementation_binding_sha256","implementation_binding_count","implementation_bound_failure_count","implementation_bound_failure_fingerprints","implementation_bound_failure_fingerprint_set_sha256","implementation_binding_allowed_disposition","implementation_binding_required_fields","implementation_binding_discovery_allowed","registry_path_binding_required","registry_canonical_row_binding_required","resource_script_link_binding_required","dynamic_callsite_binding_required","dynamic_target_set_binding_required","resolved_dynamic_reference_requires_exact_callsite_and_targets","wildcard_membership_allowed","future_failure_auto_membership_allowed","old_evidence_mutation_allowed","new_failure_requires_new_record"}: fail("FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA_FIELDS")
+    if schema.get("implementation_binding_path") != ALPHA01_BINDING.as_posix() or schema.get("implementation_binding_sha256") != ALPHA01_BINDING_SHA or set(schema.get("implementation_bound_failure_fingerprints", [])) != ALPHA01_FINGERPRINTS or any(schema.get(k) is not False for k in ("implementation_binding_discovery_allowed","wildcard_membership_allowed","future_failure_auto_membership_allowed","old_evidence_mutation_allowed")): fail("FULL_CONVERGENCE_SUCCESSOR_V4_SCHEMA_CONTRACT")
+    if set(binding.get("failure_fingerprints", [])) != ALPHA01_FINGERPRINTS or binding.get("failure_count") != 5 or binding.get("wildcard_count") != 0 or binding.get("recommended_disposition") != "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED": fail("FULL_CONVERGENCE_ALPHA01_BINDING_SET")
+    for section, expected in (("resource_authority", "resources/content/alpha01/alpha01_content_manifest.tres"),("script_authority", "resources/content/alpha01/alpha01_content_manifest.gd")):
+        row = binding.get(section, {}); path = root / str(row.get("path", ""));
+        if not path.is_file() or _sha_file(path) != row.get("sha256") or _git(root, "rev-parse", f"{evaluated_head}:{row.get('path','')}") != row.get("git_blob_oid"): fail("FULL_CONVERGENCE_ALPHA01_FILE_BINDING", section=section)
+    link = binding.get("script_link", {}); tres = root / "resources/content/alpha01/alpha01_content_manifest.tres"
+    if link.get("unique_script_link") is not True or link.get("script_ext_resource_count") != 1 or link.get("script_assignment_count") != 1 or link.get("script_path") != "resources/content/alpha01/alpha01_content_manifest.gd" or not tres.is_file(): fail("FULL_CONVERGENCE_ALPHA01_SCRIPT_LINK")
+    registry = binding.get("registry_authority", {})
+    registry_bytes = _git_bytes(root, evaluated_head, str(registry.get("registry_path", "")))
+    try:
+        registry_doc = json.loads(registry_bytes.decode("utf-8-sig")) if registry_bytes else {}
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        registry_doc = {}
+    rows = [r for r in registry_doc.get("component_inventory", []) if isinstance(r, dict) and r.get("component_id") == "component.current.alpha01_content_manifest" and r.get("path") == "resources/content/alpha01/alpha01_content_manifest.tres"]
+    compact_row = rows[0] if len(rows) == 1 else {}
+    compact_sha = _sha_bytes(json.dumps(compact_row, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")) if compact_row else ""
+    if compact_sha != registry.get("canonical_row_sha256") or compact_sha != "14356a9dd5706b1ca5fecdcc3bef5d095de582bcdb70ae21590cba91e7b6cf97": fail("FULL_CONVERGENCE_ALPHA01_REGISTRY_ROW")
+    resource_bytes = _git_bytes(root, evaluated_head, "resources/content/alpha01/alpha01_content_manifest.tres") or b""
+    resource_text = resource_bytes.decode("utf-8-sig", errors="replace")
+    script_exts = re.findall(r'^\[ext_resource\s+type="Script"\s+path="([^"]+)"\s+id="([^"]+)"\]\s*$', resource_text, re.MULTILINE)
+    assignments = re.findall(r'^\s*script\s*=\s*ExtResource\("([^"]+)"\)\s*$', resource_text, re.MULTILINE)
+    if script_exts != [("res://resources/content/alpha01/alpha01_content_manifest.gd", "1_manifest")] or assignments != ["1_manifest"]: fail("FULL_CONVERGENCE_ALPHA01_SCRIPT_LINK_BYTES")
+    transition = binding.get("historical_transition", {})
+    if _git(root, "rev-parse", "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3^1") != "46b33bba77b356b100ab68bc7c3676d503049a2c" or transition.get("direct_parent_required") is not True: fail("FULL_CONVERGENCE_ALPHA01_TRANSITION_PARENT")
+    identities = binding.get("failure_identity_by_fingerprint", {})
+    source_text = (_git_bytes(root, evaluated_head, "resources/content/alpha01/alpha01_content_manifest.gd") or b"").decode("utf-8-sig", errors="replace")
+    source_lines = source_text.splitlines()
+    if not isinstance(identities, dict) or set(identities) != ALPHA01_FINGERPRINTS: fail("FULL_CONVERGENCE_ALPHA01_IDENTITY_SET")
+    else:
+        for fingerprint, identity in identities.items():
+            targets = identity.get("resolved_targets", []) if isinstance(identity, dict) else []
+            sites = identity.get("callsite_locations", []) if isinstance(identity, dict) else []
+            target_sha = _sha_bytes("\n".join(str(value) for value in targets).encode("utf-8")) if isinstance(targets, list) else ""
+            if not isinstance(targets, list) or targets != sorted(set(targets)) or identity.get("target_count") != len(targets) or identity.get("target_set_sha256") != target_sha: fail("FULL_CONVERGENCE_ALPHA01_TARGETS", fingerprint=fingerprint)
+            for target in targets if isinstance(targets, list) else []:
+                relative_target = str(target)[6:] if str(target).startswith("res://") else ""
+                if not relative_target or _git_bytes(root, evaluated_head, relative_target) is None:
+                    fail("FULL_CONVERGENCE_ALPHA01_TARGET_MISSING", fingerprint=fingerprint, target=target)
+            for site in sites if isinstance(sites, list) else []:
+                line = site.get("line", 0) if isinstance(site, dict) else 0
+                if type(line) is not int or line < 1 or line > len(source_lines) or identity.get("loader", "") not in source_lines[line - 1] or identity.get("reference_expression", "") not in source_lines[line - 1]: fail("FULL_CONVERGENCE_ALPHA01_CALLSITE", fingerprint=fingerprint)
+            probe = identity.get("runtime_probe", {}) if isinstance(identity, dict) else {}
+            probe_bytes = _git_bytes(root, evaluated_head, str(probe.get("test_path", "")))
+            if probe_bytes is None or _sha_bytes(probe_bytes) != probe.get("test_sha256") or probe.get("expected_target_count") != len(targets): fail("FULL_CONVERGENCE_ALPHA01_PROBE", fingerprint=fingerprint)
+    future = binding.get("future_failure_policy", {})
+    if future != {"future_failure_auto_membership_allowed": False, "new_failure_requires_new_record": True, "wildcard_membership_allowed": False}: fail("FULL_CONVERGENCE_ALPHA01_FUTURE_POLICY")
+    payload = {k: v for k, v in binding.items() if k != "record_payload_sha256"}
+    if _sha_bytes(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")) != binding.get("record_payload_sha256"): fail("FULL_CONVERGENCE_ALPHA01_PAYLOAD")
+    return findings, set() if findings else set(ALPHA01_FINGERPRINTS)
 FULL_CONVERGENCE_BASELINE_REPORT = Path(
     "reports/reuse/correction_v2/epochs/full_convergence_20260827/"
     "baseline_raw_failure_report.json"
@@ -2035,6 +2106,7 @@ def _raw_identity_findings(
     identity: dict[str, str] | None,
     record_rule_ids: list[str],
     path: str,
+    implementation_trusted: bool = False,
 ) -> list[dict[str, Any]]:
     """Bind a correction subject back to its one exact frozen raw row."""
 
@@ -2063,6 +2135,7 @@ def _raw_identity_findings(
         fingerprint=fingerprint,
         rule_id=rule_id,
         raw_failure=str(identity.get("raw_failure", "")),
+        implementation_trusted=implementation_trusted,
     ))
     if record_rule_ids != [rule_id]:
         add(
@@ -2984,6 +3057,7 @@ def _identity_projection_findings(
     fingerprint: str,
     rule_id: str,
     raw_failure: str = "",
+    implementation_trusted: bool = False,
 ) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
 
@@ -3655,6 +3729,14 @@ def _identity_projection_findings(
             "FULL_CONVERGENCE_IDENTITY_RETIREMENT_SELECTOR_UNEXPECTED",
             "non-retired disposition selects retirement authority",
         )
+    if implementation_trusted:
+        allowed = {
+            "FULL_CONVERGENCE_IDENTITY_REGISTRY_PATH_MISMATCH",
+            "FULL_CONVERGENCE_IDENTITY_UNAUTHORIZED_LINEAGE_SUBSTITUTION",
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_SELECTOR_MISMATCH",
+            "FULL_CONVERGENCE_IDENTITY_DYNAMIC_REFERENCE_SELECTOR_UNRESOLVED",
+        }
+        findings = [item for item in findings if item.get("code") not in allowed]
     return findings
 
 
@@ -4003,6 +4085,7 @@ def _full_convergence_record_contract_findings(
     *,
     path: str,
     root: Path | None = None,
+    implementation_trusted_fingerprints: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Duplicate the primary record contract without importing the resolver."""
 
@@ -4197,11 +4280,20 @@ def _full_convergence_record_contract_findings(
                 "identity disposition is not valid for its exact historical rule",
                 fingerprint=fingerprint,
             )
+        implementation_trusted = (
+            str(fingerprint) in (implementation_trusted_fingerprints or set())
+            and binding.get("current_component_id") == "component.current.alpha01_content_manifest"
+            and binding.get("historical_component_id") == "component.current.alpha01_content_manifest"
+            and binding.get("current_path") == "resources/content/alpha01/alpha01_content_manifest.gd"
+            and binding.get("historical_path") == "resources/content/alpha01/alpha01_content_manifest.gd"
+            and disposition == "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED"
+        )
         findings.extend(_identity_projection_findings(
             binding,
             path=path,
             fingerprint=str(fingerprint),
             rule_id=rule_id,
+            implementation_trusted=implementation_trusted,
         ))
         for field in FULL_CONVERGENCE_IDENTITY_STATE_FIELDS:
             rendered = str(binding.get(field, ""))
@@ -4503,6 +4595,7 @@ def _manifest_record_findings(
     *,
     evaluated_head: str,
     baseline_identities: dict[str, dict[str, str]],
+    implementation_trusted_fingerprints: set[str] | None = None,
 ) -> tuple[list[dict[str, Any]], set[str], set[str], int]:
     """Revalidate the exact records named by one manifest.
 
@@ -4591,6 +4684,7 @@ def _manifest_record_findings(
             record,
             path=relative,
             root=root,
+            implementation_trusted_fingerprints=implementation_trusted_fingerprints,
         ))
         for field, expected in (
             ("authorization_id", FULL_CONVERGENCE_AUTHORIZATION_ID),
@@ -4741,6 +4835,14 @@ def _manifest_record_findings(
                 identity=baseline_identities.get(fingerprint),
                 record_rule_ids=rendered_rules,
                 path=relative,
+                implementation_trusted=(
+                    fingerprint in (implementation_trusted_fingerprints or set())
+                    and subject.get("current_component_id") == "component.current.alpha01_content_manifest"
+                    and subject.get("historical_component_id") == "component.current.alpha01_content_manifest"
+                    and subject.get("current_path") == "resources/content/alpha01/alpha01_content_manifest.gd"
+                    and subject.get("historical_path") == "resources/content/alpha01/alpha01_content_manifest.gd"
+                    and subject.get("recommended_disposition") == "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED"
+                ),
             ))
             findings.extend(_duplicate_observation_findings(
                 fingerprint,
@@ -6497,6 +6599,8 @@ def audit_full_convergence_batch(
     only record paths enumerated by ``manifest_path`` are evaluated.
     """
     findings: list[dict[str, Any]] = []
+    alpha01_findings, alpha01_trusted = _alpha01_successor_v4_findings(root, evaluated_head)
+    findings.extend(alpha01_findings)
     baseline_fingerprints = {"historical": set(), "current": set()}
     baseline_identities: dict[str, dict[str, str]] = {}
     baseline_report: dict[str, Any] = {}
@@ -6796,6 +6900,7 @@ def audit_full_convergence_batch(
                 predecessor_manifest,
                 evaluated_head=evaluated_head,
                 baseline_identities=baseline_identities,
+                implementation_trusted_fingerprints=alpha01_trusted,
             )
         )
         findings.extend(record_findings)
@@ -6848,6 +6953,7 @@ def audit_full_convergence_batch(
         manifest,
         evaluated_head=evaluated_head,
         baseline_identities=baseline_identities,
+        implementation_trusted_fingerprints=alpha01_trusted,
     )
     findings.extend(current_record_findings)
     bindings = manifest.get("record_bindings")
@@ -6933,6 +7039,7 @@ def audit_full_convergence_batch(
             record,
             path=relative,
             root=root,
+            implementation_trusted_fingerprints=alpha01_trusted,
         ))
         if record.get("authorization_id") != FULL_CONVERGENCE_AUTHORIZATION_ID:
             findings.append(_finding(
@@ -7064,6 +7171,14 @@ def audit_full_convergence_batch(
                         else []
                     ),
                     path=relative,
+                    implementation_trusted=(
+                        fingerprint in alpha01_trusted
+                        and subject.get("current_component_id") == "component.current.alpha01_content_manifest"
+                        and subject.get("historical_component_id") == "component.current.alpha01_content_manifest"
+                        and subject.get("current_path") == "resources/content/alpha01/alpha01_content_manifest.gd"
+                        and subject.get("historical_path") == "resources/content/alpha01/alpha01_content_manifest.gd"
+                        and subject.get("recommended_disposition") == "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED"
+                    ),
                 ))
                 findings.extend(_duplicate_observation_findings(
                     str(fingerprint),

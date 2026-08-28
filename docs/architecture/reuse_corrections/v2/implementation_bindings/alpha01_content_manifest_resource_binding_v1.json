@@ -1,0 +1,268 @@
+{
+  "schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.implementation_binding.v1",
+  "binding_id": "ALPHA01_CONTENT_MANIFEST_RESOURCE_BINDING_V1",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "authorization_base_head_sha": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "binding_head_sha": "61c9ffb2203f99c18901ba972a44fed2b75188a6",
+  "binding_tree_sha": "b39aa1a666351d0ee4316f86a34436026803e04f",
+  "successor_schema_path": "docs/architecture/reuse_corrections/v2/schema_full_convergence_20260827_successor_v4.json",
+  "registry_authority": {
+    "registry_path": "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+    "registry_sha256": "a0debdbc7fed8cd17803587c0947ac01d33a959d65f967d0fb2fd07f7bfe6a66",
+    "registry_git_blob_oid": "c65f51b06d16c298cc6696a9d91d66dca93afb10",
+    "component_id": "component.current.alpha01_content_manifest",
+    "component_path": "resources/content/alpha01/alpha01_content_manifest.tres",
+    "component_role": "PORT",
+    "domain_id": "current.v075_production_combat_candidate",
+    "owner_component_id": "component.current.v075_runtime_owner",
+    "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+    "production_reachable": true,
+    "reads_authority": true,
+    "writes_authority": false,
+    "canonical_row_sha256": "14356a9dd5706b1ca5fecdcc3bef5d095de582bcdb70ae21590cba91e7b6cf97",
+    "canonicalization": {
+      "encoding": "UTF-8",
+      "sort_keys": true,
+      "separators": [",", ":"],
+      "ensure_ascii": false,
+      "trailing_newline": false
+    },
+    "row_count": 1,
+    "row_selector": {
+      "component_id": "component.current.alpha01_content_manifest",
+      "path": "resources/content/alpha01/alpha01_content_manifest.tres"
+    }
+  },
+  "resource_authority": {
+    "path": "resources/content/alpha01/alpha01_content_manifest.tres",
+    "res_path": "res://resources/content/alpha01/alpha01_content_manifest.tres",
+    "sha256": "302bffb7912b2890ef8b02e37dc85f9d011341dde2d5d5aa2a3685f0245902ff",
+    "git_blob_oid": "d4d24430417c5afd3aba8b6b55794b7165d0e401",
+    "resource_type": "Resource",
+    "script_class": "Alpha01ContentManifestResource"
+  },
+  "script_authority": {
+    "path": "resources/content/alpha01/alpha01_content_manifest.gd",
+    "res_path": "res://resources/content/alpha01/alpha01_content_manifest.gd",
+    "sha256": "a49c23e9ffdee83d51d2ac1c5f2e6ceaa0e0837a43a73d0671f202d737911a1b",
+    "git_blob_oid": "41275dc953ee64cd568518ae01184f9cff95f9ed",
+    "extends": "Resource",
+    "class_name": "Alpha01ContentManifestResource"
+  },
+  "script_link": {
+    "resource_path": "resources/content/alpha01/alpha01_content_manifest.tres",
+    "script_path": "resources/content/alpha01/alpha01_content_manifest.gd",
+    "res_script_path": "res://resources/content/alpha01/alpha01_content_manifest.gd",
+    "ext_resource_type": "Script",
+    "ext_resource_id": "1_manifest",
+    "script_ext_resource_count": 1,
+    "script_assignment": "ExtResource(\"1_manifest\")",
+    "script_assignment_count": 1,
+    "resource_script_class": "Alpha01ContentManifestResource",
+    "unique_script_link": true
+  },
+  "historical_transition": {
+    "transition_old_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+    "transition_new_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+    "source_commit_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+    "source_path": "resources/content/alpha01/alpha01_content_manifest.gd",
+    "source_sha256": "a49c23e9ffdee83d51d2ac1c5f2e6ceaa0e0837a43a73d0671f202d737911a1b",
+    "source_git_blob_oid": "41275dc953ee64cd568518ae01184f9cff95f9ed",
+    "direct_parent_required": true
+  },
+  "failure_count": 5,
+  "failure_fingerprints": [
+    "V2F-97098e90fc9a19e803dad6116f516339d4d08399080e0506cde3faa1b1a5833d",
+    "V2F-d68046a34484d6bd5734a1a7574d47ac830cd768d713bac033085852ff786b21",
+    "V2F-e8f0cc33a9f313014b23de6574be6ad78ff435bfac0a0964199fdfb550c4508b",
+    "V2F-e92184eb9597cf1150d7d04c296591d0fed24006685ab7a75a90037ba8d2ab3a",
+    "V2F-f92454220b0ec6286cb2d42f3a6a824d51309dd1edc7430e60c752631f07cd09"
+  ],
+  "failure_fingerprint_set_sha256": "d40230b944d58e8948af93c60a3d61ea726bc1f7501bf6a7b980977798ecbe02",
+  "failure_identity_by_fingerprint": {
+    "V2F-e8f0cc33a9f313014b23de6574be6ad78ff435bfac0a0964199fdfb550c4508b": {
+      "raw_failure": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.file_exists:path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+      "rule_id": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+      "subject_kind": "path",
+      "subject_value": "resources/content/alpha01/alpha01_content_manifest.gd",
+      "transition_old_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+      "transition_new_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "source_commit_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "source_path": "resources/content/alpha01/alpha01_content_manifest.gd",
+      "source_blob_sha256": "a49c23e9ffdee83d51d2ac1c5f2e6ceaa0e0837a43a73d0671f202d737911a1b",
+      "loader": "FileAccess.file_exists",
+      "reference_expression": "path",
+      "source_line_or_ast_location": {"line": 650, "column": 12, "containing_function": "_validate_role_passive_consumers"},
+      "callsite_locations": [
+        {"line": 650, "column": 12, "function": "_validate_role_passive_consumers"},
+        {"line": 743, "column": 11, "function": "_validate_runtime_consumers"}
+      ],
+      "resolved_targets": [
+        "res://scenes/runtime/GdpFormulaRuntimeController.tscn",
+        "res://scripts/runtime/commodity_card_inventory_runtime_controller.gd",
+        "res://scripts/runtime/commodity_flow_runtime_controller.gd",
+        "res://scripts/runtime/district_supply_action_port.gd",
+        "res://scripts/runtime/game_runtime_coordinator.gd",
+        "res://scripts/runtime/intel_private_command_port.gd",
+        "res://scripts/runtime/military_runtime_controller.gd",
+        "res://scripts/runtime/monster_codex_public_source_service.gd",
+        "res://scripts/runtime/monster_runtime_controller.gd",
+        "res://scripts/runtime/new_game_setup_draft_service.gd",
+        "res://scripts/runtime/product_market_runtime_controller.gd",
+        "res://scripts/runtime/region_supply_runtime_controller.gd",
+        "res://scripts/runtime/role_codex_public_source_service.gd",
+        "res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd",
+        "res://scripts/runtime/session_start_plan_builder.gd"
+      ],
+      "target_count": 15,
+      "target_set_sha256": "9d3b5ad13eaf08406e64762dcfb48e79f805e62fcbcba2a674ddac421190bf06",
+      "target_derivation_rule": "sorted_unique(ROLE_PASSIVE_CONSUMER_EVIDENCE[*].consumer_path + RUNTIME_CONSUMER_EVIDENCE[*][*])",
+      "runtime_probe": {"probe_id": "alpha01_content_manifest_test", "test_path": "tests/alpha01_content_manifest_test.gd", "test_sha256": "a4f53e23c8511299cae86c3a2332f4c308c5aa331812c68f8828e81bb3c342f6", "test_git_blob_oid": "f31291622eb4b21fc789ad8980474acbdd5cd757", "expected_target_count": 15, "required_before_production_claim": true}
+    },
+    "V2F-e92184eb9597cf1150d7d04c296591d0fed24006685ab7a75a90037ba8d2ab3a": {
+      "raw_failure": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.get_file_as_string:owner_path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+      "rule_id": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+      "subject_kind": "path",
+      "subject_value": "resources/content/alpha01/alpha01_content_manifest.gd",
+      "transition_old_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+      "transition_new_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "source_commit_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "source_path": "resources/content/alpha01/alpha01_content_manifest.gd",
+      "source_blob_sha256": "a49c23e9ffdee83d51d2ac1c5f2e6ceaa0e0837a43a73d0671f202d737911a1b",
+      "loader": "FileAccess.get_file_as_string",
+      "reference_expression": "owner_path",
+      "source_line_or_ast_location": {"line": 544, "column": 11, "containing_function": "_validate_owner_binding"},
+      "callsite_locations": [
+        {"line": 544, "column": 11, "function": "_validate_owner_binding"}
+      ],
+      "resolved_targets": [
+        "res://scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd",
+        "res://scripts/runtime/card_counter_settlement_runtime_service.gd",
+        "res://scripts/runtime/commodity_flow_runtime_controller.gd",
+        "res://scripts/runtime/military_runtime_controller.gd",
+        "res://scripts/runtime/monster_runtime_controller.gd",
+        "res://scripts/runtime/player_hand_interaction_runtime_service.gd",
+        "res://scripts/runtime/region_infrastructure_runtime_controller.gd"
+      ],
+      "target_count": 7,
+      "target_set_sha256": "7ec5bea6b9e83f5c51bde9a0ddcea29955071c448cf02faac82ae81e68a75e24",
+      "target_derivation_rule": "sorted_unique(OWNER_BINDINGS[*].owner_path)",
+      "runtime_probe": {"probe_id": "alpha01_content_manifest_test", "test_path": "tests/alpha01_content_manifest_test.gd", "test_sha256": "a4f53e23c8511299cae86c3a2332f4c308c5aa331812c68f8828e81bb3c342f6", "test_git_blob_oid": "f31291622eb4b21fc789ad8980474acbdd5cd757", "expected_target_count": 7, "required_before_production_claim": true}
+    },
+    "V2F-97098e90fc9a19e803dad6116f516339d4d08399080e0506cde3faa1b1a5833d": {
+      "raw_failure": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.get_file_as_string:path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+      "rule_id": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+      "subject_kind": "path",
+      "subject_value": "resources/content/alpha01/alpha01_content_manifest.gd",
+      "transition_old_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+      "transition_new_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "source_commit_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "source_path": "resources/content/alpha01/alpha01_content_manifest.gd",
+      "source_blob_sha256": "a49c23e9ffdee83d51d2ac1c5f2e6ceaa0e0837a43a73d0671f202d737911a1b",
+      "loader": "FileAccess.get_file_as_string",
+      "reference_expression": "path",
+      "source_line_or_ast_location": {"line": 653, "column": 18, "containing_function": "_validate_role_passive_consumers"},
+      "callsite_locations": [
+        {"line": 653, "column": 18, "function": "_validate_role_passive_consumers"}
+      ],
+      "resolved_targets": [
+        "res://scripts/runtime/district_supply_action_port.gd",
+        "res://scripts/runtime/intel_private_command_port.gd",
+        "res://scripts/runtime/military_runtime_controller.gd",
+        "res://scripts/runtime/monster_runtime_controller.gd",
+        "res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd",
+        "res://scripts/runtime/session_start_plan_builder.gd"
+      ],
+      "target_count": 6,
+      "target_set_sha256": "f06c1589da184b34afe6553eb446cb50ea088eccbbce26f1180ae91ce8fa7ed6",
+      "target_derivation_rule": "sorted_unique(ROLE_PASSIVE_CONSUMER_EVIDENCE[*].consumer_path)",
+      "runtime_probe": {"probe_id": "alpha01_content_manifest_test", "test_path": "tests/alpha01_content_manifest_test.gd", "test_sha256": "a4f53e23c8511299cae86c3a2332f4c308c5aa331812c68f8828e81bb3c342f6", "test_git_blob_oid": "f31291622eb4b21fc789ad8980474acbdd5cd757", "expected_target_count": 6, "required_before_production_claim": true}
+    },
+    "V2F-f92454220b0ec6286cb2d42f3a6a824d51309dd1edc7430e60c752631f07cd09": {
+      "raw_failure": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.open:path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+      "rule_id": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+      "subject_kind": "path",
+      "subject_value": "resources/content/alpha01/alpha01_content_manifest.gd",
+      "transition_old_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+      "transition_new_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "source_commit_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "source_path": "resources/content/alpha01/alpha01_content_manifest.gd",
+      "source_blob_sha256": "a49c23e9ffdee83d51d2ac1c5f2e6ceaa0e0837a43a73d0671f202d737911a1b",
+      "loader": "FileAccess.open",
+      "reference_expression": "path",
+      "source_line_or_ast_location": {"line": 881, "column": 14, "containing_function": "_load_json"},
+      "callsite_locations": [
+        {"line": 881, "column": 14, "function": "_load_json"},
+        {"line": 889, "column": 14, "function": "_file_sha256"}
+      ],
+      "resolved_targets": [
+        "res://data/cards/card_runtime_catalog_v06.json",
+        "res://docs/rules/v06_mechanic_status_registry.json",
+        "res://resources/content/product_industry_catalog_v05.tres",
+        "res://scripts/runtime/monster_catalog_v06.gd",
+        "res://scripts/runtime/role_catalog_runtime_service.gd"
+      ],
+      "target_count": 5,
+      "target_set_sha256": "438bb42c183d2ee40a70fa9ab2830b1109fc6cbd926d510cad97e945c1a3b2a9",
+      "target_derivation_rule": "sorted_unique(SOURCE_PATHS[*])",
+      "runtime_probe": {"probe_id": "alpha01_content_manifest_test", "test_path": "tests/alpha01_content_manifest_test.gd", "test_sha256": "a4f53e23c8511299cae86c3a2332f4c308c5aa331812c68f8828e81bb3c342f6", "test_git_blob_oid": "f31291622eb4b21fc789ad8980474acbdd5cd757", "expected_target_count": 5, "required_before_production_claim": true}
+    },
+    "V2F-d68046a34484d6bd5734a1a7574d47ac830cd768d713bac033085852ff786b21": {
+      "raw_failure": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:ResourceLoader.exists:owner_path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+      "rule_id": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+      "subject_kind": "path",
+      "subject_value": "resources/content/alpha01/alpha01_content_manifest.gd",
+      "transition_old_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+      "transition_new_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "source_commit_sha": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "source_path": "resources/content/alpha01/alpha01_content_manifest.gd",
+      "source_blob_sha256": "a49c23e9ffdee83d51d2ac1c5f2e6ceaa0e0837a43a73d0671f202d737911a1b",
+      "loader": "ResourceLoader.exists",
+      "reference_expression": "owner_path",
+      "source_line_or_ast_location": {"line": 542, "column": 34, "containing_function": "_validate_owner_binding"},
+      "callsite_locations": [
+        {"line": 542, "column": 34, "function": "_validate_owner_binding"}
+      ],
+      "resolved_targets": [
+        "res://scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd",
+        "res://scripts/runtime/card_counter_settlement_runtime_service.gd",
+        "res://scripts/runtime/commodity_flow_runtime_controller.gd",
+        "res://scripts/runtime/military_runtime_controller.gd",
+        "res://scripts/runtime/monster_runtime_controller.gd",
+        "res://scripts/runtime/player_hand_interaction_runtime_service.gd",
+        "res://scripts/runtime/region_infrastructure_runtime_controller.gd"
+      ],
+      "target_count": 7,
+      "target_set_sha256": "7ec5bea6b9e83f5c51bde9a0ddcea29955071c448cf02faac82ae81e68a75e24",
+      "target_derivation_rule": "sorted_unique(OWNER_BINDINGS[*].owner_path)",
+      "runtime_probe": {"probe_id": "alpha01_content_manifest_test", "test_path": "tests/alpha01_content_manifest_test.gd", "test_sha256": "a4f53e23c8511299cae86c3a2332f4c308c5aa331812c68f8828e81bb3c342f6", "test_git_blob_oid": "f31291622eb4b21fc789ad8980474acbdd5cd757", "expected_target_count": 7, "required_before_production_claim": true}
+    }
+  },
+  "recommended_disposition": "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED",
+  "invalidation_policy": {
+    "binding_head_change_requires_revalidation": true,
+    "resource_sha256_change_invalidates": true,
+    "resource_git_blob_oid_change_invalidates": true,
+    "script_sha256_change_invalidates": true,
+    "script_git_blob_oid_change_invalidates": true,
+    "script_link_change_invalidates": true,
+    "registry_row_change_invalidates": true,
+    "owner_change_invalidates": true,
+    "domain_change_invalidates": true,
+    "production_reachability_change_invalidates": true,
+    "transition_change_invalidates": true,
+    "callsite_change_invalidates": true,
+    "target_set_change_invalidates": true,
+    "unrelated_delta_preserves_binding": true,
+    "old_evidence_mutation_forbidden": true
+  },
+  "future_failure_policy": {
+    "future_failure_auto_membership_allowed": false,
+    "new_failure_requires_new_record": true,
+    "wildcard_membership_allowed": false
+  },
+  "wildcard_count": 0,
+  "created_at": "2026-08-29T00:00:00Z",
+  "creator": "V076_MAIN_DEVELOPMENT_AGENT",
+  "record_payload_sha256": "bf8c100191a9b5ccf5042512cbf58aa5a324f41afbdaba6de77a21558e1f83cd"
+}
