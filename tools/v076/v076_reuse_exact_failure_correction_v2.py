@@ -2598,6 +2598,8 @@ def validate_records(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
+    historical_delta_metadata_ledger_path: Path | None = None,
+    full_convergence_pr_body_file_path: Path | None = None,
 ) -> dict[str, Any]:
     full_convergence_inputs = (
         full_convergence_baseline_report_path,
@@ -2609,6 +2611,18 @@ def validate_records(
         # This sidecar is optional and must not make the FC input tuple
         # incomplete by itself.
     )
+    if historical_delta_metadata_ledger_path is not None and not any(
+        value is not None for value in full_convergence_inputs
+    ):
+        raise ValueError(
+            "HISTORICAL_DELTA_METADATA_LEDGER_REQUIRES_FULL_CONVERGENCE_INPUT_SET"
+        )
+    if full_convergence_pr_body_file_path is not None and not any(
+        value is not None for value in full_convergence_inputs
+    ):
+        raise ValueError(
+            "FULL_CONVERGENCE_PR_BODY_FILE_REQUIRES_FULL_CONVERGENCE_INPUT_SET"
+        )
     if post_touch_revalidation_path is not None and not any(
         value is not None for value in full_convergence_inputs
     ):
@@ -2632,6 +2646,12 @@ def validate_records(
             descendant_history_raw_report_path=descendant_history_raw_report_path,
             descendant_history_scanner_path=descendant_history_scanner_path,
             post_touch_revalidation_path=post_touch_revalidation_path,
+            historical_delta_metadata_ledger_path=(
+                historical_delta_metadata_ledger_path
+            ),
+            full_convergence_pr_body_file_path=(
+                full_convergence_pr_body_file_path
+            ),
         )
     failures, baseline_sha, scanner_manifest_sha, existing_manifest_sha = _validate_frozen_inputs(
         root, output_root, current_head=current_head
@@ -3198,13 +3218,31 @@ def _full_convergence_terminal_coverage_failures(
     legacy_exact: set[str],
     full_fingerprints: set[str],
     terminal: bool,
+    historical_delta_metadata_exact: set[str] | None = None,
 ) -> list[str]:
     failures: list[str] = []
+    historical_delta_metadata_exact = historical_delta_metadata_exact or set()
     if not terminal:
         failures.append("EFFECTIVE_TERMINAL_BATCH_FLAG_REQUIRED")
     if not legacy_exact.issubset(authorized_historical):
         failures.append("EFFECTIVE_LEGACY_FINGERPRINT_NOT_AUTHORIZED_HISTORICAL")
-    expected_full = authorized_historical - legacy_exact
+    if not historical_delta_metadata_exact.issubset(authorized_historical):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_FINGERPRINT_NOT_AUTHORIZED_HISTORICAL"
+        )
+    if legacy_exact & historical_delta_metadata_exact:
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_LEGACY_FINGERPRINT_COLLISION"
+        )
+    if full_fingerprints & legacy_exact:
+        failures.append("EFFECTIVE_FULL_CONVERGENCE_LEGACY_FINGERPRINT_COLLISION")
+    if full_fingerprints & historical_delta_metadata_exact:
+        failures.append(
+            "EFFECTIVE_FULL_CONVERGENCE_HISTORICAL_DELTA_METADATA_FINGERPRINT_COLLISION"
+        )
+    expected_full = (
+        authorized_historical - legacy_exact - historical_delta_metadata_exact
+    )
     missing = expected_full - full_fingerprints
     extra = full_fingerprints - expected_full
     if missing:
@@ -3225,6 +3263,7 @@ def _verified_full_convergence_authority(
     descendant_history_raw_report_path: Path,
     descendant_history_scanner_path: Path,
     post_touch_revalidation_path: Path | None = None,
+    historical_delta_metadata_ledger_path: Path | None = None,
 ) -> dict[str, Any]:
     import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
 
@@ -3238,6 +3277,9 @@ def _verified_full_convergence_authority(
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
         post_touch_revalidation_path=post_touch_revalidation_path,
+        historical_delta_metadata_ledger_path=(
+            historical_delta_metadata_ledger_path
+        ),
     )
     failures = [str(value) for value in primary.get("failures", [])]
     try:
@@ -3270,6 +3312,16 @@ def _verified_full_convergence_authority(
             f"EFFECTIVE_LEGACY_ANCHOR_INVALID:{value}"
             for value in legacy_anchor.get("failures", [])
         )
+    historical_delta_metadata_ledger = primary.get(
+        "historical_delta_metadata_ledger", {}
+    )
+    if not isinstance(historical_delta_metadata_ledger, dict):
+        historical_delta_metadata_ledger = {}
+    if (
+        historical_delta_metadata_ledger_path is not None
+        and historical_delta_metadata_ledger.get("status") != "PASS"
+    ):
+        failures.append("EFFECTIVE_HISTORICAL_DELTA_METADATA_LEDGER_INVALID")
 
     authorized_identities: dict[str, dict[str, Any]] = {}
     registered_identities: dict[str, dict[str, Any]] = {}
@@ -3296,6 +3348,44 @@ def _verified_full_convergence_authority(
             ).items()
             if isinstance(disposition, dict)
         }
+    supplement_authorized_fingerprints = set(authorized_identities)
+    historical_delta_metadata_identities: dict[str, dict[str, Any]] = {}
+    historical_delta_metadata_verified: set[str] = set()
+    if historical_delta_metadata_ledger.get("status") == "PASS":
+        historical_delta_metadata_identities = {
+            str(fingerprint): dict(identity)
+            for fingerprint, identity in historical_delta_metadata_ledger.get(
+                "authorized_identity_by_fingerprint", {}
+            ).items()
+            if isinstance(identity, dict)
+        }
+        historical_delta_metadata_verified = {
+            str(value)
+            for value in historical_delta_metadata_ledger.get(
+                "verified_historical_fingerprints", []
+            )
+        }
+        identity_overlap = supplement_authorized_fingerprints & set(
+            historical_delta_metadata_identities
+        )
+        if identity_overlap:
+            failures.append(
+                "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUPPLEMENT_"
+                f"FINGERPRINT_COLLISION:{len(identity_overlap)}"
+            )
+        if historical_delta_metadata_verified != set(
+            historical_delta_metadata_identities
+        ):
+            failures.append(
+                "EFFECTIVE_HISTORICAL_DELTA_METADATA_VERIFIED_SET_MISMATCH"
+            )
+        if identity_overlap or historical_delta_metadata_verified != set(
+            historical_delta_metadata_identities
+        ):
+            historical_delta_metadata_identities = {}
+            historical_delta_metadata_verified = set()
+        else:
+            authorized_identities.update(historical_delta_metadata_identities)
 
     try:
         manifest = convergence.load_json_strict(batch_manifest_path)
@@ -3336,12 +3426,25 @@ def _verified_full_convergence_authority(
                 if isinstance(binding, dict)
             )
     terminal = isinstance(manifest, dict) and manifest.get("terminal_remainder_batch") is True
+    if terminal:
+        if historical_delta_metadata_ledger_path is None:
+            failures.append(
+                "EFFECTIVE_TERMINAL_HISTORICAL_DELTA_METADATA_LEDGER_REQUIRED"
+            )
+        elif historical_delta_metadata_ledger.get("status") != "PASS":
+            failures.append(
+                "EFFECTIVE_TERMINAL_HISTORICAL_DELTA_METADATA_LEDGER_NOT_PASS"
+            )
     legacy_exact = {
         str(value)
         for value in legacy_anchor.get("legacy_corrected_fingerprints", [])
     }
     authorized_historical = set(authorized_identities)
-    expected_full = authorized_historical - legacy_exact
+    expected_full = (
+        authorized_historical
+        - legacy_exact
+        - historical_delta_metadata_verified
+    )
     missing = expected_full - full_fingerprints
     extra = full_fingerprints - expected_full
     failures.extend(_full_convergence_terminal_coverage_failures(
@@ -3349,6 +3452,7 @@ def _verified_full_convergence_authority(
         legacy_exact=legacy_exact,
         full_fingerprints=full_fingerprints,
         terminal=terminal,
+        historical_delta_metadata_exact=historical_delta_metadata_verified,
     ))
     raw_values = [
         str(identity.get("raw_failure", ""))
@@ -3357,6 +3461,51 @@ def _verified_full_convergence_authority(
     if any(not value for value in raw_values) or len(raw_values) != len(set(raw_values)):
         failures.append("EFFECTIVE_AUTHORIZED_HISTORICAL_RAW_IDENTITY_INVALID")
     failures = sorted(set(failures))
+    diagnostic_authorized_historical_fingerprints = sorted(authorized_historical)
+    diagnostic_registered_historical_fingerprints = sorted(registered_identities)
+    diagnostic_dispositioned_historical_fingerprints = sorted(
+        disposition_by_failure
+    )
+    diagnostic_full_convergence_fingerprints = sorted(full_fingerprints)
+    diagnostic_coverage_missing_fingerprints = sorted(missing)
+    diagnostic_coverage_extra_fingerprints = sorted(extra)
+    if failures:
+        authorized_identities = {}
+        registered_identities = {}
+        disposition_by_failure = {}
+        supplement_authorized_fingerprints = set()
+        historical_delta_metadata_identities = {}
+        historical_delta_metadata_verified = set()
+        full_fingerprints = set()
+        legacy_exact = set()
+        expected_full = set()
+        missing = set()
+        extra = set()
+        record_summaries = []
+        full_record_count = 0
+        manifests = []
+        terminal = False
+        historical_delta_metadata_ledger = (
+            convergence._empty_historical_delta_metadata_ledger_authority(
+                status="FAIL",
+                failures=["COMPOSITE_FULL_CONVERGENCE_AUTHORITY_FAILED"],
+                primary_status=str(
+                    historical_delta_metadata_ledger.get("primary_status", "FAIL")
+                ),
+                independent_status=str(
+                    historical_delta_metadata_ledger.get(
+                        "independent_status", "NO_GO"
+                    )
+                ),
+                primary_projection_digest_match=(
+                    historical_delta_metadata_ledger.get(
+                        "primary_projection_digest_match"
+                    )
+                    is True
+                ),
+            )
+        )
+        authorized_historical = set()
     verified = full_fingerprints if not failures else set()
     verified_identity_map = {
         fingerprint: authorized_identities[fingerprint]
@@ -3366,6 +3515,24 @@ def _verified_full_convergence_authority(
     return {
         "status": "PASS" if not failures else "FAIL",
         "failures": failures,
+        "diagnostic_authorized_historical_fingerprints": (
+            diagnostic_authorized_historical_fingerprints
+        ),
+        "diagnostic_registered_historical_fingerprints": (
+            diagnostic_registered_historical_fingerprints
+        ),
+        "diagnostic_dispositioned_historical_fingerprints": (
+            diagnostic_dispositioned_historical_fingerprints
+        ),
+        "diagnostic_full_convergence_fingerprints": (
+            diagnostic_full_convergence_fingerprints
+        ),
+        "diagnostic_coverage_missing_fingerprints": (
+            diagnostic_coverage_missing_fingerprints
+        ),
+        "diagnostic_coverage_extra_fingerprints": (
+            diagnostic_coverage_extra_fingerprints
+        ),
         "authorization_id": convergence.AUTHORIZATION_ID,
         "authorization_base_head_sha": convergence.AUTHORIZATION_BASE_HEAD_SHA,
         "baseline_report_sha256": (
@@ -3376,22 +3543,47 @@ def _verified_full_convergence_authority(
             if (root / convergence.SCHEMA_REL).is_file()
             else ""
         ),
-        "descendant_history_supplement_sha256": supplement.get(
-            "supplement_sha256", ""
+        "descendant_history_supplement_sha256": (
+            supplement.get("supplement_sha256", "") if not failures else ""
         ),
-        "descendant_history_raw_report_head_sha": supplement.get(
-            "raw_report_head_sha", ""
+        "descendant_history_raw_report_head_sha": (
+            supplement.get("raw_report_head_sha", "") if not failures else ""
         ),
-        "terminal_batch_id": str(manifest.get("batch_id", "")),
-        "terminal_batch_manifest_path": normalize_path(
-            str(batch_manifest_path.resolve().relative_to(root.resolve()))
-        ) if batch_manifest_path.resolve().is_relative_to(root.resolve()) else str(batch_manifest_path),
+        "terminal_batch_id": (
+            str(manifest.get("batch_id", "")) if not failures else ""
+        ),
+        "terminal_batch_manifest_path": (
+            normalize_path(str(batch_manifest_path.resolve().relative_to(root.resolve())))
+            if batch_manifest_path.resolve().is_relative_to(root.resolve())
+            else str(batch_manifest_path)
+        ) if not failures else "",
         "terminal_batch_manifest_sha256": (
-            sha256_file(batch_manifest_path) if batch_manifest_path.is_file() else ""
+            sha256_file(batch_manifest_path)
+            if not failures and batch_manifest_path.is_file()
+            else ""
         ),
         "terminal_remainder_batch": terminal,
         "validated_batch_count": len(manifests),
         "full_convergence_record_count": full_record_count,
+        "supplement_authorized_historical_failure_count": len(
+            supplement_authorized_fingerprints
+        ),
+        "historical_delta_metadata_ledger": historical_delta_metadata_ledger,
+        "historical_delta_metadata_record_count": (
+            historical_delta_metadata_ledger.get("metadata_record_count", 0)
+        ),
+        "historical_delta_metadata_correction_record_count": (
+            historical_delta_metadata_ledger.get("correction_record_count", 0)
+        ),
+        "historical_delta_metadata_component_count": (
+            historical_delta_metadata_ledger.get("component_count", 0)
+        ),
+        "historical_delta_metadata_authorized_failure_count": len(
+            historical_delta_metadata_identities
+        ),
+        "historical_delta_metadata_verified_failure_count": len(
+            historical_delta_metadata_verified
+        ),
         "authorized_historical_fingerprints": sorted(authorized_historical),
         "authorized_historical_raw_identity_by_fingerprint": {
             fingerprint: authorized_identities[fingerprint]
@@ -3408,16 +3600,32 @@ def _verified_full_convergence_authority(
             for fingerprint in sorted(disposition_by_failure)
         },
         "exact_legacy_corrected_fingerprints": sorted(legacy_exact),
+        "exact_historical_delta_metadata_corrected_fingerprints": sorted(
+            historical_delta_metadata_verified
+        ),
         "expected_full_convergence_fingerprints": sorted(expected_full),
         "verified_historical_fingerprints": sorted(verified),
         "verified_raw_identity_by_fingerprint": verified_identity_map,
         "coverage_missing_fingerprints": sorted(missing),
         "coverage_extra_fingerprints": sorted(extra),
         "record_summaries": record_summaries,
-        "post_touch_revalidation": primary.get("post_touch_revalidation", {
-            "status": "NOT_PROVIDED", "record_count": 0,
-            "trusted_fingerprint_count": 0, "path": "", "failures": []
-        }),
+        "historical_delta_metadata_record_summaries": (
+            historical_delta_metadata_ledger.get("record_summaries", [])
+            if historical_delta_metadata_ledger.get("status") == "PASS"
+            else []
+        ),
+        "post_touch_revalidation": (
+            primary.get("post_touch_revalidation", {
+                "status": "NOT_PROVIDED", "record_count": 0,
+                "trusted_fingerprint_count": 0, "path": "", "failures": []
+            })
+            if not failures
+            else {
+                "status": "FAIL", "record_count": 0,
+                "trusted_fingerprint_count": 0, "path": "",
+                "failures": ["COMPOSITE_FULL_CONVERGENCE_AUTHORITY_FAILED"],
+            }
+        ),
     }
 
 
@@ -3428,15 +3636,20 @@ def _classify_full_convergence_live_raw(
     authorized_identity_by_fingerprint: dict[str, dict[str, Any]],
     registered_identity_by_fingerprint: dict[str, dict[str, Any]] | None = None,
     disposition_by_failure: dict[str, dict[str, Any]] | None = None,
+    snapshot_report: dict[str, Any] | None = None,
+    snapshot_failures: Iterable[str] = (),
 ) -> dict[str, Any]:
     import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
 
-    failures: list[str] = []
-    try:
-        report = convergence.load_json_strict(live_raw_report_path)
-    except (OSError, ValueError, json.JSONDecodeError):
-        report = {}
-        failures.append("LIVE_RAW_REPORT_UNREADABLE")
+    failures: list[str] = list(snapshot_failures)
+    if snapshot_report is None:
+        try:
+            report = convergence.load_json_strict(live_raw_report_path)
+        except (OSError, ValueError, json.JSONDecodeError):
+            report = {}
+            failures.append("LIVE_RAW_REPORT_UNREADABLE")
+    else:
+        report = snapshot_report
     if not isinstance(report, dict):
         report = {}
         failures.append("LIVE_RAW_REPORT_NOT_OBJECT")
@@ -3510,6 +3723,220 @@ def _classify_full_convergence_live_raw(
     }
 
 
+def _run_full_convergence_scanner(
+    argv: list[str],
+    *,
+    cwd: Path,
+) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        argv,
+        cwd=cwd,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
+def _validate_full_convergence_live_raw_binding(
+    root: Path,
+    live_raw_report_path: Path,
+    *,
+    current_head: str,
+    authority: dict[str, Any],
+    pr_body_file_path: Path | None,
+    live_raw_bytes: bytes | None = None,
+    live_raw_snapshot_failures: Iterable[str] = (),
+    pr_body_bytes: bytes | None = None,
+    pr_body_snapshot_failures: Iterable[str] = (),
+) -> dict[str, Any]:
+    import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
+
+    ledger = authority.get("historical_delta_metadata_ledger", {})
+    if authority.get("status") != "PASS":
+        return {
+            "status": "NOT_APPLICABLE_AUTHORITY_FAILED",
+            "failures": [],
+            "mode": "NONE",
+        }
+    if not isinstance(ledger, dict) or ledger.get("status") != "PASS":
+        return {
+            "status": "NOT_REQUIRED_NONTERMINAL_LEDGER_NOT_PROVIDED",
+            "failures": [],
+            "mode": "NONE",
+        }
+    failures: list[str] = list(live_raw_snapshot_failures)
+    try:
+        head = _resolve_commit(root, current_head)
+        tree = _git(root, "rev-parse", f"{head}^{{tree}}")
+    except (RuntimeError, ValueError):
+        head = ""
+        tree = ""
+        failures.append("LIVE_RAW_BINDING_EVALUATED_HEAD_INVALID")
+    raw_head = str(ledger.get("raw_report_head_sha", ""))
+    expected_raw_sha = str(ledger.get("raw_report_sha256", ""))
+    if live_raw_bytes is None:
+        try:
+            live_bytes = live_raw_report_path.read_bytes()
+        except OSError:
+            live_bytes = b""
+            failures.append("LIVE_RAW_BINDING_INPUT_UNREADABLE")
+    else:
+        live_bytes = live_raw_bytes
+    live_sha = hashlib.sha256(live_bytes).hexdigest() if live_bytes else ""
+    if head and head == raw_head:
+        if live_sha != expected_raw_sha:
+            failures.append("LIVE_RAW_FROZEN_LEDGER_BYTE_IDENTITY_MISMATCH")
+        return {
+            "status": "PASS" if not failures else "FAIL",
+            "failures": sorted(set(failures)),
+            "mode": "FROZEN_LEDGER_EXACT_BYTES",
+            "evaluated_head_sha": head,
+            "evaluated_tree_sha": tree,
+            "ledger_raw_head_sha": raw_head,
+            "ledger_raw_report_sha256": expected_raw_sha,
+            "live_raw_report_sha256": live_sha,
+            "exact_byte_match": live_sha == expected_raw_sha,
+        }
+
+    if head and raw_head and not _is_ancestor(root, raw_head, head):
+        failures.append("LIVE_RAW_BINDING_LEDGER_HEAD_NOT_EVALUATED_ANCESTOR")
+    failures.extend(str(value) for value in pr_body_snapshot_failures)
+    if pr_body_file_path is None:
+        failures.append("LIVE_RAW_REEXECUTION_PR_BODY_FILE_REQUIRED")
+        captured_pr_body_bytes = b""
+        pr_body_sha = ""
+    elif pr_body_bytes is None:
+        try:
+            captured_pr_body_bytes = pr_body_file_path.read_bytes()
+            pr_body_sha = hashlib.sha256(captured_pr_body_bytes).hexdigest()
+        except OSError:
+            captured_pr_body_bytes = b""
+            pr_body_sha = ""
+            failures.append("LIVE_RAW_REEXECUTION_PR_BODY_FILE_UNREADABLE")
+    else:
+        captured_pr_body_bytes = pr_body_bytes
+        pr_body_sha = hashlib.sha256(captured_pr_body_bytes).hexdigest()
+    scanner_relative = "tools/v076/v076_reuse_point_inertia_gate.py"
+    scanner_path = root / scanner_relative
+    expected_scanner_sha = str(ledger.get("scanner_sha256", ""))
+    committed_scanner_bytes = (
+        _git_bytes(root, "show", f"{head}:{scanner_relative}") if head else None
+    )
+    try:
+        worktree_scanner_bytes = scanner_path.read_bytes()
+    except OSError:
+        worktree_scanner_bytes = b""
+    committed_scanner_sha = (
+        hashlib.sha256(committed_scanner_bytes).hexdigest()
+        if committed_scanner_bytes is not None
+        else ""
+    )
+    if committed_scanner_bytes is None:
+        failures.append("LIVE_RAW_REEXECUTION_COMMITTED_SCANNER_MISSING")
+    if worktree_scanner_bytes != committed_scanner_bytes:
+        failures.append("LIVE_RAW_REEXECUTION_SCANNER_WORKTREE_BYTE_DRIFT")
+    if committed_scanner_sha != expected_scanner_sha:
+        failures.append("LIVE_RAW_REEXECUTION_SCANNER_LEDGER_BINDING_MISMATCH")
+    if failures:
+        return {
+            "status": "FAIL",
+            "failures": sorted(set(failures)),
+            "mode": "DESCENDANT_INTERNAL_SCANNER_REEXECUTION",
+            "evaluated_head_sha": head,
+            "evaluated_tree_sha": tree,
+            "ledger_raw_head_sha": raw_head,
+            "ledger_raw_report_sha256": expected_raw_sha,
+            "live_raw_report_sha256": live_sha,
+            "scanner_path": scanner_relative,
+            "scanner_sha256": committed_scanner_sha,
+            "pr_body_file_sha256": pr_body_sha,
+        }
+
+    with tempfile.TemporaryDirectory(prefix="v076-live-raw-reexecution-") as temporary:
+        temporary_root = Path(temporary)
+        generated_path = temporary_root / "raw.json"
+        scanner_execution_path = temporary_root / "committed_scanner.py"
+        scanner_execution_path.write_bytes(committed_scanner_bytes or b"")
+        pr_body_execution_path = temporary_root / "pr-body.md"
+        pr_body_execution_path.write_bytes(captured_pr_body_bytes)
+        argv = [
+            sys.executable,
+            str(scanner_execution_path),
+            "validate",
+            "--project",
+            str(root),
+            "--pr-base-ref",
+            PR_BASE_SHA,
+            "--inertia-base-ref",
+            GATE_BASE_SHA,
+            "--gate-base-ref",
+            GATE_BASE_SHA,
+            "--head-ref",
+            head,
+            "--pr-body-file",
+            str(pr_body_execution_path),
+            "--report-json",
+            str(generated_path),
+        ]
+        process = _run_full_convergence_scanner(argv, cwd=root)
+        try:
+            generated_bytes = generated_path.read_bytes()
+            generated = json.loads(
+                generated_bytes.decode("utf-8-sig"),
+                object_pairs_hook=convergence._strict_object,
+            )
+        except (OSError, UnicodeDecodeError, ValueError, json.JSONDecodeError):
+            generated_bytes = b""
+            generated = {}
+            failures.append("LIVE_RAW_REEXECUTION_OUTPUT_UNREADABLE")
+        generated_sha = hashlib.sha256(generated_bytes).hexdigest()
+        if not isinstance(generated, dict):
+            generated = {}
+            failures.append("LIVE_RAW_REEXECUTION_OUTPUT_NOT_OBJECT")
+        raw_values = generated.get("failures")
+        if not isinstance(raw_values, list):
+            raw_values = []
+            failures.append("LIVE_RAW_REEXECUTION_FAILURE_LIST_INVALID")
+        expected_status = "PASS" if not raw_values else "FAIL"
+        expected_exit = 0 if expected_status == "PASS" else 1
+        if process.returncode != expected_exit:
+            failures.append("LIVE_RAW_REEXECUTION_EXIT_STATUS_MISMATCH")
+        if generated.get("status") != expected_status:
+            failures.append("LIVE_RAW_REEXECUTION_REPORT_STATUS_MISMATCH")
+        if generated.get("head_sha") != head:
+            failures.append("LIVE_RAW_REEXECUTION_HEAD_MISMATCH")
+        if generated.get("include_worktree") is not False:
+            failures.append("LIVE_RAW_REEXECUTION_INCLUDED_WORKTREE")
+        if generated.get("evaluated_source") != "COMMITTED_HEAD":
+            failures.append("LIVE_RAW_REEXECUTION_SOURCE_MISMATCH")
+        if generated_bytes != live_bytes:
+            failures.append("LIVE_RAW_REEXECUTION_EXACT_OUTPUT_MISMATCH")
+        argv_digest = hashlib.sha256(_canonical_bytes(argv)).hexdigest()
+        return {
+            "status": "PASS" if not failures else "FAIL",
+            "failures": sorted(set(failures)),
+            "mode": "DESCENDANT_INTERNAL_SCANNER_REEXECUTION",
+            "evaluated_head_sha": head,
+            "evaluated_tree_sha": tree,
+            "ledger_raw_head_sha": raw_head,
+            "ledger_raw_report_sha256": expected_raw_sha,
+            "live_raw_report_sha256": live_sha,
+            "generated_raw_report_sha256": generated_sha,
+            "exact_byte_match": generated_bytes == live_bytes,
+            "scanner_path": scanner_relative,
+            "scanner_sha256": committed_scanner_sha,
+            "pr_body_file_path": str(pr_body_file_path),
+            "pr_body_file_sha256": pr_body_sha,
+            "argv": argv,
+            "argv_sha256": argv_digest,
+            "exit_code": process.returncode,
+            "expected_exit_code": expected_exit,
+            "stdout_sha256": hashlib.sha256(process.stdout).hexdigest(),
+            "stderr_sha256": hashlib.sha256(process.stderr).hexdigest(),
+            "output_failure_count": len(raw_values),
+        }
+
+
 def validate_full_convergence_records(
     root: Path,
     output_root: Path,
@@ -3523,7 +3950,35 @@ def validate_full_convergence_records(
     descendant_history_raw_report_path: Path,
     descendant_history_scanner_path: Path,
     post_touch_revalidation_path: Path | None = None,
+    historical_delta_metadata_ledger_path: Path | None = None,
+    full_convergence_pr_body_file_path: Path | None = None,
 ) -> dict[str, Any]:
+    import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
+
+    live_raw_snapshot_failures: list[str] = []
+    try:
+        live_raw_bytes = live_raw_report_path.read_bytes()
+        parsed_live_raw = json.loads(
+            live_raw_bytes.decode("utf-8-sig"),
+            object_pairs_hook=convergence._strict_object,
+        )
+    except (OSError, UnicodeDecodeError, ValueError, json.JSONDecodeError):
+        live_raw_bytes = b""
+        parsed_live_raw = {}
+        live_raw_snapshot_failures.append("LIVE_RAW_REPORT_UNREADABLE")
+    if not isinstance(parsed_live_raw, dict):
+        parsed_live_raw = {}
+        live_raw_snapshot_failures.append("LIVE_RAW_REPORT_NOT_OBJECT")
+    pr_body_snapshot_failures: list[str] = []
+    pr_body_bytes: bytes | None = None
+    if full_convergence_pr_body_file_path is not None:
+        try:
+            pr_body_bytes = full_convergence_pr_body_file_path.read_bytes()
+        except OSError:
+            pr_body_bytes = b""
+            pr_body_snapshot_failures.append(
+                "LIVE_RAW_REEXECUTION_PR_BODY_FILE_UNREADABLE"
+            )
     legacy = validate_legacy_epoch_effectiveness(
         root,
         output_root,
@@ -3539,6 +3994,9 @@ def validate_full_convergence_records(
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
         post_touch_revalidation_path=post_touch_revalidation_path,
+        historical_delta_metadata_ledger_path=(
+            historical_delta_metadata_ledger_path
+        ),
     )
     live = _classify_full_convergence_live_raw(
         live_raw_report_path,
@@ -3552,11 +4010,25 @@ def validate_full_convergence_records(
         disposition_by_failure=authority.get(
             "frozen_identity_disposition_by_failure", {}
         ),
+        snapshot_report=parsed_live_raw,
+        snapshot_failures=live_raw_snapshot_failures,
+    )
+    raw_binding = _validate_full_convergence_live_raw_binding(
+        root,
+        live_raw_report_path,
+        current_head=current_head,
+        authority=authority,
+        pr_body_file_path=full_convergence_pr_body_file_path,
+        live_raw_bytes=live_raw_bytes,
+        live_raw_snapshot_failures=live_raw_snapshot_failures,
+        pr_body_bytes=pr_body_bytes,
+        pr_body_snapshot_failures=pr_body_snapshot_failures,
     )
     failures = sorted(set(
         [f"LEGACY_EFFECTIVENESS:{value}" for value in legacy.get("failures", [])]
         + [f"FULL_CONVERGENCE_AUTHORITY:{value}" for value in authority.get("failures", [])]
         + [f"FULL_CONVERGENCE_LIVE_RAW:{value}" for value in live.get("failures", [])]
+        + [f"FULL_CONVERGENCE_LIVE_RAW_BINDING:{value}" for value in raw_binding.get("failures", [])]
     ))
     authorized_historical = {
         str(value) for value in authority.get("authorized_historical_fingerprints", [])
@@ -3573,10 +4045,28 @@ def validate_full_convergence_records(
         str(value)
         for value in legacy.get("verified_corrected_historical_fingerprints", [])
     }
-    full_verified = {
-        str(value) for value in authority.get("verified_historical_fingerprints", [])
-    }
-    corrected = (legacy_verified | full_verified) & authorized_historical
+    authority_pass = authority.get("status") == "PASS"
+    full_verified = (
+        {
+            str(value)
+            for value in authority.get("verified_historical_fingerprints", [])
+        }
+        if authority_pass
+        else set()
+    )
+    historical_delta_metadata_verified = (
+        {
+            str(value)
+            for value in authority.get(
+                "exact_historical_delta_metadata_corrected_fingerprints", []
+            )
+        }
+        if authority_pass
+        else set()
+    )
+    corrected = (
+        legacy_verified | full_verified | historical_delta_metadata_verified
+    ) & authorized_historical
     unresolved = authorized_historical - corrected
     active = {str(value) for value in live.get("active_fingerprints", [])}
     integrity = {f"INTEGRITY:{value}" for value in failures}
@@ -3633,6 +4123,7 @@ def validate_full_convergence_records(
         "full_convergence_terminal_coverage_verified": coverage_verified,
         "legacy_epoch_verified": legacy.get("status") == "PASS",
         "raw_report_source": f"EXTERNAL_LIVE_RAW_REPORT:{live_raw_report_path.name}",
+        "full_convergence_live_raw_binding": raw_binding,
         "raw_report_head_sha": str(raw_report.get("head_sha", "")),
         "raw_failure_count": live.get("raw_failure_count", 0),
         "raw_historical_failure_count": live.get("raw_historical_failure_count", 0),
@@ -3643,6 +4134,9 @@ def validate_full_convergence_records(
         "historical_identity_classified_count": len(registered_historical),
         "legacy_corrected_historical_failure_count": len(legacy_verified),
         "full_convergence_corrected_historical_failure_count": len(full_verified),
+        "historical_delta_metadata_corrected_historical_failure_count": len(
+            historical_delta_metadata_verified
+        ),
         "corrected_historical_failure_count": len(corrected),
         "unresolved_historical_failure_count": len(unresolved),
         "true_active_violation_count": len(active),
@@ -3651,8 +4145,29 @@ def validate_full_convergence_records(
         "full_convergence_correction_record_count": authority.get(
             "full_convergence_record_count", 0
         ),
+        "historical_delta_metadata_record_count": authority.get(
+            "historical_delta_metadata_record_count", 0
+        ),
+        "historical_delta_metadata_correction_record_count": authority.get(
+            "historical_delta_metadata_correction_record_count", 0
+        ),
+        "historical_delta_metadata_component_count": authority.get(
+            "historical_delta_metadata_component_count", 0
+        ),
+        "historical_delta_metadata_authorized_failure_count": authority.get(
+            "historical_delta_metadata_authorized_failure_count", 0
+        ),
+        "historical_delta_metadata_verified_failure_count": authority.get(
+            "historical_delta_metadata_verified_failure_count", 0
+        ),
         "new_correction_record_count": authority.get(
             "full_convergence_record_count", 0
+        ),
+        "total_new_correction_record_count": (
+            authority.get("full_convergence_record_count", 0)
+            + authority.get(
+                "historical_delta_metadata_correction_record_count", 0
+            )
         ),
         "corrected_failure_fingerprint_count": len(corrected),
         "correction_wildcard_count": 0,
@@ -3688,13 +4203,23 @@ def validate_full_convergence_records(
         ),
         "valid_unrelated_delta_false_reject_count": 0,
         "false_green_count": 0,
-        "records": legacy.get("records", []) + authority.get("record_summaries", []),
+        "records": (
+            legacy.get("records", [])
+            + authority.get("record_summaries", [])
+            + authority.get("historical_delta_metadata_record_summaries", [])
+        ),
+        "historical_delta_metadata_ledger": authority.get(
+            "historical_delta_metadata_ledger", {}
+        ),
         "exact_legacy_corrected_fingerprints": sorted(exact_legacy),
         "dispositioned_historical_fingerprints": sorted(dispositioned_historical),
         "frozen_identity_disposition_by_failure": authority.get(
             "frozen_identity_disposition_by_failure", {}
         ),
         "verified_full_convergence_fingerprints": sorted(full_verified),
+        "verified_historical_delta_metadata_fingerprints": sorted(
+            historical_delta_metadata_verified
+        ),
         "verified_full_convergence_raw_identity_by_fingerprint": authority.get(
             "verified_raw_identity_by_fingerprint", {}
         ),
@@ -3748,6 +4273,10 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"- Registered historical identities: `{report.get('registered_historical_identity_count')}`",
             f"- Legacy corrected identities: `{report.get('legacy_corrected_historical_failure_count')}`",
             f"- Full-convergence corrected identities: `{report.get('full_convergence_corrected_historical_failure_count')}`",
+            f"- Historical Delta metadata corrected identities: `{report.get('historical_delta_metadata_corrected_historical_failure_count')}`",
+            f"- Historical Delta metadata records: `{report.get('historical_delta_metadata_record_count')}`",
+            f"- Historical Delta metadata components: `{report.get('historical_delta_metadata_component_count')}`",
+            f"- Total new correction records: `{report.get('total_new_correction_record_count')}`",
             f"- Terminal batch: `{report.get('terminal_batch_id')}`",
             f"- Terminal coverage verified: `{report.get('full_convergence_terminal_coverage_verified')}`",
             f"- Legacy epoch verified: `{report.get('legacy_epoch_verified')}`",
@@ -3779,6 +4308,8 @@ def resolve_command(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
+    historical_delta_metadata_ledger_path: Path | None = None,
+    full_convergence_pr_body_file_path: Path | None = None,
 ) -> int:
     report = validate_records(
         root,
@@ -3798,6 +4329,12 @@ def resolve_command(
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
         post_touch_revalidation_path=post_touch_revalidation_path,
+        historical_delta_metadata_ledger_path=(
+            historical_delta_metadata_ledger_path
+        ),
+        full_convergence_pr_body_file_path=(
+            full_convergence_pr_body_file_path
+        ),
     )
     if report_json:
         report_json.parent.mkdir(parents=True, exist_ok=True)
@@ -5151,6 +5688,25 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="explicit append-only post-touch revalidation manifest; never discovered implicitly",
     )
+    parser.add_argument(
+        "--historical-delta-metadata-ledger",
+        type=Path,
+        default=None,
+        help=(
+            "explicit append-only historical Delta metadata ledger; valid "
+            "only with the complete FULL_CONVERGENCE input set and never "
+            "discovered implicitly"
+        ),
+    )
+    parser.add_argument(
+        "--full-convergence-pr-body-file",
+        type=Path,
+        default=None,
+        help=(
+            "explicit PR-body bytes used only for descendant live Raw internal "
+            "scanner re-execution; frozen exact-head validation does not require it"
+        ),
+    )
     parser.add_argument("--head-ref", default=AUTHORIZED_HEAD_SHA)
     parser.add_argument(
         "--verify-only",
@@ -5225,6 +5781,11 @@ def main(argv: list[str] | None = None) -> int:
                     args.post_touch_revalidation.resolve()
                     if args.post_touch_revalidation is not None else None
                 ),
+                historical_delta_metadata_ledger_path=(
+                    args.historical_delta_metadata_ledger.resolve()
+                    if args.historical_delta_metadata_ledger is not None
+                    else None
+                ),
             )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0 if result.get("status") == "PASS" else 1
@@ -5293,6 +5854,16 @@ def main(argv: list[str] | None = None) -> int:
         post_touch_revalidation_path=(
             args.post_touch_revalidation.resolve()
             if args.post_touch_revalidation is not None
+            else None
+        ),
+        historical_delta_metadata_ledger_path=(
+            args.historical_delta_metadata_ledger.resolve()
+            if args.historical_delta_metadata_ledger is not None
+            else None
+        ),
+        full_convergence_pr_body_file_path=(
+            args.full_convergence_pr_body_file.resolve()
+            if args.full_convergence_pr_body_file is not None
             else None
         ),
     )

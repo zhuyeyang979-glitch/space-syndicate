@@ -2484,7 +2484,10 @@ def verify_legacy_anchor(root: Path) -> dict[str, Any]:
     failures: list[str] = []
     previous = ""
     fingerprints: list[str] = []
+    correction_ids: list[str] = []
+    record_paths: list[str] = []
     for binding in LEGACY_RECORD_BINDINGS:
+        record_paths.append(str(binding["path"]))
         path = root / binding["path"]
         if not path.is_file():
             failures.append(f"LEGACY_RECORD_MISSING:{binding['path']}")
@@ -2507,12 +2510,18 @@ def verify_legacy_anchor(root: Path) -> dict[str, Any]:
             failures.append(f"LEGACY_RECORD_CHAIN_BREAK:{binding['path']}")
         if record.get("record_payload_sha256") != binding["payload_sha256"]:
             failures.append(f"LEGACY_RECORD_PAYLOAD_DRIFT:{binding['path']}")
+        correction_id = str(record.get("correction_id", ""))
+        if not correction_id:
+            failures.append(f"LEGACY_RECORD_CORRECTION_ID_MISSING:{binding['path']}")
+        correction_ids.append(correction_id)
         previous = str(record.get("record_payload_sha256", ""))
         fingerprints.extend(str(value) for value in record.get("failure_fingerprints", []))
     if previous != LEGACY_RECORD_CHAIN_TERMINAL_SHA256:
         failures.append("LEGACY_RECORD_CHAIN_TERMINAL_MISMATCH")
     if len(fingerprints) != 12 or len(fingerprints) != len(set(fingerprints)):
         failures.append("LEGACY_RECORD_FINGERPRINT_SET_INVALID")
+    if len(correction_ids) != len(set(correction_ids)):
+        failures.append("LEGACY_RECORD_CORRECTION_ID_SET_INVALID")
     for relative, expected in (
         (LEGACY_SCHEMA_REL, LEGACY_SCHEMA_SHA256),
         (LEGACY_SEAL_MANIFEST_REL, LEGACY_SEAL_MANIFEST_SHA256),
@@ -2526,6 +2535,8 @@ def verify_legacy_anchor(root: Path) -> dict[str, Any]:
         "legacy_record_count": len(LEGACY_RECORD_BINDINGS),
         "legacy_corrected_fingerprint_count": len(fingerprints),
         "legacy_corrected_fingerprints": sorted(fingerprints),
+        "legacy_correction_ids": sorted(correction_ids),
+        "legacy_record_paths": sorted(record_paths),
         "legacy_record_chain_terminal_sha256": previous,
         "legacy_seal_manifest_sha256": LEGACY_SEAL_MANIFEST_SHA256,
         "failures": sorted(set(failures)),
@@ -4747,6 +4758,611 @@ def _validate_manifest_records_against_repo(
     return sorted(set(failures)), seen
 
 
+def _empty_historical_delta_metadata_ledger_authority(
+    *,
+    status: str,
+    failures: Iterable[str] = (),
+    primary_status: str = "NOT_PROVIDED",
+    independent_status: str = "NOT_PROVIDED",
+    primary_projection_digest_match: bool = False,
+    primary_authority_projection_digest: str = "",
+    independent_authority_projection_digest: str = "",
+) -> dict[str, Any]:
+    """Return a closed, non-authoritative ledger projection."""
+
+    return {
+        "status": status,
+        "failures": sorted(set(str(value) for value in failures)),
+        "primary_status": primary_status,
+        "independent_status": independent_status,
+        "primary_projection_digest_match": primary_projection_digest_match,
+        "primary_authority_projection_digest": primary_authority_projection_digest,
+        "independent_authority_projection_digest": (
+            independent_authority_projection_digest
+        ),
+        "ledger_path": "",
+        "ledger_sha256": "",
+        "raw_report_sha256": "",
+        "raw_report_head_sha": "",
+        "scanner_sha256": "",
+        "raw_failure_count": 0,
+        "semantic_historical_failure_count": 0,
+        "true_current_failure_count": 0,
+        "metadata_record_count": 0,
+        "correction_record_count": 0,
+        "component_count": 0,
+        "authorized_failure_count": 0,
+        "verified_failure_count": 0,
+        "authorized_historical_fingerprints": [],
+        "authorized_identity_by_fingerprint": {},
+        "verified_historical_fingerprints": [],
+        "record_summaries": [],
+    }
+
+
+def _historical_delta_metadata_authority_projection(
+    *,
+    evaluated_head_sha: str,
+    evaluated_tree_sha: str,
+    ledger_path: str,
+    ledger_sha256: str,
+    raw_report_sha256: str,
+    raw_report_head_sha: str,
+    scanner_sha256: str,
+    counts: dict[str, int],
+    authorized_identity_by_fingerprint: dict[str, dict[str, Any]],
+    verified_historical_fingerprints: Iterable[str],
+    record_summaries: Iterable[dict[str, Any]],
+) -> dict[str, Any]:
+    identities = {
+        str(fingerprint): dict(identity)
+        for fingerprint, identity in authorized_identity_by_fingerprint.items()
+    }
+    summaries = [
+        {
+            "correction_id": str(summary.get("correction_id", "")),
+            "path": normalize_path(str(summary.get("path", ""))),
+            "record_sha256": str(summary.get("record_sha256", "")),
+            "record_payload_sha256": str(
+                summary.get("record_payload_sha256", "")
+            ),
+            "failure_fingerprints": sorted(
+                str(value)
+                for value in summary.get("failure_fingerprints", [])
+            ),
+        }
+        for summary in record_summaries
+        if isinstance(summary, dict)
+    ]
+    summaries.sort(key=lambda row: (row["path"], row["correction_id"]))
+    return {
+        "schema_version": (
+            "space_syndicate.v076.historical_delta_metadata."
+            "authority_projection.v1"
+        ),
+        "evaluated_head_sha": evaluated_head_sha,
+        "evaluated_tree_sha": evaluated_tree_sha,
+        "ledger_path": ledger_path,
+        "ledger_sha256": ledger_sha256,
+        "raw_report_sha256": raw_report_sha256,
+        "raw_report_head_sha": raw_report_head_sha,
+        "scanner_sha256": scanner_sha256,
+        **{
+            field: counts[field]
+            for field in sorted(counts)
+        },
+        "authorized_identity_by_fingerprint": {
+            fingerprint: identities[fingerprint]
+            for fingerprint in sorted(identities)
+        },
+        "verified_historical_fingerprints": sorted(
+            str(value) for value in verified_historical_fingerprints
+        ),
+        "record_summaries": summaries,
+    }
+
+
+def _primary_historical_delta_metadata_authority_projection(
+    root: Path,
+    primary: dict[str, Any],
+    *,
+    evaluated_head: str,
+) -> dict[str, Any]:
+    head = _git(root, "rev-parse", f"{evaluated_head}^{{commit}}")
+    tree = _git(root, "rev-parse", f"{head}^{{tree}}")
+    identities = {
+        str(fingerprint): dict(identity)
+        for fingerprint, identity in primary.get(
+            "authorized_identity_by_fingerprint", {}
+        ).items()
+        if isinstance(identity, dict)
+    }
+    verified = [
+        str(value)
+        for value in primary.get("verified_historical_fingerprints", [])
+    ]
+    component_ids = {
+        str(identity.get("component_id", "")) for identity in identities.values()
+    }
+    component_ids.discard("")
+    source_transitions = {
+        str(identity.get("source_commit", "")) for identity in identities.values()
+    }
+    source_transitions.discard("")
+    raw_head = str(primary.get("raw_report_head_sha", ""))
+    scanner_bytes = _git_bytes(
+        root,
+        raw_head,
+        "tools/v076/v076_reuse_point_inertia_gate.py",
+    )
+    if scanner_bytes is None:
+        raise ValueError("PRIMARY_PROJECTION_SCANNER_BLOB_MISSING")
+    counts = {
+        "raw_failure_count": int(primary.get("raw_failure_count", -1)),
+        "preledger_native_historical_bucket_count": int(
+            primary.get("preledger_native_historical_bucket_count", -1)
+        ),
+        "ledger_exact_promoted_count": int(
+            primary.get("ledger_exact_promoted_count", -1)
+        ),
+        "semantic_historical_failure_count": int(
+            primary.get("semantic_historical_failure_count", -1)
+        ),
+        "true_current_failure_count": int(
+            primary.get("true_current_failure_count", -1)
+        ),
+        "metadata_record_count": int(primary.get("metadata_record_count", -1)),
+        "source_transition_count": len(source_transitions),
+        "correction_record_count": int(
+            primary.get("correction_record_count", -1)
+        ),
+        "component_count": len(component_ids),
+        "authorized_failure_count": len(identities),
+        "verified_failure_count": len(verified),
+    }
+    return _historical_delta_metadata_authority_projection(
+        evaluated_head_sha=head,
+        evaluated_tree_sha=tree,
+        ledger_path=str(primary.get("ledger_path", "")),
+        ledger_sha256=str(primary.get("ledger_sha256", "")),
+        raw_report_sha256=str(primary.get("raw_report_sha256", "")),
+        raw_report_head_sha=raw_head,
+        scanner_sha256=sha256_bytes(scanner_bytes),
+        counts=counts,
+        authorized_identity_by_fingerprint=identities,
+        verified_historical_fingerprints=verified,
+        record_summaries=primary.get("record_summaries", []),
+    )
+
+
+def _independent_historical_delta_metadata_authority_projection(
+    root: Path,
+    ledger_path: Path,
+    *,
+    evaluated_head: str,
+    independent_receipt: dict[str, Any],
+) -> dict[str, Any]:
+    try:
+        from . import (
+            v076_historical_delta_metadata_independent_audit
+            as independent_validator,
+        )
+    except ImportError:  # direct script execution
+        import v076_historical_delta_metadata_independent_audit as independent_validator
+
+    root = root.resolve()
+    head = independent_validator._exact_commit(root, evaluated_head)
+    ledger, ledger_bytes = independent_validator._committed_document(
+        root,
+        head,
+        independent_validator.LEDGER_PATH,
+    )
+    records = ledger.get("records") if isinstance(ledger, dict) else []
+    if not isinstance(records, list):
+        raise ValueError("INDEPENDENT_PROJECTION_METADATA_RECORD_LIST_INVALID")
+    source_commit_by_fingerprint: dict[str, str] = {}
+    identities: dict[str, dict[str, Any]] = {}
+    for record in records:
+        if not isinstance(record, dict):
+            raise ValueError("INDEPENDENT_PROJECTION_METADATA_RECORD_INVALID")
+        source_commit = str(record.get("source_commit", ""))
+        bindings = record.get("failure_bindings")
+        if not isinstance(bindings, list):
+            raise ValueError("INDEPENDENT_PROJECTION_FAILURE_BINDING_LIST_INVALID")
+        for binding in bindings:
+            if not isinstance(binding, dict):
+                raise ValueError("INDEPENDENT_PROJECTION_FAILURE_BINDING_INVALID")
+            fingerprint = str(binding.get("failure_fingerprint", ""))
+            if not fingerprint or fingerprint in identities:
+                raise ValueError(
+                    "INDEPENDENT_PROJECTION_FAILURE_FINGERPRINT_INVALID"
+                )
+            source_commit_by_fingerprint[fingerprint] = source_commit
+            identities[fingerprint] = {
+                "failure_fingerprint": fingerprint,
+                "raw_failure": str(binding.get("raw_failure", "")),
+                "rule_id": str(binding.get("rule_id", "")),
+                "source_commit": source_commit,
+                "component_id": str(binding.get("component_id", "")),
+                "path": str(binding.get("source_component_path", "")),
+                "target": "historical",
+                "authority_origin": "HISTORICAL_DELTA_METADATA_LEDGER",
+            }
+    summaries: list[dict[str, Any]] = []
+    verified: set[str] = set()
+    correction_bindings = ledger.get("correction_record_bindings", [])
+    if not isinstance(correction_bindings, list):
+        raise ValueError("INDEPENDENT_PROJECTION_CORRECTION_BINDING_LIST_INVALID")
+    for binding in correction_bindings:
+        if not isinstance(binding, dict):
+            raise ValueError("INDEPENDENT_PROJECTION_CORRECTION_BINDING_INVALID")
+        relative = str(binding.get("path", ""))
+        correction, correction_bytes = independent_validator._committed_document(
+            root,
+            head,
+            relative,
+        )
+        fingerprints = [
+            str(value) for value in correction.get("failure_fingerprints", [])
+        ]
+        verified.update(fingerprints)
+        summaries.append({
+            "correction_id": str(correction.get("correction_id", "")),
+            "path": relative,
+            "record_sha256": independent_validator._sha(correction_bytes),
+            "record_payload_sha256": str(
+                correction.get("record_payload_sha256", "")
+            ),
+            "failure_fingerprints": fingerprints,
+        })
+    counts = {
+        field: int(independent_receipt.get(field, -1))
+        for field in (
+            "raw_failure_count",
+            "preledger_native_historical_bucket_count",
+            "ledger_exact_promoted_count",
+            "semantic_historical_failure_count",
+            "true_current_failure_count",
+            "metadata_record_count",
+            "source_transition_count",
+            "correction_record_count",
+            "component_count",
+            "authorized_failure_count",
+            "verified_failure_count",
+        )
+    }
+    return _historical_delta_metadata_authority_projection(
+        evaluated_head_sha=str(independent_receipt.get("evaluated_head_sha", "")),
+        evaluated_tree_sha=str(independent_receipt.get("evaluated_tree_sha", "")),
+        ledger_path=independent_validator.LEDGER_PATH,
+        ledger_sha256=independent_validator._sha(ledger_bytes),
+        raw_report_sha256=str(
+            independent_receipt.get("raw_report_sha256", "")
+        ),
+        raw_report_head_sha=str(ledger.get("raw_report_head_sha", "")),
+        scanner_sha256=str(independent_receipt.get("scanner_sha256", "")),
+        counts=counts,
+        authorized_identity_by_fingerprint=identities,
+        verified_historical_fingerprints=verified,
+        record_summaries=summaries,
+    )
+
+
+def validate_historical_delta_metadata_ledger_authority(
+    root: Path,
+    ledger_path: Path | None,
+    *,
+    evaluated_head: str,
+) -> dict[str, Any]:
+    """Run both explicit ledger gates and expose primary authority only on GO."""
+
+    if ledger_path is None:
+        return _empty_historical_delta_metadata_ledger_authority(
+            status="NOT_PROVIDED"
+        )
+    try:
+        try:
+            from . import v076_historical_delta_metadata_ledger as primary_validator
+            from . import (
+                v076_historical_delta_metadata_independent_audit
+                as independent_validator,
+            )
+        except ImportError:  # direct script execution
+            import v076_historical_delta_metadata_ledger as primary_validator
+            import v076_historical_delta_metadata_independent_audit as independent_validator
+    except Exception as exc:  # pragma: no cover - exercised by deployment failures
+        return _empty_historical_delta_metadata_ledger_authority(
+            status="FAIL",
+            failures=[
+                "HISTORICAL_DELTA_METADATA_VALIDATOR_IMPORT_FAILED:"
+                f"{type(exc).__name__}:{exc}"
+            ],
+            primary_status="FAIL",
+            independent_status="NO_GO",
+        )
+
+    try:
+        primary = primary_validator.validate_ledger(
+            root,
+            ledger_path,
+            evaluated_head=evaluated_head,
+        )
+    except Exception as exc:  # fail closed at the authority boundary
+        primary = {
+            "status": "FAIL",
+            "failures": [
+                "HISTORICAL_DELTA_METADATA_PRIMARY_EXCEPTION:"
+                f"{type(exc).__name__}:{exc}"
+            ],
+        }
+    if not isinstance(primary, dict):
+        primary = {
+            "status": "FAIL",
+            "failures": ["HISTORICAL_DELTA_METADATA_PRIMARY_RESULT_INVALID"],
+        }
+    try:
+        independent = independent_validator.audit_ledger(
+            root,
+            ledger_path,
+            evaluated_head=evaluated_head,
+            primary_projection=primary,
+        )
+    except Exception as exc:  # fail closed at the independent boundary
+        independent = {
+            "status": "NO_GO",
+            "failures": [
+                "HISTORICAL_DELTA_METADATA_INDEPENDENT_EXCEPTION:"
+                f"{type(exc).__name__}:{exc}"
+            ],
+            "primary_projection_digest_match": False,
+        }
+    if not isinstance(independent, dict):
+        independent = {
+            "status": "NO_GO",
+            "failures": ["HISTORICAL_DELTA_METADATA_INDEPENDENT_RESULT_INVALID"],
+            "primary_projection_digest_match": False,
+        }
+
+    failures = [
+        f"HISTORICAL_DELTA_METADATA_PRIMARY:{value}"
+        for value in primary.get("failures", [])
+    ] + [
+        f"HISTORICAL_DELTA_METADATA_INDEPENDENT:{value}"
+        for value in independent.get("failures", [])
+    ]
+    primary_status = str(primary.get("status", "FAIL"))
+    independent_status = str(independent.get("status", "NO_GO"))
+    set_and_count_match = (
+        independent.get("primary_projection_digest_match") is True
+    )
+    primary_authority_projection_digest = ""
+    independent_authority_projection_digest = ""
+    if primary_status == "PASS" and independent_status == "GO":
+        try:
+            primary_authority_projection = (
+                _primary_historical_delta_metadata_authority_projection(
+                    root,
+                    primary,
+                    evaluated_head=evaluated_head,
+                )
+            )
+            independent_authority_projection = (
+                _independent_historical_delta_metadata_authority_projection(
+                    root,
+                    ledger_path,
+                    evaluated_head=evaluated_head,
+                    independent_receipt=independent,
+                )
+            )
+            primary_authority_projection_digest = sha256_bytes(
+                canonical_bytes(primary_authority_projection)
+            )
+            independent_authority_projection_digest = sha256_bytes(
+                canonical_bytes(independent_authority_projection)
+            )
+        except Exception as exc:
+            failures.append(
+                "HISTORICAL_DELTA_METADATA_AUTHORITY_PROJECTION_BUILD_FAILED:"
+                f"{type(exc).__name__}:{exc}"
+            )
+    digest_match = bool(
+        set_and_count_match
+        and primary_authority_projection_digest
+        and primary_authority_projection_digest
+        == independent_authority_projection_digest
+    )
+    if primary_status != "PASS":
+        failures.append("HISTORICAL_DELTA_METADATA_PRIMARY_GATE_NOT_PASS")
+    if independent_status != "GO":
+        failures.append("HISTORICAL_DELTA_METADATA_INDEPENDENT_GATE_NOT_GO")
+    if not digest_match:
+        failures.append("HISTORICAL_DELTA_METADATA_PRIMARY_PROJECTION_DIGEST_MISMATCH")
+    if failures:
+        return _empty_historical_delta_metadata_ledger_authority(
+            status="FAIL",
+            failures=failures,
+            primary_status=primary_status,
+            independent_status=independent_status,
+            primary_projection_digest_match=digest_match,
+            primary_authority_projection_digest=(
+                primary_authority_projection_digest
+            ),
+            independent_authority_projection_digest=(
+                independent_authority_projection_digest
+            ),
+        )
+
+    authorized = {
+        str(value)
+        for value in primary.get("authorized_historical_fingerprints", [])
+    }
+    verified = {
+        str(value)
+        for value in primary.get("verified_historical_fingerprints", [])
+    }
+    identities = {
+        str(fingerprint): dict(identity)
+        for fingerprint, identity in primary.get(
+            "authorized_identity_by_fingerprint", {}
+        ).items()
+        if isinstance(identity, dict)
+    }
+    record_summaries = [
+        dict(value)
+        for value in primary.get("record_summaries", [])
+        if isinstance(value, dict)
+    ]
+    component_ids = {
+        str(identity.get("component_id", "")) for identity in identities.values()
+    }
+    component_ids.discard("")
+    projection_failures: list[str] = []
+    if set(identities) != authorized:
+        projection_failures.append(
+            "HISTORICAL_DELTA_METADATA_PRIMARY_IDENTITY_SET_MISMATCH"
+        )
+    if verified != authorized:
+        projection_failures.append(
+            "HISTORICAL_DELTA_METADATA_PRIMARY_VERIFIED_SET_MISMATCH"
+        )
+    for field, expected in (
+        ("authorized_failure_count", len(authorized)),
+        ("verified_failure_count", len(verified)),
+        ("component_count", len(component_ids)),
+    ):
+        if independent.get(field) != expected:
+            projection_failures.append(
+                "HISTORICAL_DELTA_METADATA_INDEPENDENT_"
+                f"{field.upper()}_MISMATCH"
+            )
+    if projection_failures:
+        return _empty_historical_delta_metadata_ledger_authority(
+            status="FAIL",
+            failures=projection_failures,
+            primary_status=primary_status,
+            independent_status=independent_status,
+            primary_projection_digest_match=digest_match,
+            primary_authority_projection_digest=(
+                primary_authority_projection_digest
+            ),
+            independent_authority_projection_digest=(
+                independent_authority_projection_digest
+            ),
+        )
+    return {
+        "status": "PASS",
+        "failures": [],
+        "primary_status": primary_status,
+        "independent_status": independent_status,
+        "primary_projection_digest_match": digest_match,
+        "primary_authority_projection_digest": (
+            primary_authority_projection_digest
+        ),
+        "independent_authority_projection_digest": (
+            independent_authority_projection_digest
+        ),
+        "ledger_path": str(primary.get("ledger_path", "")),
+        "ledger_sha256": str(primary.get("ledger_sha256", "")),
+        "raw_report_sha256": str(primary.get("raw_report_sha256", "")),
+        "raw_report_head_sha": str(primary.get("raw_report_head_sha", "")),
+        "scanner_sha256": str(
+            primary_authority_projection.get("scanner_sha256", "")
+        ),
+        "raw_failure_count": primary.get("raw_failure_count", 0),
+        "semantic_historical_failure_count": primary.get(
+            "semantic_historical_failure_count", 0
+        ),
+        "true_current_failure_count": primary.get("true_current_failure_count", 0),
+        "metadata_record_count": primary.get("metadata_record_count", 0),
+        "correction_record_count": primary.get("correction_record_count", 0),
+        "component_count": len(component_ids),
+        "authorized_failure_count": len(authorized),
+        "verified_failure_count": len(verified),
+        "authorized_historical_fingerprints": sorted(authorized),
+        "authorized_identity_by_fingerprint": {
+            fingerprint: identities[fingerprint]
+            for fingerprint in sorted(identities)
+        },
+        "verified_historical_fingerprints": sorted(verified),
+        "record_summaries": record_summaries,
+    }
+
+
+def _historical_delta_metadata_ledger_collision_failures(
+    ledger_authority: dict[str, Any],
+    *,
+    legacy: dict[str, Any],
+    batch_chain: Iterable[tuple[Path, dict[str, Any]]],
+) -> list[str]:
+    if ledger_authority.get("status") != "PASS":
+        return []
+    ledger_fingerprints = {
+        str(value)
+        for value in ledger_authority.get("authorized_historical_fingerprints", [])
+    }
+    ledger_summaries = [
+        value
+        for value in ledger_authority.get("record_summaries", [])
+        if isinstance(value, dict)
+    ]
+    ledger_ids = {str(value.get("correction_id", "")) for value in ledger_summaries}
+    ledger_paths = {
+        normalize_path(str(value.get("path", ""))) for value in ledger_summaries
+    }
+    legacy_fingerprints = {
+        str(value) for value in legacy.get("legacy_corrected_fingerprints", [])
+    }
+    legacy_ids = {str(value) for value in legacy.get("legacy_correction_ids", [])}
+    legacy_paths = {
+        normalize_path(str(value)) for value in legacy.get("legacy_record_paths", [])
+    }
+    batch_fingerprints: set[str] = set()
+    batch_ids: set[str] = set()
+    batch_paths: set[str] = set()
+    for _, manifest in batch_chain:
+        if not isinstance(manifest, dict):
+            continue
+        batch_fingerprints.update(
+            str(value) for value in manifest.get("failure_fingerprints", [])
+        )
+        for binding in manifest.get("record_bindings", []):
+            if not isinstance(binding, dict):
+                continue
+            batch_ids.add(str(binding.get("correction_id", "")))
+            batch_paths.add(normalize_path(str(binding.get("path", ""))))
+
+    failures: list[str] = []
+    collision_sets = (
+        (
+            "HISTORICAL_DELTA_METADATA_LEDGER_LEGACY_FINGERPRINT_COLLISION",
+            ledger_fingerprints & legacy_fingerprints,
+        ),
+        (
+            "HISTORICAL_DELTA_METADATA_LEDGER_BATCH_FINGERPRINT_COLLISION",
+            ledger_fingerprints & batch_fingerprints,
+        ),
+        (
+            "HISTORICAL_DELTA_METADATA_LEDGER_LEGACY_CORRECTION_ID_COLLISION",
+            ledger_ids & legacy_ids,
+        ),
+        (
+            "HISTORICAL_DELTA_METADATA_LEDGER_BATCH_CORRECTION_ID_COLLISION",
+            ledger_ids & batch_ids,
+        ),
+        (
+            "HISTORICAL_DELTA_METADATA_LEDGER_LEGACY_RECORD_PATH_COLLISION",
+            ledger_paths & legacy_paths,
+        ),
+        (
+            "HISTORICAL_DELTA_METADATA_LEDGER_BATCH_RECORD_PATH_COLLISION",
+            ledger_paths & batch_paths,
+        ),
+    )
+    for code, values in collision_sets:
+        failures.extend(f"{code}:{value}" for value in sorted(values) if value)
+    return sorted(set(failures))
+
+
 def validate_batch_manifest_against_repo(
     root: Path,
     manifest_path: Path,
@@ -4758,6 +5374,7 @@ def validate_batch_manifest_against_repo(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
+    historical_delta_metadata_ledger_path: Path | None = None,
 ) -> dict[str, Any]:
     failures = validate_schema(root, evaluated_head=evaluated_head)
     legacy = verify_legacy_anchor(root)
@@ -4837,6 +5454,81 @@ def validate_batch_manifest_against_repo(
         "fingerprints": [],
     }
     all_manifests = list(reversed(previous_chain)) + [(manifest_path, manifest)]
+    historical_delta_metadata_ledger = (
+        validate_historical_delta_metadata_ledger_authority(
+            root,
+            historical_delta_metadata_ledger_path,
+            evaluated_head=evaluated_head,
+        )
+    )
+    terminal_ledger_failures: list[str] = []
+    if manifest.get("terminal_remainder_batch") is True:
+        if historical_delta_metadata_ledger_path is None:
+            terminal_ledger_failures.append(
+                "BATCH_TERMINAL_HISTORICAL_DELTA_METADATA_LEDGER_REQUIRED"
+            )
+        elif historical_delta_metadata_ledger.get("status") != "PASS":
+            terminal_ledger_failures.append(
+                "BATCH_TERMINAL_HISTORICAL_DELTA_METADATA_LEDGER_NOT_PASS"
+            )
+    if terminal_ledger_failures:
+        historical_delta_metadata_ledger = (
+            _empty_historical_delta_metadata_ledger_authority(
+                status="FAIL",
+                failures=terminal_ledger_failures,
+                primary_status=str(
+                    historical_delta_metadata_ledger.get(
+                        "primary_status", "NOT_PROVIDED"
+                    )
+                ),
+                independent_status=str(
+                    historical_delta_metadata_ledger.get(
+                        "independent_status", "NOT_PROVIDED"
+                    )
+                ),
+                primary_projection_digest_match=(
+                    historical_delta_metadata_ledger.get(
+                        "primary_projection_digest_match"
+                    )
+                    is True
+                ),
+            )
+        )
+        failures.extend(terminal_ledger_failures)
+    if historical_delta_metadata_ledger.get("status") == "FAIL":
+        failures.extend(
+            f"BATCH_HISTORICAL_DELTA_METADATA_LEDGER_INVALID:{value}"
+            for value in historical_delta_metadata_ledger.get("failures", [])
+        )
+    ledger_collision_failures = (
+        _historical_delta_metadata_ledger_collision_failures(
+            historical_delta_metadata_ledger,
+            legacy=legacy,
+            batch_chain=all_manifests,
+        )
+    )
+    if ledger_collision_failures:
+        historical_delta_metadata_ledger = (
+            _empty_historical_delta_metadata_ledger_authority(
+                status="FAIL",
+                failures=ledger_collision_failures,
+                primary_status=str(
+                    historical_delta_metadata_ledger.get("primary_status", "FAIL")
+                ),
+                independent_status=str(
+                    historical_delta_metadata_ledger.get(
+                        "independent_status", "NO_GO"
+                    )
+                ),
+                primary_projection_digest_match=(
+                    historical_delta_metadata_ledger.get(
+                        "primary_projection_digest_match"
+                    )
+                    is True
+                ),
+            )
+        )
+        failures.extend(ledger_collision_failures)
     # Sidecar trust may suppress exact prior-record invalidations, so expose it
     # only after the complete explicit batch chain has passed the same closed
     # manifest, repository-binding, evidence-artifact, disposition, baseline,
@@ -4981,4 +5673,5 @@ def validate_batch_manifest_against_repo(
             "trusted_fingerprint_count": len(post_touch_trusted or {}),
             "failures": post_touch_result.get("failures", []),
         },
+        "historical_delta_metadata_ledger": historical_delta_metadata_ledger,
     }

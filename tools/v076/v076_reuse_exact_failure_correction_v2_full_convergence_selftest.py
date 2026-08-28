@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import shutil
 import subprocess
@@ -1932,6 +1933,889 @@ def _effective_terminal_coverage_case() -> None:
         terminal=True,
     )
     _expect_failure(partial, "EFFECTIVE_FULL_CONVERGENCE_COVERAGE_MISSING:1")
+
+
+def _historical_delta_metadata_input_coupling_case(root: Path) -> None:
+    parsed = legacy_resolver._parser().parse_args([
+        "resolve",
+        "--historical-delta-metadata-ledger",
+        "explicit-ledger.json",
+    ])
+    _expect(
+        parsed.historical_delta_metadata_ledger == Path("explicit-ledger.json"),
+        str(parsed),
+    )
+    try:
+        legacy_resolver.validate_records(
+            root,
+            root,
+            current_head=_git(root, "rev-parse", "HEAD"),
+            historical_delta_metadata_ledger_path=(
+                root / "docs/architecture/V076_HISTORICAL_DELTA_METADATA_LEDGER.json"
+            ),
+        )
+    except ValueError as exc:
+        _expect(
+            str(exc)
+            == "HISTORICAL_DELTA_METADATA_LEDGER_REQUIRES_FULL_CONVERGENCE_INPUT_SET",
+            str(exc),
+        )
+        return
+    raise AssertionError("standalone historical Delta metadata ledger was accepted")
+
+
+def _full_convergence_pr_body_input_coupling_case(root: Path) -> None:
+    parsed = legacy_resolver._parser().parse_args([
+        "resolve", "--full-convergence-pr-body-file", "pr-body.md",
+    ])
+    _expect(
+        parsed.full_convergence_pr_body_file == Path("pr-body.md"),
+        str(parsed),
+    )
+    try:
+        legacy_resolver.validate_records(
+            root,
+            root,
+            current_head=_git(root, "rev-parse", "HEAD"),
+            full_convergence_pr_body_file_path=root / "pr-body.md",
+        )
+    except ValueError as exc:
+        _expect(
+            str(exc)
+            == "FULL_CONVERGENCE_PR_BODY_FILE_REQUIRES_FULL_CONVERGENCE_INPUT_SET",
+            str(exc),
+        )
+        return
+    raise AssertionError("standalone full-convergence PR body was ignored")
+
+
+def _historical_delta_metadata_dual_gate_case(root: Path) -> None:
+    import v076_historical_delta_metadata_independent_audit as ledger_independent
+    import v076_historical_delta_metadata_ledger as ledger_primary
+
+    fingerprints = [_fingerprint(1000 + index) for index in range(86)]
+    identities = {
+        fingerprint: {
+            "failure_fingerprint": fingerprint,
+            "raw_failure": f"LEDGER_SELFTEST_RAW:{index}",
+            "rule_id": "NEW_COMPONENT_CANNOT_CLAIM_INHERITED",
+            "component_id": f"component.ledger.selftest.{index % 82:03d}",
+        }
+        for index, fingerprint in enumerate(fingerprints)
+    }
+    evaluated_head = _git(root, "rev-parse", "HEAD")
+    primary_projection: dict[str, Any] = {
+        "status": "PASS",
+        "failures": [],
+        "ledger_path": (
+            "docs/architecture/V076_HISTORICAL_DELTA_METADATA_LEDGER.json"
+        ),
+        "ledger_sha256": "1" * 64,
+        "raw_report_sha256": "2" * 64,
+        "raw_report_head_sha": evaluated_head,
+        "raw_failure_count": 590,
+        "semantic_historical_failure_count": 587,
+        "true_current_failure_count": 3,
+        "metadata_record_count": 3,
+        "correction_record_count": 4,
+        "authorized_historical_fingerprints": fingerprints,
+        "authorized_identity_by_fingerprint": identities,
+        "verified_historical_fingerprints": fingerprints,
+        "record_summaries": [
+            {
+                "correction_id": "ledger-correction-001",
+                "path": (
+                    "docs/architecture/reuse_corrections/v2/records/"
+                    "historical_delta_metadata/ledger-correction-001.json"
+                ),
+                "failure_fingerprints": fingerprints[:43],
+            },
+            {
+                "correction_id": "ledger-correction-002",
+                "path": (
+                    "docs/architecture/reuse_corrections/v2/records/"
+                    "historical_delta_metadata/ledger-correction-002.json"
+                ),
+                "failure_fingerprints": fingerprints[43:],
+            },
+        ],
+    }
+    mode = {"primary": "PASS", "independent": "GO"}
+    original_primary = ledger_primary.validate_ledger
+    original_independent = ledger_independent.audit_ledger
+    original_independent_projection = (
+        convergence._independent_historical_delta_metadata_authority_projection
+    )
+
+    def primary_stub(
+        stub_root: Path,
+        stub_path: Path,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        _expect(stub_root == root, str(stub_root))
+        _expect(stub_path.name == "explicit-ledger.json", str(stub_path))
+        _expect(set(kwargs) == {"evaluated_head"}, str(kwargs))
+        result = copy.deepcopy(primary_projection)
+        if mode["primary"] != "PASS":
+            result["status"] = "FAIL"
+            result["failures"] = ["PRIMARY_SELFTEST_FAILURE"]
+        return result
+
+    def independent_stub(
+        stub_root: Path,
+        stub_path: Path,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        _expect(stub_root == root, str(stub_root))
+        _expect(stub_path.name == "explicit-ledger.json", str(stub_path))
+        _expect(
+            set(kwargs) == {"evaluated_head", "primary_projection"},
+            str(kwargs),
+        )
+        return {
+            "status": mode["independent"],
+            "failures": (
+                [] if mode["independent"] == "GO"
+                else ["INDEPENDENT_SELFTEST_FAILURE"]
+            ),
+            "primary_projection_digest_match": mode["independent"] == "GO",
+            "authorized_failure_count": 86,
+            "verified_failure_count": 86,
+            "component_count": 82,
+        }
+
+    ledger_primary.validate_ledger = primary_stub
+    ledger_independent.audit_ledger = independent_stub
+    convergence._independent_historical_delta_metadata_authority_projection = (
+        lambda *args, **kwargs: (
+            convergence._primary_historical_delta_metadata_authority_projection(
+                root,
+                primary_projection,
+                evaluated_head=evaluated_head,
+            )
+        )
+    )
+    ledger_path = root / "explicit-ledger.json"
+    try:
+        not_provided = (
+            convergence.validate_historical_delta_metadata_ledger_authority(
+                root,
+                None,
+                evaluated_head=evaluated_head,
+            )
+        )
+        _expect(not_provided["status"] == "NOT_PROVIDED", str(not_provided))
+        _expect(not_provided["authorized_historical_fingerprints"] == [], str(not_provided))
+
+        accepted = convergence.validate_historical_delta_metadata_ledger_authority(
+            root,
+            ledger_path,
+            evaluated_head=evaluated_head,
+        )
+        _expect(accepted["status"] == "PASS", json.dumps(accepted, sort_keys=True))
+        _expect(accepted["authorized_failure_count"] == 86, str(accepted))
+        _expect(accepted["verified_failure_count"] == 86, str(accepted))
+        _expect(accepted["metadata_record_count"] == 3, str(accepted))
+        _expect(accepted["correction_record_count"] == 4, str(accepted))
+        _expect(accepted["component_count"] == 82, str(accepted))
+        _expect(set(accepted["authorized_identity_by_fingerprint"]) == set(fingerprints), str(accepted))
+
+        mode["primary"] = "FAIL"
+        primary_failed = convergence.validate_historical_delta_metadata_ledger_authority(
+            root,
+            ledger_path,
+            evaluated_head=evaluated_head,
+        )
+        _expect(primary_failed["status"] == "FAIL", str(primary_failed))
+        _expect(primary_failed["authorized_historical_fingerprints"] == [], str(primary_failed))
+        _expect(primary_failed["authorized_identity_by_fingerprint"] == {}, str(primary_failed))
+
+        mode["primary"] = "PASS"
+        mode["independent"] = "NO_GO"
+        independent_failed = (
+            convergence.validate_historical_delta_metadata_ledger_authority(
+                root,
+                ledger_path,
+                evaluated_head=evaluated_head,
+            )
+        )
+        _expect(independent_failed["status"] == "FAIL", str(independent_failed))
+        _expect(independent_failed["verified_historical_fingerprints"] == [], str(independent_failed))
+        _expect(independent_failed["record_summaries"] == [], str(independent_failed))
+    finally:
+        ledger_primary.validate_ledger = original_primary
+        ledger_independent.audit_ledger = original_independent
+        convergence._independent_historical_delta_metadata_authority_projection = (
+            original_independent_projection
+        )
+
+
+def _historical_delta_metadata_collision_case() -> None:
+    legacy_fingerprint = _fingerprint(2000)
+    batch_fingerprint = _fingerprint(2001)
+    legacy_id = "legacy-correction-id"
+    batch_id = "batch-correction-id"
+    legacy_path = "docs/architecture/reuse_corrections/v2/records/legacy.json"
+    batch_path = (
+        "docs/architecture/reuse_corrections/v2/records/"
+        "full_convergence_20260827/batch-001/batch.json"
+    )
+    authority = {
+        "status": "PASS",
+        "authorized_historical_fingerprints": [
+            legacy_fingerprint,
+            batch_fingerprint,
+        ],
+        "record_summaries": [
+            {
+                "correction_id": legacy_id,
+                "path": legacy_path,
+                "failure_fingerprints": [legacy_fingerprint],
+            },
+            {
+                "correction_id": batch_id,
+                "path": batch_path,
+                "failure_fingerprints": [batch_fingerprint],
+            },
+        ],
+    }
+    legacy = {
+        "legacy_corrected_fingerprints": [legacy_fingerprint],
+        "legacy_correction_ids": [legacy_id],
+        "legacy_record_paths": [legacy_path],
+    }
+    batch = {
+        "failure_fingerprints": [batch_fingerprint],
+        "record_bindings": [
+            {"correction_id": batch_id, "path": batch_path}
+        ],
+    }
+    failures = convergence._historical_delta_metadata_ledger_collision_failures(
+        authority,
+        legacy=legacy,
+        batch_chain=[(Path(batch_path), batch)],
+    )
+    for prefix in (
+        "HISTORICAL_DELTA_METADATA_LEDGER_LEGACY_FINGERPRINT_COLLISION",
+        "HISTORICAL_DELTA_METADATA_LEDGER_BATCH_FINGERPRINT_COLLISION",
+        "HISTORICAL_DELTA_METADATA_LEDGER_LEGACY_CORRECTION_ID_COLLISION",
+        "HISTORICAL_DELTA_METADATA_LEDGER_BATCH_CORRECTION_ID_COLLISION",
+        "HISTORICAL_DELTA_METADATA_LEDGER_LEGACY_RECORD_PATH_COLLISION",
+        "HISTORICAL_DELTA_METADATA_LEDGER_BATCH_RECORD_PATH_COLLISION",
+    ):
+        _expect_failure(failures, prefix)
+
+
+def _historical_delta_metadata_set_algebra_and_raw_case() -> None:
+    supplement_fingerprints = {
+        _fingerprint(3000 + index) for index in range(501)
+    }
+    legacy_fingerprints = set(sorted(supplement_fingerprints)[:12])
+    ledger_fingerprints = {
+        _fingerprint(4000 + index) for index in range(86)
+    }
+    authorized_historical = supplement_fingerprints | ledger_fingerprints
+    batch_fingerprints = supplement_fingerprints - legacy_fingerprints
+    _expect(len(authorized_historical) == 587, str(len(authorized_historical)))
+    _expect(len(batch_fingerprints) == 489, str(len(batch_fingerprints)))
+    coverage = legacy_resolver._full_convergence_terminal_coverage_failures(
+        authorized_historical=authorized_historical,
+        legacy_exact=legacy_fingerprints,
+        full_fingerprints=batch_fingerprints,
+        terminal=True,
+        historical_delta_metadata_exact=ledger_fingerprints,
+    )
+    _expect(not coverage, str(coverage))
+
+    identities: dict[str, dict[str, Any]] = {}
+    for index, fingerprint in enumerate(sorted(authorized_historical)):
+        identities[fingerprint] = {
+            "raw_failure": f"HISTORICAL_LEDGER_INTEGRATION_SELFTEST:{index:03d}"
+        }
+    exact_current_blockers = [
+        "EVIDENCE_SUBJECT_PRODUCT_TREE_DRIFT",
+        "PR93_DESCRIPTION_STAGE3_STALE",
+        "STALE_PR_STATUS_BLOCK:MISMATCH",
+    ]
+    head = "b" * 40
+    with tempfile.TemporaryDirectory(prefix="v076-ledger-live-raw-") as temporary:
+        path = Path(temporary) / "live.json"
+        historical_raw = [
+            str(identity["raw_failure"]) for identity in identities.values()
+        ]
+        _write_json(path, {
+            "status": "FAIL",
+            "head_sha": head,
+            "include_worktree": False,
+            "evaluated_source": "COMMITTED_HEAD",
+            "failures": sorted(historical_raw + exact_current_blockers),
+        })
+        report = legacy_resolver._classify_full_convergence_live_raw(
+            path,
+            current_head=head,
+            authorized_identity_by_fingerprint=identities,
+        )
+        _expect(report["raw_failure_count"] == 590, str(report))
+        _expect(report["raw_historical_failure_count"] == 587, str(report))
+        _expect(report["raw_current_delta_failure_count"] == 3, str(report))
+        _expect(
+            set(report["active_raw_by_fingerprint"].values())
+            == set(exact_current_blockers),
+            str(report),
+        )
+
+        future_raw = "HISTORY_FUTURE_UNMATCHED:bbbbbbbbbbbb->cccccccccccc:future.gd"
+        _write_json(path, {
+            "status": "FAIL",
+            "head_sha": head,
+            "include_worktree": False,
+            "evaluated_source": "COMMITTED_HEAD",
+            "failures": sorted(historical_raw + exact_current_blockers + [future_raw]),
+        })
+        future = legacy_resolver._classify_full_convergence_live_raw(
+            path,
+            current_head=head,
+            authorized_identity_by_fingerprint=identities,
+        )
+        _expect(future["raw_current_delta_failure_count"] == 4, str(future))
+        _expect(future_raw in set(future["active_raw_by_fingerprint"].values()), str(future))
+
+
+def _historical_delta_metadata_effective_report_case(root: Path) -> None:
+    supplement = {_fingerprint(5000 + index) for index in range(501)}
+    legacy = set(sorted(supplement)[:12])
+    ledger = {_fingerprint(6000 + index) for index in range(86)}
+    batch = supplement - legacy
+    authorized = supplement | ledger
+    active_raw = {
+        "active-1": "EVIDENCE_SUBJECT_PRODUCT_TREE_DRIFT",
+        "active-2": "PR93_DESCRIPTION_STAGE3_STALE",
+        "active-3": "STALE_PR_STATUS_BLOCK:MISMATCH",
+    }
+    original_legacy = legacy_resolver.validate_legacy_epoch_effectiveness
+    original_authority = legacy_resolver._verified_full_convergence_authority
+    original_live = legacy_resolver._classify_full_convergence_live_raw
+    original_binding = legacy_resolver._validate_full_convergence_live_raw_binding
+
+    def legacy_stub(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return {
+            "status": "PASS",
+            "failures": [],
+            "legacy_record_count": 6,
+            "verified_corrected_historical_fingerprints": sorted(legacy),
+            "records": [],
+        }
+
+    def authority_stub(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return {
+            "status": "PASS",
+            "failures": [],
+            "authorization_id": convergence.AUTHORIZATION_ID,
+            "authorization_base_head_sha": convergence.AUTHORIZATION_BASE_HEAD_SHA,
+            "terminal_remainder_batch": True,
+            "coverage_missing_fingerprints": [],
+            "coverage_extra_fingerprints": [],
+            "authorized_historical_fingerprints": sorted(authorized),
+            "registered_historical_fingerprints": sorted(authorized),
+            "dispositioned_historical_fingerprints": [],
+            "exact_legacy_corrected_fingerprints": sorted(legacy),
+            "verified_historical_fingerprints": sorted(batch),
+            "exact_historical_delta_metadata_corrected_fingerprints": sorted(ledger),
+            "full_convergence_record_count": 20,
+            "historical_delta_metadata_record_count": 3,
+            "historical_delta_metadata_correction_record_count": 4,
+            "historical_delta_metadata_component_count": 82,
+            "historical_delta_metadata_authorized_failure_count": 86,
+            "historical_delta_metadata_verified_failure_count": 86,
+            "record_summaries": [],
+            "historical_delta_metadata_record_summaries": [],
+            "historical_delta_metadata_ledger": {"status": "PASS"},
+        }
+
+    def live_stub(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return {
+            "status": "PASS",
+            "failures": [],
+            "raw_report": {"head_sha": "c" * 40},
+            "raw_failure_count": 590,
+            "raw_historical_failure_count": 587,
+            "raw_current_delta_failure_count": 3,
+            "historical_fingerprints": sorted(authorized),
+            "active_fingerprints": sorted(active_raw),
+            "active_raw_by_fingerprint": active_raw,
+            "missing_authorized_historical_raw_failures": [],
+            "reappeared_dispositioned_historical_raw_failures": [],
+        }
+
+    legacy_resolver.validate_legacy_epoch_effectiveness = legacy_stub
+    legacy_resolver._verified_full_convergence_authority = authority_stub
+    legacy_resolver._classify_full_convergence_live_raw = live_stub
+    legacy_resolver._validate_full_convergence_live_raw_binding = (
+        lambda *args, **kwargs: {"status": "PASS", "failures": [], "mode": "SELFTEST"}
+    )
+    try:
+        report = legacy_resolver.validate_full_convergence_records(
+            root,
+            root,
+            current_head="c" * 40,
+            live_raw_report_path=root / "live.json",
+            baseline_report_path=root / "baseline.json",
+            batch_manifest_path=root / "batch.json",
+            previous_batch_manifest_path=root / "previous.json",
+            descendant_history_supplement_path=root / "supplement.json",
+            descendant_history_raw_report_path=root / "descendant.json",
+            descendant_history_scanner_path=root / "scanner.py",
+            historical_delta_metadata_ledger_path=root / "ledger.json",
+        )
+    finally:
+        legacy_resolver.validate_legacy_epoch_effectiveness = original_legacy
+        legacy_resolver._verified_full_convergence_authority = original_authority
+        legacy_resolver._classify_full_convergence_live_raw = original_live
+        legacy_resolver._validate_full_convergence_live_raw_binding = original_binding
+
+    _expect(report["raw_failure_count"] == 590, str(report))
+    _expect(report["raw_historical_failure_count"] == 587, str(report))
+    _expect(report["raw_current_delta_failure_count"] == 3, str(report))
+    _expect(report["corrected_historical_failure_count"] == 587, str(report))
+    _expect(report["unresolved_historical_failure_count"] == 0, str(report))
+    _expect(report["true_active_violation_count"] == 3, str(report))
+    _expect(report["effective_blocking_failure_count"] == 3, str(report))
+    _expect(report["new_correction_record_count"] == 20, str(report))
+    _expect(report["total_new_correction_record_count"] == 24, str(report))
+    _expect(report["historical_delta_metadata_record_count"] == 3, str(report))
+    _expect(report["historical_delta_metadata_correction_record_count"] == 4, str(report))
+    _expect(report["historical_delta_metadata_component_count"] == 82, str(report))
+    _expect(report["historical_delta_metadata_verified_failure_count"] == 86, str(report))
+    _expect(report["status"] == "FAIL", str(report))
+    _expect(set(report["true_active_violation_raw_by_fingerprint"].values()) == set(active_raw.values()), str(report))
+
+
+def _terminal_historical_delta_metadata_ledger_omission_case(root: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="v076-terminal-ledger-required-") as temporary:
+        manifest_path = Path(temporary) / "terminal.json"
+        _write_json(manifest_path, _batch(25, terminal=True))
+        report = convergence.validate_batch_manifest_against_repo(
+            root,
+            manifest_path,
+            evaluated_head=_git(root, "rev-parse", "HEAD"),
+            baseline_report_path=root / convergence.BASELINE_REPORT_REL,
+        )
+    _expect_failure(
+        report["failures"],
+        "BATCH_TERMINAL_HISTORICAL_DELTA_METADATA_LEDGER_REQUIRED",
+    )
+    ledger = report["historical_delta_metadata_ledger"]
+    _expect(ledger["status"] == "FAIL", str(ledger))
+    _expect(ledger["authorized_historical_fingerprints"] == [], str(ledger))
+    _expect(ledger["record_summaries"] == [], str(ledger))
+
+
+def _broken_composite_clears_ledger_authority_case(root: Path) -> None:
+    supplement_fingerprints = {
+        _fingerprint(7000 + index) for index in range(501)
+    }
+    legacy_fingerprints = set(sorted(supplement_fingerprints)[:12])
+    batch_fingerprints = supplement_fingerprints - legacy_fingerprints
+    ledger_fingerprints = {
+        _fingerprint(8000 + index) for index in range(86)
+    }
+    supplement_identities = {
+        fingerprint: {"raw_failure": f"SUPPLEMENT_RAW:{index:03d}"}
+        for index, fingerprint in enumerate(sorted(supplement_fingerprints))
+    }
+    ledger_identities = {
+        fingerprint: {"raw_failure": f"LEDGER_RAW:{index:03d}"}
+        for index, fingerprint in enumerate(sorted(ledger_fingerprints))
+    }
+    ledger_projection = {
+        "status": "PASS",
+        "failures": [],
+        "primary_status": "PASS",
+        "independent_status": "GO",
+        "primary_projection_digest_match": True,
+        "metadata_record_count": 3,
+        "correction_record_count": 4,
+        "component_count": 82,
+        "authorized_historical_fingerprints": sorted(ledger_fingerprints),
+        "authorized_identity_by_fingerprint": ledger_identities,
+        "verified_historical_fingerprints": sorted(ledger_fingerprints),
+        "record_summaries": [{
+            "correction_id": "ledger-otherwise-pass",
+            "path": "docs/architecture/reuse_corrections/v2/records/ledger.json",
+            "failure_fingerprints": sorted(ledger_fingerprints),
+        }],
+    }
+    original_primary = convergence.validate_batch_manifest_against_repo
+    original_baseline = convergence.validate_authorized_baseline
+    original_supplement = convergence.validate_descendant_history_supplement
+    original_legacy_anchor = convergence.verify_legacy_anchor
+    original_chain = convergence._load_previous_batch_chain
+    mode = {"value": "BROKEN_BATCH"}
+
+    def primary_stub(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        if mode["value"] == "BROKEN_BATCH":
+            return {
+                "status": "FAIL",
+                "failures": ["BROKEN_BATCH"],
+                "historical_delta_metadata_ledger": copy.deepcopy(
+                    ledger_projection
+                ),
+            }
+        return {
+            "status": "PASS",
+            "failures": [],
+            "historical_delta_metadata_ledger": (
+                convergence._empty_historical_delta_metadata_ledger_authority(
+                    status="NOT_PROVIDED"
+                )
+            ),
+        }
+
+    def supplement_stub(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return {
+            "status": "PASS",
+            "failures": [],
+            "supplement_sha256": "1" * 64,
+            "raw_report_head_sha": "d" * 40,
+            "authorized_identity_by_fingerprint": supplement_identities,
+            "registered_identity_by_fingerprint": supplement_identities,
+            "frozen_identity_disposition_by_failure": {},
+        }
+
+    def legacy_anchor_stub(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return {
+            "status": "PASS",
+            "failures": [],
+            "legacy_corrected_fingerprints": sorted(legacy_fingerprints),
+        }
+
+    convergence.validate_batch_manifest_against_repo = primary_stub
+    convergence.validate_authorized_baseline = lambda *args, **kwargs: {
+        "status": "PASS", "failures": []
+    }
+    convergence.validate_descendant_history_supplement = supplement_stub
+    convergence.verify_legacy_anchor = legacy_anchor_stub
+    convergence._load_previous_batch_chain = lambda *args, **kwargs: ([], [])
+    try:
+        with tempfile.TemporaryDirectory(prefix="v076-composite-ledger-") as temporary:
+            temporary_root = Path(temporary)
+            baseline_path = temporary_root / "baseline.json"
+            manifest_path = temporary_root / "terminal.json"
+            _write_json(baseline_path, {})
+            _write_json(manifest_path, {
+                "batch_id": "terminal",
+                "terminal_remainder_batch": True,
+                "failure_fingerprints": sorted(batch_fingerprints),
+                "record_bindings": [],
+            })
+            broken = legacy_resolver._verified_full_convergence_authority(
+                root,
+                current_head=_git(root, "rev-parse", "HEAD"),
+                baseline_report_path=baseline_path,
+                batch_manifest_path=manifest_path,
+                previous_batch_manifest_path=temporary_root / "previous.json",
+                descendant_history_supplement_path=temporary_root / "supplement.json",
+                descendant_history_raw_report_path=temporary_root / "raw.json",
+                descendant_history_scanner_path=temporary_root / "scanner.py",
+                historical_delta_metadata_ledger_path=temporary_root / "ledger.json",
+            )
+            _expect(broken["status"] == "FAIL", str(broken))
+            _expect_failure(broken["failures"], "BROKEN_BATCH")
+            nested = broken["historical_delta_metadata_ledger"]
+            _expect(nested["status"] == "FAIL", str(nested))
+            _expect(nested["authorized_historical_fingerprints"] == [], str(nested))
+            _expect(nested["record_summaries"] == [], str(nested))
+            _expect(broken["exact_historical_delta_metadata_corrected_fingerprints"] == [], str(broken))
+            _expect(broken["historical_delta_metadata_record_summaries"] == [], str(broken))
+            _expect(broken["historical_delta_metadata_record_count"] == 0, str(broken))
+            _expect(broken["historical_delta_metadata_correction_record_count"] == 0, str(broken))
+            _expect(broken["historical_delta_metadata_authorized_failure_count"] == 0, str(broken))
+            _expect(broken["historical_delta_metadata_verified_failure_count"] == 0, str(broken))
+            for field in (
+                "authorized_historical_fingerprints",
+                "registered_historical_fingerprints",
+                "dispositioned_historical_fingerprints",
+                "exact_legacy_corrected_fingerprints",
+                "exact_historical_delta_metadata_corrected_fingerprints",
+                "expected_full_convergence_fingerprints",
+                "verified_historical_fingerprints",
+                "coverage_missing_fingerprints",
+                "coverage_extra_fingerprints",
+                "record_summaries",
+                "historical_delta_metadata_record_summaries",
+            ):
+                _expect(broken[field] == [], f"{field}:{broken[field]}")
+            for field in (
+                "authorized_historical_raw_identity_by_fingerprint",
+                "registered_historical_raw_identity_by_fingerprint",
+                "frozen_identity_disposition_by_failure",
+                "verified_raw_identity_by_fingerprint",
+            ):
+                _expect(broken[field] == {}, f"{field}:{broken[field]}")
+            _expect(broken["terminal_remainder_batch"] is False, str(broken))
+            _expect(broken["validated_batch_count"] == 0, str(broken))
+            _expect(broken["full_convergence_record_count"] == 0, str(broken))
+            _expect(broken["supplement_authorized_historical_failure_count"] == 0, str(broken))
+            _expect(broken["terminal_batch_id"] == "", str(broken))
+            _expect(broken["terminal_batch_manifest_path"] == "", str(broken))
+            _expect(broken["terminal_batch_manifest_sha256"] == "", str(broken))
+            _expect(
+                set(broken["diagnostic_authorized_historical_fingerprints"])
+                == supplement_fingerprints | ledger_fingerprints,
+                str(broken),
+            )
+
+            mode["value"] = "OMITTED_LEDGER"
+            omitted = legacy_resolver._verified_full_convergence_authority(
+                root,
+                current_head=_git(root, "rev-parse", "HEAD"),
+                baseline_report_path=baseline_path,
+                batch_manifest_path=manifest_path,
+                previous_batch_manifest_path=temporary_root / "previous.json",
+                descendant_history_supplement_path=temporary_root / "supplement.json",
+                descendant_history_raw_report_path=temporary_root / "raw.json",
+                descendant_history_scanner_path=temporary_root / "scanner.py",
+                historical_delta_metadata_ledger_path=None,
+            )
+            _expect(omitted["status"] == "FAIL", str(omitted))
+            _expect_failure(
+                omitted["failures"],
+                "EFFECTIVE_TERMINAL_HISTORICAL_DELTA_METADATA_LEDGER_REQUIRED",
+            )
+    finally:
+        convergence.validate_batch_manifest_against_repo = original_primary
+        convergence.validate_authorized_baseline = original_baseline
+        convergence.validate_descendant_history_supplement = original_supplement
+        convergence.verify_legacy_anchor = original_legacy_anchor
+        convergence._load_previous_batch_chain = original_chain
+
+    original_effective_legacy = legacy_resolver.validate_legacy_epoch_effectiveness
+    original_effective_authority = legacy_resolver._verified_full_convergence_authority
+    original_effective_live = legacy_resolver._classify_full_convergence_live_raw
+    original_effective_binding = legacy_resolver._validate_full_convergence_live_raw_binding
+    malicious_fail = dict(broken)
+    malicious_fail["status"] = "FAIL"
+    malicious_fail["verified_historical_fingerprints"] = sorted(batch_fingerprints)
+    malicious_fail["exact_historical_delta_metadata_corrected_fingerprints"] = sorted(
+        ledger_fingerprints
+    )
+    legacy_resolver.validate_legacy_epoch_effectiveness = lambda *args, **kwargs: {
+        "status": "PASS",
+        "failures": [],
+        "legacy_record_count": 6,
+        "verified_corrected_historical_fingerprints": sorted(legacy_fingerprints),
+        "records": [],
+    }
+    legacy_resolver._verified_full_convergence_authority = lambda *args, **kwargs: malicious_fail
+    legacy_resolver._classify_full_convergence_live_raw = lambda *args, **kwargs: {
+        "status": "PASS",
+        "failures": [],
+        "raw_report": {"head_sha": "d" * 40},
+        "raw_failure_count": 504,
+        "raw_historical_failure_count": 501,
+        "raw_current_delta_failure_count": 3,
+        "active_fingerprints": ["active-1", "active-2", "active-3"],
+        "active_raw_by_fingerprint": {},
+        "missing_authorized_historical_raw_failures": [],
+        "reappeared_dispositioned_historical_raw_failures": [],
+    }
+    legacy_resolver._validate_full_convergence_live_raw_binding = (
+        lambda *args, **kwargs: {"status": "PASS", "failures": [], "mode": "SELFTEST"}
+    )
+    try:
+        downstream = legacy_resolver.validate_full_convergence_records(
+            root,
+            root,
+            current_head="d" * 40,
+            live_raw_report_path=root / "live.json",
+            baseline_report_path=root / "baseline.json",
+            batch_manifest_path=root / "batch.json",
+            previous_batch_manifest_path=root / "previous.json",
+            descendant_history_supplement_path=root / "supplement.json",
+            descendant_history_raw_report_path=root / "raw.json",
+            descendant_history_scanner_path=root / "scanner.py",
+            historical_delta_metadata_ledger_path=root / "ledger.json",
+        )
+    finally:
+        legacy_resolver.validate_legacy_epoch_effectiveness = original_effective_legacy
+        legacy_resolver._verified_full_convergence_authority = original_effective_authority
+        legacy_resolver._classify_full_convergence_live_raw = original_effective_live
+        legacy_resolver._validate_full_convergence_live_raw_binding = original_effective_binding
+    _expect(downstream["full_convergence_corrected_historical_failure_count"] == 0, str(downstream))
+    _expect(downstream["historical_delta_metadata_corrected_historical_failure_count"] == 0, str(downstream))
+    _expect(downstream["corrected_historical_failure_count"] == 0, str(downstream))
+
+
+def _authority_projection_tamper_case(*, mutate_summary: bool) -> None:
+    import v076_historical_delta_metadata_independent_audit as ledger_independent
+    import v076_historical_delta_metadata_ledger as ledger_primary
+
+    fingerprint = _fingerprint(9001)
+    identity = {"failure_fingerprint": fingerprint, "raw_failure": "RAW:original", "component_id": "component.one"}
+    pristine = {"identities": {fingerprint: identity}, "summaries": [{"correction_id": "c1", "path": "records/c1.json", "failure_fingerprints": [fingerprint]}]}
+    primary_projection = copy.deepcopy(pristine)
+    if mutate_summary:
+        primary_projection["summaries"] = []
+    else:
+        primary_projection["identities"][fingerprint]["raw_failure"] = "RAW:forged"
+    original_primary = ledger_primary.validate_ledger
+    original_independent = ledger_independent.audit_ledger
+    original_primary_projection = convergence._primary_historical_delta_metadata_authority_projection
+    original_independent_projection = convergence._independent_historical_delta_metadata_authority_projection
+    ledger_primary.validate_ledger = lambda *args, **kwargs: {
+        "status": "PASS", "failures": [], "authorized_historical_fingerprints": [fingerprint],
+        "authorized_identity_by_fingerprint": {fingerprint: identity}, "verified_historical_fingerprints": [fingerprint],
+        "record_summaries": pristine["summaries"],
+    }
+    ledger_independent.audit_ledger = lambda *args, **kwargs: {
+        "status": "GO", "failures": [], "primary_projection_digest_match": True,
+        "authorized_failure_count": 1, "verified_failure_count": 1, "component_count": 1,
+    }
+    convergence._primary_historical_delta_metadata_authority_projection = lambda *args, **kwargs: copy.deepcopy(primary_projection)
+    convergence._independent_historical_delta_metadata_authority_projection = lambda *args, **kwargs: copy.deepcopy(pristine)
+    try:
+        report = convergence.validate_historical_delta_metadata_ledger_authority(
+            Path.cwd(), Path("explicit-ledger.json"), evaluated_head="a" * 40
+        )
+    finally:
+        ledger_primary.validate_ledger = original_primary
+        ledger_independent.audit_ledger = original_independent
+        convergence._primary_historical_delta_metadata_authority_projection = original_primary_projection
+        convergence._independent_historical_delta_metadata_authority_projection = original_independent_projection
+    _expect(report["status"] == "FAIL", str(report))
+    _expect_failure(report["failures"], "HISTORICAL_DELTA_METADATA_PRIMARY_PROJECTION_DIGEST_MISMATCH")
+    _expect(report["authorized_identity_by_fingerprint"] == {}, str(report))
+
+
+def _live_raw_binding_cases(root: Path, mode: str) -> None:
+    head = _git(root, "rev-parse", "HEAD")
+    scanner = root / "tools/v076/v076_reuse_point_inertia_gate.py"
+    scanner_sha = hashlib.sha256(scanner.read_bytes()).hexdigest()
+    with tempfile.TemporaryDirectory(prefix="v076-live-binding-selftest-") as temporary:
+        temporary_root = Path(temporary)
+        live_path = temporary_root / "live.json"
+        pr_body = temporary_root / "pr-body.md"
+        pr_body.write_text("selftest PR body\n", encoding="utf-8")
+        if mode == "FROZEN_FORGED":
+            original = {"status": "FAIL", "head_sha": head, "include_worktree": False, "evaluated_source": "COMMITTED_HEAD", "failures": ["A", "B", "C"]}
+            _write_json(live_path, original)
+            expected_sha = hashlib.sha256(live_path.read_bytes()).hexdigest()
+            forged = dict(original)
+            forged["failures"] = []
+            forged["status"] = "PASS"
+            _write_json(live_path, forged)
+            authority = {"status": "PASS", "historical_delta_metadata_ledger": {"status": "PASS", "raw_report_head_sha": head, "raw_report_sha256": expected_sha, "scanner_sha256": scanner_sha}}
+            report = legacy_resolver._validate_full_convergence_live_raw_binding(root, live_path, current_head=head, authority=authority, pr_body_file_path=None)
+            _expect_failure(report["failures"], "LIVE_RAW_FROZEN_LEDGER_BYTE_IDENTITY_MISMATCH")
+            return
+
+        raw_head = _git(root, "rev-parse", "HEAD^")
+        payload = {"status": "FAIL", "head_sha": head, "include_worktree": False, "evaluated_source": "COMMITTED_HEAD", "failures": ["CURRENT_BLOCKER"], "self_reported_attestation": "FORGED"}
+        _write_json(live_path, payload)
+        authority = {"status": "PASS", "historical_delta_metadata_ledger": {"status": "PASS", "raw_report_head_sha": raw_head, "raw_report_sha256": "0" * 64, "scanner_sha256": scanner_sha}}
+        original_run = legacy_resolver._run_full_convergence_scanner
+
+        def run_stub(argv: list[str], *, cwd: Path) -> subprocess.CompletedProcess[bytes]:
+            output = Path(argv[argv.index("--report-json") + 1])
+            if mode == "DESCENDANT_PASS":
+                output.write_bytes(live_path.read_bytes())
+            else:
+                different = dict(payload)
+                different["failures"] = ["DIFFERENT_BLOCKER"]
+                _write_json(output, different)
+            return subprocess.CompletedProcess(argv, 1, stdout=b"scanner stdout", stderr=b"")
+
+        legacy_resolver._run_full_convergence_scanner = run_stub
+        try:
+            report = legacy_resolver._validate_full_convergence_live_raw_binding(root, live_path, current_head=head, authority=authority, pr_body_file_path=pr_body)
+        finally:
+            legacy_resolver._run_full_convergence_scanner = original_run
+        if mode == "DESCENDANT_PASS":
+            _expect(report["status"] == "PASS", str(report))
+            _expect(report["exact_byte_match"] is True, str(report))
+        else:
+            _expect(report["status"] == "FAIL", str(report))
+            _expect_failure(report["failures"], "LIVE_RAW_REEXECUTION_EXACT_OUTPUT_MISMATCH")
+
+
+def _single_live_raw_snapshot_case(root: Path) -> None:
+    head = "c" * 40
+    first = legacy_resolver._canonical_bytes({
+        "status": "FAIL", "head_sha": head, "include_worktree": False,
+        "evaluated_source": "COMMITTED_HEAD", "failures": ["FIRST"],
+    })
+    second = legacy_resolver._canonical_bytes({
+        "status": "PASS", "head_sha": head, "include_worktree": False,
+        "evaluated_source": "COMMITTED_HEAD", "failures": [],
+    })
+
+    class ChangingPath:
+        name = "changing-live.json"
+
+        def __init__(self, values: list[bytes]) -> None:
+            self.values = values
+            self.read_count = 0
+
+        def read_bytes(self) -> bytes:
+            value = self.values[min(self.read_count, len(self.values) - 1)]
+            self.read_count += 1
+            return value
+
+    live_path = ChangingPath([first, second])
+    pr_path = ChangingPath([b"first pr body", b"second pr body"])
+    captured: dict[str, Any] = {}
+    original_legacy = legacy_resolver.validate_legacy_epoch_effectiveness
+    original_authority = legacy_resolver._verified_full_convergence_authority
+    original_classifier = legacy_resolver._classify_full_convergence_live_raw
+    original_binding = legacy_resolver._validate_full_convergence_live_raw_binding
+    legacy_resolver.validate_legacy_epoch_effectiveness = lambda *args, **kwargs: {
+        "status": "PASS", "failures": [], "verified_corrected_historical_fingerprints": [],
+    }
+    legacy_resolver._verified_full_convergence_authority = lambda *args, **kwargs: {
+        "status": "PASS", "failures": [], "terminal_remainder_batch": True,
+        "coverage_missing_fingerprints": [], "coverage_extra_fingerprints": [],
+        "authorized_historical_fingerprints": [], "registered_historical_fingerprints": [],
+        "historical_delta_metadata_ledger": {"status": "PASS"},
+    }
+
+    def classifier_stub(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        captured["classifier_report"] = kwargs["snapshot_report"]
+        return {
+            "status": "PASS", "failures": [], "raw_report": kwargs["snapshot_report"],
+            "raw_failure_count": 1, "raw_historical_failure_count": 0,
+            "raw_current_delta_failure_count": 1, "active_fingerprints": ["active"],
+            "active_raw_by_fingerprint": {"active": "FIRST"},
+            "missing_authorized_historical_raw_failures": [],
+            "reappeared_dispositioned_historical_raw_failures": [],
+        }
+
+    def binding_stub(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        captured["binding_bytes"] = kwargs["live_raw_bytes"]
+        captured["pr_body_bytes"] = kwargs["pr_body_bytes"]
+        return {"status": "PASS", "failures": [], "mode": "SELFTEST"}
+
+    legacy_resolver._classify_full_convergence_live_raw = classifier_stub
+    legacy_resolver._validate_full_convergence_live_raw_binding = binding_stub
+    try:
+        legacy_resolver.validate_full_convergence_records(
+            root, root, current_head=head, live_raw_report_path=live_path,
+            baseline_report_path=root / "baseline.json", batch_manifest_path=root / "batch.json",
+            previous_batch_manifest_path=root / "previous.json",
+            descendant_history_supplement_path=root / "supplement.json",
+            descendant_history_raw_report_path=root / "raw.json",
+            descendant_history_scanner_path=root / "scanner.py",
+            full_convergence_pr_body_file_path=pr_path,
+        )
+    finally:
+        legacy_resolver.validate_legacy_epoch_effectiveness = original_legacy
+        legacy_resolver._verified_full_convergence_authority = original_authority
+        legacy_resolver._classify_full_convergence_live_raw = original_classifier
+        legacy_resolver._validate_full_convergence_live_raw_binding = original_binding
+    _expect(live_path.read_count == 1, str(live_path.read_count))
+    _expect(pr_path.read_count == 1, str(pr_path.read_count))
+    _expect(captured["binding_bytes"] == first, str(captured))
+    _expect(captured["classifier_report"]["failures"] == ["FIRST"], str(captured))
+    _expect(captured["pr_body_bytes"] == b"first pr body", str(captured))
 
 
 def _effective_novel_history_is_active_case() -> None:
@@ -4098,6 +4982,20 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("87", "malformed post-touch sidecars fail closed in both auditors", _post_touch_malformed_sidecar_routing_case))
     cases.append(Case("88", "an invalid explicit batch chain cannot expose post-touch trust", _post_touch_invalid_chain_never_trusts_case))
     cases.append(Case("89", "post-touch path aliases selectors and escapes never route or expose trust", _post_touch_path_aliases_never_route_case))
+    cases.append(Case("90", "the explicit historical Delta metadata ledger is CLI-routed only with a complete full-convergence set", lambda: _historical_delta_metadata_input_coupling_case(root)))
+    cases.append(Case("91", "historical Delta metadata authority requires primary PASS independent GO and exact projection parity", lambda: _historical_delta_metadata_dual_gate_case(root)))
+    cases.append(Case("92", "ledger fingerprints correction IDs and record paths cannot collide with legacy or batch authority", _historical_delta_metadata_collision_case))
+    cases.append(Case("93", "terminal coverage is 587 minus legacy 12 minus ledger 86 while Raw 590 preserves three exact current blockers", _historical_delta_metadata_set_algebra_and_raw_case))
+    cases.append(Case("94", "effective reporting keeps batch record count separate and remains FAIL on the exact three current blockers", lambda: _historical_delta_metadata_effective_report_case(root)))
+    cases.append(Case("95", "a terminal batch requires an explicit PASS historical Delta metadata ledger", lambda: _terminal_historical_delta_metadata_ledger_omission_case(root)))
+    cases.append(Case("96", "BROKEN_BATCH clears every ledger projection and downstream refuses failed composite corrections", lambda: _broken_composite_clears_ledger_authority_case(root)))
+    cases.append(Case("97", "primary-only authorized raw identity mutation cannot survive independent canonical projection parity", lambda: _authority_projection_tamper_case(mutate_summary=False)))
+    cases.append(Case("98", "primary-only record summary removal cannot survive independent canonical projection parity", lambda: _authority_projection_tamper_case(mutate_summary=True)))
+    cases.append(Case("99", "a frozen Raw report cannot remove blockers while retaining self-reported validity", lambda: _live_raw_binding_cases(root, "FROZEN_FORGED")))
+    cases.append(Case("100", "a descendant externally self-attested Raw report is rejected without exact internal scanner output", lambda: _live_raw_binding_cases(root, "DESCENDANT_FORGED")))
+    cases.append(Case("101", "a descendant Raw report passes only when internal scanner re-execution emits exact bytes", lambda: _live_raw_binding_cases(root, "DESCENDANT_PASS")))
+    cases.append(Case("102", "classifier binding and scanner consume one immutable Live Raw and PR-body snapshot", lambda: _single_live_raw_snapshot_case(root)))
+    cases.append(Case("103", "an explicit full-convergence PR body cannot be supplied without the complete FC input set", lambda: _full_convergence_pr_body_input_coupling_case(root)))
     return cases
 
 
