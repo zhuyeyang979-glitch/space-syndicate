@@ -5928,6 +5928,429 @@ def _subject_projection_suppression_scope_and_v1_compatibility_case() -> None:
     )
 
 
+def _v4_head(root: Path) -> str:
+    return convergence._git(root, "rev-parse", "HEAD")
+
+
+def _v4_json_attack(
+    root: Path,
+    relative: Path,
+    mutate: Callable[[dict[str, Any]], None],
+) -> dict[str, Any]:
+    original = convergence.load_json_strict
+    target = (root / relative).resolve()
+
+    def attacked(path: Path) -> Any:
+        value = original(path)
+        if path.resolve() == target:
+            value = copy.deepcopy(value)
+            mutate(value)
+        return value
+
+    convergence.load_json_strict = attacked
+    try:
+        return convergence.validate_implementation_binding_v4(
+            root,
+            evaluated_head=_v4_head(root),
+        )
+    finally:
+        convergence.load_json_strict = original
+
+
+def _v4_expect_json_attack(
+    root: Path,
+    relative: Path,
+    mutate: Callable[[dict[str, Any]], None],
+    prefix: str,
+) -> None:
+    result = _v4_json_attack(root, relative, mutate)
+    _expect(result.get("status") == "FAIL", str(result))
+    _expect_failure(result["failures"], prefix)
+    _expect(not result.get("trusted_by_fingerprint"), str(result))
+
+
+def _successor_v4_positive_case(root: Path) -> None:
+    result = convergence.validate_implementation_binding_v4(
+        root,
+        evaluated_head=_v4_head(root),
+    )
+    _expect(result.get("status") == "PASS", str(result))
+    _expect(result.get("fingerprint_count") == 5, str(result))
+    _expect(
+        set(result.get("trusted_by_fingerprint", {}))
+        == set(convergence.ALPHA01_DYNAMIC_FINGERPRINTS),
+        str(result),
+    )
+    wrong_head = convergence.validate_implementation_binding_v4(
+        root,
+        evaluated_head=convergence.AUTHORIZATION_BASE_HEAD_SHA,
+    )
+    _expect(wrong_head.get("status") == "FAIL", str(wrong_head))
+    _expect_failure(
+        wrong_head["failures"],
+        "SUCCESSOR_V4_BINDING_HEAD_NOT_AUTHORIZED_DESCENDANT",
+    )
+    head = _v4_head(root)
+    tree = convergence._git(root, "rev-parse", f"{head}^{{tree}}")
+    unrelated_head = convergence._git(
+        root,
+        "commit-tree",
+        tree,
+        "-p",
+        head,
+        "-m",
+        "v4 unrelated-delta selftest",
+    )
+    unrelated = convergence.validate_implementation_binding_v4(
+        root,
+        evaluated_head=unrelated_head,
+    )
+    _expect(unrelated.get("status") == "PASS", str(unrelated))
+    _expect(unrelated.get("fingerprint_count") == 5, str(unrelated))
+
+
+def _successor_v4_predecessor_sha_negative_case(root: Path) -> None:
+    original = convergence.SUCCESSOR_SCHEMA_SHA256
+    convergence.SUCCESSOR_SCHEMA_SHA256 = "0" * 64
+    try:
+        result = convergence.validate_implementation_binding_v4(
+            root,
+            evaluated_head=_v4_head(root),
+        )
+    finally:
+        convergence.SUCCESSOR_SCHEMA_SHA256 = original
+    _expect_failure(
+        result["failures"],
+        "SUCCESSOR_V4_PREDECESSOR_SCHEMA_COMMITTED_BLOB_SHA256_MISMATCH",
+    )
+    _v4_expect_json_attack(
+        root,
+        convergence.SUCCESSOR_V4_SCHEMA_REL,
+        lambda schema: schema.update({"unauthorized_extra": True}),
+        "SUCCESSOR_V4_SCHEMA_FIELD_SET_INVALID",
+    )
+    _v4_expect_json_attack(
+        root,
+        convergence.SUCCESSOR_V4_SCHEMA_REL,
+        lambda schema: schema.update({"implementation_binding_count": True}),
+        "SUCCESSOR_V4_SCHEMA_IMPLEMENTATION_BINDING_COUNT_MISMATCH",
+    )
+    original = convergence.load_json_strict
+
+    def duplicate_schema(path: Path) -> Any:
+        if path.resolve() == (root / convergence.SUCCESSOR_V4_SCHEMA_REL).resolve():
+            raise convergence.DuplicateJsonKeyError("duplicate selftest key")
+        return original(path)
+
+    convergence.load_json_strict = duplicate_schema
+    try:
+        duplicate = convergence.validate_implementation_binding_v4(
+            root,
+            evaluated_head=_v4_head(root),
+        )
+    finally:
+        convergence.load_json_strict = original
+    _expect_failure(duplicate["failures"], "SUCCESSOR_V4_SCHEMA_JSON_INVALID")
+    original_object_id = convergence._git_object_id
+
+    def dirty_worktree(repo: Path, *args: str) -> str:
+        if args and args[0] == "hash-object":
+            return "0" * 40
+        return original_object_id(repo, *args)
+
+    convergence._git_object_id = dirty_worktree
+    try:
+        dirty = convergence.validate_implementation_binding_v4(
+            root,
+            evaluated_head=_v4_head(root),
+        )
+    finally:
+        convergence._git_object_id = original_object_id
+    _expect_failure(
+        dirty["failures"],
+        "SUCCESSOR_V4_SCHEMA_WORKTREE_CONTENT_DRIFT",
+    )
+    original_committed = convergence._committed_blob_bytes
+
+    def forged_committed(
+        repo: Path,
+        relative: str,
+        *,
+        evaluated_head: str | None,
+    ) -> bytes | None:
+        if relative == convergence.SUCCESSOR_V4_SCHEMA_REL.as_posix():
+            return b"forged successor-v4 schema"
+        return original_committed(
+            repo,
+            relative,
+            evaluated_head=evaluated_head,
+        )
+
+    convergence._committed_blob_bytes = forged_committed
+    try:
+        forged = convergence.validate_implementation_binding_v4(
+            root,
+            evaluated_head=_v4_head(root),
+        )
+    finally:
+        convergence._committed_blob_bytes = original_committed
+    _expect_failure(
+        forged["failures"],
+        "SUCCESSOR_V4_SCHEMA_COMMITTED_BLOB_SHA256_MISMATCH",
+    )
+
+
+def _successor_v4_fingerprint_set_negative_case(root: Path) -> None:
+    original = convergence.ALPHA01_DYNAMIC_FINGERPRINT_SET_SHA256
+    convergence.ALPHA01_DYNAMIC_FINGERPRINT_SET_SHA256 = "0" * 64
+    try:
+        result = convergence.validate_implementation_binding_v4(
+            root,
+            evaluated_head=_v4_head(root),
+        )
+    finally:
+        convergence.ALPHA01_DYNAMIC_FINGERPRINT_SET_SHA256 = original
+    _expect_failure(
+        result["failures"],
+        "SUCCESSOR_V4_SCHEMA_IMPLEMENTATION_BOUND_FAILURE_FINGERPRINT_SET_SHA256_MISMATCH",
+    )
+    binding_path = convergence.ALPHA01_IMPLEMENTATION_BINDING_REL
+    future = _fingerprint(9999)
+    mutations: list[Callable[[dict[str, Any]], None]] = [
+        lambda binding: binding["failure_fingerprints"].pop(),
+        lambda binding: binding["failure_fingerprints"].append(future),
+        lambda binding: binding["failure_fingerprints"].__setitem__(0, future),
+    ]
+    for mutate in mutations:
+        _v4_expect_json_attack(
+            root,
+            binding_path,
+            mutate,
+            "SUCCESSOR_V4_BINDING_FINGERPRINT_SET_MISMATCH",
+        )
+    first = sorted(convergence.ALPHA01_DYNAMIC_FINGERPRINTS)[0]
+    _v4_expect_json_attack(
+        root,
+        binding_path,
+        lambda binding: binding["failure_identity_by_fingerprint"][first].update(
+            {"raw_failure": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:forged"}
+        ),
+        "SUCCESSOR_V4_IDENTITY_RAW_FAILURE_INVALID",
+    )
+    _v4_expect_json_attack(
+        root,
+        binding_path,
+        lambda binding: binding.update({"failure_count": True}),
+        "SUCCESSOR_V4_BINDING_FAILURE_COUNT_MISMATCH",
+    )
+    for field in (
+        "future_failure_auto_membership_allowed",
+        "wildcard_membership_allowed",
+    ):
+        _v4_expect_json_attack(
+            root,
+            binding_path,
+            lambda binding, field=field: binding["future_failure_policy"].update(
+                {field: True}
+            ),
+            "SUCCESSOR_V4_FUTURE_POLICY_CONTENT_INVALID",
+        )
+
+
+def _successor_v4_binding_sha_negative_case(root: Path) -> None:
+    original = convergence.ALPHA01_IMPLEMENTATION_BINDING_SHA256
+    convergence.ALPHA01_IMPLEMENTATION_BINDING_SHA256 = "0" * 64
+    try:
+        result = convergence.validate_implementation_binding_v4(
+            root,
+            evaluated_head=_v4_head(root),
+        )
+    finally:
+        convergence.ALPHA01_IMPLEMENTATION_BINDING_SHA256 = original
+    _expect_failure(
+        result["failures"],
+        "SUCCESSOR_V4_SCHEMA_IMPLEMENTATION_BINDING_SHA256_MISMATCH",
+    )
+    binding_path = convergence.ALPHA01_IMPLEMENTATION_BINDING_REL
+    attacks = (
+        (
+            lambda binding: binding["resource_authority"].update(
+                {"sha256": "0" * 64}
+            ),
+            "SUCCESSOR_V4_RESOURCE_AUTHORITY_CONTENT_INVALID",
+        ),
+        (
+            lambda binding: binding["script_authority"].update(
+                {"git_blob_oid": "0" * 40}
+            ),
+            "SUCCESSOR_V4_SCRIPT_AUTHORITY_CONTENT_INVALID",
+        ),
+        (
+            lambda binding: binding["registry_authority"].update(
+                {"owner_component_id": "component.future.owner"}
+            ),
+            "SUCCESSOR_V4_REGISTRY_AUTHORITY_CONTENT_INVALID",
+        ),
+        (
+            lambda binding: binding["script_link"].update(
+                {"script_assignment_count": 2}
+            ),
+            "SUCCESSOR_V4_SCRIPT_LINK_CONTENT_INVALID",
+        ),
+        (
+            lambda binding: binding["historical_transition"].update(
+                {"transition_old_sha": "0" * 40}
+            ),
+            "SUCCESSOR_V4_HISTORICAL_TRANSITION_CONTENT_INVALID",
+        ),
+    )
+    for mutate, prefix in attacks:
+        _v4_expect_json_attack(root, binding_path, mutate, prefix)
+    _v4_expect_json_attack(
+        root,
+        binding_path,
+        lambda binding: binding.update({"unauthorized_extra": True}),
+        "SUCCESSOR_V4_BINDING_FIELD_SET_INVALID",
+    )
+    original_oid = convergence._v4_git_object_id
+
+    def resource_oid_drift(repo: Path, *args: str) -> str:
+        if args and args[-1].endswith(f":{convergence.ALPHA01_RESOURCE_PATH}"):
+            return "0" * 40
+        return original_oid(repo, *args)
+
+    convergence._v4_git_object_id = resource_oid_drift
+    try:
+        oid_drift = convergence.validate_implementation_binding_v4(
+            root,
+            evaluated_head=_v4_head(root),
+        )
+    finally:
+        convergence._v4_git_object_id = original_oid
+    _expect_failure(
+        oid_drift["failures"],
+        "SUCCESSOR_V4_RESOURCE_AUTHORITY_BLOB_DRIFT",
+    )
+    original_json_at = convergence._v4_json_at
+
+    def registry_owner_drift(repo: Path, commit: str, relative: str) -> Any:
+        document = original_json_at(repo, commit, relative)
+        if relative != "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json":
+            return document
+        document = copy.deepcopy(document)
+        for row in document.get("component_inventory", []):
+            if row.get("component_id") == convergence.ALPHA01_COMPONENT_ID:
+                row["owner_component_id"] = "component.future.owner"
+        return document
+
+    convergence._v4_json_at = registry_owner_drift
+    try:
+        registry_drift = convergence.validate_implementation_binding_v4(
+            root,
+            evaluated_head=_v4_head(root),
+        )
+    finally:
+        convergence._v4_json_at = original_json_at
+    _expect_failure(
+        registry_drift["failures"],
+        "SUCCESSOR_V4_BINDING_REGISTRY_OWNER_COMPONENT_ID_MISMATCH",
+    )
+
+
+def _successor_v4_target_drift_negative_case(root: Path) -> None:
+    original = convergence._v4_git_bytes
+    target = next(
+        iter(convergence.ALPHA01_EXPECTED_TARGETS_BY_FINGERPRINT.values())
+    )[0]
+
+    def missing_one(repo: Path, commit: str, relative: str) -> bytes | None:
+        if relative == target[6:]:
+            return None
+        return original(repo, commit, relative)
+
+    convergence._v4_git_bytes = missing_one
+    try:
+        result = convergence.validate_implementation_binding_v4(
+            root,
+            evaluated_head=_v4_head(root),
+        )
+    finally:
+        convergence._v4_git_bytes = original
+    _expect_failure(result["failures"], "SUCCESSOR_V4_IDENTITY_TARGET_MISSING:")
+    binding_path = convergence.ALPHA01_IMPLEMENTATION_BINDING_REL
+    first = sorted(convergence.ALPHA01_DYNAMIC_FINGERPRINTS)[0]
+    attacks = (
+        (
+            lambda binding: binding["failure_identity_by_fingerprint"][first][
+                "callsite_locations"
+            ][0].update({"line": 1}),
+            "SUCCESSOR_V4_IDENTITY_CALLSITE_SOURCE_MISMATCH:",
+        ),
+        (
+            lambda binding: binding["failure_identity_by_fingerprint"][first].update(
+                {"resolved_targets": ["res://future/not-authorized.gd"]}
+            ),
+            "SUCCESSOR_V4_IDENTITY_TARGET_SET_INVALID:",
+        ),
+        (
+            lambda binding: binding["failure_identity_by_fingerprint"][first][
+                "runtime_probe"
+            ].update({"expected_target_count": True}),
+            "SUCCESSOR_V4_IDENTITY_PROBE_CONTENT_INVALID:",
+        ),
+    )
+    for mutate, prefix in attacks:
+        _v4_expect_json_attack(root, binding_path, mutate, prefix)
+
+    dynamic = _dynamic_identity_binding()
+    ordinary = convergence._identity_projection_failures(
+        dynamic,
+        rule_id="HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+        fingerprint=_fingerprint(4000),
+    )
+    _expect(
+        not any(value.startswith("IDENTITY_BINDING_DYNAMIC_REFERENCE_ROW_NOT_UNIQUE") for value in ordinary),
+        str(ordinary),
+    )
+    empty_dynamic = _identity_binding()
+    authorized = first
+    trusted = {
+        "component_id": convergence.ALPHA01_COMPONENT_ID,
+        "implementation_path": convergence.ALPHA01_SCRIPT_PATH,
+    }
+    future_failures = convergence._identity_projection_failures(
+        empty_dynamic,
+        rule_id="HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+        fingerprint=_fingerprint(4001),
+        implementation_trusted=trusted,
+    )
+    _expect_failure(
+        future_failures,
+        "IDENTITY_BINDING_DYNAMIC_REFERENCE_ROW_NOT_UNIQUE",
+    )
+    exact_failures = convergence._identity_projection_failures(
+        empty_dynamic,
+        rule_id="HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+        fingerprint=authorized,
+        implementation_trusted=trusted,
+    )
+    _expect(
+        not any(value.startswith("IDENTITY_BINDING_DYNAMIC_REFERENCE_ROW_NOT_UNIQUE") for value in exact_failures),
+        str(exact_failures),
+    )
+    dual = _dynamic_identity_binding()
+    dual_failures = convergence._identity_projection_failures(
+        dual,
+        rule_id="HISTORY_DYNAMIC_REFERENCE_UNRESOLVED",
+        fingerprint=authorized,
+        implementation_trusted=trusted,
+    )
+    _expect_failure(
+        dual_failures,
+        "IDENTITY_BINDING_V4_DYNAMIC_SELECTOR_NOT_EMPTY",
+    )
+
+
 def build_cases(root: Path) -> list[Case]:
     cases: list[Case] = []
     cases.append(Case("01", "new schema is exact and authorized", lambda: _expect(not convergence.validate_schema(root), str(convergence.validate_schema(root)))))
@@ -6043,6 +6466,11 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("111", "primary HDM and legacy HDM overlaps invalidate the terminal partition", _independent_terminal_partition_overlap_case))
     cases.append(Case("112", "standalone HDM CLI input is coupled to the complete full-convergence input set", lambda: _independent_hdm_cli_coupling_case(root)))
     cases.append(Case("113", "real committed HDM authority independently resolves exact 86-set parity without claiming primary comparison", lambda: _independent_real_hdm_authority_case(root)))
+    cases.append(Case("114", "successor-v4 implementation binding passes with exactly five trusted fingerprints", lambda: _successor_v4_positive_case(root)))
+    cases.append(Case("115", "successor-v4 predecessor schema SHA drift fails closed", lambda: _successor_v4_predecessor_sha_negative_case(root)))
+    cases.append(Case("116", "successor-v4 fingerprint-set digest drift fails closed", lambda: _successor_v4_fingerprint_set_negative_case(root)))
+    cases.append(Case("117", "successor-v4 implementation-binding SHA drift fails closed", lambda: _successor_v4_binding_sha_negative_case(root)))
+    cases.append(Case("118", "successor-v4 res-path target disappearance fails closed", lambda: _successor_v4_target_drift_negative_case(root)))
     return cases
 
 
