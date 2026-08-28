@@ -20,8 +20,10 @@ from typing import Any
 
 try:
     from . import v076_post_touch_revalidation as _post_touch
+    from . import v076_subject_projection_revalidation_independent_audit as _subject_projection_revalidation
 except ImportError:
     import v076_post_touch_revalidation as _post_touch
+    import v076_subject_projection_revalidation_independent_audit as _subject_projection_revalidation
 
 
 AUTHORIZED_HEAD = "1e24cea73fc23e69e575fcea09df57238156af67"
@@ -5709,6 +5711,157 @@ def _suppress_post_touch_findings(
     return kept
 
 
+def _subject_projection_revalidation_sidecar_findings(
+    root: Path,
+    sidecar_path: Path | None,
+    explicit_batch_chain: list[tuple[Path, dict[str, Any]]],
+    evaluated_head: str,
+    *,
+    explicit_batch_chain_valid: bool,
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
+    if sidecar_path is None:
+        return [], {}, {"status": "NOT_PROVIDED", "record_count": 0, "trusted_fingerprint_count": 0, "path": "", "failures": []}
+    if not explicit_batch_chain_valid:
+        code = "SPR_EXPLICIT_BATCH_CHAIN_INVALID"
+        return [
+            _finding(
+                "FULL_CONVERGENCE_SUBJECT_PROJECTION_REVALIDATION_INVALID",
+                "P0",
+                code,
+                manifest_path=str(sidecar_path),
+            )
+        ], {}, {
+            "status": "FAIL", "record_count": 0, "trusted_fingerprint_count": 0,
+            "path": str(sidecar_path), "failures": [code],
+        }
+    try:
+        current_batch_path = explicit_batch_chain[-1][0] if explicit_batch_chain else None
+        result: Any = _subject_projection_revalidation.audit_manifest_and_records(
+            root,
+            sidecar_path,
+            evaluated_head=evaluated_head,
+            current_batch_manifest_path=current_batch_path,
+            explicit_batch_manifest_paths=[path for path, _ in explicit_batch_chain],
+        )
+    except Exception as exc:
+        result = None
+        wrapper_code = f"SPR_INDEPENDENT_VALIDATOR_EXCEPTION:{type(exc).__name__}"
+    else:
+        wrapper_code = ""
+
+    trust_fields = {
+        "allowed_invalidations", "prior_record_path", "revalidation_id",
+        "record_path", "revalidation_binding_head_sha",
+    }
+
+    def exact_path(value: Any) -> bool:
+        if type(value) is not str or not value or "\\" in value or value.startswith("/"):
+            return False
+        parts = value.split("/")
+        return all(part not in {"", ".", ".."} for part in parts) and not any(
+            token in value for token in ("*", "?", "[", "]", ":", "\0")
+        )
+
+    shape_valid = type(result) is dict
+    if shape_valid:
+        raw_findings = result.get("findings")
+        raw_trusted = result.get("trusted_by_fingerprint")
+        raw_fingerprints = result.get("fingerprints")
+        trusted_count = result.get("trusted_fingerprint_count")
+        record_count = result.get("record_count")
+        try:
+            sorted_trust_keys = sorted(raw_trusted) if type(raw_trusted) is dict else None
+        except Exception:
+            sorted_trust_keys = None
+        shape_valid = (
+            type(result.get("status")) is str
+            and result.get("status") == "GO"
+            and type(raw_findings) is list
+            and all(type(value) is str for value in raw_findings)
+            and raw_findings == []
+            and type(raw_trusted) is dict
+            and len(raw_trusted) == 82
+            and type(trusted_count) is int
+            and not isinstance(trusted_count, bool)
+            and trusted_count == 82
+            and type(record_count) is int
+            and not isinstance(record_count, bool)
+            and record_count == 82
+            and type(raw_fingerprints) is list
+            and raw_fingerprints == sorted_trust_keys
+            and len(raw_fingerprints) == 82
+            and all(
+                type(fingerprint) is str
+                and re.fullmatch(r"V2F-[0-9a-f]{64}", fingerprint) is not None
+                and type(row) is dict
+                and set(row) == trust_fields
+                and all(type(key) is str for key in row)
+                and type(row.get("allowed_invalidations")) is list
+                and len(row.get("allowed_invalidations")) == 1
+                and type(row.get("allowed_invalidations")[0]) is str
+                and row.get("allowed_invalidations")[0] == "SUBJECT_PROJECTION_CHANGED_INVALID"
+                and exact_path(row.get("prior_record_path"))
+                and row["prior_record_path"].startswith(
+                    _subject_projection_revalidation.FULL_RECORD_ROOT
+                )
+                and exact_path(row.get("record_path"))
+                and row["record_path"].startswith(
+                    _subject_projection_revalidation.REVALIDATION_RECORD_ROOT
+                )
+                and type(row.get("revalidation_id")) is str
+                and bool(row.get("revalidation_id"))
+                and type(row.get("revalidation_binding_head_sha")) is str
+                and re.fullmatch(r"[0-9a-f]{40}", row.get("revalidation_binding_head_sha")) is not None
+                for fingerprint, row in raw_trusted.items()
+            )
+        )
+    if not shape_valid and not wrapper_code:
+        wrapper_code = "SPR_INDEPENDENT_VALIDATOR_RESULT_SHAPE_INVALID"
+
+    codes = [] if shape_valid else [wrapper_code]
+    status = "PASS" if shape_valid else "FAIL"
+    trusted = result["trusted_by_fingerprint"] if shape_valid else {}
+    findings = [
+        _finding(
+            "FULL_CONVERGENCE_SUBJECT_PROJECTION_REVALIDATION_INVALID",
+            "P0",
+            code,
+            manifest_path=str(sidecar_path),
+        )
+        for code in codes
+    ]
+    return findings, trusted, {
+        "status": status,
+        "record_count": len(trusted),
+        "trusted_fingerprint_count": len(trusted),
+        "path": str(sidecar_path),
+        "failures": sorted(set(codes)),
+    }
+
+
+def _suppress_subject_projection_revalidation_findings(
+    findings: list[dict[str, Any]],
+    trusted: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    kept: list[dict[str, Any]] = []
+    for finding in findings:
+        if str(finding.get("code", "")) != "FULL_CONVERGENCE_SUBJECT_PROJECTION_CHANGED":
+            kept.append(finding)
+            continue
+        evidence = finding.get("evidence", {})
+        fingerprint = str(evidence.get("fingerprint", ""))
+        path = _normalize_path(str(evidence.get("path", "")))
+        if _subject_projection_revalidation.allows_invalidation(
+            trusted,
+            fingerprint=fingerprint,
+            invalidation_code="SUBJECT_PROJECTION_CHANGED_INVALID",
+            prior_record_path=path,
+        ):
+            continue
+        kept.append(finding)
+    return kept
+
+
 def audit_full_convergence_batch(
     root: Path,
     manifest_path: Path,
@@ -5720,6 +5873,7 @@ def audit_full_convergence_batch(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
+    subject_projection_revalidation_path: Path | None = None,
 ) -> dict[str, Any]:
     """Independently verify one explicit new-epoch batch and its legacy anchor.
 
@@ -5895,6 +6049,16 @@ def audit_full_convergence_batch(
         explicit_batch_chain_valid=not findings,
     )
     findings.extend(post_touch_findings)
+    subject_revalidation_findings, subject_revalidation_trusted, subject_revalidation_summary = (
+        _subject_projection_revalidation_sidecar_findings(
+            root,
+            subject_projection_revalidation_path,
+            explicit_batch_chain,
+            evaluated_head,
+            explicit_batch_chain_valid=not findings,
+        )
+    )
+    findings.extend(subject_revalidation_findings)
     manifest_fingerprints = [
         str(value) for value in manifest.get("failure_fingerprints", [])
     ]
@@ -6396,6 +6560,9 @@ def audit_full_convergence_batch(
                 fingerprint=fingerprint,
             ))
     findings = _suppress_post_touch_findings(findings, post_touch_trusted)
+    findings = _suppress_subject_projection_revalidation_findings(
+        findings, subject_revalidation_trusted
+    )
     return {
         "schema_version": "space_syndicate.v076.reuse_correction_v2.full_convergence_independent_audit.v1",
         "authorization_id": FULL_CONVERGENCE_AUTHORIZATION_ID,
@@ -6414,6 +6581,7 @@ def audit_full_convergence_batch(
         "descendant_history_raw_report_head_sha": descendant_report_head,
         "descendant_history_authorized_fingerprint_count": len(descendant_fingerprints),
         "post_touch_revalidation": post_touch_summary,
+        "subject_projection_revalidation": subject_revalidation_summary,
         "live_historical_correction_authority_count": len(
             baseline_fingerprints["historical"]
         ),
@@ -6499,6 +6667,12 @@ def main(argv: list[str] | None = None) -> int:
         help="explicit append-only post-touch revalidation manifest; never discovered implicitly",
     )
     parser.add_argument(
+        "--subject-projection-revalidation",
+        type=Path,
+        default=None,
+        help="explicit Registry-metadata subject-projection successor manifest; never discovered implicitly",
+    )
+    parser.add_argument(
         "--evaluated-head-ref",
         default="HEAD",
         help="Head used for subject-projection invalidation in full-convergence mode",
@@ -6510,6 +6684,14 @@ def main(argv: list[str] | None = None) -> int:
     ):
         parser.error(
             "--post-touch-revalidation requires "
+            "--full-convergence-batch-manifest and its complete full-convergence input set"
+        )
+    if (
+        args.subject_projection_revalidation is not None
+        and args.full_convergence_batch_manifest is None
+    ):
+        parser.error(
+            "--subject-projection-revalidation requires "
             "--full-convergence-batch-manifest and its complete full-convergence input set"
         )
     root = args.project.resolve()
@@ -6552,6 +6734,10 @@ def main(argv: list[str] | None = None) -> int:
             post_touch_revalidation_path=(
                 args.post_touch_revalidation.resolve()
                 if args.post_touch_revalidation is not None else None
+            ),
+            subject_projection_revalidation_path=(
+                args.subject_projection_revalidation.resolve()
+                if args.subject_projection_revalidation is not None else None
             ),
         )
         (out / "audit_full_convergence_batch.json").write_bytes(_canonical(report))

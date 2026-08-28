@@ -23,8 +23,12 @@ from typing import Any, Iterable
 
 try:
     from . import v076_post_touch_revalidation as _post_touch
+    from . import v076_subject_projection_revalidation as _subject_projection_revalidation
+    from . import v076_subject_projection_revalidation_independent_audit as _subject_projection_revalidation_independent
 except ImportError:  # direct script execution
     import v076_post_touch_revalidation as _post_touch
+    import v076_subject_projection_revalidation as _subject_projection_revalidation
+    import v076_subject_projection_revalidation_independent_audit as _subject_projection_revalidation_independent
 
 
 EPOCH_ID = "FULL_CONVERGENCE_20260827"
@@ -4627,6 +4631,275 @@ def _resolve_post_touch_batch_manifest_path(
     return sorted(set(failures)), selected
 
 
+def _resolve_subject_projection_batch_manifest_path(
+    root: Path,
+    sidecar_path: Path,
+    explicit_batch_chain: list[tuple[Path, dict[str, Any]]],
+    *,
+    explicit_batch_chain_valid: bool = True,
+) -> tuple[list[str], Path | None]:
+    """Route the one-shot projection sidecar only through the explicit chain."""
+
+    if not explicit_batch_chain_valid:
+        return ["SUBJECT_PROJECTION_EXPLICIT_BATCH_CHAIN_INVALID"], None
+    try:
+        sidecar = load_json_strict(sidecar_path)
+    except (OSError, ValueError, json.JSONDecodeError, DuplicateJsonKeyError):
+        return ["SUBJECT_PROJECTION_SIDECAR_MANIFEST_JSON_INVALID"], None
+    if not isinstance(sidecar, dict):
+        return ["SUBJECT_PROJECTION_SIDECAR_MANIFEST_NOT_OBJECT"], None
+    declared_value = sidecar.get("current_batch_manifest_path")
+    if not isinstance(declared_value, str):
+        return ["SUBJECT_PROJECTION_CURRENT_BATCH_PATH_DECLARATION_INVALID"], None
+    if declared_value != normalize_path(declared_value):
+        return ["SUBJECT_PROJECTION_CURRENT_BATCH_PATH_DECLARATION_NOT_CANONICAL"], None
+    allowed: dict[str, Path] = {}
+    failures: list[str] = []
+    root_resolved = root.resolve()
+    for path, _ in explicit_batch_chain:
+        resolved = path.resolve()
+        try:
+            relative = resolved.relative_to(root_resolved).as_posix()
+        except ValueError:
+            failures.append("SUBJECT_PROJECTION_EXPLICIT_BATCH_CHAIN_PATH_OUTSIDE_ROOT")
+            continue
+        allowed[relative] = resolved
+    selected = allowed.get(declared_value)
+    if selected is None:
+        failures.append("SUBJECT_PROJECTION_CURRENT_BATCH_MANIFEST_NOT_IN_EXPLICIT_CHAIN")
+    return sorted(set(failures)), selected
+
+
+def _subject_projection_revalidation_composite(
+    root: Path,
+    sidecar_path: Path,
+    explicit_batch_chain: list[tuple[Path, dict[str, Any]]],
+    *,
+    evaluated_head: str,
+    explicit_batch_chain_valid: bool,
+    historical_delta_metadata_ledger_status: str,
+) -> dict[str, Any]:
+    """Require primary PASS, independent GO, and byte-for-byte trust parity."""
+
+    routing_failures, selected = _resolve_subject_projection_batch_manifest_path(
+        root,
+        sidecar_path,
+        explicit_batch_chain,
+        explicit_batch_chain_valid=explicit_batch_chain_valid,
+    )
+    explicit_paths = [path for path, _ in explicit_batch_chain]
+    primary: Any
+    independent: Any
+    if routing_failures or selected is None:
+        primary = {
+            "status": "FAIL", "failures": [], "trusted_by_fingerprint": {},
+            "trusted_fingerprint_count": 0, "record_count": 0,
+            "fingerprints": [],
+        }
+        independent = {
+            "status": "NO_GO", "findings": [], "trusted_by_fingerprint": {},
+            "trusted_fingerprint_count": 0, "record_count": 0,
+            "fingerprints": [],
+        }
+    else:
+        try:
+            primary = _subject_projection_revalidation.validate_manifest_and_records(
+                root,
+                sidecar_path,
+                evaluated_head=evaluated_head,
+                current_batch_manifest_path=selected,
+                explicit_batch_manifest_paths=explicit_paths,
+            )
+        except Exception as error:  # fail closed at the trust boundary
+            primary = {
+                "status": "FAIL",
+                "failures": [f"SUBJECT_PROJECTION_PRIMARY_EXCEPTION:{type(error).__name__}"],
+                "trusted_by_fingerprint": {}, "trusted_fingerprint_count": 0,
+                "record_count": 0, "fingerprints": [],
+            }
+        try:
+            independent = _subject_projection_revalidation_independent.audit_manifest_and_records(
+                root,
+                sidecar_path,
+                evaluated_head=evaluated_head,
+                current_batch_manifest_path=selected,
+                explicit_batch_manifest_paths=explicit_paths,
+            )
+        except Exception as error:  # fail closed at the trust boundary
+            independent = {
+                "status": "NO_GO",
+                "findings": [f"SUBJECT_PROJECTION_INDEPENDENT_EXCEPTION:{type(error).__name__}"],
+                "trusted_by_fingerprint": {}, "trusted_fingerprint_count": 0,
+                "record_count": 0, "fingerprints": [],
+            }
+    failures = list(routing_failures)
+    primary_shape_failures, primary_result, primary_trusted = (
+        _subject_projection_revalidation_result_shape_failures(
+            primary,
+            label="PRIMARY",
+            required_status="PASS",
+            diagnostic_field="failures",
+        )
+    )
+    independent_shape_failures, independent_result, independent_trusted = (
+        _subject_projection_revalidation_result_shape_failures(
+            independent,
+            label="INDEPENDENT",
+            required_status="GO",
+            diagnostic_field="findings",
+        )
+    )
+    failures.extend(primary_shape_failures)
+    failures.extend(independent_shape_failures)
+    trust_set_parity = primary_trusted == independent_trusted
+    if not trust_set_parity:
+        failures.append("SUBJECT_PROJECTION_TRUST_SET_PARITY_INVALID")
+    if historical_delta_metadata_ledger_status != "PASS":
+        failures.append("SUBJECT_PROJECTION_HDM_LEDGER_REQUIRED_PASS")
+    failures = sorted(set(failures))
+    trusted = primary_trusted if not failures else {}
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "failures": failures,
+        "path": str(sidecar_path),
+        "record_count": primary_result.get("record_count", 0),
+        "primary_status": primary_result.get("status", "FAIL"),
+        "independent_status": independent_result.get("status", "NO_GO"),
+        "primary_trusted_fingerprint_count": len(primary_trusted),
+        "independent_trusted_fingerprint_count": len(independent_trusted),
+        "trusted_fingerprint_count": len(trusted),
+        "trust_set_parity": trust_set_parity,
+        "trusted_by_fingerprint": trusted,
+    }
+
+
+_SUBJECT_PROJECTION_TRUST_ROW_FIELDS = frozenset({
+    "allowed_invalidations",
+    "prior_record_path",
+    "record_path",
+    "revalidation_binding_head_sha",
+    "revalidation_id",
+})
+
+
+def _subject_projection_revalidation_result_shape_failures(
+    result: Any,
+    *,
+    label: str,
+    required_status: str,
+    diagnostic_field: str,
+) -> tuple[list[str], dict[str, Any], dict[str, dict[str, Any]]]:
+    """Close every validator-result field before it can become trust."""
+
+    prefix = f"SUBJECT_PROJECTION_{label}"
+    failures: list[str] = []
+    if type(result) is not dict:
+        return [f"{prefix}_RESULT_NOT_OBJECT"], {}, {}
+
+    status = result.get("status")
+    if type(status) is not str:
+        failures.append(f"{prefix}_STATUS_NOT_STRING")
+    if status != required_status:
+        failures.append(f"{prefix}_REQUIRED_{required_status}")
+
+    diagnostics = result.get(diagnostic_field)
+    if (
+        type(diagnostics) is not list
+        or any(type(value) is not str for value in diagnostics)
+    ):
+        failures.append(
+            f"{prefix}_{diagnostic_field.upper()}_NOT_STRING_LIST"
+        )
+        diagnostics = []
+    failures.extend(f"{prefix}:{value}" for value in diagnostics)
+
+    trusted_value = result.get("trusted_by_fingerprint")
+    trusted: dict[str, dict[str, Any]] = {}
+    if type(trusted_value) is not dict:
+        failures.append(f"{prefix}_TRUST_NOT_OBJECT")
+    else:
+        for fingerprint, row in trusted_value.items():
+            if (
+                type(fingerprint) is not str
+                or re.fullmatch(r"V2F-[0-9a-f]{64}", fingerprint) is None
+            ):
+                failures.append(f"{prefix}_TRUST_FINGERPRINT_INVALID")
+                continue
+            if (
+                type(row) is not dict
+                or any(type(key) is not str for key in row)
+                or set(row) != _SUBJECT_PROJECTION_TRUST_ROW_FIELDS
+            ):
+                failures.append(f"{prefix}_TRUST_ROW_SHAPE_INVALID:{fingerprint}")
+                continue
+            allowed_invalidations = row.get("allowed_invalidations")
+            if (
+                type(allowed_invalidations) is not list
+                or len(allowed_invalidations) != 1
+                or type(allowed_invalidations[0]) is not str
+                or allowed_invalidations[0]
+                != "SUBJECT_PROJECTION_CHANGED_INVALID"
+            ):
+                failures.append(f"{prefix}_TRUST_POLICY_INVALID:{fingerprint}")
+            if (
+                type(row.get("prior_record_path")) is not str
+                or not _subject_projection_revalidation._exact_path(
+                    row["prior_record_path"]
+                )
+                or not row["prior_record_path"].startswith(
+                    _subject_projection_revalidation.FULL_RECORD_ROOT
+                )
+            ):
+                failures.append(f"{prefix}_TRUST_PRIOR_PATH_INVALID:{fingerprint}")
+            if (
+                type(row.get("record_path")) is not str
+                or not _subject_projection_revalidation._exact_path(
+                    row["record_path"]
+                )
+                or not row["record_path"].startswith(
+                    _subject_projection_revalidation.RECORD_ROOT
+                )
+            ):
+                failures.append(f"{prefix}_TRUST_RECORD_PATH_INVALID:{fingerprint}")
+            if (
+                type(row.get("revalidation_id")) is not str
+                or not row["revalidation_id"]
+            ):
+                failures.append(f"{prefix}_TRUST_ID_INVALID:{fingerprint}")
+            if (
+                type(row.get("revalidation_binding_head_sha")) is not str
+                or re.fullmatch(
+                    r"[0-9a-f]{40}", row["revalidation_binding_head_sha"]
+                ) is None
+            ):
+                failures.append(f"{prefix}_TRUST_HEAD_INVALID:{fingerprint}")
+            trusted[fingerprint] = row
+
+    reported_count = result.get("trusted_fingerprint_count")
+    record_count = result.get("record_count")
+    if (
+        type(reported_count) is not int
+        or reported_count != 82
+        or len(trusted) != 82
+        or type(record_count) is not int
+        or record_count != 82
+    ):
+        failures.append(f"{prefix}_COUNT_INVALID")
+
+    fingerprints = result.get("fingerprints")
+    if (
+        type(fingerprints) is not list
+        or any(type(value) is not str for value in fingerprints)
+        or fingerprints != sorted(fingerprints)
+        or len(fingerprints) != 82
+        or len(set(fingerprints)) != 82
+        or set(fingerprints) != set(trusted)
+    ):
+        failures.append(f"{prefix}_FINGERPRINT_SET_INVALID")
+
+    return sorted(set(failures)), result, trusted
+
+
 def _validate_manifest_binding_against_repo(
     root: Path,
     manifest: dict[str, Any],
@@ -4660,6 +4933,7 @@ def _validate_manifest_records_against_repo(
     authorized_identities: dict[str, dict[str, str]],
     legacy_fingerprints: set[str],
     post_touch_trusted: dict[str, dict[str, Any]] | None = None,
+    subject_projection_revalidation_trusted: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[list[str], set[str]]:
     failures: list[str] = []
     seen: set[str] = set()
@@ -4694,6 +4968,7 @@ def _validate_manifest_records_against_repo(
             authorized_identities=authorized_identities,
         )
         trusted = post_touch_trusted or {}
+        subject_projection_trusted = subject_projection_revalidation_trusted or {}
         # Suppression is one-for-one: only the exact declared invalidation
         # code for the exact trusted fingerprint may be removed.  Every
         # contract, binding, projection-resolution, or unrelated failure
@@ -4706,6 +4981,16 @@ def _validate_manifest_records_against_repo(
             )
             if matched:
                 code, fingerprint = matched.groups()
+                if (
+                    code == "SUBJECT_PROJECTION_CHANGED_INVALID"
+                    and _subject_projection_revalidation.allows_invalidation(
+                        subject_projection_trusted,
+                        fingerprint=fingerprint,
+                        invalidation_code=code,
+                        prior_record_path=relative,
+                    )
+                ):
+                    continue
                 if _post_touch.allows_invalidation(
                     trusted,
                     fingerprint=fingerprint,
@@ -5374,6 +5659,7 @@ def validate_batch_manifest_against_repo(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
+    subject_projection_revalidation_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
 ) -> dict[str, Any]:
     failures = validate_schema(root, evaluated_head=evaluated_head)
@@ -5452,6 +5738,19 @@ def validate_batch_manifest_against_repo(
         "trusted_by_fingerprint": {},
         "record_count": 0,
         "fingerprints": [],
+    }
+    subject_projection_revalidation_result: dict[str, Any] = {
+        "status": "NOT_PROVIDED",
+        "failures": [],
+        "path": "",
+        "record_count": 0,
+        "primary_status": "NOT_PROVIDED",
+        "independent_status": "NOT_PROVIDED",
+        "primary_trusted_fingerprint_count": 0,
+        "independent_trusted_fingerprint_count": 0,
+        "trusted_fingerprint_count": 0,
+        "trust_set_parity": False,
+        "trusted_by_fingerprint": {},
     }
     all_manifests = list(reversed(previous_chain)) + [(manifest_path, manifest)]
     historical_delta_metadata_ledger = (
@@ -5600,6 +5899,30 @@ def validate_batch_manifest_against_repo(
         if post_touch_result.get("status") != "PASS":
             failures.append("POST_TOUCH_REVALIDATION_REQUIRED_VALID_SIDECAR")
     post_touch_trusted = post_touch_result.get("trusted_by_fingerprint", {})
+    if subject_projection_revalidation_path is not None:
+        subject_projection_revalidation_result = (
+            _subject_projection_revalidation_composite(
+                root,
+                subject_projection_revalidation_path,
+                all_manifests,
+                evaluated_head=evaluated_head,
+                explicit_batch_chain_valid=explicit_batch_chain_valid,
+                historical_delta_metadata_ledger_status=str(
+                    historical_delta_metadata_ledger.get("status", "FAIL")
+                ),
+            )
+        )
+        failures.extend(
+            f"SUBJECT_PROJECTION_REVALIDATION_INVALID:{failure}"
+            for failure in subject_projection_revalidation_result.get("failures", [])
+        )
+        if subject_projection_revalidation_result.get("status") != "PASS":
+            failures.append(
+                "SUBJECT_PROJECTION_REVALIDATION_REQUIRED_VALID_DUAL_AUDIT_SIDECAR"
+            )
+    subject_projection_revalidation_trusted = (
+        subject_projection_revalidation_result.get("trusted_by_fingerprint", {})
+    )
     legacy_fingerprints = set(legacy.get("legacy_corrected_fingerprints", []))
     global_fingerprints: set[str] = set()
     correction_ids: set[str] = set()
@@ -5648,6 +5971,9 @@ def validate_batch_manifest_against_repo(
             authorized_identities=authorized_identities,
             legacy_fingerprints=legacy_fingerprints,
             post_touch_trusted=post_touch_trusted,
+            subject_projection_revalidation_trusted=(
+                subject_projection_revalidation_trusted
+            ),
         )
         failures.extend(record_failures)
         if path == manifest_path:
@@ -5672,6 +5998,11 @@ def validate_batch_manifest_against_repo(
             "record_count": post_touch_result.get("record_count", 0),
             "trusted_fingerprint_count": len(post_touch_trusted or {}),
             "failures": post_touch_result.get("failures", []),
+        },
+        "subject_projection_revalidation": {
+            key: value
+            for key, value in subject_projection_revalidation_result.items()
+            if key != "trusted_by_fingerprint"
         },
         "historical_delta_metadata_ledger": historical_delta_metadata_ledger,
     }

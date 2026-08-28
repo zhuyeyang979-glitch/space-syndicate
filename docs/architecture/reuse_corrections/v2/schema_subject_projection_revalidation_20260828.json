@@ -1,0 +1,81 @@
+{
+  "schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_schema.v1",
+  "manifest_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_manifest.v1",
+  "record_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_record.v1",
+  "manifest_kind": "SUBJECT_PROJECTION_REVALIDATION_MANIFEST",
+  "record_kind": "SUBJECT_PROJECTION_REVALIDATION_RECORD",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "authorization_base_head_sha": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "prior_epoch_id": "FULL_CONVERGENCE_20260827",
+  "authority_source_path": "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+  "authority_source_change_commit_sha": "7de7b95e6b26d755d9ccaacbf483e57a949504da",
+  "authority_source_change_parent_sha": "864cb731fd68af0f48e29fd78b650ad726293103",
+  "allowed_invalidation": "SUBJECT_PROJECTION_CHANGED_INVALID",
+  "record_fingerprint_cardinality": "ONE_EXACT_FINGERPRINT_PER_RECORD",
+  "record_count": 82,
+  "change_class_only_count": 78,
+  "change_class_reuse_scan_count": 4,
+  "authorized_metadata_change_profiles": {
+    "CHANGE_CLASS_ONLY": ["change_class"],
+    "CHANGE_CLASS_AND_REUSE_SCAN": ["change_class", "reuse_scan"]
+  },
+  "reuse_scan_authorized_component_ids": [
+    "component.current.card_flow_policy_v06",
+    "component.current.card_flow_transaction_service_v06",
+    "component.current.card_player_state_port_v06",
+    "component.current.global_supply_demand_runtime_service_v06"
+  ],
+  "manifest_required_fields": [
+    "schema_version", "manifest_kind", "manifest_id", "authorization_id",
+    "authorization_base_head_sha", "schema_path", "schema_sha256", "prior_epoch_id",
+    "revalidation_binding_head_sha", "revalidation_binding_tree_sha",
+    "current_batch_manifest_path", "current_batch_manifest_sha256",
+    "authority_source_path", "authority_source_change_commit_sha",
+    "authority_source_change_parent_sha", "authority_source_before_blob_sha256",
+    "authority_source_after_blob_sha256", "authority_source_diff_sha256",
+    "authority_source_changed_path_count", "historical_delta_metadata_ledger_path",
+    "historical_delta_metadata_ledger_sha256", "record_count", "failure_fingerprints",
+    "failure_fingerprint_set_sha256", "change_class_only_count",
+    "change_class_reuse_scan_count", "record_bindings", "record_chain_start_sha256",
+    "record_chain_terminal_sha256", "allowed_invalidation",
+    "future_failure_auto_revalidation", "wildcard_count", "created_at", "creator"
+  ],
+  "record_required_fields": [
+    "schema_version", "record_kind", "revalidation_id", "authorization_id",
+    "authorization_base_head_sha", "prior_epoch_id", "failure_fingerprints",
+    "failure_fingerprint_set_sha256", "prior_invalidations", "prior_record_path",
+    "prior_record_sha256", "prior_record_payload_sha256", "prior_correction_id",
+    "correction_batch_manifest_path", "correction_batch_manifest_sha256",
+    "prior_binding_head_sha", "prior_binding_tree_sha", "revalidation_binding_head_sha",
+    "revalidation_binding_tree_sha", "authority_selectors", "authority_selector_sha256",
+    "component_id", "change_profile", "changed_metadata_fields", "touch_proof",
+    "prior_subject_projection", "prior_subject_projection_sha256",
+    "rebound_subject_projection", "rebound_subject_projection_sha256",
+    "bound_product_blob_sha256_by_path", "component_identity_hdm_authority",
+    "reuse_scan_hdm_authority", "future_failure_policy", "wildcard_count",
+    "new_effective_status", "previous_revalidation_chain_sha256", "created_at",
+    "creator", "revalidation_reason", "record_payload_sha256"
+  ],
+  "manifest_record_binding_fields": [
+    "path", "record_sha256", "record_payload_sha256", "revalidation_id",
+    "prior_record_path", "prior_record_sha256", "prior_record_payload_sha256",
+    "prior_correction_id", "failure_fingerprints", "previous_revalidation_chain_sha256"
+  ],
+  "touch_proof_fields": [
+    "commit_sha", "parent_sha", "path", "before_blob_sha256",
+    "after_blob_sha256", "diff_sha256"
+  ],
+  "hdm_authority_binding_fields": [
+    "authority_kind", "correction_id", "path", "file_sha256",
+    "record_payload_sha256", "failure_fingerprint", "rule_id"
+  ],
+  "projection_sections": [
+    "dynamic_reference_rows", "owner_map_lines", "registry_rows", "supersession_rows"
+  ],
+  "future_failure_policy": {
+    "FUTURE_FAILURE_AUTO_REVALIDATION_COUNT": 0,
+    "NEW_FAILURE_REQUIRES_NEW_RECORD": true
+  },
+  "wildcard_count": 0,
+  "future_failure_auto_revalidation": false
+}

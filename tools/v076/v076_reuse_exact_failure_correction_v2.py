@@ -2598,6 +2598,7 @@ def validate_records(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
+    subject_projection_revalidation_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     full_convergence_pr_body_file_path: Path | None = None,
 ) -> dict[str, Any]:
@@ -2629,6 +2630,19 @@ def validate_records(
         raise ValueError(
             "POST_TOUCH_REVALIDATION_REQUIRES_FULL_CONVERGENCE_INPUT_SET"
         )
+    if subject_projection_revalidation_path is not None and not any(
+        value is not None for value in full_convergence_inputs
+    ):
+        raise ValueError(
+            "SUBJECT_PROJECTION_REVALIDATION_REQUIRES_FULL_CONVERGENCE_INPUT_SET"
+        )
+    if (
+        subject_projection_revalidation_path is not None
+        and historical_delta_metadata_ledger_path is None
+    ):
+        raise ValueError(
+            "SUBJECT_PROJECTION_REVALIDATION_REQUIRES_HISTORICAL_DELTA_METADATA_LEDGER"
+        )
     if any(value is not None for value in full_convergence_inputs):
         if any(value is None for value in full_convergence_inputs):
             raise ValueError("FULL_CONVERGENCE_EXPLICIT_INPUT_SET_INCOMPLETE")
@@ -2646,6 +2660,9 @@ def validate_records(
             descendant_history_raw_report_path=descendant_history_raw_report_path,
             descendant_history_scanner_path=descendant_history_scanner_path,
             post_touch_revalidation_path=post_touch_revalidation_path,
+            subject_projection_revalidation_path=(
+                subject_projection_revalidation_path
+            ),
             historical_delta_metadata_ledger_path=(
                 historical_delta_metadata_ledger_path
             ),
@@ -3263,6 +3280,7 @@ def _verified_full_convergence_authority(
     descendant_history_raw_report_path: Path,
     descendant_history_scanner_path: Path,
     post_touch_revalidation_path: Path | None = None,
+    subject_projection_revalidation_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
 ) -> dict[str, Any]:
     import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
@@ -3277,6 +3295,9 @@ def _verified_full_convergence_authority(
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
         post_touch_revalidation_path=post_touch_revalidation_path,
+        subject_projection_revalidation_path=(
+            subject_projection_revalidation_path
+        ),
         historical_delta_metadata_ledger_path=(
             historical_delta_metadata_ledger_path
         ),
@@ -3626,6 +3647,23 @@ def _verified_full_convergence_authority(
                 "failures": ["COMPOSITE_FULL_CONVERGENCE_AUTHORITY_FAILED"],
             }
         ),
+        "subject_projection_revalidation": (
+            primary.get("subject_projection_revalidation", {
+                "status": "NOT_PROVIDED", "record_count": 0,
+                "trusted_fingerprint_count": 0, "path": "", "failures": [],
+                "primary_status": "NOT_PROVIDED",
+                "independent_status": "NOT_PROVIDED",
+                "trust_set_parity": False,
+            })
+            if not failures
+            else {
+                "status": "FAIL", "record_count": 0,
+                "trusted_fingerprint_count": 0, "path": "",
+                "failures": ["COMPOSITE_FULL_CONVERGENCE_AUTHORITY_FAILED"],
+                "primary_status": "FAIL", "independent_status": "NO_GO",
+                "trust_set_parity": False,
+            }
+        ),
     }
 
 
@@ -3950,6 +3988,7 @@ def validate_full_convergence_records(
     descendant_history_raw_report_path: Path,
     descendant_history_scanner_path: Path,
     post_touch_revalidation_path: Path | None = None,
+    subject_projection_revalidation_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     full_convergence_pr_body_file_path: Path | None = None,
 ) -> dict[str, Any]:
@@ -3994,6 +4033,9 @@ def validate_full_convergence_records(
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
         post_touch_revalidation_path=post_touch_revalidation_path,
+        subject_projection_revalidation_path=(
+            subject_projection_revalidation_path
+        ),
         historical_delta_metadata_ledger_path=(
             historical_delta_metadata_ledger_path
         ),
@@ -4211,6 +4253,9 @@ def validate_full_convergence_records(
         "historical_delta_metadata_ledger": authority.get(
             "historical_delta_metadata_ledger", {}
         ),
+        "subject_projection_revalidation": authority.get(
+            "subject_projection_revalidation", {}
+        ),
         "exact_legacy_corrected_fingerprints": sorted(exact_legacy),
         "dispositioned_historical_fingerprints": sorted(dispositioned_historical),
         "frozen_identity_disposition_by_failure": authority.get(
@@ -4308,6 +4353,7 @@ def resolve_command(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
+    subject_projection_revalidation_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     full_convergence_pr_body_file_path: Path | None = None,
 ) -> int:
@@ -4329,6 +4375,9 @@ def resolve_command(
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
         post_touch_revalidation_path=post_touch_revalidation_path,
+        subject_projection_revalidation_path=(
+            subject_projection_revalidation_path
+        ),
         historical_delta_metadata_ledger_path=(
             historical_delta_metadata_ledger_path
         ),
@@ -5689,6 +5738,16 @@ def _parser() -> argparse.ArgumentParser:
         help="explicit append-only post-touch revalidation manifest; never discovered implicitly",
     )
     parser.add_argument(
+        "--subject-projection-revalidation",
+        type=Path,
+        default=None,
+        help=(
+            "explicit append-only subject-projection successor revalidation "
+            "manifest; valid only with the complete FULL_CONVERGENCE input "
+            "set and an explicit historical Delta metadata ledger"
+        ),
+    )
+    parser.add_argument(
         "--historical-delta-metadata-ledger",
         type=Path,
         default=None,
@@ -5721,6 +5780,14 @@ def main(argv: list[str] | None = None) -> int:
     root = args.project.resolve()
     output_root = (args.output_root or root).resolve()
     current_head = _resolve_commit(root, args.head_ref)
+    if (
+        args.subject_projection_revalidation is not None
+        and args.command not in {"resolve", "verify-full-convergence-batch"}
+    ):
+        raise SystemExit(
+            "--subject-projection-revalidation is valid only with resolve or "
+            "verify-full-convergence-batch"
+        )
     if args.command.startswith("verify-full-convergence") or args.command == "verify-legacy-epoch":
         import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
 
@@ -5758,6 +5825,15 @@ def main(argv: list[str] | None = None) -> int:
                 raise SystemExit(
                     "verify-full-convergence-batch requires --descendant-history-scanner"
                 )
+            if (
+                args.subject_projection_revalidation is not None
+                and args.historical_delta_metadata_ledger is None
+            ):
+                raise SystemExit(
+                    "verify-full-convergence-batch with "
+                    "--subject-projection-revalidation requires "
+                    "--historical-delta-metadata-ledger"
+                )
             result = convergence.validate_batch_manifest_against_repo(
                 root,
                 args.batch_manifest.resolve(),
@@ -5780,6 +5856,11 @@ def main(argv: list[str] | None = None) -> int:
                 post_touch_revalidation_path=(
                     args.post_touch_revalidation.resolve()
                     if args.post_touch_revalidation is not None else None
+                ),
+                subject_projection_revalidation_path=(
+                    args.subject_projection_revalidation.resolve()
+                    if args.subject_projection_revalidation is not None
+                    else None
                 ),
                 historical_delta_metadata_ledger_path=(
                     args.historical_delta_metadata_ledger.resolve()
@@ -5854,6 +5935,11 @@ def main(argv: list[str] | None = None) -> int:
         post_touch_revalidation_path=(
             args.post_touch_revalidation.resolve()
             if args.post_touch_revalidation is not None
+            else None
+        ),
+        subject_projection_revalidation_path=(
+            args.subject_projection_revalidation.resolve()
+            if args.subject_projection_revalidation is not None
             else None
         ),
         historical_delta_metadata_ledger_path=(
