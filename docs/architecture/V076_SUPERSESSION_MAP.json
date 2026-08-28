@@ -61,7 +61,8 @@
     "ADAPTED_IN_V076_CANDIDATE",
     "RETIRED_HISTORICALLY",
     "NOT_SUPERSEDED_SEPARATE_DOMAIN",
-    "NOT_SUPERSEDED_REFERENCE_ONLY"
+    "NOT_SUPERSEDED_REFERENCE_ONLY",
+    "HISTORICAL_IDENTITY_BACKFILL_OWNER_TO_CURRENT_REDUCER"
   ],
   "entries": [
     {
@@ -252,10 +253,45 @@
       "implementation_import_allowed": false,
       "cross_attempt_mix_allowed": false,
       "v077_test_pattern_reuse_allowed": true
+    },
+    {
+      "supersession_id": "historical.player-mana-to-v07-asset-batch-core",
+      "domain_id": "current.v075_production_combat_candidate",
+      "kind": "HISTORICAL_IDENTITY_BACKFILL_OWNER_TO_CURRENT_REDUCER",
+      "old_component_id": "component.current.player_mana_runtime_controller",
+      "new_component_id": "component.current.v07_asset_batch_core",
+      "old_owner_path": "scripts/runtime/player_mana_runtime_controller.gd",
+      "new_owner_path": "scripts/v07_semantic/v07_asset_batch_core.gd",
+      "old_authority_source_kind": "historical_identity_backfill",
+      "old_source_commit": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "old_source_blob_sha256": "0bf285bd2f0e10d4f44ba6779a94fdf10367cf131396b59367b7b26e9d772ac5",
+      "new_component_role": "REDUCER",
+      "new_owner_component_id": "component.current.v075_runtime_owner",
+      "production_scene_path": "scenes/main.tscn",
+      "old_runtime_composition_path": "scenes/runtime/GameRuntimeCoordinator.tscn",
+      "old_component_scene_path": "scenes/runtime/PlayerManaRuntimeController.tscn",
+      "new_runtime_composition_path": "scenes/runtime/V073RuntimeComposition.tscn",
+      "cutover_new_runtime_owner_path": "scripts/v073_runtime/v073_sample_runtime_owner.gd",
+      "cutover_manifest_path": "docs/migration/v07_atomic_cutover_manifest.json",
+      "cutover_manifest_sha256": "9562593e7173d4d6437992916f64562107593e539833ca27b64d6ff4bc0ac52d",
+      "replacement_reason": "The former standalone PlayerManaRuntimeController asset Owner is retained only in the detached legacy GameRuntimeCoordinator composition. The current production lineage keeps the same six-color asset quantity in the existing V07AssetBatchCore reducer under V075RuntimeOwner, so a second asset Owner is not registered.",
+      "migration_strategy": "The production main scene cut over atomically from GameRuntimeCoordinator to the V073 runtime lineage at f49c86af20b6a65e9792aa87703154e853d4dc76; V074 and V075 continue the same V07 asset reducer lineage with no dual write or fallback to PlayerManaRuntimeController.",
+      "consumer_inventory": [
+        "component.current.v075_runtime_owner"
+      ],
+      "save_impact": "NONE_NEW_GAME_ONLY",
+      "rng_impact": "NONE_NEITHER_COMPONENT_OWNS_RNG",
+      "replay_impact": "No replay input or cursor is added; current replay remains owned by the existing deterministic runtime lineage.",
+      "cutover_commit": "f49c86af20b6a65e9792aa87703154e853d4dc76",
+      "old_owner_retirement_status": "RETIRED_BY_CONSTITUTION",
+      "dual_write_count": 0,
+      "fallback_count": 0,
+      "old_owner_production_reachability": 0,
+      "new_owner_production_owner_count": 1
     }
   ],
   "summary": {
-    "entry_count": 9,
+    "entry_count": 10,
     "production_owner_supersession_count": 0,
     "whole_branch_merge_count": 0,
     "dual_owner_allowed_count": 0,
