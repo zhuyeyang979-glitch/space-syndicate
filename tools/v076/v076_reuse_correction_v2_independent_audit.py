@@ -18,6 +18,11 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+try:
+    from . import v076_post_touch_revalidation as _post_touch
+except ImportError:
+    import v076_post_touch_revalidation as _post_touch
+
 
 AUTHORIZED_HEAD = "1e24cea73fc23e69e575fcea09df57238156af67"
 AUTHORIZED_BASELINE_SHA = "b1097750f23007ba75d83f646fefe70a3bb5012540d38475a536fc5eee81e435"
@@ -5522,6 +5527,70 @@ def audit_b(root: Path) -> dict[str, Any]:
     }
 
 
+def _post_touch_sidecar_findings(
+    root: Path,
+    sidecar_path: Path | None,
+    batch_manifest_path: Path,
+    evaluated_head: str,
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
+    """Validate the append-only sidecar and return trusted one-for-one map."""
+
+    if sidecar_path is None:
+        return [], {}, {"status": "NOT_PROVIDED", "record_count": 0, "path": ""}
+    result = _post_touch.validate_manifest_and_records(
+        root,
+        sidecar_path,
+        evaluated_head=evaluated_head,
+        current_batch_manifest_path=batch_manifest_path,
+        projection_loader=_subject_projection,
+    )
+    findings = [
+        _finding(
+            "FULL_CONVERGENCE_POST_TOUCH_REVALIDATION_INVALID",
+            "P0",
+            str(code),
+            manifest_path=str(sidecar_path),
+        )
+        for code in result.get("failures", [])
+    ]
+    summary = {
+        "status": result.get("status", "FAIL"),
+        "record_count": result.get("record_count", 0),
+        "trusted_fingerprint_count": len(result.get("trusted_by_fingerprint", {})),
+        "path": str(sidecar_path),
+        "failures": result.get("failures", []),
+    }
+    return findings, result.get("trusted_by_fingerprint", {}), summary
+
+
+def _suppress_post_touch_findings(
+    findings: list[dict[str, Any]],
+    trusted: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    code_map = {
+        "FULL_CONVERGENCE_CURRENT_BLOB_CHANGED": "BLOB_CHANGED_CORRECTION_INVALID",
+        "FULL_CONVERGENCE_TOUCHED_CORRECTION_INVALID": "TOUCHED_CORRECTION_INVALID",
+        "FULL_CONVERGENCE_SUBJECT_PROJECTION_CHANGED": "SUBJECT_PROJECTION_CHANGED_INVALID",
+    }
+    kept: list[dict[str, Any]] = []
+    for finding in findings:
+        code = str(finding.get("code", ""))
+        fp = str(finding.get("evidence", {}).get("fingerprint", ""))
+        finding_path = _normalize_path(
+            str(finding.get("evidence", {}).get("path", ""))
+        )
+        mapped = code_map.get(code)
+        if mapped and _post_touch.allows_invalidation(
+            trusted,
+            fingerprint=fp,
+            invalidation_code=mapped,
+            prior_record_path=finding_path,
+        ):
+            continue
+        kept.append(finding)
+    return kept
+
+
 def audit_full_convergence_batch(
     root: Path,
     manifest_path: Path,
@@ -5532,6 +5601,7 @@ def audit_full_convergence_batch(
     descendant_history_supplement_path: Path | None = None,
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
+    post_touch_revalidation_path: Path | None = None,
 ) -> dict[str, Any]:
     """Independently verify one explicit new-epoch batch and its legacy anchor.
 
@@ -5678,6 +5748,13 @@ def audit_full_convergence_batch(
             "the explicit batch manifest must be a JSON object",
         ))
         manifest = {}
+    post_touch_findings, post_touch_trusted, post_touch_summary = _post_touch_sidecar_findings(
+        root,
+        post_touch_revalidation_path,
+        manifest_path,
+        evaluated_head,
+    )
+    findings.extend(post_touch_findings)
     findings.extend(_manifest_contract_findings(
         root,
         manifest_path,
@@ -6195,6 +6272,7 @@ def audit_full_convergence_batch(
                 "a record fingerprint is absent from the frozen historical-failure set",
                 fingerprint=fingerprint,
             ))
+    findings = _suppress_post_touch_findings(findings, post_touch_trusted)
     return {
         "schema_version": "space_syndicate.v076.reuse_correction_v2.full_convergence_independent_audit.v1",
         "authorization_id": FULL_CONVERGENCE_AUTHORIZATION_ID,
@@ -6212,6 +6290,7 @@ def audit_full_convergence_batch(
         "descendant_history_supplement_sha256": descendant_supplement_sha,
         "descendant_history_raw_report_head_sha": descendant_report_head,
         "descendant_history_authorized_fingerprint_count": len(descendant_fingerprints),
+        "post_touch_revalidation": post_touch_summary,
         "live_historical_correction_authority_count": len(
             baseline_fingerprints["historical"]
         ),
@@ -6291,11 +6370,25 @@ def main(argv: list[str] | None = None) -> int:
         help="explicit scanner file whose bytes must match the report Head",
     )
     parser.add_argument(
+        "--post-touch-revalidation",
+        type=Path,
+        default=None,
+        help="explicit append-only post-touch revalidation manifest; never discovered implicitly",
+    )
+    parser.add_argument(
         "--evaluated-head-ref",
         default="HEAD",
         help="Head used for subject-projection invalidation in full-convergence mode",
     )
     args = parser.parse_args(argv)
+    if (
+        args.post_touch_revalidation is not None
+        and args.full_convergence_batch_manifest is None
+    ):
+        parser.error(
+            "--post-touch-revalidation requires "
+            "--full-convergence-batch-manifest and its complete full-convergence input set"
+        )
     root = args.project.resolve()
     output_root = (args.output_root or root).resolve()
     out = output_root / OUT_DIR
@@ -6332,6 +6425,10 @@ def main(argv: list[str] | None = None) -> int:
             ),
             descendant_history_scanner_path=(
                 args.descendant_history_scanner.resolve()
+            ),
+            post_touch_revalidation_path=(
+                args.post_touch_revalidation.resolve()
+                if args.post_touch_revalidation is not None else None
             ),
         )
         (out / "audit_full_convergence_batch.json").write_bytes(_canonical(report))

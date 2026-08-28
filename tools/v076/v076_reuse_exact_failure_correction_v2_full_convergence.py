@@ -21,6 +21,11 @@ import subprocess
 from pathlib import Path
 from typing import Any, Iterable
 
+try:
+    from . import v076_post_touch_revalidation as _post_touch
+except ImportError:  # direct script execution
+    import v076_post_touch_revalidation as _post_touch
+
 
 EPOCH_ID = "FULL_CONVERGENCE_20260827"
 AUTHORIZATION_ID = "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827"
@@ -4590,6 +4595,7 @@ def _validate_manifest_records_against_repo(
     authorized_fingerprints: dict[str, set[str]],
     authorized_identities: dict[str, dict[str, str]],
     legacy_fingerprints: set[str],
+    post_touch_trusted: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[list[str], set[str]]:
     failures: list[str] = []
     seen: set[str] = set()
@@ -4617,14 +4623,34 @@ def _validate_manifest_records_against_repo(
         if not isinstance(record, dict):
             failures.append(f"BATCH_RECORD_NOT_OBJECT:{index}")
             continue
-        failures.extend(
-            validate_extension_record_against_repo(
-                root,
-                record,
-                evaluated_head=evaluated_head,
-                authorized_identities=authorized_identities,
-            )
+        extension_failures = validate_extension_record_against_repo(
+            root,
+            record,
+            evaluated_head=evaluated_head,
+            authorized_identities=authorized_identities,
         )
+        trusted = post_touch_trusted or {}
+        # Suppression is one-for-one: only the exact declared invalidation
+        # code for the exact trusted fingerprint may be removed.  Every
+        # contract, binding, projection-resolution, or unrelated failure
+        # remains blocking.
+        filtered: list[str] = []
+        for failure in extension_failures:
+            matched = re.fullmatch(
+                r"(BLOB_CHANGED_CORRECTION_INVALID|TOUCHED_CORRECTION_INVALID|SUBJECT_PROJECTION_CHANGED_INVALID):(V2F-[0-9a-f]{64})",
+                failure,
+            )
+            if matched:
+                code, fingerprint = matched.groups()
+                if _post_touch.allows_invalidation(
+                    trusted,
+                    fingerprint=fingerprint,
+                    invalidation_code=code,
+                    prior_record_path=relative,
+                ):
+                    continue
+            filtered.append(failure)
+        failures.extend(filtered)
         if record.get("batch_id") != manifest.get("batch_id"):
             failures.append(f"BATCH_RECORD_BATCH_ID_MISMATCH:{index}")
         if record.get("binding_head_sha") != manifest.get("binding_head_sha"):
@@ -4678,6 +4704,7 @@ def validate_batch_manifest_against_repo(
     descendant_history_supplement_path: Path | None = None,
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
+    post_touch_revalidation_path: Path | None = None,
 ) -> dict[str, Any]:
     failures = validate_schema(root, evaluated_head=evaluated_head)
     legacy = verify_legacy_anchor(root)
@@ -4748,6 +4775,28 @@ def validate_batch_manifest_against_repo(
         if isinstance(identity, dict)
     }
     expected_supplement_sha = supplement.get("supplement_sha256", "")
+    post_touch_result: dict[str, Any] = {
+        "status": "NOT_PROVIDED",
+        "failures": [],
+        "trusted_by_fingerprint": {},
+        "record_count": 0,
+        "fingerprints": [],
+    }
+    if post_touch_revalidation_path is not None:
+        post_touch_result = _post_touch.validate_manifest_and_records(
+            root,
+            post_touch_revalidation_path,
+            evaluated_head=evaluated_head,
+            current_batch_manifest_path=manifest_path,
+            projection_loader=subject_projection,
+        )
+        failures.extend(
+            f"POST_TOUCH_REVALIDATION_INVALID:{failure}"
+            for failure in post_touch_result.get("failures", [])
+        )
+        if post_touch_result.get("status") != "PASS":
+            failures.append("POST_TOUCH_REVALIDATION_REQUIRED_VALID_SIDECAR")
+    post_touch_trusted = post_touch_result.get("trusted_by_fingerprint", {})
     legacy_fingerprints = set(legacy.get("legacy_corrected_fingerprints", []))
     all_manifests = list(reversed(previous_chain)) + [(manifest_path, manifest)]
     global_fingerprints: set[str] = set()
@@ -4796,6 +4845,7 @@ def validate_batch_manifest_against_repo(
             authorized_fingerprints=authorized_fingerprints,
             authorized_identities=authorized_identities,
             legacy_fingerprints=legacy_fingerprints,
+            post_touch_trusted=post_touch_trusted,
         )
         failures.extend(record_failures)
         if path == manifest_path:
@@ -4814,4 +4864,11 @@ def validate_batch_manifest_against_repo(
         "legacy_record_chain_terminal_sha256": LEGACY_RECORD_CHAIN_TERMINAL_SHA256,
         "status": "PASS" if not failures else "FAIL",
         "failures": failures,
+        "post_touch_revalidation": {
+            "status": post_touch_result.get("status", "NOT_PROVIDED"),
+            "path": str(post_touch_revalidation_path) if post_touch_revalidation_path else "",
+            "record_count": post_touch_result.get("record_count", 0),
+            "trusted_fingerprint_count": len(post_touch_trusted or {}),
+            "failures": post_touch_result.get("failures", []),
+        },
     }

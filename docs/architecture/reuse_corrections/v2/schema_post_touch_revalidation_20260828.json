@@ -1,0 +1,73 @@
+{
+  "schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.post_touch_revalidation_schema.v1",
+  "manifest_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.post_touch_revalidation_manifest.v1",
+  "record_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.post_touch_revalidation_record.v1",
+  "manifest_kind": "POST_TOUCH_REVALIDATION_MANIFEST",
+  "record_kind": "POST_TOUCH_REVALIDATION_RECORD",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "authorization_base_head_sha": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "prior_epoch_id": "FULL_CONVERGENCE_20260827",
+  "no_correction_batch_fingerprint_reuse": true,
+  "future_failure_auto_revalidation": false,
+  "wildcard_allowed": false,
+  "record_fingerprint_cardinality": "ONE_EXACT_FINGERPRINT_PER_RECORD",
+  "manifest_required_fields": [
+    "schema_version", "manifest_kind", "manifest_id", "authorization_id",
+    "authorization_base_head_sha", "schema_sha256", "prior_epoch_id",
+    "revalidation_binding_head_sha", "revalidation_binding_tree_sha",
+    "current_batch_manifest_path", "current_batch_manifest_sha256",
+    "current_batch_fingerprint_set_sha256", "record_count",
+    "failure_fingerprints", "failure_fingerprint_set_sha256", "record_bindings",
+    "record_chain_start_sha256", "record_chain_terminal_sha256",
+    "no_correction_batch_fingerprint_reuse", "future_failure_auto_revalidation",
+    "previous_revalidation_manifest_path", "previous_revalidation_manifest_sha256",
+    "created_at", "creator"
+  ],
+  "record_required_fields": [
+    "schema_version", "record_kind", "revalidation_id", "authorization_id",
+    "authorization_base_head_sha", "prior_record_path", "prior_record_sha256",
+    "prior_record_payload_sha256", "prior_correction_id", "failure_fingerprints",
+    "failure_fingerprint_set_sha256", "prior_binding_head_sha", "prior_binding_tree_sha",
+    "revalidation_binding_head_sha", "revalidation_binding_tree_sha", "touch_proof",
+    "prior_invalidations", "rebound_current_blob_sha256_by_path",
+    "rebound_subject_projection_by_failure", "rebound_subject_projection_sha256_by_failure",
+    "touch_invalidation_policy", "future_failure_policy", "new_effective_status",
+    "revocation_policy", "previous_revalidation_chain_sha256",
+    "correction_batch_manifest_path", "correction_batch_manifest_sha256", "created_at",
+    "creator", "revalidation_reason", "record_payload_sha256"
+  ],
+  "manifest_record_binding_fields": [
+    "path", "record_sha256", "record_payload_sha256", "revalidation_id",
+    "prior_record_path", "prior_record_sha256", "prior_record_payload_sha256",
+    "prior_correction_id", "failure_fingerprints", "previous_revalidation_chain_sha256"
+  ],
+  "touch_proof_fields": [
+    "commit_sha", "parent_sha", "path", "before_blob_sha256", "after_blob_sha256", "diff_sha256"
+  ],
+  "allowed_invalidations": [
+    "BLOB_CHANGED_CORRECTION_INVALID", "TOUCHED_CORRECTION_INVALID",
+    "SUBJECT_PROJECTION_CHANGED_INVALID"
+  ],
+  "touch_invalidation_policy": {
+    "BLOB_CHANGED_CORRECTION_AUTO_INVALIDATION": true,
+    "COMPONENT_CHANGED_CORRECTION_AUTO_INVALIDATION": true,
+    "DOMAIN_CHANGED_CORRECTION_AUTO_INVALIDATION": true,
+    "OWNER_BINDING_CHANGED_INVALIDATION": true,
+    "PRODUCTION_REACHABILITY_CHANGED_INVALIDATION": true,
+    "RETIREMENT_CHANGED_INVALIDATION": true,
+    "SUPERSESSION_CHANGED_INVALIDATION": true,
+    "TOUCH_INVALIDATES_CORRECTION": true,
+    "UNRELATED_DELTA_PRESERVES_CORRECTION": true
+  },
+  "future_failure_policy": {
+    "FUTURE_FAILURE_AUTO_REVALIDATION_COUNT": 0,
+    "NEW_FAILURE_REQUIRES_NEW_RECORD": true
+  },
+  "revocation_policy": {
+    "CUMULATIVE_PREDECESSOR_TRUST": true,
+    "OLD_RECORD_MUTATION_FORBIDDEN": true,
+    "PREDECESSOR_FINGERPRINT_OVERLAP_ALLOWED": false,
+    "PREDECESSOR_REVALIDATED_AT_CURRENT_EVALUATED_HEAD": true,
+    "REVOCATION_APPEND_ONLY": true
+  }
+}

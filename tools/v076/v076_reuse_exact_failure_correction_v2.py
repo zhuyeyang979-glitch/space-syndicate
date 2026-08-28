@@ -2597,6 +2597,7 @@ def validate_records(
     descendant_history_supplement_path: Path | None = None,
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
+    post_touch_revalidation_path: Path | None = None,
 ) -> dict[str, Any]:
     full_convergence_inputs = (
         full_convergence_baseline_report_path,
@@ -2605,7 +2606,15 @@ def validate_records(
         descendant_history_supplement_path,
         descendant_history_raw_report_path,
         descendant_history_scanner_path,
+        # This sidecar is optional and must not make the FC input tuple
+        # incomplete by itself.
     )
+    if post_touch_revalidation_path is not None and not any(
+        value is not None for value in full_convergence_inputs
+    ):
+        raise ValueError(
+            "POST_TOUCH_REVALIDATION_REQUIRES_FULL_CONVERGENCE_INPUT_SET"
+        )
     if any(value is not None for value in full_convergence_inputs):
         if any(value is None for value in full_convergence_inputs):
             raise ValueError("FULL_CONVERGENCE_EXPLICIT_INPUT_SET_INCOMPLETE")
@@ -2622,6 +2631,7 @@ def validate_records(
             descendant_history_supplement_path=descendant_history_supplement_path,
             descendant_history_raw_report_path=descendant_history_raw_report_path,
             descendant_history_scanner_path=descendant_history_scanner_path,
+            post_touch_revalidation_path=post_touch_revalidation_path,
         )
     failures, baseline_sha, scanner_manifest_sha, existing_manifest_sha = _validate_frozen_inputs(
         root, output_root, current_head=current_head
@@ -3214,6 +3224,7 @@ def _verified_full_convergence_authority(
     descendant_history_supplement_path: Path,
     descendant_history_raw_report_path: Path,
     descendant_history_scanner_path: Path,
+    post_touch_revalidation_path: Path | None = None,
 ) -> dict[str, Any]:
     import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
 
@@ -3226,6 +3237,7 @@ def _verified_full_convergence_authority(
         descendant_history_supplement_path=descendant_history_supplement_path,
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
+        post_touch_revalidation_path=post_touch_revalidation_path,
     )
     failures = [str(value) for value in primary.get("failures", [])]
     try:
@@ -3402,6 +3414,10 @@ def _verified_full_convergence_authority(
         "coverage_missing_fingerprints": sorted(missing),
         "coverage_extra_fingerprints": sorted(extra),
         "record_summaries": record_summaries,
+        "post_touch_revalidation": primary.get("post_touch_revalidation", {
+            "status": "NOT_PROVIDED", "record_count": 0,
+            "trusted_fingerprint_count": 0, "path": "", "failures": []
+        }),
     }
 
 
@@ -3506,6 +3522,7 @@ def validate_full_convergence_records(
     descendant_history_supplement_path: Path,
     descendant_history_raw_report_path: Path,
     descendant_history_scanner_path: Path,
+    post_touch_revalidation_path: Path | None = None,
 ) -> dict[str, Any]:
     legacy = validate_legacy_epoch_effectiveness(
         root,
@@ -3521,6 +3538,7 @@ def validate_full_convergence_records(
         descendant_history_supplement_path=descendant_history_supplement_path,
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
+        post_touch_revalidation_path=post_touch_revalidation_path,
     )
     live = _classify_full_convergence_live_raw(
         live_raw_report_path,
@@ -3760,6 +3778,7 @@ def resolve_command(
     descendant_history_supplement_path: Path | None = None,
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
+    post_touch_revalidation_path: Path | None = None,
 ) -> int:
     report = validate_records(
         root,
@@ -3778,6 +3797,7 @@ def resolve_command(
         descendant_history_supplement_path=descendant_history_supplement_path,
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
+        post_touch_revalidation_path=post_touch_revalidation_path,
     )
     if report_json:
         report_json.parent.mkdir(parents=True, exist_ok=True)
@@ -5125,6 +5145,12 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="explicit scanner implementation bound by the descendant-history supplement",
     )
+    parser.add_argument(
+        "--post-touch-revalidation",
+        type=Path,
+        default=None,
+        help="explicit append-only post-touch revalidation manifest; never discovered implicitly",
+    )
     parser.add_argument("--head-ref", default=AUTHORIZED_HEAD_SHA)
     parser.add_argument(
         "--verify-only",
@@ -5195,6 +5221,10 @@ def main(argv: list[str] | None = None) -> int:
                 descendant_history_scanner_path=(
                     args.descendant_history_scanner.resolve()
                 ),
+                post_touch_revalidation_path=(
+                    args.post_touch_revalidation.resolve()
+                    if args.post_touch_revalidation is not None else None
+                ),
             )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0 if result.get("status") == "PASS" else 1
@@ -5258,6 +5288,11 @@ def main(argv: list[str] | None = None) -> int:
         descendant_history_scanner_path=(
             args.descendant_history_scanner.resolve()
             if args.descendant_history_scanner is not None
+            else None
+        ),
+        post_touch_revalidation_path=(
+            args.post_touch_revalidation.resolve()
+            if args.post_touch_revalidation is not None
             else None
         ),
     )
