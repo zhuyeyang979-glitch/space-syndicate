@@ -291,6 +291,114 @@ REPLACEMENT_REQUIRED_FIELDS = {
     "new_owner_production_owner_count",
 }
 
+HISTORICAL_OWNER_TO_CURRENT_REDUCER_KIND = (
+    "HISTORICAL_IDENTITY_BACKFILL_OWNER_TO_CURRENT_REDUCER"
+)
+HISTORICAL_OWNER_TO_CURRENT_REDUCER_REQUIRED_FIELDS = (
+    REPLACEMENT_REQUIRED_FIELDS
+    | {
+        "old_authority_source_kind",
+        "old_source_commit",
+        "old_source_blob_sha256",
+        "new_component_role",
+        "new_owner_component_id",
+        "production_scene_path",
+        "old_runtime_composition_path",
+        "old_component_scene_path",
+        "new_runtime_composition_path",
+        "cutover_new_runtime_owner_path",
+        "cutover_manifest_path",
+        "cutover_manifest_sha256",
+    }
+)
+HISTORICAL_IDENTITY_BACKFILL_FIELDS = {
+    "component_id",
+    "current_disposition",
+    "historical_role",
+    "production_reachability",
+    "source_blob",
+    "source_commit",
+    "supersession",
+}
+HISTORICAL_OWNER_TO_CURRENT_REDUCER_EXPECTED_ROW = {
+    "supersession_id": "historical.player-mana-to-v07-asset-batch-core",
+    "kind": HISTORICAL_OWNER_TO_CURRENT_REDUCER_KIND,
+    "domain_id": "current.v075_production_combat_candidate",
+    "old_component_id": "component.current.player_mana_runtime_controller",
+    "new_component_id": "component.current.v07_asset_batch_core",
+    "old_owner_path": "scripts/runtime/player_mana_runtime_controller.gd",
+    "new_owner_path": "scripts/v07_semantic/v07_asset_batch_core.gd",
+    "old_authority_source_kind": "historical_identity_backfill",
+    "old_source_commit": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+    "old_source_blob_sha256": (
+        "0bf285bd2f0e10d4f44ba6779a94fdf10367cf131396b59367b7b26e9d772ac5"
+    ),
+    "new_component_role": "REDUCER",
+    "new_owner_component_id": "component.current.v075_runtime_owner",
+    "production_scene_path": "scenes/main.tscn",
+    "old_runtime_composition_path": "scenes/runtime/GameRuntimeCoordinator.tscn",
+    "old_component_scene_path": "scenes/runtime/PlayerManaRuntimeController.tscn",
+    "new_runtime_composition_path": "scenes/runtime/V073RuntimeComposition.tscn",
+    "cutover_new_runtime_owner_path": (
+        "scripts/v073_runtime/v073_sample_runtime_owner.gd"
+    ),
+    "cutover_manifest_path": "docs/migration/v07_atomic_cutover_manifest.json",
+    "cutover_manifest_sha256": (
+        "9562593e7173d4d6437992916f64562107593e539833ca27b64d6ff4bc0ac52d"
+    ),
+    "replacement_reason": (
+        "The former standalone PlayerManaRuntimeController asset Owner is retained "
+        "only in the detached legacy GameRuntimeCoordinator composition. The current "
+        "production lineage keeps the same six-color asset quantity in the existing "
+        "V07AssetBatchCore reducer under V075RuntimeOwner, so a second asset Owner is "
+        "not registered."
+    ),
+    "migration_strategy": (
+        "The production main scene cut over atomically from GameRuntimeCoordinator to "
+        "the V073 runtime lineage at f49c86af20b6a65e9792aa87703154e853d4dc76; "
+        "V074 and V075 continue the same V07 asset reducer lineage with no dual write "
+        "or fallback to PlayerManaRuntimeController."
+    ),
+    "consumer_inventory": ["component.current.v075_runtime_owner"],
+    "save_impact": "NONE_NEW_GAME_ONLY",
+    "rng_impact": "NONE_NEITHER_COMPONENT_OWNS_RNG",
+    "replay_impact": (
+        "No replay input or cursor is added; current replay remains owned by the "
+        "existing deterministic runtime lineage."
+    ),
+    "cutover_commit": "f49c86af20b6a65e9792aa87703154e853d4dc76",
+    "old_owner_retirement_status": "RETIRED_BY_CONSTITUTION",
+    "dual_write_count": 0,
+    "fallback_count": 0,
+    "old_owner_production_reachability": 0,
+    "new_owner_production_owner_count": 1,
+}
+HISTORICAL_OWNER_TO_CURRENT_REDUCER_ROW_COMPACT_SHA256 = (
+    "efe2a913f9a1c25e9d9820411bf4d2d7166a66ed63a50a496500f85b4307b5b9"
+)
+HISTORICAL_OWNER_TO_CURRENT_REDUCER_CUTOVER_EVIDENCE_FIELDS = {
+    "supersession_id",
+    "cutover_commit_exists",
+    "cutover_is_source_ancestor",
+    "cutover_is_head_ancestor",
+    "source_is_head_ancestor",
+    "old_source_path_exists",
+    "old_source_blob_sha256",
+    "cutover_parent_main_has_old_composition",
+    "cutover_parent_old_composition_has_old_scene",
+    "cutover_main_has_new_composition",
+    "cutover_main_has_old_composition",
+    "cutover_owner_has_new_reducer",
+    "cutover_manifest_sha256",
+    "cutover_manifest_contract_valid",
+    "current_reference_closure_failure_count",
+    "current_closure_has_new_reducer",
+    "current_closure_has_old_composition",
+    "current_closure_has_old_component_scene",
+    "current_main_has_old_composition",
+    "current_main_has_old_component_scene",
+}
+
 CARD_CERTIFICATION_FIELDS = (
     "CATALOG_VALID",
     "SEMANTIC_COMPILED",
@@ -862,6 +970,16 @@ def _git_json_at(root: Path, ref: str, path: str) -> dict[str, Any] | None:
         return None
     value = json.loads(completed.stdout.decode("utf-8-sig"))
     return value if isinstance(value, dict) else None
+
+
+def _git_file_bytes_at(root: Path, ref: str, path: str) -> bytes | None:
+    completed = subprocess.run(
+        ["git", "-C", str(root), "show", f"{ref}:{path}"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return completed.stdout if completed.returncode == 0 else None
 
 
 def _git_path_exists_at(root: Path, ref: str, path: str) -> bool:
@@ -3600,6 +3718,246 @@ def _monotonic_transition_failures(
     return failures
 
 
+def _historical_owner_to_current_reducer_cutover_evidence_failures(
+    row: dict[str, Any],
+    evidence: Any,
+) -> list[str]:
+    label = str(row.get("supersession_id", "UNKNOWN"))
+    prefix = f"HISTORICAL_REDUCER_SUPERSESSION:{label}"
+    if not isinstance(evidence, dict):
+        return [f"{prefix}:CUTOVER_EVIDENCE_INVALID"]
+    failures: list[str] = []
+    if set(evidence) != HISTORICAL_OWNER_TO_CURRENT_REDUCER_CUTOVER_EVIDENCE_FIELDS:
+        failures.append(f"{prefix}:CUTOVER_EVIDENCE_FIELD_SET_INVALID")
+    bool_fields = (
+        HISTORICAL_OWNER_TO_CURRENT_REDUCER_CUTOVER_EVIDENCE_FIELDS
+        - {
+            "supersession_id",
+            "old_source_blob_sha256",
+            "cutover_manifest_sha256",
+            "current_reference_closure_failure_count",
+        }
+    )
+    for field in sorted(bool_fields):
+        if type(evidence.get(field)) is not bool:
+            failures.append(f"{prefix}:CUTOVER_EVIDENCE_BOOL_INVALID:{field}")
+    if evidence.get("supersession_id") != row.get("supersession_id"):
+        failures.append(f"{prefix}:CUTOVER_EVIDENCE_IDENTITY_MISMATCH")
+    if (
+        evidence.get("old_source_path_exists") is not True
+        or evidence.get("old_source_blob_sha256")
+        != row.get("old_source_blob_sha256")
+    ):
+        failures.append(f"{prefix}:SOURCE_BINDING_MISMATCH")
+    if not all(
+        evidence.get(field) is True
+        for field in (
+            "cutover_commit_exists",
+            "cutover_is_source_ancestor",
+            "cutover_is_head_ancestor",
+            "source_is_head_ancestor",
+        )
+    ):
+        failures.append(f"{prefix}:CUTOVER_ANCESTRY_INVALID")
+    if not (
+        evidence.get("cutover_parent_main_has_old_composition") is True
+        and evidence.get("cutover_parent_old_composition_has_old_scene") is True
+        and evidence.get("cutover_main_has_new_composition") is True
+        and evidence.get("cutover_main_has_old_composition") is False
+        and evidence.get("cutover_owner_has_new_reducer") is True
+        and evidence.get("cutover_manifest_sha256")
+        == row.get("cutover_manifest_sha256")
+        and evidence.get("cutover_manifest_contract_valid") is True
+    ):
+        failures.append(f"{prefix}:CUTOVER_EVIDENCE_INVALID")
+    if not (
+        _is_int(evidence.get("current_reference_closure_failure_count"))
+        and evidence.get("current_reference_closure_failure_count") == 0
+        and evidence.get("current_closure_has_new_reducer") is True
+        and evidence.get("current_closure_has_old_composition") is False
+        and evidence.get("current_closure_has_old_component_scene") is False
+        and evidence.get("current_main_has_old_composition") is False
+        and evidence.get("current_main_has_old_component_scene") is False
+    ):
+        failures.append(f"{prefix}:CURRENT_CLOSURE_INVALID")
+    return sorted(set(failures))
+
+
+def _historical_owner_to_current_reducer_failures(
+    row: dict[str, Any],
+    registry: dict[str, Any],
+    supersession: dict[str, Any],
+    components: list[Any],
+    by_component: dict[str, dict[str, Any]],
+    by_domain: dict[str, dict[str, Any]],
+    data: "ValidationInput",
+) -> list[str]:
+    label = str(row.get("supersession_id", "UNKNOWN"))
+    prefix = f"HISTORICAL_REDUCER_SUPERSESSION:{label}"
+    failures: list[str] = []
+    if set(row) != HISTORICAL_OWNER_TO_CURRENT_REDUCER_REQUIRED_FIELDS:
+        failures.append(f"{prefix}:FIELD_SET_INVALID")
+
+    string_fields = (
+        HISTORICAL_OWNER_TO_CURRENT_REDUCER_REQUIRED_FIELDS
+        - {
+            "consumer_inventory",
+            "dual_write_count",
+            "fallback_count",
+            "old_owner_production_reachability",
+            "new_owner_production_owner_count",
+        }
+    )
+    for field in sorted(string_fields):
+        if type(row.get(field)) is not str or not str(row.get(field, "")).strip():
+            failures.append(f"{prefix}:FIELD_TYPE_INVALID:{field}")
+    if type(row.get("consumer_inventory")) is not list:
+        failures.append(f"{prefix}:FIELD_TYPE_INVALID:consumer_inventory")
+    for field in (
+        "dual_write_count",
+        "fallback_count",
+        "old_owner_production_reachability",
+        "new_owner_production_owner_count",
+    ):
+        if not _is_int(row.get(field)):
+            failures.append(f"{prefix}:FIELD_TYPE_INVALID:{field}")
+    for field in (
+        "old_owner_path",
+        "new_owner_path",
+        "production_scene_path",
+        "old_runtime_composition_path",
+        "old_component_scene_path",
+        "new_runtime_composition_path",
+        "cutover_new_runtime_owner_path",
+        "cutover_manifest_path",
+    ):
+        if _normalize_evidence_path(row.get(field)) != row.get(field):
+            failures.append(f"{prefix}:PATH_INVALID:{field}")
+    for field in ("old_source_commit", "cutover_commit"):
+        if not _is_hex(row.get(field), 40):
+            failures.append(f"{prefix}:COMMIT_INVALID:{field}")
+    for field in ("old_source_blob_sha256", "cutover_manifest_sha256"):
+        if not _is_hex(row.get(field), 64):
+            failures.append(f"{prefix}:HASH_INVALID:{field}")
+    for field, expected in HISTORICAL_OWNER_TO_CURRENT_REDUCER_EXPECTED_ROW.items():
+        if type(row.get(field)) is not type(expected) or row.get(field) != expected:
+            failures.append(f"{prefix}:LITERAL_MISMATCH:{field}")
+    compact_sha = hashlib.sha256(
+        json.dumps(
+            row,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    if compact_sha != HISTORICAL_OWNER_TO_CURRENT_REDUCER_ROW_COMPACT_SHA256:
+        failures.append(f"{prefix}:ROW_HASH_INVALID")
+
+    kinds = supersession.get("supersession_kinds")
+    if (
+        not isinstance(kinds, list)
+        or any(type(value) is not str for value in kinds)
+        or kinds.count(HISTORICAL_OWNER_TO_CURRENT_REDUCER_KIND) != 1
+        or len(kinds) != len(set(kinds))
+    ):
+        failures.append(f"{prefix}:KIND_DECLARATION_INVALID")
+
+    old_id = str(row.get("old_component_id", ""))
+    new_id = str(row.get("new_component_id", ""))
+    if old_id in by_component:
+        failures.append(f"{prefix}:OLD_PRESENT_IN_CURRENT_INVENTORY")
+    raw_backfills = registry.get("historical_identity_backfill")
+    backfills = raw_backfills if isinstance(raw_backfills, list) else []
+    candidates = [
+        value
+        for value in backfills
+        if isinstance(value, dict) and value.get("component_id") == old_id
+    ]
+    backfill = candidates[0] if len(candidates) == 1 else None
+    if len(candidates) != 1:
+        failures.append(f"{prefix}:BACKFILL_NOT_UNIQUE")
+    if isinstance(backfill, dict):
+        if (
+            set(backfill) != HISTORICAL_IDENTITY_BACKFILL_FIELDS
+            or backfill.get("historical_role") != "OWNER"
+            or backfill.get("current_disposition")
+            != "HISTORICAL_SUPERSEDED_NONREACHABLE"
+            or backfill.get("production_reachability") != "NONREACHABLE"
+        ):
+            failures.append(f"{prefix}:BACKFILL_STATE_INVALID")
+        if (
+            backfill.get("source_commit") != row.get("old_source_commit")
+            or backfill.get("source_blob") != row.get("old_source_blob_sha256")
+        ):
+            failures.append(f"{prefix}:SOURCE_BINDING_MISMATCH")
+        if backfill.get("supersession") != [new_id]:
+            failures.append(f"{prefix}:RECIPROCAL_LINK_MISSING")
+
+    new_component = by_component.get(new_id)
+    if not (
+        isinstance(new_component, dict)
+        and new_component.get("component_role") == "REDUCER"
+        and new_component.get("component_role") == row.get("new_component_role")
+        and new_component.get("production_reachable") is True
+        and new_component.get("writes_authority") is True
+        and new_component.get("path") == row.get("new_owner_path")
+        and new_component.get("domain_id") == row.get("domain_id")
+        and new_component.get("owner_component_id")
+        == row.get("new_owner_component_id")
+    ):
+        failures.append(f"{prefix}:NEW_REDUCER_STATE_INVALID")
+    if not (
+        isinstance(new_component, dict)
+        and new_component.get("supersedes") == [old_id]
+        and isinstance(backfill, dict)
+        and backfill.get("supersession") == [new_id]
+    ):
+        failures.append(f"{prefix}:RECIPROCAL_LINK_MISSING")
+
+    owner_id = str(row.get("new_owner_component_id", ""))
+    owner = by_component.get(owner_id)
+    active_domain_owners = [
+        component
+        for component in components
+        if isinstance(component, dict)
+        and component.get("domain_id") == row.get("domain_id")
+        and component.get("component_role") == "OWNER"
+        and component.get("production_reachable") is True
+        and component.get("writes_authority") is True
+    ]
+    domain = by_domain.get(str(row.get("domain_id", "")))
+    if not (
+        isinstance(owner, dict)
+        and owner.get("component_role") == "OWNER"
+        and owner.get("production_reachable") is True
+        and owner.get("writes_authority") is True
+        and owner.get("domain_id") == row.get("domain_id")
+        and owner.get("owner_component_id") == owner_id
+        and owner.get("owner_path") == owner.get("path")
+        and isinstance(new_component, dict)
+        and new_component.get("owner_path") == owner.get("path")
+        and len(active_domain_owners) == 1
+        and active_domain_owners[0].get("component_id") == owner_id
+        and isinstance(domain, dict)
+        and domain.get("lifecycle") == "ACTIVE_CURRENT_DOMAIN"
+        and domain.get("owner_component_id") == owner_id
+    ):
+        failures.append(f"{prefix}:NEW_OWNER_BINDING_INVALID")
+
+    evidence_by_id = data.historical_owner_to_reducer_cutover_evidence
+    evidence = (
+        evidence_by_id.get(label)
+        if isinstance(evidence_by_id, dict)
+        else None
+    )
+    failures.extend(
+        _historical_owner_to_current_reducer_cutover_evidence_failures(
+            row, evidence
+        )
+    )
+    return sorted(set(failures))
+
+
 @dataclass
 class ValidationInput:
     authorities: dict[str, dict[str, Any]]
@@ -3616,6 +3974,9 @@ class ValidationInput:
     git_commit_tree_bindings: dict[str, str] | None = None
     regression_commit_bindings: set[str] | None = None
     golden_regression_provenance: dict[str, dict[str, Any]] | None = None
+    historical_owner_to_reducer_cutover_evidence: (
+        dict[str, dict[str, Any]] | None
+    ) = None
     evidence_subject_is_baseline_descendant: bool = True
     evidence_subject_is_head_ancestor: bool = True
     evidence_subject_product_tree_matches_head: bool = True
@@ -4212,7 +4573,15 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
         old_id = str(row.get("old_component_id", ""))
         new_id = str(row.get("new_component_id", ""))
         label = new_id or "UNKNOWN"
-        missing = REPLACEMENT_REQUIRED_FIELDS - set(row)
+        is_historical_owner_to_reducer = (
+            row.get("kind") == HISTORICAL_OWNER_TO_CURRENT_REDUCER_KIND
+        )
+        required_fields = (
+            HISTORICAL_OWNER_TO_CURRENT_REDUCER_REQUIRED_FIELDS
+            if is_historical_owner_to_reducer
+            else REPLACEMENT_REQUIRED_FIELDS
+        )
+        missing = required_fields - set(row)
         if missing:
             metrics["OWNER_REPLACEMENT_WITHOUT_SUPERSESSION_COUNT"] += 1
             failures.append(
@@ -4244,54 +4613,67 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
             and row.get("cutover_commit") not in data.git_commit_tree_bindings
         ):
             failures.append(f"SUPERSESSION_CUTOVER_COMMIT_NOT_FOUND:{label}")
-        old_component = by_component.get(old_id)
-        new_component = by_component.get(new_id)
-        activation_grandfathered_replacement = bool(
-            row.get("supersession_id") == "v076.kernel.v1-to-v2"
-            and old_id == "component.v076.kernel.v1"
-            and new_id == "component.v076.kernel"
-            and isinstance(new_component, dict)
-            and row.get("cutover_commit") == "2a365d465f199481da7fa1ef8f734e7525a136f5"
-            and old_id in set(map(str, new_component.get("supersedes", [])))
-        )
-        if (
-            (not isinstance(old_component, dict) or not isinstance(new_component, dict))
-            and not activation_grandfathered_replacement
-        ):
-            failures.append(f"SUPERSESSION_COMPONENT_UNKNOWN:{old_id}->{new_id}")
-        elif not activation_grandfathered_replacement:
-            if not (
-                row.get("domain_id") == old_component.get("domain_id")
-                == new_component.get("domain_id")
-            ):
-                failures.append(f"SUPERSESSION_DOMAIN_MISMATCH:{old_id}->{new_id}")
-            if (
-                row.get("old_owner_path") != old_component.get("path")
-                or row.get("new_owner_path") != new_component.get("path")
-            ):
-                failures.append(f"SUPERSESSION_PATH_MISMATCH:{old_id}->{new_id}")
-            if not (
-                new_id in set(map(str, old_component.get("superseded_by", [])))
+        if is_historical_owner_to_reducer:
+            failures.extend(
+                _historical_owner_to_current_reducer_failures(
+                    row,
+                    registry,
+                    supersession,
+                    components,
+                    by_component,
+                    by_domain,
+                    data,
+                )
+            )
+        else:
+            old_component = by_component.get(old_id)
+            new_component = by_component.get(new_id)
+            activation_grandfathered_replacement = bool(
+                row.get("supersession_id") == "v076.kernel.v1-to-v2"
+                and old_id == "component.v076.kernel.v1"
+                and new_id == "component.v076.kernel"
+                and isinstance(new_component, dict)
+                and row.get("cutover_commit") == "2a365d465f199481da7fa1ef8f734e7525a136f5"
                 and old_id in set(map(str, new_component.get("supersedes", [])))
-            ):
-                failures.append(f"SUPERSESSION_RECIPROCAL_LINK_MISSING:{old_id}->{new_id}")
-            new_is_current_owner = (
-                new_component.get("component_role") == "OWNER"
-                and new_component.get("production_reachable") is True
-                and new_component.get("writes_authority") is True
             )
-            new_is_retained_intermediate = (
-                new_component.get("component_role") == "OWNER"
-                and new_component.get("production_reachable") is False
-                and new_component.get("writes_authority") is False
-                and bool(new_component.get("superseded_by"))
-            )
-            if not (
-                old_component.get("production_reachable") is False
-                and old_component.get("writes_authority") is False
-                and (new_is_current_owner or new_is_retained_intermediate)
+            if (
+                (not isinstance(old_component, dict) or not isinstance(new_component, dict))
+                and not activation_grandfathered_replacement
             ):
-                failures.append(f"SUPERSESSION_OWNER_STATE_INVALID:{old_id}->{new_id}")
+                failures.append(f"SUPERSESSION_COMPONENT_UNKNOWN:{old_id}->{new_id}")
+            elif not activation_grandfathered_replacement:
+                if not (
+                    row.get("domain_id") == old_component.get("domain_id")
+                    == new_component.get("domain_id")
+                ):
+                    failures.append(f"SUPERSESSION_DOMAIN_MISMATCH:{old_id}->{new_id}")
+                if (
+                    row.get("old_owner_path") != old_component.get("path")
+                    or row.get("new_owner_path") != new_component.get("path")
+                ):
+                    failures.append(f"SUPERSESSION_PATH_MISMATCH:{old_id}->{new_id}")
+                if not (
+                    new_id in set(map(str, old_component.get("superseded_by", [])))
+                    and old_id in set(map(str, new_component.get("supersedes", [])))
+                ):
+                    failures.append(f"SUPERSESSION_RECIPROCAL_LINK_MISSING:{old_id}->{new_id}")
+                new_is_current_owner = (
+                    new_component.get("component_role") == "OWNER"
+                    and new_component.get("production_reachable") is True
+                    and new_component.get("writes_authority") is True
+                )
+                new_is_retained_intermediate = (
+                    new_component.get("component_role") == "OWNER"
+                    and new_component.get("production_reachable") is False
+                    and new_component.get("writes_authority") is False
+                    and bool(new_component.get("superseded_by"))
+                )
+                if not (
+                    old_component.get("production_reachable") is False
+                    and old_component.get("writes_authority") is False
+                    and (new_is_current_owner or new_is_retained_intermediate)
+                ):
+                    failures.append(f"SUPERSESSION_OWNER_STATE_INVALID:{old_id}->{new_id}")
         consumers = row.get("consumer_inventory")
         if not isinstance(consumers, list) or any(
             not isinstance(value, str) or not value.strip() for value in consumers
@@ -6392,6 +6774,246 @@ def _snapshot_reference_closure(
     }
 
 
+def _historical_owner_to_current_reducer_cutover_evidence(
+    root: Path,
+    head_ref: str,
+    row: dict[str, Any],
+    include_worktree: bool,
+) -> dict[str, Any]:
+    """Bind the one historical Owner-to-current Reducer cutover to Git and HEAD."""
+    supersession_id = str(row.get("supersession_id", ""))
+    cutover_commit = str(row.get("cutover_commit", ""))
+    source_commit = str(row.get("old_source_commit", ""))
+    old_source_path = _normalize_evidence_path(row.get("old_owner_path"))
+    production_scene_path = _normalize_evidence_path(
+        row.get("production_scene_path")
+    )
+    old_composition_path = _normalize_evidence_path(
+        row.get("old_runtime_composition_path")
+    )
+    old_component_scene_path = _normalize_evidence_path(
+        row.get("old_component_scene_path")
+    )
+    new_composition_path = _normalize_evidence_path(
+        row.get("new_runtime_composition_path")
+    )
+    cutover_owner_path = _normalize_evidence_path(
+        row.get("cutover_new_runtime_owner_path")
+    )
+    new_reducer_path = _normalize_evidence_path(row.get("new_owner_path"))
+    manifest_path = _normalize_evidence_path(row.get("cutover_manifest_path"))
+
+    cutover_exists = bool(
+        _is_hex(cutover_commit, 40)
+        and _git(
+            root,
+            "rev-parse",
+            "--verify",
+            f"{cutover_commit}^{{commit}}",
+            check=False,
+        )
+        == cutover_commit
+    )
+    source_exists = bool(
+        _is_hex(source_commit, 40)
+        and _git(
+            root,
+            "rev-parse",
+            "--verify",
+            f"{source_commit}^{{commit}}",
+            check=False,
+        )
+        == source_commit
+    )
+    old_source = (
+        _git_file_bytes_at(root, source_commit, old_source_path)
+        if source_exists and old_source_path
+        else None
+    )
+    old_source_sha256 = (
+        hashlib.sha256(old_source).hexdigest() if old_source is not None else ""
+    )
+
+    cutover_parent = f"{cutover_commit}^"
+    parent_main = (
+        _git_file_bytes_at(root, cutover_parent, production_scene_path)
+        if cutover_exists and production_scene_path
+        else None
+    )
+    parent_composition = (
+        _git_file_bytes_at(root, cutover_parent, old_composition_path)
+        if cutover_exists and old_composition_path
+        else None
+    )
+    cutover_main = (
+        _git_file_bytes_at(root, cutover_commit, production_scene_path)
+        if cutover_exists and production_scene_path
+        else None
+    )
+    cutover_owner = (
+        _git_file_bytes_at(root, cutover_commit, cutover_owner_path)
+        if cutover_exists and cutover_owner_path
+        else None
+    )
+    manifest_bytes = (
+        _git_file_bytes_at(root, cutover_commit, manifest_path)
+        if cutover_exists and manifest_path
+        else None
+    )
+    manifest = (
+        _git_json_at(root, cutover_commit, manifest_path)
+        if cutover_exists and manifest_path
+        else None
+    )
+    manifest_sha256 = (
+        hashlib.sha256(manifest_bytes).hexdigest()
+        if manifest_bytes is not None
+        else ""
+    )
+    manifest_domains = manifest.get("domains") if isinstance(manifest, dict) else None
+    six_color_rows = (
+        [
+            value
+            for value in manifest_domains
+            if isinstance(value, dict)
+            and value.get("domain_id") == "six_color_asset"
+        ]
+        if isinstance(manifest_domains, list)
+        else []
+    )
+    six_color = six_color_rows[0] if len(six_color_rows) == 1 else None
+    required_domain_ids = (
+        manifest.get("required_domain_ids") if isinstance(manifest, dict) else None
+    )
+    manifest_contract_valid = bool(
+        isinstance(manifest, dict)
+        and manifest.get("manifest_id")
+        == "space_syndicate.v073.atomic_cutover_manifest"
+        and manifest.get("production_cutover_authorized") is True
+        and manifest.get("production_scene_change") is True
+        and manifest.get("main_change") is True
+        and manifest.get("main_scene") == f"res://{production_scene_path}"
+        and manifest.get("runtime_composition") == f"res://{new_composition_path}"
+        and manifest.get("dual_write_allowed") is False
+        and _is_int(manifest.get("v073_dual_write_count"))
+        and manifest.get("v073_dual_write_count") == 0
+        and _is_int(manifest.get("v073_legacy_fallback_count"))
+        and manifest.get("v073_legacy_fallback_count") == 0
+        and isinstance(required_domain_ids, list)
+        and required_domain_ids.count("six_color_asset") == 1
+        and isinstance(six_color, dict)
+        and six_color.get("status") == "connected"
+        and six_color.get("production_owner") == "V07AssetBatchCore"
+        and six_color.get("legacy_status") == "disconnected"
+        and six_color.get("ai_adapter_connected") is True
+        and six_color.get("player_adapter_connected") is True
+        and six_color.get("ui_surface_connected") is True
+    )
+
+    try:
+        current_closure = _snapshot_reference_closure(
+            root,
+            head_ref,
+            [production_scene_path] if production_scene_path else [],
+            include_worktree,
+        )
+        reachable = set(current_closure["reachable"])
+        # Existing generic dynamic callsites remain governed by the unchanged
+        # dynamic-reference scanner.  This dedicated lineage proof counts only
+        # failures that make the resolved static closure itself indeterminate.
+        closure_failure_count = sum(
+            len(current_closure[field])
+            for field in (
+                "dynamic_manifest_failures",
+                "missing_refs",
+                "duplicate_classes",
+            )
+        )
+    except (OSError, RuntimeError, subprocess.SubprocessError, ValueError):
+        reachable = set()
+        closure_failure_count = 1
+
+    current_main: bytes | None = None
+    if production_scene_path:
+        if include_worktree:
+            candidate = (root / production_scene_path).resolve()
+            try:
+                candidate.relative_to(root.resolve())
+                current_main = candidate.read_bytes()
+            except (OSError, ValueError):
+                current_main = None
+        else:
+            current_main = _git_file_bytes_at(root, head_ref, production_scene_path)
+
+    old_composition_marker = old_composition_path.encode("utf-8")
+    old_scene_marker = old_component_scene_path.encode("utf-8")
+    new_composition_marker = new_composition_path.encode("utf-8")
+    new_reducer_marker = new_reducer_path.encode("utf-8")
+    old_source_marker = old_source_path.encode("utf-8")
+    return {
+        "supersession_id": supersession_id,
+        "cutover_commit_exists": cutover_exists,
+        "cutover_is_source_ancestor": bool(
+            cutover_exists
+            and source_exists
+            and _is_ancestor(root, cutover_commit, source_commit)
+        ),
+        "cutover_is_head_ancestor": bool(
+            cutover_exists and _is_ancestor(root, cutover_commit, head_ref)
+        ),
+        "source_is_head_ancestor": bool(
+            source_exists and _is_ancestor(root, source_commit, head_ref)
+        ),
+        "old_source_path_exists": old_source is not None,
+        "old_source_blob_sha256": old_source_sha256,
+        "cutover_parent_main_has_old_composition": bool(
+            parent_main is not None
+            and old_composition_marker
+            and old_composition_marker in parent_main
+            and new_composition_marker not in parent_main
+        ),
+        "cutover_parent_old_composition_has_old_scene": bool(
+            parent_composition is not None
+            and old_scene_marker
+            and old_scene_marker in parent_composition
+        ),
+        "cutover_main_has_new_composition": bool(
+            cutover_main is not None
+            and new_composition_marker
+            and new_composition_marker in cutover_main
+            and old_scene_marker not in cutover_main
+        ),
+        "cutover_main_has_old_composition": bool(
+            cutover_main is not None
+            and old_composition_marker
+            and old_composition_marker in cutover_main
+        ),
+        "cutover_owner_has_new_reducer": bool(
+            cutover_owner is not None
+            and new_reducer_marker
+            and new_reducer_marker in cutover_owner
+            and old_source_marker not in cutover_owner
+        ),
+        "cutover_manifest_sha256": manifest_sha256,
+        "cutover_manifest_contract_valid": manifest_contract_valid,
+        "current_reference_closure_failure_count": closure_failure_count,
+        "current_closure_has_new_reducer": new_reducer_path in reachable,
+        "current_closure_has_old_composition": old_composition_path in reachable,
+        "current_closure_has_old_component_scene": old_component_scene_path
+        in reachable,
+        "current_main_has_old_composition": bool(
+            current_main is not None
+            and old_composition_marker
+            and old_composition_marker in current_main
+        ),
+        "current_main_has_old_component_scene": bool(
+            current_main is not None
+            and old_scene_marker
+            and old_scene_marker in current_main
+        ),
+    }
+
+
 def augment_changed_paths_with_production_references(
     root: Path,
     older_ref: str,
@@ -7180,6 +7802,25 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
         )
         if _is_hex(cutover_tree, 40):
             git_commit_tree_bindings[str(cutover_commit)] = cutover_tree
+    historical_owner_to_reducer_cutover_evidence: dict[
+        str, dict[str, Any]
+    ] = {}
+    for entry in authorities.get("supersession", {}).get("entries", []):
+        if not (
+            isinstance(entry, dict)
+            and entry.get("kind")
+            == HISTORICAL_OWNER_TO_CURRENT_REDUCER_KIND
+        ):
+            continue
+        supersession_id = str(entry.get("supersession_id", ""))
+        historical_owner_to_reducer_cutover_evidence[supersession_id] = (
+            _historical_owner_to_current_reducer_cutover_evidence(
+                root,
+                args.head_ref,
+                entry,
+                args.include_worktree,
+            )
+        )
     regression_commit_bindings: set[str] = set()
     regression_candidates: list[Any] = []
     regression_candidates.extend(
@@ -7371,6 +8012,9 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
             git_commit_tree_bindings=git_commit_tree_bindings,
             regression_commit_bindings=regression_commit_bindings,
             golden_regression_provenance=golden_provenance,
+            historical_owner_to_reducer_cutover_evidence=(
+                historical_owner_to_reducer_cutover_evidence
+            ),
             evidence_subject_is_baseline_descendant=evidence_subject_is_baseline_descendant,
             evidence_subject_is_head_ancestor=evidence_subject_is_head_ancestor,
             evidence_subject_product_tree_matches_head=(

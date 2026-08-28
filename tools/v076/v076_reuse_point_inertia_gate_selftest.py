@@ -350,6 +350,121 @@ def _valid_input() -> gate.ValidationInput:
     return data
 
 
+def _valid_historical_owner_to_reducer_evidence() -> dict[str, Any]:
+    return {
+        "supersession_id": (
+            "historical.player-mana-to-v07-asset-batch-core"
+        ),
+        "cutover_commit_exists": True,
+        "cutover_is_source_ancestor": True,
+        "cutover_is_head_ancestor": True,
+        "source_is_head_ancestor": True,
+        "old_source_path_exists": True,
+        "old_source_blob_sha256": (
+            "0bf285bd2f0e10d4f44ba6779a94fdf10367cf131396b59367b7b26e9d772ac5"
+        ),
+        "cutover_parent_main_has_old_composition": True,
+        "cutover_parent_old_composition_has_old_scene": True,
+        "cutover_main_has_new_composition": True,
+        "cutover_main_has_old_composition": False,
+        "cutover_owner_has_new_reducer": True,
+        "cutover_manifest_sha256": (
+            "9562593e7173d4d6437992916f64562107593e539833ca27b64d6ff4bc0ac52d"
+        ),
+        "cutover_manifest_contract_valid": True,
+        "current_reference_closure_failure_count": 0,
+        "current_closure_has_new_reducer": True,
+        "current_closure_has_old_composition": False,
+        "current_closure_has_old_component_scene": False,
+        "current_main_has_old_composition": False,
+        "current_main_has_old_component_scene": False,
+    }
+
+
+def _historical_owner_to_reducer_fixture() -> gate.ValidationInput:
+    data = _valid_input()
+    row = copy.deepcopy(gate.HISTORICAL_OWNER_TO_CURRENT_REDUCER_EXPECTED_ROW)
+    old_id = str(row["old_component_id"])
+    new_id = str(row["new_component_id"])
+    owner_id = str(row["new_owner_component_id"])
+    domain_id = str(row["domain_id"])
+    owner_path = "scripts/v075_runtime/v075_runtime_owner.gd"
+
+    for authorities in (data.authorities, data.baseline_authorities):
+        registry = authorities["historical_reuse"]
+        owner = registry["component_inventory"][0]
+        owner.update(
+            {
+                "component_id": owner_id,
+                "class_name": "V075RuntimeOwner",
+                "path": owner_path,
+                "domain_id": domain_id,
+                "owner_component_id": owner_id,
+                "owner_path": owner_path,
+            }
+        )
+        registry["domain_inventory"][0].update(
+            {"domain_id": domain_id, "owner_component_id": owner_id}
+        )
+        registry["unique_owner_domains"][0].update(
+            {
+                "domain_id": domain_id,
+                "unique_owner": "V075RuntimeOwner",
+                "owner_path": owner_path,
+            }
+        )
+        reducer = _component(
+            new_id,
+            str(row["new_owner_path"]),
+            domain_id,
+            "REDUCER",
+            production_reachable=True,
+            owner_component_id=owner_id,
+        )
+        reducer.update(
+            {
+                "class_name": "V07AssetBatchCore",
+                "writes_authority": True,
+                "owner_path": owner_path,
+                "supersedes": [old_id],
+            }
+        )
+        registry["component_inventory"].append(reducer)
+        registry["historical_identity_backfill"] = [
+            {
+                "component_id": old_id,
+                "current_disposition": "HISTORICAL_SUPERSEDED_NONREACHABLE",
+                "historical_role": "OWNER",
+                "production_reachability": "NONREACHABLE",
+                "source_blob": str(row["old_source_blob_sha256"]),
+                "source_commit": str(row["old_source_commit"]),
+                "supersession": [new_id],
+            }
+        ]
+        supersession = authorities["supersession"]
+        supersession["supersession_kinds"] = [
+            gate.HISTORICAL_OWNER_TO_CURRENT_REDUCER_KIND
+        ]
+        supersession["entries"] = [copy.deepcopy(row)]
+        scope = authorities["inherited_green"]["canonical_change_scope"]
+        scope["affected_domains"] = [domain_id]
+        scope["affected_owners"] = [owner_id]
+
+    data.component_declared_classes = {
+        owner_path: "V075RuntimeOwner",
+        str(row["new_owner_path"]): "V07AssetBatchCore",
+    }
+    data.git_commit_tree_bindings = {
+        "c" * 40: "b" * 40,
+        str(row["cutover_commit"]): "a" * 40,
+    }
+    data.historical_owner_to_reducer_cutover_evidence = {
+        str(row["supersession_id"]): _valid_historical_owner_to_reducer_evidence()
+    }
+    data.pr_body = _pr_body(data)
+    return data
+
+
 def _registry(data: gate.ValidationInput) -> dict[str, Any]:
     return data.authorities["historical_reuse"]
 
@@ -4722,6 +4837,93 @@ print('not-json'); raise SystemExit(2)
         "PASS",
         "PASS" if not real_chain_failures else "FAIL",
         real_chain_failures,
+    )
+
+    historical_reducer = _historical_owner_to_reducer_fixture()
+    historical_reducer_report = gate.validate_model(historical_reducer)
+    append_direct_case(
+        "139",
+        "the exact PlayerMana historical Owner to current V07 reducer transition passes",
+        "PASS",
+        str(historical_reducer_report.get("status", "FAIL")),
+        [str(value) for value in historical_reducer_report.get("failures", [])],
+    )
+
+    def append_historical_reducer_negative(
+        case_id: str,
+        description: str,
+        mutate: Callable[[gate.ValidationInput], None],
+        expected_failure_prefix: str,
+    ) -> None:
+        candidate = _historical_owner_to_reducer_fixture()
+        mutate(candidate)
+        candidate_report = gate.validate_model(candidate)
+        candidate_failures = [
+            str(value) for value in candidate_report.get("failures", [])
+        ]
+        rejected_for_expected_reason = bool(
+            candidate_report.get("status") == "FAIL"
+            and any(
+                value.startswith(expected_failure_prefix)
+                for value in candidate_failures
+            )
+        )
+        append_direct_case(
+            case_id,
+            description,
+            "FAIL",
+            "FAIL" if rejected_for_expected_reason else "PASS",
+            candidate_failures,
+        )
+
+    evidence_id = "historical.player-mana-to-v07-asset-batch-core"
+    append_historical_reducer_negative(
+        "140",
+        "a bool cannot impersonate the exact current closure failure count",
+        lambda data: data.historical_owner_to_reducer_cutover_evidence[
+            evidence_id
+        ].__setitem__("current_reference_closure_failure_count", False),
+        f"HISTORICAL_REDUCER_SUPERSESSION:{evidence_id}:CURRENT_CLOSURE_INVALID",
+    )
+    append_historical_reducer_negative(
+        "141",
+        "historical source blob evidence is bound to the exact retained source",
+        lambda data: data.historical_owner_to_reducer_cutover_evidence[
+            evidence_id
+        ].__setitem__("old_source_blob_sha256", "0" * 64),
+        f"HISTORICAL_REDUCER_SUPERSESSION:{evidence_id}:SOURCE_BINDING_MISMATCH",
+    )
+    append_historical_reducer_negative(
+        "142",
+        "the historical PlayerMana identity requires exactly one backfill row",
+        lambda data: data.authorities["historical_reuse"].__setitem__(
+            "historical_identity_backfill", []
+        ),
+        f"HISTORICAL_REDUCER_SUPERSESSION:{evidence_id}:BACKFILL_NOT_UNIQUE",
+    )
+    append_historical_reducer_negative(
+        "143",
+        "the current V07 asset component must remain a reachable writing reducer",
+        lambda data: data.authorities["historical_reuse"][
+            "component_inventory"
+        ][1].__setitem__("component_role", "CONSUMER"),
+        f"HISTORICAL_REDUCER_SUPERSESSION:{evidence_id}:NEW_REDUCER_STATE_INVALID",
+    )
+    append_historical_reducer_negative(
+        "144",
+        "the current reducer must bind to the one same-domain production Owner",
+        lambda data: data.authorities["historical_reuse"][
+            "component_inventory"
+        ][0].__setitem__("owner_path", "scripts/wrong/runtime_owner.gd"),
+        f"HISTORICAL_REDUCER_SUPERSESSION:{evidence_id}:NEW_OWNER_BINDING_INVALID",
+    )
+    append_historical_reducer_negative(
+        "145",
+        "the atomic cutover manifest must retain its exact committed hash",
+        lambda data: data.historical_owner_to_reducer_cutover_evidence[
+            evidence_id
+        ].__setitem__("cutover_manifest_sha256", "0" * 64),
+        f"HISTORICAL_REDUCER_SUPERSESSION:{evidence_id}:CUTOVER_EVIDENCE_INVALID",
     )
 
     pass_count = sum(result["status"] == "PASS" for result in results)
