@@ -148,7 +148,8 @@ def test_current_inventory_cardinality_and_no_historical_fallback() -> None:
 
 
 def test_real_file_mutations_and_path_attacks() -> None:
-    with tempfile.TemporaryDirectory(prefix="v076-batch008-mutations-") as temp:
+    # Keep the disposable clone root short enough for Windows checkout paths.
+    with tempfile.TemporaryDirectory(prefix="b8m-") as temp:
         base = Path(temp)
         proposal = b.PROPOSAL
         mutated_proposal = base / "proposal.json"
@@ -188,9 +189,30 @@ def test_real_file_mutations_and_path_attacks() -> None:
 
         # Exercise the committed authority bytes, not a mocked row. A shared
         # clone receives a real mutation commit, which must fail closed.
-        for relative, failure in ((b.SOURCE_PATHS[0], "REGISTRY_SHA256_MISMATCH"), (b.SOURCE_PATHS[1], "SUPERSESSION_MAP_SHA256_MISMATCH")):
-            clone = base / ("clone-" + ("registry" if relative == b.SOURCE_PATHS[0] else "map"))
-            subprocess.run(["git", "clone", "--shared", str(Path.cwd()), str(clone)], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        mutation_cases = (
+            (b.SOURCE_PATHS[0], "REGISTRY_SHA256_MISMATCH", "registry"),
+            (b.SOURCE_PATHS[1], "SUPERSESSION_MAP_SHA256_MISMATCH", "map"),
+            (b.SOURCE_PATHS[2], "OWNER_REUSE_MAP_SHA256_MISMATCH", "owner-map"),
+            (
+                b.SOURCE_PATHS[3],
+                "DYNAMIC_REFERENCE_MANIFEST_SHA256_MISMATCH",
+                "dynamic-manifest",
+            ),
+        )
+        for relative, failure, label in mutation_cases:
+            clone = base / ("clone-" + label)
+            clone_process = subprocess.run(
+                ["git", "clone", "--shared", str(Path.cwd()), str(clone)],
+                check=False,
+                text=True,
+                encoding="utf-8",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            expect(
+                clone_process.returncode == 0,
+                f"shared clone failed for {label}: {clone_process.stderr.strip()}",
+            )
             target = clone / relative
             target.write_bytes(target.read_bytes() + b" ")
             subprocess.run(["git", "-C", str(clone), "config", "user.email", "selftest@example.invalid"], check=True)
@@ -209,6 +231,21 @@ def test_external_candidate_review_seal_workflow() -> None:
         primary_path = base / "primary-review.json"
         independent_path = base / "independent-review.json"
         seal_path = base / "seal.json"
+        manifest_path = stage / "batch-008" / "batch-008-manifest.json"
+        original_manifest = manifest_path.read_bytes()
+        invalid_manifest = json.loads(original_manifest.decode("utf-8"))
+        invalid_manifest["authorization_id"] = "UNAUTHORIZED"
+        manifest_path.write_bytes(b.canonical(invalid_manifest))
+        expect_error(
+            lambda: b.create_candidate(
+                stage,
+                base / "invalid-manifest-candidate.json",
+                result["evaluated_head_sha"],
+                result["evaluated_tree_sha"],
+            ),
+            "STAGE_MANIFEST_INVALID",
+        )
+        manifest_path.write_bytes(original_manifest)
         b.create_candidate(stage, candidate_path, result["evaluated_head_sha"], result["evaluated_tree_sha"])
         expect_error(
             lambda: b.create_candidate(stage, stage / "candidate.json", result["evaluated_head_sha"], result["evaluated_tree_sha"]),
@@ -226,6 +263,31 @@ def test_external_candidate_review_seal_workflow() -> None:
         candidate_path.write_bytes(candidate_bytes + b" ")
         expect_error(lambda: b.seal_candidate(stage, candidate_path, [], seal_path), "CANDIDATE_BYTES_NONCANONICAL")
         candidate_path.write_bytes(candidate_bytes)
+        tampered_candidate_path = base / "tampered-candidate.json"
+        tampered_candidate = dict(candidate)
+        tampered_candidate["evaluated_head_sha"] = "0" * 40
+        tampered_candidate["candidate_payload_sha256"] = b.sha(
+            b.canonical(b._candidate_payload(tampered_candidate))
+        )
+        tampered_candidate["candidate_file_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in tampered_candidate.items()
+                    if key != "candidate_file_sha256"
+                }
+            )
+        )
+        tampered_candidate_path.write_bytes(b.canonical(tampered_candidate))
+        expect_error(
+            lambda: b.create_review(
+                tampered_candidate_path,
+                base / "tampered-candidate-review.json",
+                "PRIMARY",
+                "V076_FULL_CONVERGENCE_PRIMARY_REVIEWER_V1",
+            ),
+            "CANDIDATE_HEAD_TREE_NOT_STAGE_BOUND",
+        )
         b.create_review(candidate_path, primary_path, "PRIMARY", "V076_FULL_CONVERGENCE_PRIMARY_REVIEWER_V1")
         expect_error(
             lambda: b.create_review(candidate_path, Path.cwd() / "batch008-review.json", "PRIMARY", "V076_FULL_CONVERGENCE_PRIMARY_REVIEWER_V1"),
@@ -249,15 +311,223 @@ def test_external_candidate_review_seal_workflow() -> None:
         original_stage_file.write_bytes(original_stage_bytes + b" ")
         expect_error(lambda: b.seal_candidate(stage, candidate_path, [primary_path, independent_path], seal_path), "SEAL_STAGE_BYTES_DRIFT")
         original_stage_file.write_bytes(original_stage_bytes)
+        hardlink_source = base / "same-byte-hardlink-source.json"
+        hardlink_source.write_bytes(original_stage_bytes)
+        original_stage_file.unlink()
+        os.link(hardlink_source, original_stage_file)
+        expect_error(
+            lambda: b.seal_candidate(
+                stage,
+                candidate_path,
+                [primary_path, independent_path],
+                base / "hardlink-seal.json",
+            ),
+            "HARDLINK_FORBIDDEN",
+        )
+        original_stage_file.unlink()
+        original_stage_file.write_bytes(original_stage_bytes)
+
         b.seal_candidate(stage, candidate_path, [primary_path, independent_path], seal_path)
+        expect(
+            b.validate_seal(
+                seal_path,
+                stage,
+                candidate_path,
+                [primary_path, independent_path],
+            )
+            == [],
+            "independent seal validation rejected a valid seal",
+        )
+
+        original_stage_file.write_bytes(original_stage_bytes + b" ")
+        expect(
+            b.validate_seal(seal_path, stage, candidate_path, [primary_path, independent_path])
+            == ["SEAL_STAGE_BYTES_DRIFT"],
+            "seal validator failed open on stage byte drift",
+        )
+        original_stage_file.write_bytes(original_stage_bytes)
+
+        original_candidate = candidate_path.read_bytes()
+        changed_candidate = json.loads(original_candidate.decode("utf-8"))
+        changed_candidate["stage_absolute_path"] = (base / "wrong-stage").as_posix()
+        changed_candidate["candidate_payload_sha256"] = b.sha(
+            b.canonical(b._candidate_payload(changed_candidate))
+        )
+        changed_candidate["candidate_file_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in changed_candidate.items()
+                    if key != "candidate_file_sha256"
+                }
+            )
+        )
+        candidate_path.write_bytes(b.canonical(changed_candidate))
+        expect(
+            b.validate_seal(seal_path, stage, candidate_path, [primary_path, independent_path])
+            == ["CANDIDATE_STAGE_PATH_MISMATCH"],
+            "seal validator failed open on candidate stage drift",
+        )
+        candidate_path.write_bytes(original_candidate)
+
+        original_primary = primary_path.read_bytes()
+        changed_primary = json.loads(original_primary.decode("utf-8"))
+        changed_primary["status"] = "NO_GO"
+        changed_primary["receipt_payload_sha256"] = b.sha(
+            b.canonical(b._review_payload(changed_primary))
+        )
+        changed_primary["review_file_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in changed_primary.items()
+                    if key != "review_file_sha256"
+                }
+            )
+        )
+        primary_path.write_bytes(b.canonical(changed_primary))
+        expect(
+            b.validate_seal(seal_path, stage, candidate_path, [primary_path, independent_path])
+            == ["REVIEW_GO_STATE_INVALID"],
+            "seal validator failed open on review GO-state drift",
+        )
+        primary_path.write_bytes(original_primary)
+
+        original_seal = seal_path.read_bytes()
+        changed_seal = json.loads(original_seal.decode("utf-8"))
+        changed_seal["official_batch_write_count"] = 1
+        changed_seal["seal_payload_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in changed_seal.items()
+                    if key not in {"seal_payload_sha256", "seal_file_sha256"}
+                }
+            )
+        )
+        changed_seal["seal_file_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in changed_seal.items()
+                    if key != "seal_file_sha256"
+                }
+            )
+        )
+        seal_path.write_bytes(b.canonical(changed_seal))
+        expect(
+            b.validate_seal(seal_path, stage, candidate_path, [primary_path, independent_path])
+            == ["SEAL_OFFICIAL_WRITE_COUNT_INVALID"],
+            "seal validator failed open on official write count",
+        )
+
+        bool_count_seal = json.loads(original_seal.decode("utf-8"))
+        bool_count_seal["official_batch_write_count"] = False
+        bool_count_seal["seal_payload_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in bool_count_seal.items()
+                    if key not in {"seal_payload_sha256", "seal_file_sha256"}
+                }
+            )
+        )
+        bool_count_seal["seal_file_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in bool_count_seal.items()
+                    if key != "seal_file_sha256"
+                }
+            )
+        )
+        seal_path.write_bytes(b.canonical(bool_count_seal))
+        expect(
+            b.validate_seal(seal_path, stage, candidate_path, [primary_path, independent_path])
+            == ["SEAL_OFFICIAL_WRITE_COUNT_INVALID"],
+            "seal validator accepted bool as exact integer zero",
+        )
+
+        extra_field_seal = json.loads(original_seal.decode("utf-8"))
+        extra_field_seal["unexpected_authority_claim"] = True
+        extra_field_seal["seal_payload_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in extra_field_seal.items()
+                    if key not in {"seal_payload_sha256", "seal_file_sha256"}
+                }
+            )
+        )
+        extra_field_seal["seal_file_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in extra_field_seal.items()
+                    if key != "seal_file_sha256"
+                }
+            )
+        )
+        seal_path.write_bytes(b.canonical(extra_field_seal))
+        expect(
+            b.validate_seal(seal_path, stage, candidate_path, [primary_path, independent_path])
+            == ["SEAL_FIELD_SET_MISMATCH"],
+            "seal validator accepted an unversioned authority claim",
+        )
+
+        receipt_tamper = json.loads(original_seal.decode("utf-8"))
+        receipt_tamper["review_receipts"][0]["file_sha256"] = "0" * 64
+        receipt_tamper["seal_payload_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in receipt_tamper.items()
+                    if key not in {"seal_payload_sha256", "seal_file_sha256"}
+                }
+            )
+        )
+        receipt_tamper["seal_file_sha256"] = b.sha(
+            b.canonical(
+                {
+                    key: value
+                    for key, value in receipt_tamper.items()
+                    if key != "seal_file_sha256"
+                }
+            )
+        )
+        seal_path.write_bytes(b.canonical(receipt_tamper))
+        expect(
+            b.validate_seal(seal_path, stage, candidate_path, [primary_path, independent_path])
+            == ["SEAL_REVIEW_RECEIPT_BINDING_INVALID"],
+            "seal validator failed open on receipt binding drift",
+        )
+        seal_path.write_bytes(original_seal)
+
+        expect(
+            b.validate_seal(
+                Path.cwd() / "batch008-seal.json",
+                stage,
+                candidate_path,
+                [primary_path, independent_path],
+            )
+            == ["SEAL_INPUT_MUST_BE_OUTSIDE_WORKTREE"],
+            "seal validator failed open on a worktree path",
+        )
         expect_error(
             lambda: b.seal_candidate(stage, candidate_path, [primary_path, independent_path], Path.cwd() / "batch008-seal.json"),
             "SEAL_OUTPUT_MUST_BE_OUTSIDE_WORKTREE",
         )
         expect_error(lambda: b.seal_candidate(stage, candidate_path, [primary_path, independent_path], seal_path), "APPEND_ONLY_EXTERNAL_OUTPUT_ALREADY_EXISTS")
         duplicate_reviewer = base / "duplicate-reviewer.json"
-        b.create_review(candidate_path, duplicate_reviewer, "INDEPENDENT", "V076_FULL_CONVERGENCE_PRIMARY_REVIEWER_V1")
-        expect_error(lambda: b.seal_candidate(stage, candidate_path, [primary_path, duplicate_reviewer], base / "duplicate-seal.json"), "SEAL_REVIEWERS_NOT_DISTINCT")
+        expect_error(
+            lambda: b.create_review(
+                candidate_path,
+                duplicate_reviewer,
+                "INDEPENDENT",
+                "V076_FULL_CONVERGENCE_PRIMARY_REVIEWER_V1",
+            ),
+            "REVIEWER_AUTHORITY_NOT_TRUSTED",
+        )
 
 
 def test_real_head_staging_build() -> None:
@@ -270,6 +540,37 @@ def test_real_head_staging_build() -> None:
         files = sorted(str(path.relative_to(stage)).replace("\\", "/") for path in stage.rglob("*.json"))
         expect(len(files) == 10, f"real build output count drifted: {files}")
         expect(all(path.startswith("batch-008/") or path.startswith("records/batch-008/") for path in files), "real build escaped output roots")
+        expected_sources = b.EXPECTED_AUTHORITY_SOURCE_SHA256
+        record_paths = sorted((stage / "records" / "batch-008").glob("*.json"))
+        expect(len(record_paths) == 3, "record count drifted")
+        for record_path in record_paths:
+            record = json.loads(record_path.read_text(encoding="utf-8"))
+            expect(
+                record.get("authority_source_sha256") == expected_sources,
+                f"authority source binding drifted: {record_path.name}",
+            )
+
+
+def test_authority_sources_are_read_exactly_once() -> None:
+    with tempfile.TemporaryDirectory(prefix="b8r-") as temp:
+        original_committed = b.committed
+        counts = {path: 0 for path in b.SOURCE_PATHS}
+
+        def counted_committed(root: Path, head: str, relative: str) -> bytes:
+            if relative in counts:
+                counts[relative] += 1
+            return original_committed(root, head, relative)
+
+        b.committed = counted_committed
+        try:
+            result = b.build(Path.cwd(), Path(temp) / "stage")
+        finally:
+            b.committed = original_committed
+        expect(result.get("status") == "PASS", "single-read build failed")
+        expect(
+            counts == {path: 1 for path in b.SOURCE_PATHS},
+            f"authority source reread detected: {counts}",
+        )
 
 
 def main() -> int:
@@ -283,6 +584,7 @@ def main() -> int:
         test_real_file_mutations_and_path_attacks,
         test_external_candidate_review_seal_workflow,
         test_real_head_staging_build,
+        test_authority_sources_are_read_exactly_once,
     ]
     for test in tests:
         test()
