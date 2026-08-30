@@ -1,0 +1,48 @@
+{
+  "schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_successor_v4_schema.v1",
+  "manifest_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_successor_v4_manifest.v1",
+  "record_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_successor_v4_record.v1",
+  "manifest_kind": "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V4_MANIFEST",
+  "record_kind": "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V4_RECORD",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "authorization_base_head_sha": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "prior_epoch_id": "FULL_CONVERGENCE_20260827",
+  "predecessor_manifest_path": "docs/architecture/reuse_corrections/v2/subject_projection_revalidation/manifest.json",
+  "predecessor_manifest_sha256": "dff148179980c4e49f277a516bf7f1d0670f4d8b02a40e0f95b077ed92e0967e",
+  "authority_transition_parent_sha": "9926d3955da7c14a292259e270f2ac2ff7559dcd",
+  "authority_transition_commit_sha": "6209465da4a9ca0c1cb6f0db0cd8a088bd63e793",
+  "authority_source_paths": [
+    "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+    "docs/architecture/V076_SUPERSESSION_MAP.json"
+  ],
+  "target_record_count": 48,
+  "preserved_record_count": 34,
+  "total_predecessor_coverage": 82,
+  "allowed_invalidation": "SUBJECT_PROJECTION_CHANGED_INVALID",
+  "selector_policy": {
+    "match_mode": "EXACT_FAILURE_FINGERPRINTS_ONLY",
+    "wildcard_allowed": false,
+    "regex_allowed": false,
+    "path_prefix_allowed": false,
+    "future_failure_auto_match": false
+  },
+  "future_failure_policy": {
+    "FUTURE_FAILURE_AUTO_REVALIDATION_COUNT": 0,
+    "NEW_FAILURE_REQUIRES_NEW_RECORD": true
+  },
+  "projection_fields": [
+    "dynamic_reference_rows",
+    "owner_map_lines",
+    "registry_rows",
+    "supersession_rows"
+  ],
+  "negative_policy": [
+    "NO_WILDCARD",
+    "NO_REGEX",
+    "NO_PATH_PREFIX",
+    "NO_FUTURE_FAILURE_AUTO_TRUST",
+    "NO_PREDECESSOR_MUTATION",
+    "NO_PRODUCT_PATH_TOUCH",
+    "PRESERVED_SET_EXPLICIT_AND_DISJOINT"
+  ]
+}
