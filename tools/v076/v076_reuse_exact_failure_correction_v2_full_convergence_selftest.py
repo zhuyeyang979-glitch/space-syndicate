@@ -21,6 +21,8 @@ import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
 import v076_reuse_correction_v2_independent_audit as independent_audit
 import v076_reuse_exact_failure_correction_v2 as legacy_resolver
 import v076_reuse_full_convergence_descendant_supplement_builder as successor_builder
+import v076_historical_delta_metadata_successor_v2 as hdm_successor_v2
+import v076_historical_delta_metadata_successor_v2_independent_audit as hdm_successor_v2_independent
 
 
 REAL_DESCENDANT_RAW_REL = (
@@ -2815,30 +2817,44 @@ def _independent_hdm_cli_coupling_case(root: Path) -> None:
 
 
 def _independent_real_hdm_authority_case(root: Path) -> None:
-    head = _git(root, "rev-parse", "HEAD")
-    ledger_path = root / "docs/architecture/V076_HISTORICAL_DELTA_METADATA_LEDGER.json"
-    receipt = independent_audit._validate_historical_delta_metadata_authority(
+    manifest_path = root / (
+        "docs/architecture/reuse_corrections/v2/"
+        "historical_delta_metadata_successor_v2/manifest.json"
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    primary = hdm_successor_v2.validate_manifest(
         root,
-        ledger_path,
-        evaluated_head=head,
+        manifest_path,
+        evaluated_head=manifest["current_binding_head_sha"],
     )
+    independent = hdm_successor_v2_independent.audit(root, manifest_path)
     expected_sha = "91373b8883708f835052cbebe1da8b53e33f4ef608d97b17f5ab45161cd0a8d9"
-    _expect(receipt["status"] == "PASS", str(receipt))
-    _expect(receipt["independent_status"] == "GO", str(receipt))
+    _expect(primary["status"] == "PASS", str(primary))
+    _expect(independent["status"] == "PASS", str(independent))
+    _expect(primary["failures"] == [], str(primary))
+    _expect(independent["failures"] == [], str(independent))
+    _expect(primary["identity_count"] == 86, str(primary))
+    _expect(independent["identity_count"] == 86, str(independent))
+    _expect(primary["record_count"] == 4, str(primary))
+    _expect(independent["record_count"] == 4, str(independent))
+    _expect(primary["rebound_count"] == 52, str(primary))
+    _expect(independent["rebound_count"] == 52, str(independent))
+    _expect(primary["preserved_count"] == 34, str(primary))
+    _expect(independent["preserved_count"] == 34, str(independent))
     _expect(
-        receipt["primary_projection_comparison_status"] == "NOT_COMPARED",
-        str(receipt),
+        primary["authority_projection_sha256"]
+        == independent["authority_projection_sha256"],
+        f"primary={primary}; independent={independent}",
     )
-    _expect(receipt["primary_projection_digest_match"] is False, str(receipt))
-    _expect(receipt["authorized_failure_count"] == 86, str(receipt))
-    _expect(receipt["verified_failure_count"] == 86, str(receipt))
-    _expect(receipt["authorized_failure_set_sha256"] == expected_sha, str(receipt))
-    _expect(receipt["verified_failure_set_sha256"] == expected_sha, str(receipt))
-    _expect(
-        receipt["authorized_historical_fingerprints"]
-        == receipt["verified_historical_fingerprints"],
-        str(receipt),
-    )
+    _expect(manifest["identity_count"] == 86, str(manifest))
+    _expect(manifest["identity_fingerprint_set_sha256"] == expected_sha, str(manifest))
+    _expect(len(manifest["identity_fingerprints"]) == 86, str(manifest))
+    _expect(len(set(manifest["identity_fingerprints"])) == 86, str(manifest))
+    _expect(manifest["wildcard_count"] == 0, str(manifest))
+    _expect(manifest["selector_policy"]["wildcard_allowed"] is False, str(manifest))
+    _expect(manifest["selector_policy"]["future_failure_auto_match"] is False, str(manifest))
+    _expect(manifest["future_failure_policy"]["automatic_match"] is False, str(manifest))
+    _expect(manifest["future_failure_policy"]["new_failure_requires_new_record"] is True, str(manifest))
 
 
 def _broken_composite_clears_ledger_authority_case(root: Path) -> None:
@@ -7641,7 +7657,7 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("110", "equal-cardinality terminal substitution exposes one exact missing and extra fingerprint", _independent_terminal_equal_cardinality_tamper_case))
     cases.append(Case("111", "primary HDM and legacy HDM overlaps invalidate the terminal partition", _independent_terminal_partition_overlap_case))
     cases.append(Case("112", "standalone HDM CLI input is coupled to the complete full-convergence input set", lambda: _independent_hdm_cli_coupling_case(root)))
-    cases.append(Case("113", "real committed HDM authority independently resolves exact 86-set parity without claiming primary comparison", lambda: _independent_real_hdm_authority_case(root)))
+    cases.append(Case("113", "real committed HDM successor v2 resolves exact 86-set primary and independent parity", lambda: _independent_real_hdm_authority_case(root)))
     cases.append(Case("114", "successor-v4 implementation binding passes with exactly five trusted fingerprints", lambda: _successor_v4_positive_case(root)))
     cases.append(Case("115", "successor-v4 predecessor schema SHA drift fails closed", lambda: _successor_v4_predecessor_sha_negative_case(root)))
     cases.append(Case("116", "successor-v4 fingerprint-set digest drift fails closed", lambda: _successor_v4_fingerprint_set_negative_case(root)))
