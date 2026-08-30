@@ -10092,9 +10092,31 @@ deleted. Evidence and the remaining action inventory are recorded in
   `STATUS=TRUE_HARD_STOP_REQUIRING_USER_DECISION`, `COMMERCIAL_M1_GREEN=false`,
   `READY_FOR_NEXT_CONSOLIDATED_HUMAN_PLAYTEST=false`, `HUMAN_GREEN=false`, and
   STEP13-15 remain `PENDING`; no Ready, merge, tag, or cutover is authorized.
+
 ### 2026-08-30 — V076 current-subject cache revalidation repair
 
 - In an isolated sibling worktree, MCP-only `edit_script` added full V075 snapshot-cache invalidation immediately before the V076 military asset-consequence projection reads `player_snapshot`.
 - The focused production military composition fixture now invalidates the same snapshot cache after its direct asset/facility/DBG setup at both region and monster probes; this removes the confirmed stale-fixture false negative without changing any authority owner.
 - MCP `validate_script` passed for both changed GDScripts, and the focused production composition gate passed `57/57` with zero script or task-introduced errors. Real `res://scenes/main.tscn` was opened and run through the local Godot MCP endpoint, a 1600x960 runtime view was captured, and play mode stopped cleanly.
 - `ui_text_smoke_test` and `visual_snapshot` passed. The broad legacy `smoke_test.gd` remains blocked by its existing save-coordinator path oracle before Main enters the tree; this is recorded as an unrelated stale-oracle failure and was not altered in this scoped repair.
+
+## 2026-08-30 — Full-convergence Batch-009 materialized
+
+- Preserved the exact Batch-009 registry projection commit `6209465d` and
+  appended the minimal historical Military identity alignment `4f6feab2`;
+  no Godot product files were changed and the original two-file projection was
+  not reapplied.
+- The sealed materializer proposal is bound to head
+  `4f6feab227bedfb8005d9fbf4bc2f6883c8b4c19` / tree
+  `47f22c79a56d0eb968e8bc73204b994498e4317a`, with 50 exact identities,
+  proposal `47180f70389405afec2e2e48940259551df7f566bde5fa47bf998a93b12fd262`,
+  and distinct reviewer A/B receipts, both `GO` with P0/P1 zero.
+- Batch-009 materializer generated and promoted exactly ten allowlisted files:
+  seven batch artifacts and three disposition records. All three records pass
+  document and repository identity-binding validation; materializer official
+  write count remains zero. The official evidence commit is `da9b6966`.
+- The pre-apply materializer self-test's stale negative cases intentionally no
+  longer apply after exact Registry rows exist; 15 non-stale focused cases pass.
+  Existing full-chain validation reports touched prior projections, which is
+  preserved as an append-only revalidation follow-up rather than hidden or
+  rewritten.
