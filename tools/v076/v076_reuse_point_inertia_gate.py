@@ -15,10 +15,28 @@ import json
 import re
 import subprocess
 import sys
+from collections import OrderedDict
 from functools import lru_cache
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
+
+
+SNAPSHOT_TEXT_INVENTORY_CACHE_MAX_ENTRIES = 6
+BLOB_PAYLOAD_CACHE_MAX_BYTES = 192 * 1024 * 1024
+_SNAPSHOT_TEXT_INVENTORY_CACHE: OrderedDict[
+    tuple[str, str], tuple[frozenset[str], dict[str, str], dict[str, str]]
+] = OrderedDict()
+_BLOB_PAYLOAD_CACHE: OrderedDict[tuple[str, str], bytes] = OrderedDict()
+_BLOB_PAYLOAD_CACHE_BYTES = 0
+
+
+def _reset_full_history_scan_caches() -> None:
+    """Reset the per-validation immutable Git snapshot caches."""
+    global _BLOB_PAYLOAD_CACHE_BYTES
+    _SNAPSHOT_TEXT_INVENTORY_CACHE.clear()
+    _BLOB_PAYLOAD_CACHE.clear()
+    _BLOB_PAYLOAD_CACHE_BYTES = 0
 
 
 CHECK_NAME = "V076 Reuse and Point-Inertia Gate"
@@ -5992,13 +6010,36 @@ def _snapshot_blob_index(root: Path, ref: str) -> dict[str, str]:
     return result
 
 
+def _git_repository_identity(root: Path) -> str:
+    common_dir = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    return str(Path(common_dir).resolve()).casefold()
+
+
+def _resolved_tree_oid(root: Path, ref: str) -> str:
+    return _git(root, "rev-parse", f"{ref}^{{tree}}")
+
+
 def _batch_git_blobs(root: Path, object_ids: Iterable[str]) -> dict[str, bytes]:
+    global _BLOB_PAYLOAD_CACHE_BYTES
     ordered = list(dict.fromkeys(object_ids))
     if not ordered:
         return {}
+    repo_identity = _git_repository_identity(root)
+    result: dict[str, bytes] = {}
+    misses: list[str] = []
+    for object_id in ordered:
+        key = (repo_identity, object_id)
+        payload = _BLOB_PAYLOAD_CACHE.get(key)
+        if payload is None:
+            misses.append(object_id)
+        else:
+            _BLOB_PAYLOAD_CACHE.move_to_end(key)
+            result[object_id] = payload
+    if not misses:
+        return result
     completed = subprocess.run(
         ["git", "-C", str(root), "cat-file", "--batch"],
-        input=("\n".join(ordered) + "\n").encode("ascii"),
+        input=("\n".join(misses) + "\n").encode("ascii"),
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -6007,16 +6048,32 @@ def _batch_git_blobs(root: Path, object_ids: Iterable[str]) -> dict[str, bytes]:
         error = completed.stderr.decode("utf-8", errors="replace").strip()
         raise RuntimeError(f"git cat-file --batch failed: {error}")
     stream = io.BytesIO(completed.stdout)
-    result: dict[str, bytes] = {}
-    for expected in ordered:
+    fetched: dict[str, bytes] = {}
+    for expected in misses:
         header = stream.readline().rstrip(b"\n")
         fields = header.split()
         if len(fields) != 3 or fields[0].decode("ascii") != expected:
             raise RuntimeError("malformed git cat-file --batch response")
         size = int(fields[2])
-        result[expected] = stream.read(size)
+        payload = stream.read(size)
+        if len(payload) != size:
+            raise RuntimeError("malformed git cat-file payload size")
+        fetched[expected] = payload
         if stream.read(1) != b"\n":
             raise RuntimeError("malformed git cat-file payload terminator")
+    for object_id, payload in fetched.items():
+        result[object_id] = payload
+        if len(payload) > BLOB_PAYLOAD_CACHE_MAX_BYTES:
+            continue
+        key = (repo_identity, object_id)
+        previous = _BLOB_PAYLOAD_CACHE.pop(key, None)
+        if previous is not None:
+            _BLOB_PAYLOAD_CACHE_BYTES -= len(previous)
+        _BLOB_PAYLOAD_CACHE[key] = payload
+        _BLOB_PAYLOAD_CACHE_BYTES += len(payload)
+        while _BLOB_PAYLOAD_CACHE_BYTES > BLOB_PAYLOAD_CACHE_MAX_BYTES:
+            _, evicted = _BLOB_PAYLOAD_CACHE.popitem(last=False)
+            _BLOB_PAYLOAD_CACHE_BYTES -= len(evicted)
     return result
 
 
@@ -6048,14 +6105,28 @@ def _snapshot_text_inventory(
             sha256_by_path[path] = hashlib.sha256(payload).hexdigest()
             texts[path] = payload.decode("utf-8-sig", errors="replace")
         return paths, texts, sha256_by_path
-    blob_index = _snapshot_blob_index(root, ref)
+    repo_identity = _git_repository_identity(root)
+    tree_oid = _resolved_tree_oid(root, ref)
+    cache_key = (repo_identity, tree_oid)
+    cached = _SNAPSHOT_TEXT_INVENTORY_CACHE.get(cache_key)
+    if cached is not None:
+        _SNAPSHOT_TEXT_INVENTORY_CACHE.move_to_end(cache_key)
+        cached_paths, cached_texts, cached_hashes = cached
+        return set(cached_paths), dict(cached_texts), dict(cached_hashes)
+    blob_index = _snapshot_blob_index(root, tree_oid)
     wanted = {path: blob_index[path] for path in text_paths if path in blob_index}
     payloads = _batch_git_blobs(root, wanted.values())
     for path, object_id in wanted.items():
         payload = payloads[object_id]
         sha256_by_path[path] = hashlib.sha256(payload).hexdigest()
         texts[path] = payload.decode("utf-8-sig", errors="replace")
-    return paths, texts, sha256_by_path
+    _SNAPSHOT_TEXT_INVENTORY_CACHE[cache_key] = (
+        frozenset(paths), dict(texts), dict(sha256_by_path)
+    )
+    _SNAPSHOT_TEXT_INVENTORY_CACHE.move_to_end(cache_key)
+    while len(_SNAPSHOT_TEXT_INVENTORY_CACHE) > SNAPSHOT_TEXT_INVENTORY_CACHE_MAX_ENTRIES:
+        _SNAPSHOT_TEXT_INVENTORY_CACHE.popitem(last=False)
+    return set(paths), dict(texts), dict(sha256_by_path)
 
 
 def _decode_string_body(body: str) -> str:
@@ -7706,6 +7777,7 @@ def _markdown_report(report: dict[str, Any]) -> str:
 
 
 def validate_live(args: argparse.Namespace) -> dict[str, Any]:
+    _reset_full_history_scan_caches()
     root = Path(args.project).resolve()
     authorities, implementation_paths = discover_authorities(root)
     evidence_artifact_bindings: dict[str, dict[str, Any]] = {}

@@ -16,7 +16,8 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
+from unittest import mock
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -4924,6 +4925,193 @@ print('not-json'); raise SystemExit(2)
             evidence_id
         ].__setitem__("cutover_manifest_sha256", "0" * 64),
         f"HISTORICAL_REDUCER_SUPERSESSION:{evidence_id}:CUTOVER_EVIDENCE_INVALID",
+    )
+
+    # The full-history scanner is intentionally exercised here with a tiny,
+    # disposable Git repository.  These checks are deliberately independent
+    # of the authority fixtures above: they prove that the performance cache
+    # cannot alter committed snapshot bytes, can never leak across repos, and
+    # is bypassed for live worktree reads.
+    def _cache_fixture(root: Path) -> tuple[str, str, str]:
+        root.mkdir(parents=True, exist_ok=True)
+        _git_fixture(root, "init", "--quiet")
+        _git_fixture(root, "config", "user.email", "v076-cache-selftest@example.invalid")
+        _git_fixture(root, "config", "user.name", "V076 cache selftest")
+        (root / "project.godot").write_text(
+            "[application]\nconfig/name=\"cache-selftest\"\n", encoding="utf-8"
+        )
+        source_dir = root / "scripts"
+        source_dir.mkdir(parents=True, exist_ok=True)
+        (source_dir / "cache_a.gd").write_bytes(b"aaa")
+        (source_dir / "cache_b.gd").write_bytes(b"bbb")
+        _git_fixture(root, "add", ".")
+        _git_fixture(root, "commit", "--quiet", "-m", "cache selftest fixture")
+        head = _git_fixture(root, "rev-parse", "HEAD")
+        oid_a = _git_fixture(root, "rev-parse", f"{head}:scripts/cache_a.gd")
+        oid_b = _git_fixture(root, "rev-parse", f"{head}:scripts/cache_b.gd")
+        return head, oid_a, oid_b
+
+    def append_cache_case(case_id: str, description: str, operation: Callable[[], None]) -> None:
+        try:
+            operation()
+        except Exception as error:  # noqa: BLE001 - record cache proof failure
+            append_direct_case(
+                case_id,
+                description,
+                "PASS",
+                "FAIL",
+                [f"{type(error).__name__}:{error}"],
+            )
+        else:
+            append_direct_case(case_id, description, "PASS", "PASS", [])
+
+    def cache_committed_snapshot_is_reused() -> None:
+        with tempfile.TemporaryDirectory(prefix="v076-gate-cache-snapshot-") as temp_dir:
+            root = Path(temp_dir)
+            head, _, _ = _cache_fixture(root)
+            gate._reset_full_history_scan_caches()
+            index_calls = 0
+            batch_calls = 0
+            original_index = gate._snapshot_blob_index
+            original_batch = gate._batch_git_blobs
+
+            def counted_index(snapshot_root: Path, ref: str) -> dict[str, str]:
+                nonlocal index_calls
+                index_calls += 1
+                return original_index(snapshot_root, ref)
+
+            def counted_batch(snapshot_root: Path, object_ids: Iterable[str]) -> dict[str, bytes]:
+                nonlocal batch_calls
+                batch_calls += 1
+                return original_batch(snapshot_root, object_ids)
+
+            with mock.patch.object(gate, "_snapshot_blob_index", counted_index), mock.patch.object(
+                gate, "_batch_git_blobs", counted_batch
+            ):
+                first = gate._snapshot_text_inventory(root, head, False)
+                # A ref alias resolving to the same immutable tree must reuse
+                # the exact tree-keyed entry, not rescan blobs.
+                second = gate._snapshot_text_inventory(root, "HEAD", False)
+            if first != second:
+                raise AssertionError("committed snapshot cache changed inventory bytes")
+            if index_calls != 1 or batch_calls != 1:
+                raise AssertionError(
+                    f"committed snapshot cache miss: index={index_calls} batch={batch_calls}"
+                )
+            if len(gate._SNAPSHOT_TEXT_INVENTORY_CACHE) != 1:
+                raise AssertionError("committed snapshot cache did not retain one tree entry")
+
+    def cache_blob_lru_is_repo_scoped_and_byte_bounded() -> None:
+        with (
+            tempfile.TemporaryDirectory(prefix="v076-gate-cache-repo-a-") as temp_a,
+            tempfile.TemporaryDirectory(prefix="v076-gate-cache-repo-b-") as temp_b,
+        ):
+            root_a = Path(temp_a)
+            root_b = Path(temp_b)
+            _, oid_a, oid_b = _cache_fixture(root_a)
+            _, oid_a_other, _ = _cache_fixture(root_b)
+            if oid_a != oid_a_other:
+                raise AssertionError("fixture blob OIDs differ, repo-scope test is invalid")
+            gate._reset_full_history_scan_caches()
+            original_run = gate.subprocess.run
+            cat_file_calls = 0
+
+            def counted_run(*args: Any, **kwargs: Any) -> Any:
+                nonlocal cat_file_calls
+                command = args[0] if args else kwargs.get("args")
+                if isinstance(command, (list, tuple)) and "cat-file" in command:
+                    cat_file_calls += 1
+                return original_run(*args, **kwargs)
+
+            with mock.patch.object(
+                gate, "BLOB_PAYLOAD_CACHE_MAX_BYTES", 4
+            ), mock.patch.object(gate.subprocess, "run", side_effect=counted_run):
+                gate._batch_git_blobs(root_a, [oid_a])
+                gate._batch_git_blobs(root_a, [oid_b])
+                gate._batch_git_blobs(root_a, [oid_b])  # recent B is a hit
+                gate._batch_git_blobs(root_a, [oid_a])  # A was evicted by bytes
+                gate._batch_git_blobs(root_b, [oid_a_other])  # same OID, new repo
+                gate._batch_git_blobs(root_a, [oid_a])  # root A entry was evicted
+            if cat_file_calls != 5:
+                raise AssertionError(f"unexpected cat-file calls: {cat_file_calls}")
+            if gate._BLOB_PAYLOAD_CACHE_BYTES > 4:
+                raise AssertionError("blob cache exceeded its byte budget")
+            if len(gate._BLOB_PAYLOAD_CACHE) != 1:
+                raise AssertionError("byte LRU did not evict the least-recent entry")
+
+    def cache_worktree_reads_bypass_committed_entry() -> None:
+        with tempfile.TemporaryDirectory(prefix="v076-gate-cache-worktree-") as temp_dir:
+            root = Path(temp_dir)
+            head, _, _ = _cache_fixture(root)
+            gate._reset_full_history_scan_caches()
+            committed = gate._snapshot_text_inventory(root, head, False)
+            source = root / "scripts" / "cache_a.gd"
+            source.write_bytes(b"working-tree")
+            first_worktree = gate._snapshot_text_inventory(root, head, True)
+            source.write_bytes(b"working-tree-2")
+            second_worktree = gate._snapshot_text_inventory(root, head, True)
+            committed_text = committed[1].get("scripts/cache_a.gd")
+            if committed_text != "aaa":
+                raise AssertionError("committed fixture text was not loaded")
+            if first_worktree[1].get("scripts/cache_a.gd") != "working-tree":
+                raise AssertionError("worktree read did not observe an uncommitted edit")
+            if second_worktree[1].get("scripts/cache_a.gd") != "working-tree-2":
+                raise AssertionError("worktree read reused a committed cache entry")
+            if len(gate._SNAPSHOT_TEXT_INVENTORY_CACHE) != 1:
+                raise AssertionError("worktree read polluted committed snapshot cache")
+
+    def cache_reset_runs_at_validate_entry() -> None:
+        with tempfile.TemporaryDirectory(prefix="v076-gate-cache-reset-") as temp_dir:
+            root = Path(temp_dir)
+            head, _, _ = _cache_fixture(root)
+            gate._reset_full_history_scan_caches()
+            gate._snapshot_text_inventory(root, head, False)
+            if not gate._SNAPSHOT_TEXT_INVENTORY_CACHE:
+                raise AssertionError("reset test failed to prime snapshot cache")
+            original_reset = gate._reset_full_history_scan_caches
+            calls: list[str] = []
+
+            class _StopValidation(Exception):
+                pass
+
+            def observed_reset() -> None:
+                calls.append("reset")
+                original_reset()
+                raise _StopValidation
+
+            with mock.patch.object(gate, "_reset_full_history_scan_caches", observed_reset):
+                try:
+                    # validate_live invokes reset before it dereferences args,
+                    # so an empty sentinel object is sufficient here.
+                    gate.validate_live(object())
+                except _StopValidation:
+                    pass
+            if calls != ["reset"]:
+                raise AssertionError(f"validate_live reset calls: {calls}")
+            if gate._SNAPSHOT_TEXT_INVENTORY_CACHE or gate._BLOB_PAYLOAD_CACHE:
+                raise AssertionError("per-validation reset left stale cache state")
+            if gate._BLOB_PAYLOAD_CACHE_BYTES != 0:
+                raise AssertionError("per-validation reset left stale byte accounting")
+
+    append_cache_case(
+        "146",
+        "committed snapshot cache is keyed by immutable tree and avoids a second blob scan",
+        cache_committed_snapshot_is_reused,
+    )
+    append_cache_case(
+        "147",
+        "repo-scoped blob LRU obeys its byte budget and does not cross repository identities",
+        cache_blob_lru_is_repo_scoped_and_byte_bounded,
+    )
+    append_cache_case(
+        "148",
+        "include-worktree snapshot reads bypass committed cache entries",
+        cache_worktree_reads_bypass_committed_entry,
+    )
+    append_cache_case(
+        "149",
+        "validate_live resets immutable scan caches before every validation",
+        cache_reset_runs_at_validate_entry,
     )
 
     pass_count = sum(result["status"] == "PASS" for result in results)
