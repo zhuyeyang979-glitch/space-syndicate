@@ -6435,7 +6435,7 @@ def _subject_projection_revalidation_successor_v3_sidecar_findings(
             not isinstance(prior_record_path, str)
             or not exact_path(prior_record_path)
             or prior_record_path
-            != _subject_projection_revalidation_successor_v3.PRIOR_RECORD_PATH
+            != _subject_projection_revalidation_successor_v3.PRIOR_PATH
             or not isinstance(revalidation_id, str)
             or not revalidation_id
             or not isinstance(payload_sha, str)
