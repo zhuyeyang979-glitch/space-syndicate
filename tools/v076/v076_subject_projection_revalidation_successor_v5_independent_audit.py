@@ -354,7 +354,7 @@ def audit(
             rebound = projection(root, CHANGE, selector)
             live = projection(root, evaluated_ref, selector)
             product_blobs = {
-                str(path): sha(blob(root, PRE_HEAD, str(path)))
+                str(path): sha(blob(root, evaluated_ref, str(path)))
                 for path in selector.get("paths", [])
             }
         except Exception:

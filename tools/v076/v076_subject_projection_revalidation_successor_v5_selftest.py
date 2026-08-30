@@ -105,6 +105,10 @@ def main() -> int:
             semantics_valid = False
             continue
         record = document(record_path)
+        current_product_blobs = {
+            str(path): primary.sha256_bytes(primary.blob(root, BINDING_HEAD, str(path)) or b"")
+            for path in record["authority_selectors"].get("paths", [])
+        }
         semantics_valid = semantics_valid and all(
             (
                 binding.get("path") == expected_path,
@@ -123,6 +127,7 @@ def main() -> int:
                 record.get("prior_record_sha256") == old_binding.get("prior_record_sha256"),
                 record.get("prior_record_payload_sha256")
                 == old_binding.get("prior_record_payload_sha256"),
+                record.get("bound_product_blob_sha256_by_path") == current_product_blobs,
             )
         )
     checks.true(semantics_valid, "record lineage or exact replacement semantics drifted")

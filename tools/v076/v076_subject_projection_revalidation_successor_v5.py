@@ -299,7 +299,7 @@ def make_record(
         raise ValueError("SPR5_RECORD_PROJECTION_INVALID:" + fingerprint)
     product_blobs: dict[str, str] = {}
     for path in selector.get("paths", []):
-        raw = blob(root, PREDECESSOR_BINDING_HEAD, str(path))
+        raw = blob(root, binding_head, str(path))
         if raw is None:
             raise ValueError("SPR5_PRODUCT_BLOB_MISSING:" + fingerprint)
         product_blobs[str(path)] = sha256_bytes(raw)
@@ -487,10 +487,12 @@ def validate(
             before = projection(root, TRANSITION_PARENT, selector)
             rebound = projection(root, TRANSITION_COMMIT, selector)
             live = projection(root, evaluated_ref, selector)
-            product_blobs = {
-                str(path): sha256_bytes(blob(root, PREDECESSOR_BINDING_HEAD, str(path)) or b"")
-                for path in selector.get("paths", [])
-            }
+            product_blobs: dict[str, str] = {}
+            for path in selector.get("paths", []):
+                product_raw = blob(root, evaluated_ref, str(path))
+                if product_raw is None:
+                    raise ValueError("PRODUCT_BLOB_MISSING")
+                product_blobs[str(path)] = sha256_bytes(product_raw)
         except Exception:
             failures.append("SPR5_RECORD_UNREADABLE:" + fingerprint)
             continue
