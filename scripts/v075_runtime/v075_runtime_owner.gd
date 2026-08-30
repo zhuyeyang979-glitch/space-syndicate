@@ -32,6 +32,9 @@ const CombatProjectionAdapter := preload(
 const CombatAIAdapter := preload(
 	"res://scripts/v075/ai/v075_combat_ai_adapter.gd"
 )
+const V074AIMapAdapter := preload(
+	"res://scripts/v074/ai/v074_dynamic_map_ai_observation_adapter.gd"
+)
 const CombatCandidate := preload(
 	"res://scripts/v075/ai/v075_ai_combat_action_candidate_v1.gd"
 )
@@ -103,6 +106,34 @@ const V075_TRACK_REFILL_MODE_ID := "shared_scroll_vacancy"
 const V075_TRACK_SLOW_SUSHI_MOTION := true
 const V075_TRACK_IMMEDIATE_REFILL_ON_ACQUISITION := false
 const PLAYTEST_PACE_MULTIPLIERS := [0, 1, 2, 4]
+const V076_AI_OBSERVATION_ALLOWED_FIELDS := [
+	"ruleset_id",
+	"actor_id",
+	"phase",
+	"batch_number",
+	"canonical_observation",
+	"legal_actions",
+	"public_roster",
+	"public_history",
+	"self_is_local_human",
+	"combat_private_facts",
+	"combat_public_facts",
+	"combat_candidates",
+	"monster_mode_capabilities",
+	"military_mission_capabilities",
+	"combat_hidden_info_violation_count",
+]
+const V076_AI_OBSERVATION_EXTRA_FORBIDDEN_FIELDS := [
+	"opponent_hand",
+	"opponent_hands",
+	"other_hand",
+	"other_player_hand",
+	"private_plan",
+	"private_plans",
+	"private_queue",
+	"private_queues",
+	"hidden_order",
+]
 const CARD_ACTION_LIFECYCLE_ID := (
 	"v075.combat.queue_resolve_personal_discard"
 )
@@ -246,6 +277,11 @@ var _v075_debug_snapshot_cache: Dictionary = {}
 ## gameplay state.  Only a seat label and a public outcome cross the boundary.
 var _v075_ai_public_action_by_actor: Dictionary = {}
 var _v075_ai_observation_count_by_actor: Dictionary = {}
+## Session-level, debug-only proof that every production AI choice reused the
+## typed canonical observation boundary. This witness never enters a player
+## snapshot, Action Feed, or the public action arrangement.
+var _v075_ai_observation_witness_by_actor: Dictionary = {}
+var _v075_ai_observation_witness_sequence := 0
 var _v075_ai_public_action_sequence := 0
 var _v076_projection_flush_scheduled := false
 var _v076_last_track_advance_msec := -1
@@ -253,6 +289,9 @@ var _v076_last_track_advance_sequence := -1
 var _v076_track_presentation_receipt_count := 0
 var _v076_last_track_presentation_receipt_id := ""
 var _v076_production_asset_reservations: Dictionary = {}
+## Session-level, debug-only quantity witness emitted by the existing asset
+## Owner path. It observes reserve/settle/consequence receipts and owns no asset.
+var _v076_last_asset_consequence_witness: Dictionary = {}
 var _v076_production_military_submission_by_uid: Dictionary = {}
 var _v076_military_consequence_fingerprint_by_id: Dictionary = {}
 var _v076_asset_consequence_projection_count := 0
@@ -3833,6 +3872,68 @@ func _v076_monster_uid_for_source(source_id: String) -> int:
 	return absi(source_id.hash()) + 1
 
 
+func _v076_asset_quantities_for_actor(
+	state: Dictionary,
+	actor_id: String
+) -> Dictionary:
+	var players := state.get("players", {}) as Dictionary
+	var player := players.get(actor_id, {}) as Dictionary
+	var assets := player.get("assets", {}) as Dictionary
+	var result := {}
+	for color_id in COLORS:
+		result[color_id] = int(assets.get(color_id, 0))
+	return result
+
+
+func _v076_bind_asset_consequence_witness(
+	envelope: Dictionary,
+	projection_count_before: int
+) -> void:
+	var witness := _v076_last_asset_consequence_witness.duplicate(true)
+	if witness.is_empty():
+		return
+	var mission_receipt := envelope.get("mission_receipt", {}) as Dictionary
+	var source_fingerprint := str(mission_receipt.get(
+		"receipt_fingerprint", ""
+	))
+	if source_fingerprint.is_empty() or source_fingerprint != str(witness.get(
+		"mission_receipt_fingerprint", ""
+	)):
+		return
+	witness["consequence_id"] = str(envelope.get("consequence_id", ""))
+	witness["consequence_fingerprint"] = str(envelope.get(
+		"consequence_fingerprint", ""
+	))
+	witness["task_kind"] = str(mission_receipt.get("task_kind", ""))
+	witness["target_region_id"] = str(mission_receipt.get(
+		"public_target_region_id",
+		mission_receipt.get("target_region_id", "")
+	))
+	witness["allocated_damage_total"] = int(mission_receipt.get(
+		"allocated_damage_total", 0
+	))
+	witness["facility_damage_intent_count"] = int((
+		mission_receipt.get("facility_damage_intents", []) as Array
+	).size())
+	witness["monster_damage_intent_count"] = int((
+		mission_receipt.get("monster_damage_intents", []) as Array
+	).size())
+	witness["projection_count_before"] = projection_count_before
+	witness["projection_count_after"] = _v076_asset_consequence_projection_count
+	witness["projection_failure_count"] = (
+		_v076_asset_consequence_projection_failure_count
+	)
+	witness["presentation_count"] = _v076_military_consequence_presentation_count
+	witness["consequence_bound"] = true
+	witness["witness_fingerprint"] = (
+		PresentationReceiptIdentity.canonical_sha256(
+			_v076_without_field(witness, "witness_fingerprint")
+		)
+	)
+	_v076_last_asset_consequence_witness = witness
+	_invalidate_v075_debug_snapshot_cache()
+
+
 func v076_commit_production_asset_reservation(plan: Dictionary) -> Dictionary:
 	var reservation_id := str(plan.get("reservation_id", ""))
 	if reservation_id.is_empty() or _v076_production_asset_reservations.has(reservation_id):
@@ -3926,6 +4027,14 @@ func _v076_settle_production_asset_reservation(
 	intent["settlement_fingerprint"] = V076StateCodec.fingerprint(
 		_v076_without_field(intent, "settlement_fingerprint")
 	)
+	var owner_player_id := str(reservation_receipt.get(
+		"owner_player_id", ""
+	))
+	var asset_revision_before := int(_asset_state.get("revision", 0))
+	var asset_quantities_before := _v076_asset_quantities_for_actor(
+		_asset_state,
+		owner_player_id
+	)
 	var settled := (
 		ASSET_BATCH_CORE.commit_private_direct_action_asset_reservation(_asset_state, intent)
 		if action == "commit"
@@ -3936,9 +4045,57 @@ func _v076_settle_production_asset_reservation(
 	_asset_state = (settled.get("state", _asset_state) as Dictionary).duplicate(true)
 	_sync_asset_balances()
 	prior["outcome"] = "consumed" if action == "commit" else "released"
-	prior["settlement_receipt"] = (settled.get("receipt", {}) as Dictionary).duplicate(true)
+	var settlement_receipt := settled.get("receipt", {}) as Dictionary
+	prior["settlement_receipt"] = settlement_receipt.duplicate(true)
 	prior["revision"] = int(_asset_state.get("revision", 0))
 	_v076_production_asset_reservations[reservation_id] = prior.duplicate(true)
+	var asset_quantities_after := _v076_asset_quantities_for_actor(
+		_asset_state,
+		owner_player_id
+	)
+	var asset_delta_by_color := {}
+	for color_id in COLORS:
+		asset_delta_by_color[color_id] = int(asset_quantities_after.get(
+			color_id, 0
+		)) - int(asset_quantities_before.get(color_id, 0))
+	_v076_last_asset_consequence_witness = {
+		"schema": "V076AssetConsequenceAuthorityWitnessV1",
+		"reservation_id": reservation_id,
+		"owner_player_id": owner_player_id,
+		"action": action,
+		"outcome": str(prior.get("outcome", "")),
+		"asset_revision_before": asset_revision_before,
+		"asset_revision_after": int(_asset_state.get("revision", 0)),
+		"asset_quantities_before": asset_quantities_before,
+		"asset_quantities_after": asset_quantities_after,
+		"asset_delta_by_color": asset_delta_by_color,
+		"reserved_asset_cost_by_color": cost.duplicate(true),
+		"reservation_receipt_id": str(reservation_receipt.get(
+			"receipt_id", ""
+		)),
+		"reservation_receipt_fingerprint": str(reservation_receipt.get(
+			"receipt_fingerprint", ""
+		)),
+		"settlement_receipt_id": str(settlement_receipt.get(
+			"receipt_id", ""
+		)),
+		"settlement_receipt_fingerprint": str(settlement_receipt.get(
+			"receipt_fingerprint", ""
+		)),
+		"mission_receipt_fingerprint": str(settlement.get(
+			"mission_receipt_fingerprint", ""
+		)),
+		"asset_debit_count": int(settled.get("asset_debit_count", 0)),
+		"consequence_bound": false,
+		"witness_fingerprint": "",
+	}
+	_v076_last_asset_consequence_witness["witness_fingerprint"] = (
+		PresentationReceiptIdentity.canonical_sha256(_v076_without_field(
+			_v076_last_asset_consequence_witness,
+			"witness_fingerprint"
+		))
+	)
+	_invalidate_v075_debug_snapshot_cache()
 	return prior.duplicate(true)
 
 
@@ -4041,7 +4198,9 @@ func consume_v076_military_consequence(envelope: Dictionary) -> Dictionary:
 		supplied_fingerprint
 	)
 	_v076_military_consequence_presentation_count += 1
+	var projection_count_before := _v076_asset_consequence_projection_count
 	_publish_v076_asset_consequence_projection()
+	_v076_bind_asset_consequence_witness(envelope, projection_count_before)
 	return {
 		"accepted": true,
 		"reason_code": "v076_military_consequence_presented",
@@ -5378,6 +5537,15 @@ func debug_snapshot() -> Dictionary:
 	result["ai_public_action_receipt_count"] = _v075_ai_public_action_sequence
 	result["ai_public_action_receipts"] = _v075_ai_public_action_by_actor.values().duplicate(true)
 	result["ai_observation_count_by_actor"] = _v075_ai_observation_count_by_actor.duplicate(true)
+	result["ai_observation_witness_sequence"] = (
+		_v075_ai_observation_witness_sequence
+	)
+	result["ai_observation_witness_by_actor"] = (
+		_v075_ai_observation_witness_by_actor.duplicate(true)
+	)
+	result["v076_last_asset_consequence_witness"] = (
+		_v076_last_asset_consequence_witness.duplicate(true)
+	)
 	result["ai_explicit_pass_count"] = _v075_ai_public_action_by_actor.values().filter(
 		func(value: Variant) -> bool:
 			return value is Dictionary and str((value as Dictionary).get("status", "")) == "PASS"
@@ -5488,6 +5656,15 @@ func _refresh_v075_debug_snapshot_fields(snapshot: Dictionary) -> void:
 	# new player projection, but its audit counter must never remain cached.
 	snapshot["submission_transaction_rollback_count"] = (
 		_v075_submission_rollback_count
+	)
+	snapshot["ai_observation_witness_sequence"] = (
+		_v075_ai_observation_witness_sequence
+	)
+	snapshot["ai_observation_witness_by_actor"] = (
+		_v075_ai_observation_witness_by_actor.duplicate(true)
+	)
+	snapshot["v076_last_asset_consequence_witness"] = (
+		_v076_last_asset_consequence_witness.duplicate(true)
 	)
 	snapshot["facility_combat_damage_receipt_count"] = (
 		_combat_facility_damage_receipt_count
@@ -5674,6 +5851,8 @@ func _reset_runtime() -> void:
 	_v075_public_facility_slots_cache = []
 	_v075_ai_public_action_by_actor = {}
 	_v075_ai_observation_count_by_actor = {}
+	_v075_ai_observation_witness_by_actor = {}
+	_v075_ai_observation_witness_sequence = 0
 	_v075_ai_public_action_sequence = 0
 	# A deferred projection flush belongs to the current runtime generation;
 	# clear its scheduling guard whenever a new game/reset starts so a timer
@@ -5684,6 +5863,7 @@ func _reset_runtime() -> void:
 	_v076_track_presentation_receipt_count = 0
 	_v076_last_track_presentation_receipt_id = ""
 	_v076_production_asset_reservations = {}
+	_v076_last_asset_consequence_witness = {}
 	_v076_production_military_submission_by_uid = {}
 	_v076_military_consequence_fingerprint_by_id = {}
 	_v076_asset_consequence_projection_count = 0
@@ -5710,6 +5890,7 @@ func _begin_batch() -> void:
 	_clear_v075_track_projection_cache()
 	_v075_ai_public_action_by_actor = {}
 	_v075_ai_observation_count_by_actor = {}
+	# Session-level observation witnesses deliberately survive batch rollover.
 	_v075_ai_public_action_sequence = 0
 	super._begin_batch()
 	if _combat_initialized and _phase != "failed":
@@ -9038,6 +9219,142 @@ func _v075_ai_seat_label(actor_id: String) -> String:
 	return "AI玩家 %d" % maxi(1, seat_index)
 
 
+func _v075_observation_forbidden_field_count(
+	value: Variant,
+	forbidden_fields: Array
+) -> int:
+	var count := 0
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			var key := str(key_variant)
+			if forbidden_fields.has(key):
+				count += 1
+			count += _v075_observation_forbidden_field_count(
+				(value as Dictionary).get(key_variant),
+				forbidden_fields
+			)
+	elif value is Array:
+		for item in value as Array:
+			count += _v075_observation_forbidden_field_count(
+				item,
+				forbidden_fields
+			)
+	return count
+
+
+func _v075_observation_unexpected_field_count(observation: Dictionary) -> int:
+	var count := 0
+	for key_variant in observation.keys():
+		if not V076_AI_OBSERVATION_ALLOWED_FIELDS.has(str(key_variant)):
+			count += 1
+	return count
+
+
+func _v075_record_ai_observation_witness(
+	actor_id: String,
+	observation: Dictionary
+) -> Dictionary:
+	if actor_id == _local_player_id or actor_id.is_empty():
+		return {}
+	var canonical := observation.get("canonical_observation", {}) as Dictionary
+	var validation := V074AIMapAdapter.validation_report(canonical)
+	if not bool(validation.get("valid", false)):
+		return {}
+	_v075_ai_observation_witness_sequence += 1
+	var sequence := _v075_ai_observation_witness_sequence
+	var row := {
+		"schema": "V076AIObservationAuthorityWitnessV1",
+		"witness_id": "ai.observation.%s.%04d" % [_match_id, sequence],
+		"sequence": sequence,
+		"batch_id": _batch_id(),
+		"actor_id": actor_id,
+		"viewer_id": str(canonical.get("viewer_id", "")),
+		"observation_id": str(canonical.get("observation_id", "")),
+		"adapter_id": str(canonical.get("adapter_id", "")),
+		"visibility_scope_id": str(canonical.get("visibility_scope_id", "")),
+		"authorization_revision": int(canonical.get(
+			"authorization_revision", -1
+		)),
+		"source_revision": int(canonical.get("source_revision", -1)),
+		"component_source_revisions": (
+			canonical.get("source_revisions", {}) as Dictionary
+		).duplicate(true),
+		"source_fingerprint_by_domain": (
+			canonical.get(
+				"source_projection_fingerprints", {}
+			) as Dictionary
+		).duplicate(true),
+		"allowed_field_manifest": (
+			V076_AI_OBSERVATION_ALLOWED_FIELDS.duplicate()
+		),
+		"canonical_allowed_field_manifest": (
+			V074AIMapAdapter.OBSERVATION_FIELDS.duplicate()
+		),
+		"canonical_observation_fingerprint": str(canonical.get(
+			"observation_fingerprint", ""
+		)),
+		"outer_observation_sha256": (
+			PresentationReceiptIdentity.canonical_sha256(observation)
+		),
+		"canonical_validation_reason": str(validation.get(
+			"reason_code", "valid"
+		)),
+		"unexpected_top_level_field_count": (
+			_v075_observation_unexpected_field_count(observation)
+		),
+		"forbidden_source_field_count": (
+			_v075_observation_forbidden_field_count(
+				canonical,
+				V074AIMapAdapter.FORBIDDEN_INFORMATION_KEYS
+			)
+		),
+		"private_leak_field_count": (
+			_v075_observation_forbidden_field_count(
+				observation,
+				V076_AI_OBSERVATION_EXTRA_FORBIDDEN_FIELDS
+			)
+		),
+		"combat_hidden_info_violation_count": int(observation.get(
+			"combat_hidden_info_violation_count", 0
+		)),
+		"public_action_receipt_ids": [],
+		"latest_public_action_receipt_id": "",
+		"witness_fingerprint": "",
+	}
+	row["witness_fingerprint"] = V076StateCodec.fingerprint(
+		_v076_without_field(row, "witness_fingerprint")
+	)
+	_v075_ai_observation_witness_by_actor[actor_id] = row.duplicate(true)
+	_invalidate_v075_debug_snapshot_cache()
+	return row
+
+
+func _v075_bind_ai_public_action_witness(
+	actor_id: String,
+	public_action_receipt: Dictionary
+) -> void:
+	var witness := _v075_ai_observation_witness_by_actor.get(
+		actor_id, {}
+	) as Dictionary
+	if witness.is_empty() or public_action_receipt.is_empty():
+		return
+	var receipt_id := str(public_action_receipt.get("receipt_id", ""))
+	if receipt_id.is_empty():
+		return
+	var receipt_ids := witness.get("public_action_receipt_ids", []) as Array
+	if not receipt_ids.has(receipt_id):
+		receipt_ids.append(receipt_id)
+	witness["public_action_receipt_ids"] = receipt_ids
+	witness["latest_public_action_receipt_id"] = receipt_id
+	witness["witness_fingerprint"] = (
+		PresentationReceiptIdentity.canonical_sha256(
+			_v076_without_field(witness, "witness_fingerprint")
+		)
+	)
+	_v075_ai_observation_witness_by_actor[actor_id] = witness.duplicate(true)
+	_invalidate_v075_debug_snapshot_cache()
+
+
 func _v075_record_ai_public_action(
 	actor_id: String,
 	action_kind: String,
@@ -9067,6 +9384,7 @@ func _v075_record_ai_public_action(
 		"direct_action_public_effect": action_domain in ["monster", "military"],
 	}
 	_v075_ai_public_action_by_actor[actor_id] = row.duplicate(true)
+	_v075_bind_ai_public_action_witness(actor_id, row)
 	return row
 
 
@@ -9141,6 +9459,7 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 		_v075_ai_observation_count_by_actor[actor_id] = int(
 			_v075_ai_observation_count_by_actor.get(actor_id, 0)
 		) + 1
+		_v075_record_ai_observation_witness(actor_id, observation)
 		var observed_actions := observation.get("legal_actions", []) as Array
 		var queried := _auto_legal_actions(actor_id)
 		var legal: Array = []

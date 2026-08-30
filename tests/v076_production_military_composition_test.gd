@@ -20,6 +20,9 @@ const CardDefinitions := preload(
 const StateCodec := preload(
 	"res://scripts/v076/simulation/v076_authority_state_codec.gd"
 )
+const PresentationReceiptIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
+)
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -247,6 +250,133 @@ func _run() -> void:
 	) as Dictionary).get("submission_ledger", {}) as Dictionary).get(
 		"v076.production.military.%s" % intent_id, {}
 	) as Dictionary
+	var asset_witness_before_replay := (
+		runtime.call("debug_snapshot") as Dictionary
+	).get("v076_last_asset_consequence_witness", {}) as Dictionary
+	var witnessed_assets_before := asset_witness_before_replay.get(
+		"asset_quantities_before", {}
+	) as Dictionary
+	var witnessed_assets_after := asset_witness_before_replay.get(
+		"asset_quantities_after", {}
+	) as Dictionary
+	var witnessed_delta := asset_witness_before_replay.get(
+		"asset_delta_by_color", {}
+	) as Dictionary
+	var witnessed_cost := asset_witness_before_replay.get(
+		"reserved_asset_cost_by_color", {}
+	) as Dictionary
+	_expect(
+		str(asset_witness_before_replay.get("schema", ""))
+			== "V076AssetConsequenceAuthorityWitnessV1"
+			and str(asset_witness_before_replay.get(
+				"owner_player_id", ""
+			)) == actor_id
+			and str(asset_witness_before_replay.get("action", ""))
+				== "commit"
+			and str(asset_witness_before_replay.get("outcome", ""))
+				== "consumed",
+		"asset consequence witness binds the existing Owner's committed settlement"
+	)
+	_expect(
+		int(asset_witness_before_replay.get(
+			"asset_revision_before", -1
+		)) >= 0
+			and int(asset_witness_before_replay.get(
+				"asset_revision_after", -1
+			)) > int(asset_witness_before_replay.get(
+				"asset_revision_before", -1
+			))
+			and witnessed_assets_before == before_assets
+			and witnessed_assets_after == after_assets,
+		"asset witness quantities and revision match the real Owner before/after state"
+	)
+	for asset_color_variant in before_assets.keys():
+		var asset_color := str(asset_color_variant)
+		var expected_delta := (
+			-int(card_setup.get("cost", 0))
+			if asset_color == color
+			else 0
+		)
+		var expected_cost := (
+			int(card_setup.get("cost", 0))
+			if asset_color == color
+			else 0
+		)
+		_expect(
+			int(witnessed_delta.get(asset_color, 999)) == expected_delta
+				and int(witnessed_cost.get(asset_color, -1))
+					== expected_cost,
+			"asset witness binds the exact authored delta/cost for %s"
+			% asset_color
+		)
+	var mission_receipt := first_entry.get(
+		"mission_receipt", {}
+	) as Dictionary
+	_expect(
+		str(asset_witness_before_replay.get(
+			"reservation_receipt_id", ""
+		)).length() > 0
+			and str(asset_witness_before_replay.get(
+				"reservation_receipt_fingerprint", ""
+			)).length() == 64
+			and str(asset_witness_before_replay.get(
+				"settlement_receipt_id", ""
+			)).length() > 0
+			and str(asset_witness_before_replay.get(
+				"settlement_receipt_fingerprint", ""
+			)).length() == 64
+			and str(asset_witness_before_replay.get(
+				"mission_receipt_fingerprint", ""
+			)) == str(mission_receipt.get("receipt_fingerprint", "")),
+		"asset witness correlates reservation, settlement, and mission receipts"
+	)
+	_expect(
+		bool(asset_witness_before_replay.get(
+			"consequence_bound", false
+		))
+			and str(asset_witness_before_replay.get(
+				"consequence_id", ""
+			)).length() > 0
+			and str(asset_witness_before_replay.get(
+				"consequence_fingerprint", ""
+			)).length() == 64
+			and str(asset_witness_before_replay.get("task_kind", ""))
+				== "assault_region"
+			and int(asset_witness_before_replay.get(
+				"allocated_damage_total", 0
+			)) > 0,
+		"asset settlement is bound to the real region consequence and damage"
+	)
+	_expect(
+		int(asset_witness_before_replay.get("asset_debit_count", 0))
+			== 1
+			and int(asset_witness_before_replay.get(
+				"projection_count_before", -1
+			)) == 0
+			and int(asset_witness_before_replay.get(
+				"projection_count_after", -1
+			)) == 1
+			and int(asset_witness_before_replay.get(
+				"projection_failure_count", -1
+			)) == 0
+			and int(asset_witness_before_replay.get(
+				"presentation_count", -1
+			)) == 1,
+		"asset consequence publishes exactly one successful projection and presentation"
+	)
+	var asset_witness_fingerprint_before_replay := str(
+		asset_witness_before_replay.get("witness_fingerprint", "")
+	)
+	var witness_payload := asset_witness_before_replay.duplicate(true)
+	witness_payload.erase("witness_fingerprint")
+	_expect(
+		asset_witness_fingerprint_before_replay.length() == 64
+			and asset_witness_fingerprint_before_replay
+				== PresentationReceiptIdentity.canonical_sha256(
+					witness_payload
+				),
+		"asset witness fingerprint seals its complete consequence DTO"
+	)
 	var consequence_replay := runtime.call(
 		"consume_v076_military_consequence",
 		direct.call(
@@ -255,6 +385,9 @@ func _run() -> void:
 			first_entry.get("mission_receipt", {}) as Dictionary
 		) as Dictionary
 	) as Dictionary
+	var asset_witness_after_replay := (
+		runtime.call("debug_snapshot") as Dictionary
+	).get("v076_last_asset_consequence_witness", {}) as Dictionary
 	_expect(
 		bool(consequence_replay.get("accepted", false))
 			and bool(consequence_replay.get("duplicate", false)),
@@ -269,6 +402,12 @@ func _run() -> void:
 				production_events, "military_withdrawn"
 			) == 1,
 		"consequence replay creates no duplicate asset projection or presentation"
+	)
+	_expect(
+		str(asset_witness_after_replay.get("witness_fingerprint", ""))
+			== asset_witness_fingerprint_before_replay
+			and asset_witness_after_replay == asset_witness_before_replay,
+		"duplicate consequence replay leaves the complete asset witness unchanged"
 	)
 	var screen_debug := (
 		production_screen.call("combat_debug_snapshot") as Dictionary

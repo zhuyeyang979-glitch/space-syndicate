@@ -261,6 +261,105 @@ func _run() -> void:
 	)
 
 	var runtime_debug := runtime.call("debug_snapshot") as Dictionary
+	var witness_by_actor := runtime_debug.get(
+		"ai_observation_witness_by_actor", {}
+	) as Dictionary
+	var ai_witness := witness_by_actor.get(ai_id, {}) as Dictionary
+	var allowed_fields := ai_witness.get(
+		"allowed_field_manifest", []
+	) as Array
+	var canonical_allowed_fields := ai_witness.get(
+		"canonical_allowed_field_manifest", []
+	) as Array
+	var source_revisions := ai_witness.get(
+		"component_source_revisions", {}
+	) as Dictionary
+	var source_fingerprints := ai_witness.get(
+		"source_fingerprint_by_domain", {}
+	) as Dictionary
+	_expect(
+		str(ai_witness.get("schema", ""))
+			== "V076AIObservationAuthorityWitnessV1"
+			and int(ai_witness.get("sequence", 0)) > 0
+			and int(runtime_debug.get(
+				"ai_observation_witness_sequence", 0
+			)) >= witness_by_actor.size()
+			and str(ai_witness.get("actor_id", "")) == ai_id
+			and str(ai_witness.get("viewer_id", "")) == ai_id,
+		"session witness binds the AI actor/viewer and monotonic sequence"
+	)
+	_expect(
+		allowed_fields.has("canonical_observation")
+			and allowed_fields.has("legal_actions")
+			and allowed_fields.has("combat_private_facts")
+			and allowed_fields.has("combat_public_facts")
+			and canonical_allowed_fields.has("public_facility_slots")
+			and canonical_allowed_fields.has("own_cards")
+			and canonical_allowed_fields.has("source_revisions")
+			and canonical_allowed_fields.has(
+				"source_projection_fingerprints"
+			),
+		"AI witness seals both allowed-field manifests"
+	)
+	_expect(
+		not source_revisions.is_empty()
+			and not source_fingerprints.is_empty()
+			and str(ai_witness.get(
+				"canonical_observation_fingerprint", ""
+			)).length() == 64
+			and str(ai_witness.get(
+				"outer_observation_sha256", ""
+			)).length() == 64,
+		"AI witness seals canonical source revisions and fingerprints"
+	)
+	for source_fingerprint_variant in source_fingerprints.values():
+		_expect(
+			str(source_fingerprint_variant).length() == 64,
+			"each AI observation source domain carries one SHA-256 fingerprint"
+		)
+	_expect(
+		int(ai_witness.get("unexpected_top_level_field_count", -1)) == 0
+			and int(ai_witness.get(
+				"forbidden_source_field_count", -1
+			)) == 0
+			and int(ai_witness.get("private_leak_field_count", -1)) == 0
+			and int(ai_witness.get(
+				"combat_hidden_info_violation_count", -1
+			)) == 0,
+		"AI witness reports zero unexpected, forbidden, private, or combat leaks"
+	)
+	var public_action_receipt_ids := ai_witness.get(
+		"public_action_receipt_ids", []
+	) as Array
+	_expect(
+		not public_action_receipt_ids.is_empty()
+			and public_action_receipt_ids.has(str(ai_witness.get(
+				"latest_public_action_receipt_id", ""
+			))),
+		"AI witness correlates the legal observation to its public action receipt"
+	)
+	for rival_card_id in rival_hand_ids:
+		_expect(
+			not _contains_string(ai_witness, str(rival_card_id)),
+			"AI witness excludes rival hand identity %s" % rival_card_id
+		)
+	for action_variant in ai_queue:
+		var private_action := action_variant as Dictionary
+		_expect(
+			not _contains_string(
+				ai_witness, str(private_action.get("action_id", ""))
+			)
+				and not _contains_string(
+					ai_witness,
+					str(private_action.get("card_instance_id", ""))
+				),
+			"AI witness excludes owner-private plan and card identities"
+		)
+	_expect(
+		not local_snapshot.has("ai_observation_witness_by_actor")
+			and not screen_snapshot.has("ai_observation_witness_by_actor"),
+		"debug-only AI witness never enters player or GameScreen snapshots"
+	)
 	var ai_debug := (
 		(runtime.get("_combat_ai_adapter") as RefCounted).call(
 			"debug_snapshot"
