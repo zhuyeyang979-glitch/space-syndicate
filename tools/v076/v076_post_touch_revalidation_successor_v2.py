@@ -492,9 +492,10 @@ def derive_manifest(records: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _schema_failures(root: Path, artifact_head: str, stage: bool) -> list[str]:
     failures: list[str] = []
-    path = root / SCHEMA_PATH
     try:
-        raw = path.read_bytes()
+        raw = (root / SCHEMA_PATH).read_bytes() if stage else _blob(root, artifact_head, SCHEMA_PATH)
+        if raw is None:
+            raise ValueError("COMMITTED_SCHEMA_BLOB_MISSING")
         document = strict_json_bytes(raw)
     except Exception as error:
         return ["PTS2_SCHEMA_UNREADABLE:" + str(error)]
@@ -548,8 +549,6 @@ def _schema_failures(root: Path, artifact_head: str, stage: bool) -> list[str]:
         required_negative = {"NO_WILDCARD", "NO_FUTURE_FAILURE_AUTO_TRUST", "NO_PREDECESSOR_MUTATION", "NO_UNCOMMITTED_BYTES", "NO_TARGET_SET_EXPANSION", "NO_POST_BINDING_PRODUCT_TOUCH", "NO_POST_BINDING_AUTHORITY_TOUCH", "NO_UNVERIFIED_TOUCH_PROOF"}
         if not isinstance(negative, list) or len(negative) != len(set(negative)) or set(negative) != required_negative:
             failures.append("PTS2_SCHEMA_NEGATIVE_POLICY_INVALID")
-    if not stage and _blob(root, artifact_head, SCHEMA_PATH) != raw:
-        failures.append("PTS2_SCHEMA_COMMITTED_BYTES_INVALID")
     return failures
 
 
@@ -581,9 +580,10 @@ def validate(
     failures.extend(_schema_failures(root, artifact, stage))
     if _blob(root, BINDING_HEAD, SCHEMA_PATH) is not None or _blob(root, BINDING_HEAD, MANIFEST_PATH) is not None:
         failures.append("PTS2_ARTIFACT_NOT_APPEND_ONLY")
-    manifest_path = root / MANIFEST_PATH
     try:
-        manifest_raw = manifest_path.read_bytes()
+        manifest_raw = (root / MANIFEST_PATH).read_bytes() if stage else _blob(root, artifact, MANIFEST_PATH)
+        if manifest_raw is None:
+            raise ValueError("COMMITTED_MANIFEST_BLOB_MISSING")
         manifest = strict_json_bytes(manifest_raw)
     except Exception as error:
         manifest = None
@@ -593,18 +593,24 @@ def validate(
         failures.append("PTS2_MANIFEST_SEMANTIC_MISMATCH")
     if isinstance(manifest, dict) and set(manifest) != MANIFEST_FIELDS:
         failures.append("PTS2_MANIFEST_FIELD_SET_INVALID")
-    if not stage and _blob(root, artifact, MANIFEST_PATH) != manifest_raw:
-        failures.append("PTS2_MANIFEST_COMMITTED_BYTES_INVALID")
     records_dir = root / RECORD_ROOT
-    actual_names = sorted(path.name for path in records_dir.glob("*.json")) if records_dir.is_dir() else []
-    expected_names = sorted(Path(expected_record_path(fp)).name for fp in TARGET_FINGERPRINTS)
-    if actual_names != expected_names:
+    if stage:
+        actual_members = sorted(
+            path.relative_to(root).as_posix()
+            for path in records_dir.glob("*.json")
+        ) if records_dir.is_dir() else []
+    else:
+        listed = str(_git(root, "ls-tree", "-r", "--name-only", artifact, "--", RECORD_ROOT))
+        actual_members = sorted(line.strip() for line in listed.splitlines() if line.strip())
+    expected_members = sorted(expected_record_path(fp) for fp in TARGET_FINGERPRINTS)
+    if actual_members != expected_members:
         failures.append("PTS2_RECORD_MEMBER_SET_INVALID")
     for fingerprint, expected in zip(TARGET_FINGERPRINTS, expected_records, strict=True):
         relative = expected_record_path(fingerprint)
-        path = root / relative
         try:
-            raw = path.read_bytes()
+            raw = (root / relative).read_bytes() if stage else _blob(root, artifact, relative)
+            if raw is None:
+                raise ValueError("COMMITTED_RECORD_BLOB_MISSING")
             actual = strict_json_bytes(raw)
         except Exception as error:
             failures.append("PTS2_RECORD_UNREADABLE:" + fingerprint + ":" + str(error))
@@ -613,8 +619,6 @@ def validate(
             failures.append("PTS2_RECORD_NOT_CANONICAL:" + fingerprint)
         if actual != expected or not isinstance(actual, dict) or set(actual) != RECORD_FIELDS:
             failures.append("PTS2_RECORD_SEMANTIC_MISMATCH:" + fingerprint)
-        if not stage and _blob(root, artifact, relative) != raw:
-            failures.append("PTS2_RECORD_COMMITTED_BYTES_INVALID:" + fingerprint)
         if _blob(root, BINDING_HEAD, relative) is not None:
             failures.append("PTS2_RECORD_NOT_APPEND_ONLY:" + fingerprint)
     for path in TARGET_PRODUCT_PATHS + AUTHORITY_PATHS:

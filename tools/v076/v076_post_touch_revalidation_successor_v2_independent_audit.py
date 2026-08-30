@@ -147,18 +147,23 @@ def audit(
         failures.append("PTS2I_BINDING_TREE_INVALID")
     if not ancestor(root, AUTHORIZATION_BASE_HEAD, BINDING_HEAD) or not ancestor(root, BINDING_HEAD, artifact):
         failures.append("PTS2I_ANCESTRY_INVALID")
-    manifest_file = manifest_path or (root / MANIFEST_PATH)
+    canonical_manifest = (root / MANIFEST_PATH).resolve()
+    if manifest_path is not None and manifest_path.resolve() != canonical_manifest:
+        failures.append("PTS2I_MANIFEST_PATH_NOT_CANONICAL")
     try:
-        manifest_raw = manifest_file.read_bytes(); manifest = strict(manifest_raw)
+        manifest_raw = blob(root, artifact, MANIFEST_PATH)
+        if manifest_raw is None:
+            raise ValueError("COMMITTED_MANIFEST_BLOB_MISSING")
+        manifest = strict(manifest_raw)
     except Exception as error:
         return {"status": "FAIL", "failures": ["PTS2I_MANIFEST_UNREADABLE:" + str(error)], "trusted_by_fingerprint": {}}
-    if blob(root, artifact, MANIFEST_PATH) != manifest_raw:
-        failures.append("PTS2I_MANIFEST_COMMITTED_BYTES_INVALID")
     if blob(root, BINDING_HEAD, MANIFEST_PATH) is not None or blob(root, BINDING_HEAD, SCHEMA_PATH) is not None:
         failures.append("PTS2I_NOT_APPEND_ONLY")
-    schema_raw = (root / SCHEMA_PATH).read_bytes()
+    schema_raw = blob(root, artifact, SCHEMA_PATH)
+    if schema_raw is None:
+        return {"status": "FAIL", "failures": ["PTS2I_COMMITTED_SCHEMA_BLOB_MISSING"], "trusted_by_fingerprint": {}}
     schema = strict(schema_raw)
-    if sha(schema_raw) != SCHEMA_SHA256 or blob(root, artifact, SCHEMA_PATH) != schema_raw:
+    if sha(schema_raw) != SCHEMA_SHA256:
         failures.append("PTS2I_SCHEMA_SEAL_INVALID")
     if not isinstance(schema, dict) or schema.get("schema_version") != SCHEMA_VERSION or schema.get("target_fingerprints") != list(TARGETS) or schema.get("wildcard_count") != 0 or schema.get("future_failure_auto_revalidation_count") != 0 or schema.get("committed_only_bytes") is not True:
         failures.append("PTS2I_SCHEMA_POLICY_INVALID")
@@ -198,8 +203,7 @@ def audit(
         predecessor = {}
     else:
         predecessor = strict(predecessor_raw)
-    local_predecessor = (root / PREDECESSOR_MANIFEST_PATH).read_bytes()
-    if local_predecessor != predecessor_raw or blob(root, artifact, PREDECESSOR_MANIFEST_PATH) != predecessor_raw:
+    if blob(root, artifact, PREDECESSOR_MANIFEST_PATH) != predecessor_raw:
         failures.append("PTS2I_PREDECESSOR_COMMITTED_BYTES_DRIFT")
     if not isinstance(predecessor, dict) or predecessor.get("failure_fingerprints") != list(TARGETS) or predecessor.get("record_chain_terminal_sha256") != PREDECESSOR_CHAIN_TERMINAL_SHA256:
         failures.append("PTS2I_PREDECESSOR_IDENTITY_INVALID")
@@ -207,9 +211,12 @@ def audit(
     projection_digests: dict[str, str] = {}
     for index, fp in enumerate(TARGETS):
         relative = record_path(fp)
-        raw = (root / relative).read_bytes()
-        committed_raw = blob(root, artifact, relative)
-        if committed_raw != raw or raw != canonical(strict(raw)):
+        raw = blob(root, artifact, relative)
+        if raw is None:
+            failures.append("PTS2I_COMMITTED_RECORD_BLOB_MISSING:" + fp)
+            previous = "INVALID"
+            continue
+        if raw != canonical(strict(raw)):
             failures.append("PTS2I_RECORD_COMMITTED_BYTES_INVALID:" + fp)
         record = strict(raw)
         if not isinstance(record, dict) or set(record) != RECORD_FIELDS:
@@ -247,7 +254,7 @@ def audit(
             failures.append("PTS2I_PREDECESSOR_RECORD_CARDINALITY:" + fp)
             previous = str(record.get("record_payload_sha256", "INVALID")); continue
         pred_path = str(matches[0].get("path", "")); pred_raw = blob(root, BINDING_HEAD, pred_path)
-        if pred_raw is None or sha(pred_raw) != matches[0].get("record_sha256") or (root / pred_path).read_bytes() != pred_raw or blob(root, artifact, pred_path) != pred_raw:
+        if pred_raw is None or sha(pred_raw) != matches[0].get("record_sha256") or blob(root, artifact, pred_path) != pred_raw:
             failures.append("PTS2I_PREDECESSOR_RECORD_SEAL_INVALID:" + fp)
             previous = str(record.get("record_payload_sha256", "INVALID")); continue
         pred = strict(pred_raw)
@@ -255,7 +262,7 @@ def audit(
             if record.get(key) != value:
                 failures.append("PTS2I_PREDECESSOR_BINDING_INVALID:" + fp + ":" + key)
         original_path = str(pred.get("prior_record_path", "")); original_raw = blob(root, BINDING_HEAD, original_path)
-        if original_raw is None or sha(original_raw) != pred.get("prior_record_sha256") or (root / original_path).read_bytes() != original_raw or blob(root, artifact, original_path) != original_raw:
+        if original_raw is None or sha(original_raw) != pred.get("prior_record_sha256") or blob(root, artifact, original_path) != original_raw:
             failures.append("PTS2I_ORIGINAL_RECORD_SEAL_INVALID:" + fp)
             previous = str(record.get("record_payload_sha256", "INVALID")); continue
         original = strict(original_raw)
@@ -308,8 +315,9 @@ def audit(
             failures.append("PTS2I_MANIFEST_RECORD_BINDING_INVALID:" + fp)
         previous = str(record.get("record_payload_sha256", "INVALID"))
         trusted[fp] = {"allowed_invalidations": record.get("prior_invalidations"), "prior_record_path": original_path, "predecessor_record_path": pred_path, "revalidation_id": record_id(fp), "record_path": relative, "record_payload_sha256": previous, "revalidation_binding_head_sha": BINDING_HEAD, "current_subject_projection_sha256": current_sha}
-    actual_names = sorted(path.name for path in (root / RECORD_ROOT).glob("*.json"))
-    if actual_names != sorted(Path(record_path(fp)).name for fp in TARGETS):
+    listed = str(git(root, "ls-tree", "-r", "--name-only", artifact, "--", RECORD_ROOT))
+    actual_members = sorted(line.strip() for line in listed.splitlines() if line.strip())
+    if actual_members != sorted(record_path(fp) for fp in TARGETS):
         failures.append("PTS2I_RECORD_MEMBER_SET_INVALID")
     if isinstance(manifest, dict):
         if manifest.get("record_chain_terminal_sha256") != previous or manifest.get("current_projection_sha256_by_failure") != projection_digests:

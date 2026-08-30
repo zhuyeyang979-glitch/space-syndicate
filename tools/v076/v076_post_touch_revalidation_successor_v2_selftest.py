@@ -39,7 +39,7 @@ def run(root: Path) -> dict[str, object]:
     independent_result = independent.audit(root, artifact_head=artifact, evaluated_binding_head=primary.BINDING_HEAD)
     cases.append(("independent committed audit passes with separated heads", independent_result["status"] == "PASS" and independent_result["artifact_head"] == artifact and independent_result["evaluated_binding_head"] == primary.BINDING_HEAD and independent_result["trusted_fingerprint_count"] == 2))
     wrong_artifact = primary.validate(root, artifact_head=primary.BINDING_HEAD, evaluated_binding_head=primary.BINDING_HEAD)
-    cases.append(("binding commit cannot masquerade as artifact commit", wrong_artifact["status"] == "FAIL" and any("COMMITTED_BYTES" in failure for failure in wrong_artifact["failures"])))
+    cases.append(("binding commit cannot masquerade as artifact commit", wrong_artifact["status"] == "FAIL" and any("COMMITTED_MANIFEST_BLOB_MISSING" in failure for failure in wrong_artifact["failures"])))
     wrong_binding = primary.validate(root, artifact_head=artifact, evaluated_binding_head=artifact)
     cases.append(("artifact commit cannot masquerade as evaluated binding", wrong_binding["status"] == "FAIL" and "PTS2_EVALUATED_BINDING_HEAD_INVALID" in wrong_binding["failures"]))
     independent_wrong_binding = independent.audit(root, artifact_head=artifact, evaluated_binding_head=artifact)
