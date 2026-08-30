@@ -6010,11 +6010,13 @@ def _snapshot_blob_index(root: Path, ref: str) -> dict[str, str]:
     return result
 
 
+@lru_cache(maxsize=None)
 def _git_repository_identity(root: Path) -> str:
     common_dir = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
     return str(Path(common_dir).resolve()).casefold()
 
 
+@lru_cache(maxsize=None)
 def _resolved_tree_oid(root: Path, ref: str) -> str:
     return _git(root, "rev-parse", f"{ref}^{{tree}}")
 
