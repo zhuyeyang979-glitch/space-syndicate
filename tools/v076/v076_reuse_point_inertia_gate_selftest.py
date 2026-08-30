@@ -11,6 +11,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -5144,6 +5145,219 @@ print('not-json'); raise SystemExit(2)
         "149",
         "validate_live resets immutable scan caches before every validation",
         cache_reset_runs_at_validate_entry,
+    )
+
+    retired_source_before = _authorities()
+    retired_source_before["historical_reuse"]["reuse_entries"].append(
+        {
+            "reuse_id": "reuse.selftest.retired_source",
+            "disposition": "ADAPT_AS_CONSUMER",
+        }
+    )
+    retired_source_before["historical_reuse"]["component_inventory"][0][
+        "reuse_source_ids"
+    ].append("reuse.selftest.retired_source")
+    retired_source_after = copy.deepcopy(retired_source_before)
+    retired_source_after["historical_reuse"]["reuse_entries"][-1][
+        "disposition"
+    ] = "RETIRED"
+    retired_source_failures = gate._monotonic_transition_failures(
+        retired_source_before,
+        retired_source_after,
+        "selftest-retired-source-reference",
+    )
+    retired_source_rejected = any(
+        value.startswith(
+            "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED:"
+        )
+        for value in retired_source_failures
+    )
+    append_direct_case(
+        "150",
+        "a newly retired reuse source cannot remain on a production component",
+        "FAIL",
+        "FAIL" if retired_source_rejected else "PASS",
+        retired_source_failures,
+    )
+
+    retired_source_detached = copy.deepcopy(retired_source_after)
+    retired_source_detached["historical_reuse"]["component_inventory"][0][
+        "reuse_source_ids"
+    ].remove("reuse.selftest.retired_source")
+    retired_source_detached_failures = gate._monotonic_transition_failures(
+        retired_source_before,
+        retired_source_detached,
+        "selftest-retired-source-detached",
+    )
+    detached_specific_failures = [
+        value
+        for value in retired_source_detached_failures
+        if value.startswith(
+            "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED:"
+        )
+    ]
+    append_direct_case(
+        "151",
+        "detaching the exact retired source preserves the active successor path",
+        "PASS",
+        "PASS" if not detached_specific_failures else "FAIL",
+        detached_specific_failures,
+    )
+
+    batch010_root = Path(gate.__file__).resolve().parents[2]
+    batch010_source_bytes = gate._git_bytes(
+        batch010_root,
+        "show",
+        f"{gate.BATCH010_METADATA_MIGRATION_SOURCE_HEAD}:"
+        "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+    )
+    batch010_source_registry = json.loads(batch010_source_bytes.decode("utf-8"))
+    batch010_target, batch010_summary = gate._batch010_metadata_migration_target(
+        batch010_source_registry
+    )
+    batch010_target_sha = hashlib.sha256(
+        gate._canonical_json_bytes(batch010_target) + b"\n"
+    ).hexdigest()
+    batch010_target_failures: list[str] = []
+    if batch010_target_sha != gate.BATCH010_METADATA_MIGRATION_TARGET_REGISTRY_SHA256:
+        batch010_target_failures.append("TARGET_SHA_MISMATCH")
+    if batch010_summary.get("affected_component_count") != 50:
+        batch010_target_failures.append("AFFECTED_COUNT_MISMATCH")
+    if batch010_summary.get("allowed_field_transition_count") != 52:
+        batch010_target_failures.append("TRANSITION_COUNT_MISMATCH")
+    append_direct_case(
+        "152",
+        "the fixed Batch010 source deterministically yields exactly 50 classifications and 2 roles",
+        "PASS",
+        "PASS" if not batch010_target_failures else "FAIL",
+        batch010_target_failures,
+    )
+
+    batch010_source_mutation_failures: list[str] = []
+    batch010_mutated_source = copy.deepcopy(batch010_source_registry)
+    mutated_row = next(
+        row
+        for row in batch010_mutated_source["component_inventory"]
+        if row.get("component_id")
+        not in gate.BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS
+        | {gate.BATCH010_METADATA_MIGRATION_PRODUCT_COMPONENT_ID}
+        and row.get("change_class")
+        == gate.BATCH010_METADATA_MIGRATION_INVALID_CHANGE_CLASS
+    )
+    mutated_row["component_role"] = "TOOLING"
+    try:
+        gate._batch010_metadata_migration_target(batch010_mutated_source)
+    except ValueError:
+        pass
+    else:
+        batch010_source_mutation_failures.append("THIRD_ROLE_CHANGE_ACCEPTED")
+    append_direct_case(
+        "153",
+        "a third component role change is outside the fixed migration contract",
+        "FAIL",
+        "FAIL" if not batch010_source_mutation_failures else "PASS",
+        batch010_source_mutation_failures,
+    )
+
+    def batch010_identity_fixture(*, allow: bool, path_drift: bool = False) -> gate.ValidationInput:
+        data = _valid_input()
+        component_id = "component.current.tabletop_rulebook_v06"
+        current = _component(
+            component_id,
+            "docs/tabletop_rulebook_v06.md",
+            BASE_DOMAIN_ID,
+            "TOOLING",
+            production_reachable=False,
+            reuse_disposition="REFERENCE_ONLY",
+        )
+        current["change_class"] = "DOCS_ONLY"
+        baseline = copy.deepcopy(current)
+        baseline["component_role"] = "DOCUMENTATION_ONLY"
+        if path_drift:
+            current["path"] = "docs/tabletop_rulebook_v06_drift.md"
+        data.authorities["historical_reuse"]["component_inventory"].append(current)
+        data.baseline_authorities["historical_reuse"]["component_inventory"].append(
+            baseline
+        )
+        data.component_identity_metadata_migration_allowlist = (
+            {component_id} if allow else set()
+        )
+        return data
+
+    batch010_identity_allowed_report = gate.validate_model(
+        batch010_identity_fixture(allow=True)
+    )
+    append_direct_case(
+        "154",
+        "only the exact DOCUMENTATION_ONLY to TOOLING identity transition may be admitted",
+        "PASS",
+        str(batch010_identity_allowed_report.get("status", "FAIL")),
+        [
+            str(value)
+            for value in batch010_identity_allowed_report.get("failures", [])
+        ],
+    )
+
+    batch010_identity_negative_failures: list[str] = []
+    for label, candidate in (
+        ("MISSING_RECEIPT_ALLOWLIST", batch010_identity_fixture(allow=False)),
+        ("PATH_DRIFT", batch010_identity_fixture(allow=True, path_drift=True)),
+    ):
+        candidate_report = gate.validate_model(candidate)
+        if not any(
+            str(value).startswith("COMPONENT_IDENTITY_SILENT_REPLACEMENT:")
+            for value in candidate_report.get("failures", [])
+        ):
+            batch010_identity_negative_failures.append(f"{label}_ACCEPTED")
+    append_direct_case(
+        "155",
+        "missing receipt authority and any second identity field still fail closed",
+        "FAIL",
+        "FAIL" if not batch010_identity_negative_failures else "PASS",
+        batch010_identity_negative_failures,
+    )
+
+    batch010_contract_head = os.environ.get(
+        "V076_BATCH010_SELFTEST_HEAD", "HEAD"
+    )
+    batch010_live_contract, batch010_live_failures = (
+        gate._batch010_metadata_migration_contract(
+            batch010_root, batch010_contract_head, False
+        )
+    )
+    batch010_live_case_failures = list(batch010_live_failures)
+    if batch010_live_contract.get("valid") is not True:
+        batch010_live_case_failures.append("LIVE_CONTRACT_NOT_VALID")
+    if batch010_live_contract.get("closed_raw_failure_occurrence_count") != 1198:
+        batch010_live_case_failures.append("LIVE_CLOSED_OCCURRENCE_COUNT_MISMATCH")
+    append_direct_case(
+        "156",
+        "the committed one-time receipt binds the exact source interval and landing commit",
+        "PASS",
+        "PASS" if not batch010_live_case_failures else "FAIL",
+        batch010_live_case_failures,
+    )
+
+    batch010_wrong_source_failures: list[str] = []
+    with mock.patch.object(
+        gate, "BATCH010_METADATA_MIGRATION_SOURCE_TREE", "0" * 40
+    ):
+        wrong_source_contract, wrong_source_contract_failures = (
+            gate._batch010_metadata_migration_contract(
+                batch010_root, batch010_contract_head, False
+            )
+        )
+    if wrong_source_contract.get("valid") is True or not any(
+        "SOURCE_TREE_MISMATCH" in value
+        for value in wrong_source_contract_failures
+    ):
+        batch010_wrong_source_failures.append("WRONG_SOURCE_TREE_ACCEPTED")
+    append_direct_case(
+        "157",
+        "source Head and tree bindings cannot drift or auto-apply to a future source",
+        "FAIL",
+        "FAIL" if not batch010_wrong_source_failures else "PASS",
+        batch010_wrong_source_failures,
     )
 
     pass_count = sum(result["status"] == "PASS" for result in results)

@@ -12,6 +12,7 @@ import argparse
 import atexit
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -570,6 +571,52 @@ HISTORY_TRANSIENT_DOMAIN_TARGETLESS_FAILURES = {
     "HISTORY_DOMAIN_ROW_INVALID_OR_DUPLICATE",
     "HISTORY_UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH",
 }
+BATCH010_METADATA_MIGRATION_RECEIPT_PATH = (
+    "reports/reuse/full_convergence/"
+    "batch010_current_registry_classification_successor_20260831.json"
+)
+BATCH010_METADATA_MIGRATION_TOOL_PATH = (
+    "tools/v076/"
+    "v076_reuse_full_convergence_batch010_current_registry_classification_successor.py"
+)
+BATCH010_METADATA_MIGRATION_SCHEMA = (
+    "space_syndicate.v076.reuse_full_convergence."
+    "batch010_current_registry_classification_successor.v1"
+)
+BATCH010_METADATA_MIGRATION_REPAIR_ID = (
+    "V076_BATCH010_CURRENT_REGISTRY_CLASSIFICATION_SUCCESSOR_20260831"
+)
+BATCH010_METADATA_MIGRATION_SOURCE_HEAD = (
+    "46d76b57a5ad848da6487e69993afc9bdae6fd95"
+)
+BATCH010_METADATA_MIGRATION_SOURCE_TREE = (
+    "91f156cc268739dc391b6ae1637c774cae12419d"
+)
+BATCH010_METADATA_MIGRATION_DEFECT_HEAD = (
+    "e645c74ac1b9bff25e3898f881f3f944be73525d"
+)
+BATCH010_METADATA_MIGRATION_DEFECT_PARENT = (
+    "ae67a00402055af300852ae700a55422dd6015b9"
+)
+BATCH010_METADATA_MIGRATION_INVALID_REGISTRY_BLOB = (
+    "e5d4e6cb38c97e8941cb9a3320afe90a089f95ea"
+)
+BATCH010_METADATA_MIGRATION_INVALID_REGISTRY_SHA256 = (
+    "230c1f8a46f90d33eb97bb2b7f0e259a86afd86d2d3300d07cc44036da93f235"
+)
+BATCH010_METADATA_MIGRATION_TARGET_REGISTRY_SHA256 = (
+    "64c8b385292e82332368a122d3d41151ca98eb517778428aa4f536f2d08194ca"
+)
+BATCH010_METADATA_MIGRATION_INVALID_CHANGE_CLASS = "HISTORICAL_IDENTITY_BACKFILL"
+BATCH010_METADATA_MIGRATION_PRODUCT_COMPONENT_ID = (
+    "component.current.product_industry_catalog_v05"
+)
+BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS = frozenset(
+    {
+        "component.current.tabletop_rulebook_v06",
+        "component.current.v06_mechanic_status_registry",
+    }
+)
 HISTORY_COMPONENT_ID_ALIASES = {
     "component.current.v073.playtest_coach": (
         "component.current.v073_playtest_coach"
@@ -2655,6 +2702,546 @@ def _index(rows: Any, key: str) -> dict[str, dict[str, Any]]:
     return result
 
 
+def _canonical_json_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def _batch010_metadata_migration_target(
+    source_registry: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    inventory = source_registry.get("component_inventory")
+    if not isinstance(inventory, list) or any(
+        not isinstance(row, dict) for row in inventory
+    ):
+        raise ValueError("SOURCE_COMPONENT_INVENTORY_INVALID")
+    affected = [
+        row
+        for row in inventory
+        if row.get("change_class")
+        == BATCH010_METADATA_MIGRATION_INVALID_CHANGE_CLASS
+    ]
+    affected_ids = [str(row.get("component_id", "")) for row in affected]
+    if (
+        len(affected_ids) != 50
+        or len(set(affected_ids)) != 50
+        or any(not value for value in affected_ids)
+    ):
+        raise ValueError("SOURCE_AFFECTED_COMPONENT_SET_INVALID")
+    docs = [
+        row
+        for row in affected
+        if row.get("component_id") in BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS
+    ]
+    product = [
+        row
+        for row in affected
+        if row.get("component_id")
+        == BATCH010_METADATA_MIGRATION_PRODUCT_COMPONENT_ID
+    ]
+    tests = [
+        row
+        for row in affected
+        if row.get("component_id")
+        not in BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS
+        | {BATCH010_METADATA_MIGRATION_PRODUCT_COMPONENT_ID}
+    ]
+    if (
+        len(docs) != 2
+        or {str(row.get("component_id", "")) for row in docs}
+        != set(BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS)
+        or len(product) != 1
+        or len(tests) != 47
+    ):
+        raise ValueError("SOURCE_AFFECTED_PARTITION_INVALID")
+    if any(
+        row.get("component_role") != "DOCUMENTATION_ONLY"
+        or row.get("production_reachable") is not False
+        or row.get("reuse_disposition") != "REFERENCE_ONLY"
+        for row in docs
+    ):
+        raise ValueError("SOURCE_DOC_COMPONENT_CONTRACT_INVALID")
+    if (
+        product[0].get("component_role") != "PORT"
+        or product[0].get("production_reachable") is not True
+        or product[0].get("reuse_disposition") != "ADAPT_AS_CONSUMER"
+    ):
+        raise ValueError("SOURCE_PRODUCT_COMPONENT_CONTRACT_INVALID")
+    if any(
+        row.get("component_role") != "TEST_SUPPORT"
+        or row.get("production_reachable") is not False
+        or row.get("reuse_disposition") != "REUSE_AS_TEST"
+        for row in tests
+    ):
+        raise ValueError("SOURCE_TEST_COMPONENT_CONTRACT_INVALID")
+
+    target = json.loads(json.dumps(source_registry, ensure_ascii=False))
+    target_inventory = target["component_inventory"]
+    target_by_id = _index(target_inventory, "component_id")
+    source_by_id = _index(inventory, "component_id")
+    allowed_transitions: list[dict[str, str]] = []
+    for component_id in sorted(affected_ids):
+        row = target_by_id[component_id]
+        if component_id == BATCH010_METADATA_MIGRATION_PRODUCT_COMPONENT_ID:
+            target_change_class = "DOMAIN_CORE"
+        elif component_id in BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS:
+            target_change_class = "DOCS_ONLY"
+            row["component_role"] = "TOOLING"
+        else:
+            target_change_class = "TEST_ORACLE_ONLY"
+        row["change_class"] = target_change_class
+        allowed_transitions.append(
+            {
+                "after": target_change_class,
+                "before": BATCH010_METADATA_MIGRATION_INVALID_CHANGE_CLASS,
+                "component_id": component_id,
+                "field": "change_class",
+            }
+        )
+    allowed_transitions.extend(
+        {
+            "after": "TOOLING",
+            "before": "DOCUMENTATION_ONLY",
+            "component_id": component_id,
+            "field": "component_role",
+        }
+        for component_id in sorted(BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS)
+    )
+    allowed_fields = {
+        component_id: (
+            {"change_class", "component_role"}
+            if component_id in BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS
+            else {"change_class"}
+        )
+        for component_id in affected_ids
+    }
+    for component_id, before in source_by_id.items():
+        after = target_by_id.get(component_id)
+        if after is None:
+            raise ValueError(f"TARGET_COMPONENT_REMOVED:{component_id}")
+        changed = {
+            key
+            for key in set(before) | set(after)
+            if before.get(key) != after.get(key)
+        }
+        if changed != allowed_fields.get(component_id, set()):
+            raise ValueError(f"TARGET_NON_ALLOWLISTED_CHANGE:{component_id}")
+    if (
+        len(target_inventory) != len(inventory)
+        or [row.get("component_id") for row in target_inventory]
+        != [row.get("component_id") for row in inventory]
+    ):
+        raise ValueError("TARGET_COMPONENT_INVENTORY_SHAPE_CHANGED")
+    return target, {
+        "affected_component_count": 50,
+        "affected_component_ids": sorted(affected_ids),
+        "classification_counts": {
+            "DOCS_ONLY": 2,
+            "DOMAIN_CORE": 1,
+            "TEST_ORACLE_ONLY": 47,
+        },
+        "component_role_change_count": 2,
+        "component_role_changes": {
+            component_id: {
+                "after": "TOOLING",
+                "before": "DOCUMENTATION_ONLY",
+            }
+            for component_id in sorted(BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS)
+        },
+        "component_inventory_append_count": 0,
+        "component_inventory_remove_count": 0,
+        "component_inventory_reorder_count": 0,
+        "non_allowlisted_field_change_count": 0,
+        "allowed_field_transition_count": len(allowed_transitions),
+        "allowed_field_transition_set_sha256": hashlib.sha256(
+            _canonical_json_bytes(allowed_transitions)
+        ).hexdigest(),
+    }
+
+
+def _batch010_metadata_migration_contract(
+    root: Path,
+    head_ref: str,
+    include_worktree: bool = False,
+) -> tuple[dict[str, Any], list[str]]:
+    """Verify one fixed metadata repair; never authorize a future component."""
+    root = root.resolve()
+    empty = {
+        "valid": False,
+        "landing_commit": "",
+        "identity_component_ids": set(),
+        "history_allowed_failure_counts": {},
+        "closed_raw_failure_occurrence_count": 0,
+    }
+    receipt_path = root / BATCH010_METADATA_MIGRATION_RECEIPT_PATH
+    receipt_present = (
+        receipt_path.is_file()
+        if include_worktree
+        else _git_path_exists_at(
+            root, head_ref, BATCH010_METADATA_MIGRATION_RECEIPT_PATH
+        )
+    )
+    if not receipt_present:
+        return empty, []
+    failures: list[str] = []
+
+    def reject(code: str) -> None:
+        failures.append(f"BATCH010_METADATA_MIGRATION_{code}")
+
+    source_registry_bytes = _git_bytes(
+        root,
+        "show",
+        f"{BATCH010_METADATA_MIGRATION_SOURCE_HEAD}:"
+        "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+        check=False,
+    )
+    try:
+        source_registry = json.loads(source_registry_bytes.decode("utf-8"))
+        target_registry, summary = _batch010_metadata_migration_target(
+            source_registry
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, KeyError) as exc:
+        reject(f"SOURCE_OR_TARGET_INVALID:{type(exc).__name__}")
+        return empty, sorted(set(failures))
+    target_registry_bytes = _canonical_json_bytes(target_registry) + b"\n"
+    if hashlib.sha256(source_registry_bytes).hexdigest() != (
+        BATCH010_METADATA_MIGRATION_INVALID_REGISTRY_SHA256
+    ):
+        reject("SOURCE_REGISTRY_SHA256_MISMATCH")
+    if source_registry_bytes != _canonical_json_bytes(source_registry) + b"\n":
+        reject("SOURCE_REGISTRY_NOT_CANONICAL")
+    if hashlib.sha256(target_registry_bytes).hexdigest() != (
+        BATCH010_METADATA_MIGRATION_TARGET_REGISTRY_SHA256
+    ):
+        reject("TARGET_REGISTRY_SHA256_MISMATCH")
+    if _git(
+        root,
+        "show",
+        "-s",
+        "--format=%T",
+        BATCH010_METADATA_MIGRATION_SOURCE_HEAD,
+        check=False,
+    ) != BATCH010_METADATA_MIGRATION_SOURCE_TREE:
+        reject("SOURCE_TREE_MISMATCH")
+    if _git(
+        root,
+        "rev-parse",
+        f"{BATCH010_METADATA_MIGRATION_SOURCE_HEAD}:"
+        "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+        check=False,
+    ) != BATCH010_METADATA_MIGRATION_INVALID_REGISTRY_BLOB:
+        reject("SOURCE_REGISTRY_BLOB_MISMATCH")
+    if _git(
+        root,
+        "rev-parse",
+        f"{BATCH010_METADATA_MIGRATION_DEFECT_HEAD}^",
+        check=False,
+    ) != BATCH010_METADATA_MIGRATION_DEFECT_PARENT:
+        reject("DEFECT_PARENT_MISMATCH")
+    defect_parent_registry_bytes = _git_bytes(
+        root,
+        "show",
+        f"{BATCH010_METADATA_MIGRATION_DEFECT_PARENT}:"
+        "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+        check=False,
+    )
+    if hashlib.sha256(defect_parent_registry_bytes).hexdigest() == (
+        BATCH010_METADATA_MIGRATION_INVALID_REGISTRY_SHA256
+    ):
+        reject("DEFECT_NOT_FIRST_INTRODUCTION")
+    path_log = _git(
+        root,
+        "log",
+        "--format=%H",
+        f"{BATCH010_METADATA_MIGRATION_DEFECT_PARENT}.."
+        f"{BATCH010_METADATA_MIGRATION_SOURCE_HEAD}",
+        "--",
+        "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+        check=False,
+    ).splitlines()
+    if path_log != [BATCH010_METADATA_MIGRATION_DEFECT_HEAD]:
+        reject("INVALID_BLOB_INTERVAL_PATH_DRIFT")
+    interval_commits = _git(
+        root,
+        "rev-list",
+        "--reverse",
+        "--ancestry-path",
+        f"{BATCH010_METADATA_MIGRATION_DEFECT_HEAD}^.."
+        f"{BATCH010_METADATA_MIGRATION_SOURCE_HEAD}",
+        check=False,
+    ).splitlines()
+    if (
+        len(interval_commits) != 21
+        or not interval_commits
+        or interval_commits[0] != BATCH010_METADATA_MIGRATION_DEFECT_HEAD
+        or interval_commits[-1] != BATCH010_METADATA_MIGRATION_SOURCE_HEAD
+    ):
+        reject("INVALID_BLOB_INTERVAL_COMMIT_SET_MISMATCH")
+    interval_transition_count = 0
+    for commit in interval_commits:
+        parents = _git(
+            root, "rev-list", "--parents", "-n", "1", commit, check=False
+        ).split()[1:]
+        if not parents:
+            reject(f"INVALID_BLOB_INTERVAL_PARENT_MISSING:{commit[:12]}")
+        interval_transition_count += len(parents)
+        blob = _git(
+            root,
+            "rev-parse",
+            f"{commit}:docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+            check=False,
+        )
+        if blob != BATCH010_METADATA_MIGRATION_INVALID_REGISTRY_BLOB:
+            reject(f"INVALID_BLOB_INTERVAL_CONTENT_DRIFT:{commit[:12]}")
+    if interval_transition_count != 23:
+        reject("INVALID_BLOB_INTERVAL_TRANSITION_COUNT_MISMATCH")
+
+    head_commit = _git(root, "rev-parse", f"{head_ref}^{{commit}}", check=False)
+    source_is_ancestor = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "merge-base",
+            "--is-ancestor",
+            BATCH010_METADATA_MIGRATION_SOURCE_HEAD,
+            head_commit,
+        ],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).returncode == 0
+    if not source_is_ancestor:
+        reject("SOURCE_NOT_HEAD_ANCESTOR")
+    landing_commits = _git(
+        root,
+        "log",
+        "--format=%H",
+        "--diff-filter=A",
+        f"{BATCH010_METADATA_MIGRATION_SOURCE_HEAD}..{head_commit}",
+        "--",
+        BATCH010_METADATA_MIGRATION_RECEIPT_PATH,
+        check=False,
+    ).splitlines()
+    worktree_landing = bool(
+        include_worktree
+        and head_commit == BATCH010_METADATA_MIGRATION_SOURCE_HEAD
+        and receipt_path.is_file()
+        and not landing_commits
+    )
+    if len(landing_commits) != (0 if worktree_landing else 1):
+        reject("LANDING_COMMIT_COUNT_INVALID")
+        return empty, sorted(set(failures))
+    landing_commit = "WORKTREE" if worktree_landing else landing_commits[0]
+    if not worktree_landing:
+        landing_parents = _git(
+            root,
+            "rev-list",
+            "--parents",
+            "-n",
+            "1",
+            landing_commit,
+            check=False,
+        ).split()[1:]
+        if landing_parents != [BATCH010_METADATA_MIGRATION_SOURCE_HEAD]:
+            reject("LANDING_PARENT_MISMATCH")
+
+    def snapshot_bytes(path: str, landing: bool = False) -> bytes:
+        if worktree_landing or (include_worktree and not landing):
+            candidate = root / path
+            try:
+                return candidate.read_bytes()
+            except OSError:
+                return b""
+        ref = landing_commit if landing else head_commit
+        return _git_bytes(root, "show", f"{ref}:{path}", check=False)
+
+    landing_registry_bytes = (
+        (root / "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json").read_bytes()
+        if worktree_landing
+        else _git_bytes(
+            root,
+            "show",
+            f"{landing_commit}:docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+            check=False,
+        )
+    )
+    if landing_registry_bytes != target_registry_bytes:
+        reject("LANDING_REGISTRY_NOT_EXACT_TARGET")
+    receipt_bytes = snapshot_bytes(
+        BATCH010_METADATA_MIGRATION_RECEIPT_PATH, landing=False
+    )
+    landing_receipt_bytes = snapshot_bytes(
+        BATCH010_METADATA_MIGRATION_RECEIPT_PATH, landing=True
+    )
+    tool_bytes = snapshot_bytes(BATCH010_METADATA_MIGRATION_TOOL_PATH, landing=False)
+    landing_tool_bytes = snapshot_bytes(
+        BATCH010_METADATA_MIGRATION_TOOL_PATH, landing=True
+    )
+    if not receipt_bytes or receipt_bytes != landing_receipt_bytes:
+        reject("RECEIPT_MISSING_OR_MUTATED")
+    if not tool_bytes or tool_bytes != landing_tool_bytes:
+        reject("TOOL_MISSING_OR_MUTATED")
+    if _git_path_exists_at(
+        root,
+        BATCH010_METADATA_MIGRATION_SOURCE_HEAD,
+        BATCH010_METADATA_MIGRATION_RECEIPT_PATH,
+    ):
+        reject("RECEIPT_PREEXISTED_SOURCE")
+    if _git_path_exists_at(
+        root,
+        BATCH010_METADATA_MIGRATION_SOURCE_HEAD,
+        BATCH010_METADATA_MIGRATION_TOOL_PATH,
+    ):
+        reject("TOOL_PREEXISTED_SOURCE")
+    try:
+        receipt = json.loads(receipt_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        reject("RECEIPT_JSON_INVALID")
+        return empty, sorted(set(failures))
+    if not isinstance(receipt, dict) or receipt_bytes not in {
+        _canonical_json_bytes(receipt),
+        _canonical_json_bytes(receipt) + b"\n",
+    }:
+        reject("RECEIPT_NOT_CANONICAL")
+        return empty, sorted(set(failures))
+    tool_sha256 = hashlib.sha256(tool_bytes).hexdigest()
+    expected_receipt = {
+        "schema_version": BATCH010_METADATA_MIGRATION_SCHEMA,
+        "repair_id": BATCH010_METADATA_MIGRATION_REPAIR_ID,
+        "defect_introduction_head_sha": BATCH010_METADATA_MIGRATION_DEFECT_HEAD,
+        "defect_introduction_parent_sha": BATCH010_METADATA_MIGRATION_DEFECT_PARENT,
+        "invalid_registry_blob_oid": BATCH010_METADATA_MIGRATION_INVALID_REGISTRY_BLOB,
+        "invalid_registry_sha256": BATCH010_METADATA_MIGRATION_INVALID_REGISTRY_SHA256,
+        "invalid_registry_contiguous_commit_count": 21,
+        "invalid_registry_transition_count": 23,
+        "source_head_sha": BATCH010_METADATA_MIGRATION_SOURCE_HEAD,
+        "source_tree_sha": BATCH010_METADATA_MIGRATION_SOURCE_TREE,
+        "target_path": "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+        "before_registry_sha256": BATCH010_METADATA_MIGRATION_INVALID_REGISTRY_SHA256,
+        "after_registry_sha256": BATCH010_METADATA_MIGRATION_TARGET_REGISTRY_SHA256,
+        "repair_tool_path": BATCH010_METADATA_MIGRATION_TOOL_PATH,
+        "repair_tool_sha256": tool_sha256,
+        **summary,
+        "expected_raw_invalid_failure_fingerprint_count": 52,
+        "expected_raw_invalid_failure_occurrence_count": 1196,
+        "expected_identity_migration_count": 2,
+        "wildcard_count": 0,
+        "future_auto_apply_count": 0,
+        "current_failure_correction_count": 0,
+        "historical_correction_record_count": 0,
+        "old_batch_file_mutation_count": 0,
+        "old_evidence_file_mutation_count": 0,
+        "product_file_mutation_count": 0,
+        "godot_runtime_resource_mutation_count": 0,
+        "registry_write_count": 1,
+        "receipt_write_count": 1,
+        "status": "PASS",
+    }
+    receipt_without_payload = dict(receipt)
+    claimed_payload_sha = receipt_without_payload.pop(
+        "receipt_payload_sha256", ""
+    )
+    expected_payload_sha = hashlib.sha256(
+        _canonical_json_bytes(receipt_without_payload)
+    ).hexdigest()
+    expected_receipt["receipt_payload_sha256"] = hashlib.sha256(
+        _canonical_json_bytes(expected_receipt)
+    ).hexdigest()
+    if receipt != expected_receipt:
+        reject("RECEIPT_LITERAL_OR_BINDING_MISMATCH")
+    if claimed_payload_sha != expected_payload_sha:
+        reject("RECEIPT_PAYLOAD_SHA256_MISMATCH")
+    if not worktree_landing:
+        landing_paths = {
+            row.get("path", "")
+            for row in changed_paths(
+                root,
+                BATCH010_METADATA_MIGRATION_SOURCE_HEAD,
+                landing_commit,
+                False,
+            )
+        }
+        expected_landing_paths = {
+            "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+            BATCH010_METADATA_MIGRATION_RECEIPT_PATH,
+            BATCH010_METADATA_MIGRATION_TOOL_PATH,
+            "tools/v076/v076_reuse_point_inertia_gate.py",
+            "tools/v076/v076_reuse_point_inertia_gate_selftest.py",
+        }
+        if landing_paths != expected_landing_paths:
+            reject("LANDING_PATH_SET_MISMATCH")
+
+    current_registry_bytes = snapshot_bytes(
+        "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+        landing=False,
+    )
+    try:
+        current_registry = json.loads(current_registry_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        reject("CURRENT_REGISTRY_JSON_INVALID")
+        current_registry = {}
+    current_by_id = _index(current_registry.get("component_inventory", []), "component_id")
+    target_by_id = _index(target_registry.get("component_inventory", []), "component_id")
+    for component_id in summary["affected_component_ids"]:
+        current = current_by_id.get(component_id)
+        target = target_by_id[component_id]
+        if not isinstance(current, dict) or current.get("change_class") != target.get(
+            "change_class"
+        ):
+            reject(f"CURRENT_CLASSIFICATION_DRIFT:{component_id}")
+        if component_id in BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS and (
+            not isinstance(current, dict)
+            or current.get("component_role") != "TOOLING"
+        ):
+            reject(f"CURRENT_ROLE_DRIFT:{component_id}")
+
+    history_allowed_failure_counts: dict[str, int] = {}
+    for component_id in summary["affected_component_ids"]:
+        history_allowed_failure_counts[
+            f"HISTORY_COMPONENT_CHANGE_CLASS_INVALID:{component_id}"
+        ] = interval_transition_count
+    for component_id in BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS:
+        history_allowed_failure_counts[
+            f"HISTORY_COMPONENT_ROLE_INVALID:{component_id}"
+        ] = interval_transition_count
+    if not worktree_landing:
+        landing_label = (
+            f"{BATCH010_METADATA_MIGRATION_SOURCE_HEAD[:12]}->"
+            f"{landing_commit[:12]}"
+        )
+        for component_id in BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS:
+            history_allowed_failure_counts[
+                f"COMPONENT_IDENTITY_SILENT_REPLACEMENT:"
+                f"{landing_label}:{component_id}"
+            ] = 1
+    result = {
+        "valid": not failures,
+        "landing_commit": landing_commit,
+        "identity_component_ids": set(
+            BATCH010_METADATA_MIGRATION_DOC_COMPONENT_IDS
+        ),
+        "history_allowed_failure_counts": history_allowed_failure_counts,
+        "closed_raw_failure_occurrence_count": sum(
+            history_allowed_failure_counts.values()
+        ),
+        "affected_component_count": 50,
+        "allowed_field_transition_count": 52,
+        "invalid_interval_commit_count": len(interval_commits),
+        "invalid_interval_transition_count": interval_transition_count,
+        "wildcard_count": 0,
+        "future_auto_apply_count": 0,
+        "current_failure_correction_count": 0,
+        "historical_correction_record_count": 0,
+    }
+    if failures:
+        result["identity_component_ids"] = set()
+        result["history_allowed_failure_counts"] = {}
+        result["closed_raw_failure_occurrence_count"] = 0
+    return result, sorted(set(failures))
+
+
 def _component_is_authority(component: Any) -> bool:
     return bool(
         isinstance(component, dict)
@@ -3421,6 +4008,7 @@ def _monotonic_transition_failures(
 
     old_reuse = _index(old_registry.get("reuse_entries", []), "reuse_id")
     new_reuse = _index(new_registry.get("reuse_entries", []), "reuse_id")
+    newly_retired_reuse_ids: set[str] = set()
     for reuse_id, old in old_reuse.items():
         new = new_reuse.get(reuse_id)
         if (
@@ -3429,9 +4017,28 @@ def _monotonic_transition_failures(
             and new.get("disposition") != "RETIRED"
         ):
             failures.append(f"RETIRED_REUSE_DISPOSITION_REACTIVATED:{label}:{reuse_id}")
+    for reuse_id, new in new_reuse.items():
+        old = old_reuse.get(reuse_id)
+        if new.get("disposition") == "RETIRED" and (
+            old is None or old.get("disposition") != "RETIRED"
+        ):
+            newly_retired_reuse_ids.add(reuse_id)
 
     old_components = _index(old_registry.get("component_inventory", []), "component_id")
     new_components = _index(new_registry.get("component_inventory", []), "component_id")
+    for component_id, component in new_components.items():
+        source_ids = component.get("reuse_source_ids")
+        if component.get("production_reachable") is not True or not isinstance(
+            source_ids, list
+        ):
+            continue
+        for reuse_id in sorted(
+            newly_retired_reuse_ids.intersection(map(str, source_ids))
+        ):
+            failures.append(
+                "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED:"
+                f"{label}:{component_id}:{reuse_id}"
+            )
     registry_contract_already_active = bool(
         old_registry.get("schema_version")
         == AUTHORITY_CONTRACTS["historical_reuse"][0]
@@ -4032,6 +4639,7 @@ class ValidationInput:
     historical_owner_to_reducer_cutover_evidence: (
         dict[str, dict[str, Any]] | None
     ) = None
+    component_identity_metadata_migration_allowlist: set[str] | None = None
     evidence_subject_is_baseline_descendant: bool = True
     evidence_subject_is_head_ancestor: bool = True
     evidence_subject_product_tree_matches_head: bool = True
@@ -4082,6 +4690,7 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
         "DOMAIN_INVENTORY_SILENT_DELETE_COUNT": 0,
         "UNIQUE_OWNER_DOMAIN_SILENT_DELETE_COUNT": 0,
         "COMPONENT_IDENTITY_SILENT_REPLACEMENT_COUNT": 0,
+        "COMPONENT_IDENTITY_METADATA_MIGRATION_COUNT": 0,
         "GLOBAL_AUTHORITY_SURFACE_OWNER_MISMATCH_COUNT": 0,
         "GOLDEN_SCENARIO_STEP_DELETE_COUNT": 0,
         "GOLDEN_SCENARIO_STEP_COUNT_MONOTONIC": True,
@@ -4979,12 +5588,22 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
         new = head_components.get(component_id)
         if not new:
             continue
-        if any(
-            old.get(key) != new.get(key)
-            for key in ("class_name", "path", "domain_id", "component_role")
-        ):
+        identity_fields = ("class_name", "path", "domain_id", "component_role")
+        changed_identity_fields = {
+            key for key in identity_fields if old.get(key) != new.get(key)
+        }
+        migration_ids = data.component_identity_metadata_migration_allowlist or set()
+        exact_batch010_metadata_migration = bool(
+            component_id in migration_ids
+            and changed_identity_fields == {"component_role"}
+            and old.get("component_role") == "DOCUMENTATION_ONLY"
+            and new.get("component_role") == "TOOLING"
+        )
+        if changed_identity_fields and not exact_batch010_metadata_migration:
             metrics["COMPONENT_IDENTITY_SILENT_REPLACEMENT_COUNT"] += 1
             failures.append(f"COMPONENT_IDENTITY_SILENT_REPLACEMENT:{component_id}")
+        elif exact_batch010_metadata_migration:
+            metrics["COMPONENT_IDENTITY_METADATA_MIGRATION_COUNT"] += 1
 
         lost_fields = [
             field
@@ -7507,6 +8126,9 @@ def committed_history_failures(
 ) -> tuple[list[str], int]:
     """Validate every adjacent transition from the branch-local Gate base."""
     head_authorities = load_baseline_authorities(root, head_ref, implementation_paths)
+    metadata_migration, metadata_migration_failures = (
+        _batch010_metadata_migration_contract(root, head_ref, False)
+    )
     corrections, correction_failures = _history_classification_corrections(
         root, head_ref, head_authorities
     )
@@ -7529,12 +8151,19 @@ def committed_history_failures(
     failures.extend(transient_domain_correction_failures)
     failures.extend(reuse_scan_correction_failures)
     failures.extend(focused_test_correction_failures)
+    failures.extend(metadata_migration_failures)
     expected_corrections = {
         (transition_head, code, target)
         for transition_head, exact_codes in corrections.items()
         for code, target in exact_codes
     }
     used_corrections: set[tuple[str, str, str]] = set()
+    metadata_migration_allowed = (
+        dict(metadata_migration.get("history_allowed_failure_counts", {}))
+        if metadata_migration.get("valid") is True
+        else {}
+    )
+    metadata_migration_used: dict[str, int] = {}
     commits = _git(
         root,
         "rev-list",
@@ -7717,6 +8346,11 @@ def committed_history_failures(
                 transition_changed_paths,
             )
             for failure in transition_failures:
+                allowed_count = metadata_migration_allowed.get(failure, 0)
+                used_count = metadata_migration_used.get(failure, 0)
+                if used_count < allowed_count:
+                    metadata_migration_used[failure] = used_count + 1
+                    continue
                 corrected = False
                 for code, target in corrections.get(commit, set()):
                     expected_failure = (
@@ -7738,10 +8372,21 @@ def committed_history_failures(
             "HISTORY_CLASSIFICATION_CORRECTION_UNUSED:"
             f"{transition_head[:12]}:{code}:{target}"
         )
+    for failure, expected_count in sorted(metadata_migration_allowed.items()):
+        used_count = metadata_migration_used.get(failure, 0)
+        if used_count != expected_count:
+            failures.append(
+                "BATCH010_METADATA_MIGRATION_UNUSED:"
+                f"{expected_count - used_count}:{failure}"
+            )
     return failures, transition_count
 
 
-def _run_json_tool(command: list[str], root: Path) -> tuple[int, dict[str, Any]]:
+def _run_json_tool(
+    command: list[str],
+    root: Path,
+    env: dict[str, str] | None = None,
+) -> tuple[int, dict[str, Any]]:
     completed = subprocess.run(
         command,
         cwd=root,
@@ -7751,6 +8396,7 @@ def _run_json_tool(command: list[str], root: Path) -> tuple[int, dict[str, Any]]
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=env,
     )
     try:
         report = json.loads(completed.stdout)
@@ -7808,9 +8454,15 @@ def run_retired_scanner(
     return status, report
 
 
-def run_gate_selftest(root: Path) -> tuple[str, dict[str, Any]]:
+def run_gate_selftest(
+    root: Path, head_ref: str = "HEAD"
+) -> tuple[str, dict[str, Any]]:
     script = root / "tools/v076/v076_reuse_point_inertia_gate_selftest.py"
-    code, report = _run_json_tool([sys.executable, str(script)], root)
+    selftest_env = os.environ.copy()
+    selftest_env["V076_BATCH010_SELFTEST_HEAD"] = head_ref
+    code, report = _run_json_tool(
+        [sys.executable, str(script)], root, env=selftest_env
+    )
     status = str(report.get("REUSE_POINT_INERTIA_GATE_SELFTEST_STATUS", "FAIL"))
     case_count = report.get("REUSE_POINT_INERTIA_GATE_SELFTEST_CASE_COUNT", 0)
     pass_count = report.get("REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT", 0)
@@ -7945,6 +8597,11 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
         scanner_presence[str(row["scanner_id"])] = bool(row["present"])
         scanner_inventory.append(row)
     baseline = load_baseline_authorities(root, args.inertia_base_ref, implementation_paths)
+    batch010_metadata_migration, batch010_metadata_migration_failures = (
+        _batch010_metadata_migration_contract(
+            root, args.head_ref, args.include_worktree
+        )
+    )
     evidence_subject_sha = str(
         authorities.get("historical_reuse", {}).get("candidate_head_sha", "")
     )
@@ -8120,7 +8777,7 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
         gate_changed,
     )
     status, retired_report = run_retired_scanner(root, retired_scanner_delta_set)
-    selftest_status, selftest_report = run_gate_selftest(root)
+    selftest_status, selftest_report = run_gate_selftest(root, args.head_ref)
     pr_body = Path(args.pr_body_file).read_text(encoding="utf-8-sig")
     current_stage_rows = [
         row
@@ -8179,6 +8836,11 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
             historical_owner_to_reducer_cutover_evidence=(
                 historical_owner_to_reducer_cutover_evidence
             ),
+            component_identity_metadata_migration_allowlist=(
+                set(batch010_metadata_migration.get("identity_component_ids", set()))
+                if batch010_metadata_migration.get("valid") is True
+                else set()
+            ),
             evidence_subject_is_baseline_descendant=evidence_subject_is_baseline_descendant,
             evidence_subject_is_head_ancestor=evidence_subject_is_head_ancestor,
             evidence_subject_product_tree_matches_head=(
@@ -8191,6 +8853,27 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
         report["status"] = "FAIL"
         report.setdefault("failures", []).extend(golden_provenance_failures)
         report["failures"] = sorted(set(report["failures"]))
+    if batch010_metadata_migration_failures:
+        report["status"] = "FAIL"
+        report.setdefault("failures", []).extend(
+            batch010_metadata_migration_failures
+        )
+        report["failures"] = sorted(set(report["failures"]))
+    report["batch010_current_registry_metadata_migration"] = {
+        key: batch010_metadata_migration.get(key)
+        for key in (
+            "valid",
+            "landing_commit",
+            "closed_raw_failure_occurrence_count",
+            "affected_component_count",
+            "allowed_field_transition_count",
+            "invalid_interval_commit_count",
+            "wildcard_count",
+            "future_auto_apply_count",
+            "current_failure_correction_count",
+            "historical_correction_record_count",
+        )
+    }
     history_failures: list[str] = []
     history_transition_count = 0
     if args.inertia_base_ref != V076_GATE_BASE_SHA or args.gate_base_ref != V076_GATE_BASE_SHA:
