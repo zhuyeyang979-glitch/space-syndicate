@@ -2044,7 +2044,11 @@ def _descendant_history_supplement_findings(
         evaluated_head=evaluated_head,
         baseline_report=baseline_report,
         baseline_sets=baseline_sets,
-        require_live_scanner_bytes=require_live_scanner_bytes,
+        # V3 seals scanner evolution at its own raw-report head.  Later
+        # committed scanner hardening remains subject to the current Raw
+        # authority, but must not invalidate that historical supplement merely
+        # because the live worktree scanner has advanced.
+        require_live_scanner_bytes=(require_live_scanner_bytes and not is_v3),
         expected_schema_version=(
             DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION
             if is_v3 else DESCENDANT_HISTORY_SUPPLEMENT_SCHEMA_VERSION
