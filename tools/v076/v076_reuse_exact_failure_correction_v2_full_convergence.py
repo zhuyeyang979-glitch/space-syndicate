@@ -6893,10 +6893,27 @@ def _historical_delta_metadata_successor_v2_projection_counts(
             "SUCCESSOR_V2_RECORD_COUNT_MISMATCH:"
             f"manifest={manifest_counts['record_count']}:actual={len(summaries)}"
         )
-    if primary_counts["ledger_exact_promoted_count"] != identity_count:
+    if (
+        primary_counts["preledger_native_historical_bucket_count"]
+        + primary_counts["ledger_exact_promoted_count"]
+        != primary_counts["semantic_historical_failure_count"]
+    ):
         raise ValueError(
-            "SUCCESSOR_V2_LEDGER_PROMOTED_COUNT_MISMATCH:"
-            f"v1={primary_counts['ledger_exact_promoted_count']}:actual={identity_count}"
+            "SUCCESSOR_V2_SEMANTIC_HISTORICAL_COUNT_MISMATCH:"
+            f"preledger={primary_counts['preledger_native_historical_bucket_count']}:"
+            f"promoted={primary_counts['ledger_exact_promoted_count']}:"
+            f"semantic={primary_counts['semantic_historical_failure_count']}"
+        )
+    if (
+        primary_counts["semantic_historical_failure_count"]
+        + primary_counts["true_current_failure_count"]
+        != primary_counts["raw_failure_count"]
+    ):
+        raise ValueError(
+            "SUCCESSOR_V2_RAW_FAILURE_COUNT_MISMATCH:"
+            f"semantic={primary_counts['semantic_historical_failure_count']}:"
+            f"current={primary_counts['true_current_failure_count']}:"
+            f"raw={primary_counts['raw_failure_count']}"
         )
     if primary_counts["correction_record_count"] != manifest_counts["record_count"]:
         raise ValueError(
