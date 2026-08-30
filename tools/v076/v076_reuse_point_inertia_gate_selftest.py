@@ -5026,6 +5026,7 @@ print('not-json'); raise SystemExit(2)
                 )
             if len(gate._SNAPSHOT_TEXT_INVENTORY_CACHE) != 1:
                 raise AssertionError("committed snapshot cache did not retain one tree entry")
+            gate._reset_full_history_scan_caches()
 
     def cache_blob_lru_is_repo_scoped_and_byte_bounded() -> None:
         with (
@@ -5039,31 +5040,35 @@ print('not-json'); raise SystemExit(2)
             if oid_a != oid_a_other:
                 raise AssertionError("fixture blob OIDs differ, repo-scope test is invalid")
             gate._reset_full_history_scan_caches()
-            original_run = gate.subprocess.run
-            cat_file_calls = 0
+            original_popen = gate.subprocess.Popen
+            cat_file_process_starts = 0
 
-            def counted_run(*args: Any, **kwargs: Any) -> Any:
-                nonlocal cat_file_calls
+            def counted_popen(*args: Any, **kwargs: Any) -> Any:
+                nonlocal cat_file_process_starts
                 command = args[0] if args else kwargs.get("args")
                 if isinstance(command, (list, tuple)) and "cat-file" in command:
-                    cat_file_calls += 1
-                return original_run(*args, **kwargs)
+                    cat_file_process_starts += 1
+                return original_popen(*args, **kwargs)
 
             with mock.patch.object(
                 gate, "BLOB_PAYLOAD_CACHE_MAX_BYTES", 4
-            ), mock.patch.object(gate.subprocess, "run", side_effect=counted_run):
+            ), mock.patch.object(gate.subprocess, "Popen", side_effect=counted_popen):
                 gate._batch_git_blobs(root_a, [oid_a])
                 gate._batch_git_blobs(root_a, [oid_b])
                 gate._batch_git_blobs(root_a, [oid_b])  # recent B is a hit
                 gate._batch_git_blobs(root_a, [oid_a])  # A was evicted by bytes
                 gate._batch_git_blobs(root_b, [oid_a_other])  # same OID, new repo
                 gate._batch_git_blobs(root_a, [oid_a])  # root A entry was evicted
-            if cat_file_calls != 5:
-                raise AssertionError(f"unexpected cat-file calls: {cat_file_calls}")
+            if cat_file_process_starts != 2:
+                raise AssertionError(
+                    "persistent cat-file session was not reused: "
+                    f"starts={cat_file_process_starts}"
+                )
             if gate._BLOB_PAYLOAD_CACHE_BYTES > 4:
                 raise AssertionError("blob cache exceeded its byte budget")
             if len(gate._BLOB_PAYLOAD_CACHE) != 1:
                 raise AssertionError("byte LRU did not evict the least-recent entry")
+            gate._reset_full_history_scan_caches()
 
     def cache_worktree_reads_bypass_committed_entry() -> None:
         with tempfile.TemporaryDirectory(prefix="v076-gate-cache-worktree-") as temp_dir:
@@ -5085,6 +5090,7 @@ print('not-json'); raise SystemExit(2)
                 raise AssertionError("worktree read reused a committed cache entry")
             if len(gate._SNAPSHOT_TEXT_INVENTORY_CACHE) != 1:
                 raise AssertionError("worktree read polluted committed snapshot cache")
+            gate._reset_full_history_scan_caches()
 
     def cache_reset_runs_at_validate_entry() -> None:
         with tempfile.TemporaryDirectory(prefix="v076-gate-cache-reset-") as temp_dir:

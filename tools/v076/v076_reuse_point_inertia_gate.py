@@ -9,8 +9,8 @@ reimplement their repository-wide rules and it never starts Godot or gameplay.
 from __future__ import annotations
 
 import argparse
+import atexit
 import hashlib
-import io
 import json
 import re
 import subprocess
@@ -31,12 +31,48 @@ _BLOB_PAYLOAD_CACHE: OrderedDict[tuple[str, str], bytes] = OrderedDict()
 _BLOB_PAYLOAD_CACHE_BYTES = 0
 
 
+class _GitCatFileBatchSession:
+    """One reusable ``git cat-file --batch`` process for an immutable repo.
+
+    The session is deliberately scoped by the same repository identity used by
+    the blob LRU.  It never owns scanner state: it only amortizes Git process
+    startup while preserving request order and the existing fail-closed parser.
+    """
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        git_dir = Path(
+            _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+        ).resolve()
+        self.process = subprocess.Popen(
+            ["git", "--git-dir", str(git_dir), "cat-file", "--batch"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+
+_BLOB_CAT_FILE_SESSIONS: dict[str, _GitCatFileBatchSession] = {}
+
+
 def _reset_full_history_scan_caches() -> None:
     """Reset the per-validation immutable Git snapshot caches."""
     global _BLOB_PAYLOAD_CACHE_BYTES
+    _close_blob_cat_file_sessions()
     _SNAPSHOT_TEXT_INVENTORY_CACHE.clear()
     _BLOB_PAYLOAD_CACHE.clear()
     _BLOB_PAYLOAD_CACHE_BYTES = 0
+
+
+def _close_blob_cat_file_sessions() -> None:
+    """Close all persistent Git batch processes without masking validation errors."""
+    sessions = list(_BLOB_CAT_FILE_SESSIONS.values())
+    _BLOB_CAT_FILE_SESSIONS.clear()
+    for session in sessions:
+        _close_blob_cat_file_session(session)
+
+
+atexit.register(_close_blob_cat_file_sessions)
 
 
 CHECK_NAME = "V076 Reuse and Point-Inertia Gate"
@@ -6039,29 +6075,60 @@ def _batch_git_blobs(root: Path, object_ids: Iterable[str]) -> dict[str, bytes]:
             result[object_id] = payload
     if not misses:
         return result
-    completed = subprocess.run(
-        ["git", "-C", str(root), "cat-file", "--batch"],
-        input=("\n".join(misses) + "\n").encode("ascii"),
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    if completed.returncode != 0:
-        error = completed.stderr.decode("utf-8", errors="replace").strip()
-        raise RuntimeError(f"git cat-file --batch failed: {error}")
-    stream = io.BytesIO(completed.stdout)
+    session = _BLOB_CAT_FILE_SESSIONS.get(repo_identity)
+    if session is None or session.process.poll() is not None:
+        if session is not None:
+            _BLOB_CAT_FILE_SESSIONS.pop(repo_identity, None)
+            _close_blob_cat_file_session(session)
+        session = _GitCatFileBatchSession(root)
+        _BLOB_CAT_FILE_SESSIONS[repo_identity] = session
+    process = session.process
+    if process.stdin is None or process.stdout is None:
+        _BLOB_CAT_FILE_SESSIONS.pop(repo_identity, None)
+        _close_blob_cat_file_session(session)
+        raise RuntimeError("git cat-file --batch pipes unavailable")
     fetched: dict[str, bytes] = {}
     for expected in misses:
-        header = stream.readline().rstrip(b"\n")
+        try:
+            process.stdin.write((expected + "\n").encode("ascii"))
+            process.stdin.flush()
+            header = process.stdout.readline().rstrip(b"\n")
+        except (BrokenPipeError, OSError) as error:
+            _BLOB_CAT_FILE_SESSIONS.pop(repo_identity, None)
+            _close_blob_cat_file_session(session)
+            raise RuntimeError("git cat-file --batch failed while writing request") from error
+        if not header:
+            _BLOB_CAT_FILE_SESSIONS.pop(repo_identity, None)
+            stderr = b""
+            if process.stderr is not None:
+                try:
+                    stderr = process.stderr.read()
+                except OSError:
+                    pass
+            _close_blob_cat_file_session(session)
+            error = stderr.decode("utf-8", errors="replace").strip()
+            suffix = f": {error}" if error else ""
+            raise RuntimeError(f"git cat-file --batch exited unexpectedly{suffix}")
         fields = header.split()
         if len(fields) != 3 or fields[0].decode("ascii") != expected:
+            _BLOB_CAT_FILE_SESSIONS.pop(repo_identity, None)
+            _close_blob_cat_file_session(session)
             raise RuntimeError("malformed git cat-file --batch response")
-        size = int(fields[2])
-        payload = stream.read(size)
+        try:
+            size = int(fields[2])
+        except ValueError as error:
+            _BLOB_CAT_FILE_SESSIONS.pop(repo_identity, None)
+            _close_blob_cat_file_session(session)
+            raise RuntimeError("malformed git cat-file response size") from error
+        payload = process.stdout.read(size)
         if len(payload) != size:
+            _BLOB_CAT_FILE_SESSIONS.pop(repo_identity, None)
+            _close_blob_cat_file_session(session)
             raise RuntimeError("malformed git cat-file payload size")
         fetched[expected] = payload
-        if stream.read(1) != b"\n":
+        if process.stdout.read(1) != b"\n":
+            _BLOB_CAT_FILE_SESSIONS.pop(repo_identity, None)
+            _close_blob_cat_file_session(session)
             raise RuntimeError("malformed git cat-file payload terminator")
     for object_id, payload in fetched.items():
         result[object_id] = payload
@@ -6077,6 +6144,28 @@ def _batch_git_blobs(root: Path, object_ids: Iterable[str]) -> dict[str, bytes]:
             _, evicted = _BLOB_PAYLOAD_CACHE.popitem(last=False)
             _BLOB_PAYLOAD_CACHE_BYTES -= len(evicted)
     return result
+
+
+def _close_blob_cat_file_session(session: _GitCatFileBatchSession) -> None:
+    """Best-effort close for one failed or replaced batch process."""
+    process = session.process
+    for stream in (process.stdin, process.stdout, process.stderr):
+        if stream is not None:
+            try:
+                stream.close()
+            except OSError:
+                pass
+    if process.poll() is not None:
+        return
+    try:
+        process.terminate()
+        process.wait(timeout=1.0)
+    except (OSError, subprocess.TimeoutExpired):
+        try:
+            process.kill()
+            process.wait(timeout=1.0)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
 
 
 def _snapshot_text_inventory(
