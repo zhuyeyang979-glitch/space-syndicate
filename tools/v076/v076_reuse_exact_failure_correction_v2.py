@@ -5069,6 +5069,9 @@ def validate_full_convergence_records(
         "historical_delta_metadata_union_failure_count": authority.get(
             "historical_delta_metadata_union_failure_count", 0
         ),
+        "post_touch_revalidation": authority.get(
+            "post_touch_revalidation", {}
+        ),
         "subject_projection_revalidation": authority.get(
             "subject_projection_revalidation", {}
         ),

@@ -2557,6 +2557,11 @@ def _historical_delta_metadata_effective_report_case(root: Path) -> None:
             "record_summaries": [],
             "historical_delta_metadata_record_summaries": [],
             "historical_delta_metadata_ledger": {"status": "PASS"},
+            "post_touch_revalidation": {
+                "status": "PASS",
+                "effective_trusted_fingerprint_count": 2,
+                "replacement_complete": True,
+            },
             "subject_projection_revalidation": {
                 "status": "PASS",
                 "record_count": 82,
@@ -2618,6 +2623,15 @@ def _historical_delta_metadata_effective_report_case(root: Path) -> None:
     _expect(report["historical_delta_metadata_correction_record_count"] == 4, str(report))
     _expect(report["historical_delta_metadata_component_count"] == 82, str(report))
     _expect(report["historical_delta_metadata_verified_failure_count"] == 86, str(report))
+    _expect(report["post_touch_revalidation"]["status"] == "PASS", str(report))
+    _expect(
+        report["post_touch_revalidation"]["effective_trusted_fingerprint_count"] == 2,
+        str(report),
+    )
+    _expect(
+        report["post_touch_revalidation"]["replacement_complete"] is True,
+        str(report),
+    )
     _expect(
         report["subject_projection_revalidation"]["record_count"] == 82,
         str(report),
