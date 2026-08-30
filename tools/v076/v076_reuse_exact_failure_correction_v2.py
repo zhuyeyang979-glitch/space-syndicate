@@ -37,6 +37,10 @@ FULL_CONVERGENCE_RESOLUTION_MODE = "FULL_CONVERGENCE"
 FULL_CONVERGENCE_PASS_STATUS = (
     "PASS_WITH_APPEND_ONLY_HISTORICAL_IDENTITY_BACKFILL_AND_CORRECTIONS"
 )
+HISTORICAL_DELTA_METADATA_SUCCESSOR_FAILURE_COUNT = 25
+HISTORICAL_DELTA_METADATA_SUCCESSOR_RULE_ID = (
+    "NEW_COMPONENT_CANNOT_CLAIM_INHERITED"
+)
 INVENTORY_SCHEMA_VERSION = "space_syndicate.v076.reuse_failure_inventory.v2"
 AUTHORIZATION_ID = "USER_AUTHORIZATION_V076_REUSE_CORRECTION_V2_20260826"
 AUTHORIZED_HEAD_SHA = "1e24cea73fc23e69e575fcea09df57238156af67"
@@ -3324,6 +3328,402 @@ def _full_convergence_terminal_coverage_failures(
     return sorted(set(failures))
 
 
+def _effective_historical_delta_metadata_successor_projection(
+    root: Path,
+    manifest_path: Path | None,
+    successor_authority: dict[str, Any],
+    *,
+    ledger_authority: dict[str, Any],
+    supplement_authority: dict[str, Any],
+) -> dict[str, Any]:
+    """Rebind one validated HDM successor to its exact historical Raw rows.
+
+    The full-convergence validator proves the append-only manifest and record
+    chain.  The effective resolver has a separate responsibility: project the
+    25 exact successor rows into the historical authority consumed by live-Raw
+    classification.  Re-reading the committed Raw tuple here prevents a PASS
+    count (or a trusted record path without the corresponding Raw identity)
+    from becoming correction authority.
+
+    No directory discovery is used.  The caller must supply the one manifest,
+    and every accepted fingerprint is recomputed from an exact Raw string with
+    the historical bucket.  Any set or Raw-string collision with the frozen
+    ledger or descendant supplement fails the complete projection closed.
+    """
+
+    failures: list[str] = []
+    empty = {
+        "status": "FAIL",
+        "failures": failures,
+        "successor_failure_count": 0,
+        "successor_failure_fingerprints": [],
+        "authorized_identity_by_fingerprint": {},
+        "verified_historical_fingerprints": [],
+        "new_raw_authority": {},
+    }
+    if manifest_path is None:
+        failures.append("EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_REQUIRED")
+        return empty
+    if not isinstance(successor_authority, dict) or (
+        successor_authority.get("status") != "PASS"
+    ):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_AUTHORITY_NOT_PASS"
+        )
+        return empty
+
+    try:
+        import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
+
+        manifest = convergence.load_json_strict(manifest_path)
+    except (ImportError, OSError, ValueError, json.JSONDecodeError) as error:
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_MANIFEST_INVALID:"
+            f"{type(error).__name__}"
+        )
+        return empty
+    if not isinstance(manifest, dict):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_MANIFEST_NOT_OBJECT"
+        )
+        return empty
+
+    root_resolved = root.resolve()
+    manifest_resolved = manifest_path.resolve()
+    if not manifest_resolved.is_relative_to(root_resolved):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_MANIFEST_OUTSIDE_REPO"
+        )
+    projected_manifest_path = str(successor_authority.get("manifest_path", ""))
+    if (
+        not projected_manifest_path
+        or Path(projected_manifest_path).resolve() != manifest_resolved
+    ):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_MANIFEST_PATH_MISMATCH"
+        )
+
+    selector_policy = manifest.get("selector_policy")
+    future_policy = manifest.get("future_failure_policy")
+    expected_selector_policy = {
+        "match_mode": "EXACT_FAILURE_FINGERPRINTS_ONLY",
+        "wildcard_allowed": False,
+        "regex_allowed": False,
+        "path_prefix_allowed": False,
+        "branch_selector_allowed": False,
+        "date_selector_allowed": False,
+        "future_failure_auto_match": False,
+    }
+    expected_future_policy = {
+        "automatic_match": False,
+        "new_failure_requires_new_record": True,
+    }
+    if (
+        selector_policy != expected_selector_policy
+        or future_policy != expected_future_policy
+        or manifest.get("wildcard_count") != 0
+    ):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_SELECTOR_POLICY_INVALID"
+        )
+
+    manifest_fingerprints = manifest.get("successor_failure_fingerprints")
+    if not isinstance(manifest_fingerprints, list):
+        manifest_fingerprints = []
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_FINGERPRINT_LIST_INVALID"
+        )
+    manifest_fingerprints = [str(value) for value in manifest_fingerprints]
+    authority_fingerprints = [
+        str(value)
+        for value in successor_authority.get(
+            "successor_failure_fingerprints", []
+        )
+    ]
+    verified_fingerprints = [
+        str(value)
+        for value in successor_authority.get(
+            "verified_historical_fingerprints", []
+        )
+    ]
+    trusted_value = successor_authority.get("trusted_by_fingerprint", {})
+    trusted = trusted_value if isinstance(trusted_value, dict) else {}
+    expected_count = HISTORICAL_DELTA_METADATA_SUCCESSOR_FAILURE_COUNT
+    exact_set = set(manifest_fingerprints)
+    if (
+        manifest_fingerprints != sorted(manifest_fingerprints)
+        or len(manifest_fingerprints) != expected_count
+        or len(exact_set) != expected_count
+        or any(
+            re.fullmatch(r"V2F-[0-9a-f]{64}", value) is None
+            for value in manifest_fingerprints
+        )
+        or manifest.get("successor_failure_count") != expected_count
+        or successor_authority.get("successor_failure_count") != expected_count
+    ):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_EXACT_COUNT_INVALID"
+        )
+    if (
+        authority_fingerprints != manifest_fingerprints
+        or verified_fingerprints != manifest_fingerprints
+        or set(trusted) != exact_set
+    ):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_AUTHORITY_SET_MISMATCH"
+        )
+    for fingerprint, trust_row in trusted.items():
+        if (
+            not isinstance(trust_row, dict)
+            or set(trust_row) != {"record_path", "record_payload_sha256"}
+            or not normalize_path(str(trust_row.get("record_path", "")))
+            or any(
+                token in str(trust_row.get("record_path", ""))
+                for token in "*?[]"
+            )
+            or re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(trust_row.get("record_payload_sha256", "")),
+            )
+            is None
+        ):
+            failures.append(
+                "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_TRUST_ROW_INVALID:"
+                f"{fingerprint}"
+            )
+
+    new_raw = manifest.get("new_raw_authority")
+    if not isinstance(new_raw, dict) or set(new_raw) != {
+        "path", "sha256", "head_sha", "tree_sha"
+    }:
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_RAW_TUPLE_INVALID"
+        )
+        new_raw = {}
+    raw_relative = normalize_path(str(new_raw.get("path", "")))
+    raw_path = (root_resolved / raw_relative).resolve()
+    if (
+        not raw_relative
+        or raw_relative != str(new_raw.get("path", ""))
+        or any(token in raw_relative for token in "*?[]")
+        or not raw_path.is_relative_to(root_resolved)
+    ):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_RAW_PATH_INVALID"
+        )
+    raw_head = str(new_raw.get("head_sha", ""))
+    raw_tree = str(new_raw.get("tree_sha", ""))
+    raw_sha = str(new_raw.get("sha256", ""))
+    committed_raw = (
+        _bytes_at(root, raw_head, raw_relative)
+        if re.fullmatch(r"[0-9a-f]{40}", raw_head)
+        else None
+    )
+    try:
+        committed_tree = _commit_tree(root, raw_head)
+    except (ValueError, subprocess.CalledProcessError):
+        committed_tree = ""
+    if (
+        committed_raw is None
+        or sha256_bytes(committed_raw) != raw_sha
+        or committed_tree != raw_tree
+    ):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_RAW_AUTHORITY_MISMATCH"
+        )
+    try:
+        local_raw = raw_path.read_bytes()
+    except OSError:
+        local_raw = b""
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_RAW_UNREADABLE"
+        )
+    if committed_raw is not None and local_raw != committed_raw:
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_RAW_WORKTREE_DRIFT"
+        )
+    try:
+        raw_report = json.loads(
+            local_raw.decode("utf-8-sig"),
+            object_pairs_hook=convergence._strict_object,
+        )
+    except (UnicodeDecodeError, ValueError, json.JSONDecodeError):
+        raw_report = {}
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_RAW_JSON_INVALID"
+        )
+    raw_failures = (
+        raw_report.get("failures", []) if isinstance(raw_report, dict) else []
+    )
+    if not isinstance(raw_failures, list):
+        raw_failures = []
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_RAW_FAILURE_LIST_INVALID"
+        )
+
+    transition = manifest.get("authority_transition")
+    if not isinstance(transition, dict):
+        transition = {}
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_TRANSITION_INVALID"
+        )
+    transition_parent = str(transition.get("parent_sha", ""))
+    transition_commit = str(transition.get("commit_sha", ""))
+    expected_transition = (
+        f"{transition_parent[:12]}->{transition_commit[:12]}"
+        if re.fullmatch(r"[0-9a-f]{40}", transition_parent)
+        and re.fullmatch(r"[0-9a-f]{40}", transition_commit)
+        else ""
+    )
+    identities: dict[str, dict[str, Any]] = {}
+    for value in raw_failures:
+        raw = str(value)
+        parts = raw.split(":")
+        if (
+            len(parts) != 3
+            or parts[0] != HISTORICAL_DELTA_METADATA_SUCCESSOR_RULE_ID
+            or parts[1] != expected_transition
+            or not parts[2]
+        ):
+            continue
+        fingerprint = _failure_fingerprint(
+            raw,
+            "HISTORICAL",
+            HISTORICAL_DELTA_METADATA_SUCCESSOR_RULE_ID,
+        )
+        if fingerprint in identities:
+            failures.append(
+                "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_RAW_DUPLICATE:"
+                f"{fingerprint}"
+            )
+            continue
+        identities[fingerprint] = {
+            "failure_fingerprint": fingerprint,
+            "raw_failure": raw,
+            "rule_id": HISTORICAL_DELTA_METADATA_SUCCESSOR_RULE_ID,
+            "transition_old_prefix": transition_parent[:12],
+            "transition_new_prefix": transition_commit[:12],
+            "subject_kind": "component_id",
+            "subject_value": parts[2],
+            "bucket": "HISTORICAL",
+            "source_commit": transition_commit,
+            "component_id": parts[2],
+            "path": "",
+            "target": "historical",
+            "authority_origin": "HISTORICAL_DELTA_METADATA_SUCCESSOR",
+            "raw_report_path": raw_relative,
+            "raw_report_sha256": raw_sha,
+            "raw_report_head_sha": raw_head,
+            "raw_report_tree_sha": raw_tree,
+        }
+    if set(identities) != exact_set or len(identities) != expected_count:
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_RAW_IDENTITY_SET_MISMATCH"
+        )
+
+    ledger_identities_value = ledger_authority.get(
+        "authorized_identity_by_fingerprint", {}
+    )
+    ledger_identities = (
+        ledger_identities_value
+        if isinstance(ledger_identities_value, dict)
+        else {}
+    )
+    ledger_verified = {
+        str(value)
+        for value in ledger_authority.get(
+            "verified_historical_fingerprints", []
+        )
+    }
+    if ledger_authority.get("status") != "PASS" or (
+        set(ledger_identities) != ledger_verified
+    ):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_LEDGER_IDENTITY_SET_MISMATCH"
+        )
+    supplement_identities_value = supplement_authority.get(
+        "authorized_identity_by_fingerprint", {}
+    )
+    supplement_identities = (
+        supplement_identities_value
+        if isinstance(supplement_identities_value, dict)
+        else {}
+    )
+    supplement_fingerprints = {
+        str(value)
+        for value in supplement_authority.get(
+            "authorized_historical_fingerprints", []
+        )
+    }
+    if supplement_authority.get("status") != "PASS" or (
+        set(supplement_identities) != supplement_fingerprints
+    ):
+        failures.append(
+            "EFFECTIVE_DESCENDANT_HISTORY_IDENTITY_SET_MISMATCH"
+        )
+
+    for code, values in (
+        (
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_LEDGER_"
+            "FINGERPRINT_COLLISION",
+            exact_set & set(ledger_identities),
+        ),
+        (
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_SUPPLEMENT_"
+            "FINGERPRINT_COLLISION",
+            exact_set & set(supplement_identities),
+        ),
+    ):
+        failures.extend(f"{code}:{value}" for value in sorted(values))
+
+    successor_raw = {
+        str(identity.get("raw_failure", ""))
+        for identity in identities.values()
+    }
+    ledger_raw = {
+        str(identity.get("raw_failure", ""))
+        for identity in ledger_identities.values()
+        if isinstance(identity, dict)
+    }
+    supplement_raw = {
+        str(identity.get("raw_failure", ""))
+        for identity in supplement_identities.values()
+        if isinstance(identity, dict)
+    }
+    if "" in successor_raw or len(successor_raw) != len(identities):
+        failures.append(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_RAW_IDENTITY_INVALID"
+        )
+    for code, values in (
+        (
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_LEDGER_RAW_COLLISION",
+            successor_raw & ledger_raw,
+        ),
+        (
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_SUPPLEMENT_RAW_COLLISION",
+            successor_raw & supplement_raw,
+        ),
+    ):
+        failures.extend(f"{code}:{value}" for value in sorted(values) if value)
+
+    failures = sorted(set(failures))
+    if failures:
+        empty["failures"] = failures
+        return empty
+    return {
+        "status": "PASS",
+        "failures": [],
+        "successor_failure_count": len(identities),
+        "successor_failure_fingerprints": sorted(identities),
+        "authorized_identity_by_fingerprint": {
+            fingerprint: identities[fingerprint]
+            for fingerprint in sorted(identities)
+        },
+        "verified_historical_fingerprints": sorted(identities),
+        "new_raw_authority": dict(new_raw),
+    }
+
+
 def _verified_full_convergence_authority(
     root: Path,
     *,
@@ -3447,6 +3847,22 @@ def _verified_full_convergence_authority(
             if isinstance(disposition, dict)
         }
     supplement_authorized_fingerprints = set(authorized_identities)
+    historical_delta_metadata_successor_projection = (
+        _effective_historical_delta_metadata_successor_projection(
+            root,
+            historical_delta_metadata_successor_path,
+            historical_delta_metadata_successor,
+            ledger_authority=historical_delta_metadata_ledger,
+            supplement_authority=supplement,
+        )
+    )
+    if historical_delta_metadata_successor_projection.get("status") != "PASS":
+        failures.extend(
+            str(value)
+            for value in historical_delta_metadata_successor_projection.get(
+                "failures", []
+            )
+        )
     historical_delta_metadata_identities: dict[str, dict[str, Any]] = {}
     historical_delta_metadata_verified: set[str] = set()
     if historical_delta_metadata_ledger.get("status") == "PASS":
@@ -3483,6 +3899,45 @@ def _verified_full_convergence_authority(
             historical_delta_metadata_identities = {}
             historical_delta_metadata_verified = set()
         else:
+            successor_identities = {
+                str(fingerprint): dict(identity)
+                for fingerprint, identity in (
+                    historical_delta_metadata_successor_projection.get(
+                        "authorized_identity_by_fingerprint", {}
+                    )
+                ).items()
+                if isinstance(identity, dict)
+            }
+            successor_verified = {
+                str(value)
+                for value in historical_delta_metadata_successor_projection.get(
+                    "verified_historical_fingerprints", []
+                )
+            }
+            if (
+                historical_delta_metadata_successor_projection.get("status")
+                == "PASS"
+                and set(successor_identities) == successor_verified
+            ):
+                historical_delta_metadata_identities.update(
+                    successor_identities
+                )
+                historical_delta_metadata_verified.update(successor_verified)
+                historical_delta_metadata_successor = {
+                    **historical_delta_metadata_successor,
+                    "authorized_identity_by_fingerprint": {
+                        fingerprint: successor_identities[fingerprint]
+                        for fingerprint in sorted(successor_identities)
+                    },
+                    "verified_historical_fingerprints": sorted(
+                        successor_verified
+                    ),
+                    "new_raw_authority": (
+                        historical_delta_metadata_successor_projection.get(
+                            "new_raw_authority", {}
+                        )
+                    ),
+                }
             authorized_identities.update(historical_delta_metadata_identities)
 
     try:
@@ -3792,11 +4247,6 @@ def _verified_full_convergence_authority(
         ),
         "historical_delta_metadata_union_failure_count": (
             len(historical_delta_metadata_verified)
-            + int(
-                historical_delta_metadata_successor.get(
-                    "successor_failure_count", 0
-                )
-            )
         ),
         "historical_delta_metadata_record_count": (
             historical_delta_metadata_ledger.get("metadata_record_count", 0)

@@ -1749,6 +1749,316 @@ def run_selftest() -> dict[str, Any]:
         "FAIL",
         history_deleted_recreate_is_append_only,
     ))
+
+    def with_hdm_successor_fixture(
+        assertion: Callable[
+            [Path, Path, dict[str, Any], dict[str, Any], dict[str, Any]],
+            None,
+        ],
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="v076-effective-hdms-") as temporary:
+            root = Path(temporary) / "repo"
+            root.mkdir()
+            _git(root, "init", "--quiet")
+            _git(root, "config", "user.email", "v076-hdms-selftest@example.invalid")
+            _git(root, "config", "user.name", "V076 HDMS Selftest")
+            transition_parent = "1" * 40
+            transition_commit = "2" * 40
+            transition = (
+                f"{transition_parent[:12]}->{transition_commit[:12]}"
+            )
+            raw_rows = [
+                (
+                    f"{correction.HISTORICAL_DELTA_METADATA_SUCCESSOR_RULE_ID}:"
+                    f"{transition}:component.selftest.hdms.{index:02d}"
+                )
+                for index in range(
+                    correction.HISTORICAL_DELTA_METADATA_SUCCESSOR_FAILURE_COUNT
+                )
+            ]
+            fingerprints = sorted(
+                correction._failure_fingerprint(
+                    raw,
+                    "HISTORICAL",
+                    correction.HISTORICAL_DELTA_METADATA_SUCCESSOR_RULE_ID,
+                )
+                for raw in raw_rows
+            )
+            raw_relative = "reports/reuse/hdms-successor-raw.json"
+            raw_path = root / raw_relative
+            _write(raw_path, {"failures": raw_rows})
+            _git(root, "add", "--", raw_relative)
+            _git(root, "commit", "--quiet", "-m", "add exact HDMS Raw authority")
+            raw_head = _git(root, "rev-parse", "HEAD")
+            raw_tree = _git(root, "rev-parse", "HEAD^{tree}")
+            manifest_path = root / "docs/hdms-successor-manifest.json"
+            manifest = {
+                "selector_policy": {
+                    "match_mode": "EXACT_FAILURE_FINGERPRINTS_ONLY",
+                    "wildcard_allowed": False,
+                    "regex_allowed": False,
+                    "path_prefix_allowed": False,
+                    "branch_selector_allowed": False,
+                    "date_selector_allowed": False,
+                    "future_failure_auto_match": False,
+                },
+                "future_failure_policy": {
+                    "automatic_match": False,
+                    "new_failure_requires_new_record": True,
+                },
+                "wildcard_count": 0,
+                "successor_failure_count": len(fingerprints),
+                "successor_failure_fingerprints": fingerprints,
+                "new_raw_authority": {
+                    "path": raw_relative,
+                    "sha256": _sha(raw_path.read_bytes()),
+                    "head_sha": raw_head,
+                    "tree_sha": raw_tree,
+                },
+                "authority_transition": {
+                    "parent_sha": transition_parent,
+                    "commit_sha": transition_commit,
+                },
+            }
+            _write(manifest_path, manifest)
+            trust_row = {
+                "record_path": "docs/architecture/reuse_corrections/v2/"
+                "historical_delta_metadata_successor/records/exact.json",
+                "record_payload_sha256": "3" * 64,
+            }
+            authority = {
+                "status": "PASS",
+                "failures": [],
+                "manifest_path": str(manifest_path),
+                "successor_failure_count": len(fingerprints),
+                "successor_failure_fingerprints": fingerprints,
+                "trusted_by_fingerprint": {
+                    fingerprint: dict(trust_row)
+                    for fingerprint in fingerprints
+                },
+                "verified_historical_fingerprints": fingerprints,
+            }
+            ledger = {
+                "status": "PASS",
+                "authorized_identity_by_fingerprint": {},
+                "verified_historical_fingerprints": [],
+            }
+            supplement = {
+                "status": "PASS",
+                "authorized_historical_fingerprints": set(),
+                "authorized_identity_by_fingerprint": {},
+            }
+            assertion(root, manifest_path, authority, ledger, supplement)
+
+    def valid_hdm_successor_projection() -> None:
+        def assert_valid(
+            root: Path,
+            manifest_path: Path,
+            authority: dict[str, Any],
+            ledger: dict[str, Any],
+            supplement: dict[str, Any],
+        ) -> None:
+            projection = (
+                correction._effective_historical_delta_metadata_successor_projection(
+                    root,
+                    manifest_path,
+                    authority,
+                    ledger_authority=ledger,
+                    supplement_authority=supplement,
+                )
+            )
+            identities = projection["authorized_identity_by_fingerprint"]
+            _assert(projection["status"] == "PASS", str(projection))
+            _assert(len(identities) == 25, str(projection))
+            _assert(
+                set(identities)
+                == set(authority["successor_failure_fingerprints"]),
+                str(projection),
+            )
+            _assert(
+                all(
+                    identity["bucket"] == "HISTORICAL"
+                    and identity["subject_kind"] == "component_id"
+                    and identity["raw_report_sha256"]
+                    == projection["new_raw_authority"]["sha256"]
+                    for identity in identities.values()
+                ),
+                str(projection),
+            )
+
+        with_hdm_successor_fixture(assert_valid)
+
+    cases.append(Case(
+        "113",
+        "effective resolver consumes exactly 25 HDM successor fingerprints with committed Raw identities",
+        "PASS",
+        valid_hdm_successor_projection,
+    ))
+
+    def missing_hdm_successor_projection() -> None:
+        projection = (
+            correction._effective_historical_delta_metadata_successor_projection(
+                project,
+                None,
+                {"status": "NOT_PROVIDED"},
+                ledger_authority={"status": "PASS"},
+                supplement_authority={"status": "PASS"},
+            )
+        )
+        _assert(projection["status"] == "FAIL", str(projection))
+        _assert(
+            "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_REQUIRED"
+            in projection["failures"],
+            str(projection),
+        )
+        _assert(not projection["authorized_identity_by_fingerprint"], str(projection))
+
+    cases.append(Case(
+        "114",
+        "effective full convergence fails closed when the explicit HDM successor is missing",
+        "FAIL",
+        missing_hdm_successor_projection,
+    ))
+
+    def hdm_successor_ledger_collision() -> None:
+        def assert_collision(
+            root: Path,
+            manifest_path: Path,
+            authority: dict[str, Any],
+            ledger: dict[str, Any],
+            supplement: dict[str, Any],
+        ) -> None:
+            fingerprint = authority["successor_failure_fingerprints"][0]
+            ledger["authorized_identity_by_fingerprint"] = {
+                fingerprint: {
+                    "failure_fingerprint": fingerprint,
+                    "raw_failure": "LEDGER-RAW",
+                }
+            }
+            ledger["verified_historical_fingerprints"] = [fingerprint]
+            projection = (
+                correction._effective_historical_delta_metadata_successor_projection(
+                    root,
+                    manifest_path,
+                    authority,
+                    ledger_authority=ledger,
+                    supplement_authority=supplement,
+                )
+            )
+            _assert(projection["status"] == "FAIL", str(projection))
+            _assert(
+                _has_prefix(
+                    projection["failures"],
+                    "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_LEDGER_"
+                    "FINGERPRINT_COLLISION",
+                ),
+                str(projection),
+            )
+            _assert(not projection["authorized_identity_by_fingerprint"], str(projection))
+
+        with_hdm_successor_fixture(assert_collision)
+
+    cases.append(Case(
+        "115",
+        "HDM successor fingerprint collision with the frozen ledger closes authority",
+        "FAIL",
+        hdm_successor_ledger_collision,
+    ))
+
+    def hdm_successor_supplement_raw_collision() -> None:
+        def assert_collision(
+            root: Path,
+            manifest_path: Path,
+            authority: dict[str, Any],
+            ledger: dict[str, Any],
+            supplement: dict[str, Any],
+        ) -> None:
+            pristine = (
+                correction._effective_historical_delta_metadata_successor_projection(
+                    root,
+                    manifest_path,
+                    authority,
+                    ledger_authority=ledger,
+                    supplement_authority=supplement,
+                )
+            )
+            raw = next(
+                iter(pristine["authorized_identity_by_fingerprint"].values())
+            )["raw_failure"]
+            other = "V2F-" + "f" * 64
+            supplement["authorized_historical_fingerprints"] = {other}
+            supplement["authorized_identity_by_fingerprint"] = {
+                other: {
+                    "failure_fingerprint": other,
+                    "raw_failure": raw,
+                }
+            }
+            projection = (
+                correction._effective_historical_delta_metadata_successor_projection(
+                    root,
+                    manifest_path,
+                    authority,
+                    ledger_authority=ledger,
+                    supplement_authority=supplement,
+                )
+            )
+            _assert(projection["status"] == "FAIL", str(projection))
+            _assert(
+                _has_prefix(
+                    projection["failures"],
+                    "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_SUPPLEMENT_"
+                    "RAW_COLLISION",
+                ),
+                str(projection),
+            )
+
+        with_hdm_successor_fixture(assert_collision)
+
+    cases.append(Case(
+        "116",
+        "HDM successor exact Raw identity collision with the descendant supplement closes authority",
+        "FAIL",
+        hdm_successor_supplement_raw_collision,
+    ))
+
+    def illegal_hdm_successor_policy() -> None:
+        def assert_rejected(
+            root: Path,
+            manifest_path: Path,
+            authority: dict[str, Any],
+            ledger: dict[str, Any],
+            supplement: dict[str, Any],
+        ) -> None:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["selector_policy"]["wildcard_allowed"] = True
+            manifest["future_failure_policy"]["automatic_match"] = True
+            manifest["wildcard_count"] = 1
+            _write(manifest_path, manifest)
+            projection = (
+                correction._effective_historical_delta_metadata_successor_projection(
+                    root,
+                    manifest_path,
+                    authority,
+                    ledger_authority=ledger,
+                    supplement_authority=supplement,
+                )
+            )
+            _assert(projection["status"] == "FAIL", str(projection))
+            _assert(
+                "EFFECTIVE_HISTORICAL_DELTA_METADATA_SUCCESSOR_SELECTOR_POLICY_INVALID"
+                in projection["failures"],
+                str(projection),
+            )
+            _assert(not projection["verified_historical_fingerprints"], str(projection))
+
+        with_hdm_successor_fixture(assert_rejected)
+
+    cases.append(Case(
+        "117",
+        "wildcard or future-auto HDM successor policy is never effective authority",
+        "FAIL",
+        illegal_hdm_successor_policy,
+    ))
     integration_error = ""
     integration_cleanup: Callable[[], None] | None = None
     try:
@@ -1780,6 +2090,7 @@ def run_selftest() -> dict[str, Any]:
         "90", "91",
         "93", "94", "95", "96", "97", "98", "99", "100",
         "101", "102", "103", "104", "105", "106", "108", "109", "110", "111", "112",
+        "114", "115", "116", "117",
     }
     false_green = sum(
         result.status == "FAIL" and result.case_id in false_green_sensitive_ids
@@ -1790,7 +2101,7 @@ def run_selftest() -> dict[str, Any]:
         for result in results
     )
     valid_false_reject = sum(
-        result.status == "FAIL" and result.case_id in {"01", "02", "58A", "59", "66", "77", "83", "84", "85", "87", "92"}
+        result.status == "FAIL" and result.case_id in {"01", "02", "58A", "59", "66", "77", "83", "84", "85", "87", "92", "113"}
         for result in results
     )
     status = "PASS" if case_count >= 60 and pass_count == case_count and false_green == 0 and valid_false_reject == 0 else "FAIL"
