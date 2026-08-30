@@ -95,6 +95,7 @@ func _run() -> void:
 	var card_setup := _install_military_card(runtime, actor_id)
 	_expect(bool(card_setup.get("accepted", false)), "fixture installs one exact V075 military card")
 	runtime.call("_clear_v075_submission_caches")
+	runtime.call("_invalidate_v075_snapshot_caches")
 	var snapshot := runtime.call("player_snapshot", actor_id) as Dictionary
 	var combat_projection := snapshot.get("v075_combat_projection", {}) as Dictionary
 	var option := _first_region_option(
@@ -299,6 +300,7 @@ func _run() -> void:
 	var monster_card := _install_military_card(runtime, actor_id)
 	_expect(bool(monster_card.get("accepted", false)), "fixture installs a second exact V075 military card")
 	runtime.call("_clear_v075_submission_caches")
+	runtime.call("_invalidate_v075_snapshot_caches")
 	var monster_projection := (
 		(runtime.call("player_snapshot", actor_id) as Dictionary).get(
 			"v075_combat_projection", {}

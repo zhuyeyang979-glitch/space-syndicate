@@ -10092,3 +10092,9 @@ deleted. Evidence and the remaining action inventory are recorded in
   `STATUS=TRUE_HARD_STOP_REQUIRING_USER_DECISION`, `COMMERCIAL_M1_GREEN=false`,
   `READY_FOR_NEXT_CONSOLIDATED_HUMAN_PLAYTEST=false`, `HUMAN_GREEN=false`, and
   STEP13-15 remain `PENDING`; no Ready, merge, tag, or cutover is authorized.
+### 2026-08-30 — V076 current-subject cache revalidation repair
+
+- In an isolated sibling worktree, MCP-only `edit_script` added full V075 snapshot-cache invalidation immediately before the V076 military asset-consequence projection reads `player_snapshot`.
+- The focused production military composition fixture now invalidates the same snapshot cache after its direct asset/facility/DBG setup at both region and monster probes; this removes the confirmed stale-fixture false negative without changing any authority owner.
+- MCP `validate_script` passed for both changed GDScripts, and the focused production composition gate passed `57/57` with zero script or task-introduced errors. Real `res://scenes/main.tscn` was opened and run through the local Godot MCP endpoint, a 1600x960 runtime view was captured, and play mode stopped cleanly.
+- `ui_text_smoke_test` and `visual_snapshot` passed. The broad legacy `smoke_test.gd` remains blocked by its existing save-coordinator path oracle before Main enters the tree; this is recorded as an unrelated stale-oracle failure and was not altered in this scoped repair.

@@ -3943,6 +3943,7 @@ func _v076_settle_production_asset_reservation(
 
 
 func _publish_v076_asset_consequence_projection() -> void:
+	_invalidate_v075_snapshot_caches()
 	var snapshot := player_snapshot(_local_player_id)
 	if snapshot.is_empty():
 		_v076_asset_consequence_projection_failure_count += 1
