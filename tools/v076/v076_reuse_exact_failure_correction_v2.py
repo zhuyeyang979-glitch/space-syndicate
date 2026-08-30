@@ -2599,6 +2599,7 @@ def validate_records(
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
+    subject_projection_revalidation_successor_v2_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     full_convergence_pr_body_file_path: Path | None = None,
 ) -> dict[str, Any]:
@@ -2612,6 +2613,11 @@ def validate_records(
         # This sidecar is optional and must not make the FC input tuple
         # incomplete by itself.
     )
+    if (
+        (subject_projection_revalidation_path is None)
+        != (subject_projection_revalidation_successor_v2_path is None)
+    ):
+        raise ValueError("SUBJECT_PROJECTION_REVALIDATION_EPOCH_PAIR_REQUIRED")
     if historical_delta_metadata_ledger_path is not None and not any(
         value is not None for value in full_convergence_inputs
     ):
@@ -2635,6 +2641,14 @@ def validate_records(
     ):
         raise ValueError(
             "SUBJECT_PROJECTION_REVALIDATION_REQUIRES_FULL_CONVERGENCE_INPUT_SET"
+        )
+    if (
+        subject_projection_revalidation_successor_v2_path is not None
+        and not any(value is not None for value in full_convergence_inputs)
+    ):
+        raise ValueError(
+            "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V2_REQUIRES_"
+            "FULL_CONVERGENCE_INPUT_SET"
         )
     if (
         subject_projection_revalidation_path is not None
@@ -2662,6 +2676,9 @@ def validate_records(
             post_touch_revalidation_path=post_touch_revalidation_path,
             subject_projection_revalidation_path=(
                 subject_projection_revalidation_path
+            ),
+            subject_projection_revalidation_successor_v2_path=(
+                subject_projection_revalidation_successor_v2_path
             ),
             historical_delta_metadata_ledger_path=(
                 historical_delta_metadata_ledger_path
@@ -3281,6 +3298,7 @@ def _verified_full_convergence_authority(
     descendant_history_scanner_path: Path,
     post_touch_revalidation_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
+    subject_projection_revalidation_successor_v2_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
 ) -> dict[str, Any]:
     import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
@@ -3297,6 +3315,9 @@ def _verified_full_convergence_authority(
         post_touch_revalidation_path=post_touch_revalidation_path,
         subject_projection_revalidation_path=(
             subject_projection_revalidation_path
+        ),
+        subject_projection_revalidation_successor_v2_path=(
+            subject_projection_revalidation_successor_v2_path
         ),
         historical_delta_metadata_ledger_path=(
             historical_delta_metadata_ledger_path
@@ -3533,6 +3554,85 @@ def _verified_full_convergence_authority(
         for fingerprint in sorted(verified)
         if fingerprint in authorized_identities
     }
+    subject_projection_summary = primary.get(
+        "subject_projection_revalidation", {}
+    )
+    if not isinstance(subject_projection_summary, dict):
+        subject_projection_summary = {}
+    if failures:
+        subject_projection_summary = {
+            "status": "FAIL",
+            "record_count": 0,
+            "trusted_fingerprint_count": 0,
+            "union_fingerprint_count": (
+                subject_projection_summary.get("union_fingerprint_count", 0)
+                if type(subject_projection_summary.get(
+                    "union_fingerprint_count", 0
+                )) is int
+                else 0
+            ),
+            "cross_epoch_overlap_count": (
+                subject_projection_summary.get(
+                    "cross_epoch_overlap_count", 0
+                )
+                if type(subject_projection_summary.get(
+                    "cross_epoch_overlap_count", 0
+                )) is int
+                else 0
+            ),
+            "path": "",
+            "successor_v2_path": "",
+            "failures": ["COMPOSITE_FULL_CONVERGENCE_AUTHORITY_FAILED"],
+            "primary_status": "FAIL",
+            "independent_status": "NO_GO",
+            "successor_v2_primary_status": "FAIL",
+            "successor_v2_independent_status": "NO_GO",
+            "trust_set_parity": False,
+            "four_gate_complete": False,
+            "v1": {
+                **(
+                    subject_projection_summary.get("v1", {})
+                    if isinstance(subject_projection_summary.get("v1"), dict)
+                    else {}
+                ),
+                "status": "FAIL",
+                "trusted_fingerprint_count": 0,
+            },
+            "successor_v2": {
+                **(
+                    subject_projection_summary.get("successor_v2", {})
+                    if isinstance(
+                        subject_projection_summary.get("successor_v2"), dict
+                    )
+                    else {}
+                ),
+                "status": "FAIL",
+                "trusted_fingerprint_count": 0,
+            },
+        }
+    elif not subject_projection_summary:
+        subject_projection_summary = {
+            "status": "NOT_PROVIDED",
+            "record_count": 0,
+            "trusted_fingerprint_count": 0,
+            "union_fingerprint_count": 0,
+            "cross_epoch_overlap_count": 0,
+            "path": "",
+            "successor_v2_path": "",
+            "failures": [],
+            "primary_status": "NOT_PROVIDED",
+            "independent_status": "NOT_PROVIDED",
+            "successor_v2_primary_status": "NOT_PROVIDED",
+            "successor_v2_independent_status": "NOT_PROVIDED",
+            "trust_set_parity": False,
+            "four_gate_complete": False,
+            "v1": {
+                "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
+            },
+            "successor_v2": {
+                "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
+            },
+        }
     return {
         "status": "PASS" if not failures else "FAIL",
         "failures": failures,
@@ -3647,23 +3747,7 @@ def _verified_full_convergence_authority(
                 "failures": ["COMPOSITE_FULL_CONVERGENCE_AUTHORITY_FAILED"],
             }
         ),
-        "subject_projection_revalidation": (
-            primary.get("subject_projection_revalidation", {
-                "status": "NOT_PROVIDED", "record_count": 0,
-                "trusted_fingerprint_count": 0, "path": "", "failures": [],
-                "primary_status": "NOT_PROVIDED",
-                "independent_status": "NOT_PROVIDED",
-                "trust_set_parity": False,
-            })
-            if not failures
-            else {
-                "status": "FAIL", "record_count": 0,
-                "trusted_fingerprint_count": 0, "path": "",
-                "failures": ["COMPOSITE_FULL_CONVERGENCE_AUTHORITY_FAILED"],
-                "primary_status": "FAIL", "independent_status": "NO_GO",
-                "trust_set_parity": False,
-            }
-        ),
+        "subject_projection_revalidation": subject_projection_summary,
     }
 
 
@@ -3989,6 +4073,7 @@ def validate_full_convergence_records(
     descendant_history_scanner_path: Path,
     post_touch_revalidation_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
+    subject_projection_revalidation_successor_v2_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     full_convergence_pr_body_file_path: Path | None = None,
 ) -> dict[str, Any]:
@@ -4035,6 +4120,9 @@ def validate_full_convergence_records(
         post_touch_revalidation_path=post_touch_revalidation_path,
         subject_projection_revalidation_path=(
             subject_projection_revalidation_path
+        ),
+        subject_projection_revalidation_successor_v2_path=(
+            subject_projection_revalidation_successor_v2_path
         ),
         historical_delta_metadata_ledger_path=(
             historical_delta_metadata_ledger_path
@@ -4354,6 +4442,7 @@ def resolve_command(
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
+    subject_projection_revalidation_successor_v2_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     full_convergence_pr_body_file_path: Path | None = None,
 ) -> int:
@@ -4377,6 +4466,9 @@ def resolve_command(
         post_touch_revalidation_path=post_touch_revalidation_path,
         subject_projection_revalidation_path=(
             subject_projection_revalidation_path
+        ),
+        subject_projection_revalidation_successor_v2_path=(
+            subject_projection_revalidation_successor_v2_path
         ),
         historical_delta_metadata_ledger_path=(
             historical_delta_metadata_ledger_path
@@ -5742,9 +5834,21 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help=(
-            "explicit append-only subject-projection successor revalidation "
-            "manifest; valid only with the complete FULL_CONVERGENCE input "
-            "set and an explicit historical Delta metadata ledger"
+            "explicit frozen 82-row subject-projection revalidation v1 "
+            "manifest; valid only together with its successor-v2 manifest, "
+            "the complete FULL_CONVERGENCE input set, and an explicit "
+            "historical Delta metadata ledger"
+        ),
+    )
+    parser.add_argument(
+        "--subject-projection-revalidation-successor-v2",
+        type=Path,
+        default=None,
+        help=(
+            "explicit committed subject-projection successor-v2 manifest; "
+            "valid only together with --subject-projection-revalidation, "
+            "the complete FULL_CONVERGENCE input set, and an explicit "
+            "historical Delta metadata ledger"
         ),
     )
     parser.add_argument(
@@ -5781,7 +5885,19 @@ def main(argv: list[str] | None = None) -> int:
     output_root = (args.output_root or root).resolve()
     current_head = _resolve_commit(root, args.head_ref)
     if (
-        args.subject_projection_revalidation is not None
+        (args.subject_projection_revalidation is None)
+        != (args.subject_projection_revalidation_successor_v2 is None)
+    ):
+        raise SystemExit(
+            "--subject-projection-revalidation and "
+            "--subject-projection-revalidation-successor-v2 must be supplied "
+            "together"
+        )
+    if (
+        (
+            args.subject_projection_revalidation is not None
+            or args.subject_projection_revalidation_successor_v2 is not None
+        )
         and args.command not in {"resolve", "verify-full-convergence-batch"}
     ):
         raise SystemExit(
@@ -5862,6 +5978,11 @@ def main(argv: list[str] | None = None) -> int:
                     if args.subject_projection_revalidation is not None
                     else None
                 ),
+                subject_projection_revalidation_successor_v2_path=(
+                    args.subject_projection_revalidation_successor_v2.resolve()
+                    if args.subject_projection_revalidation_successor_v2 is not None
+                    else None
+                ),
                 historical_delta_metadata_ledger_path=(
                     args.historical_delta_metadata_ledger.resolve()
                     if args.historical_delta_metadata_ledger is not None
@@ -5940,6 +6061,11 @@ def main(argv: list[str] | None = None) -> int:
         subject_projection_revalidation_path=(
             args.subject_projection_revalidation.resolve()
             if args.subject_projection_revalidation is not None
+            else None
+        ),
+        subject_projection_revalidation_successor_v2_path=(
+            args.subject_projection_revalidation_successor_v2.resolve()
+            if args.subject_projection_revalidation_successor_v2 is not None
             else None
         ),
         historical_delta_metadata_ledger_path=(

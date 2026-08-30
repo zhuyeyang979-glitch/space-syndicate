@@ -15,6 +15,7 @@ import json
 import re
 import subprocess
 import sys
+from functools import lru_cache
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
@@ -892,6 +893,7 @@ def _file_binding(root: Path, relative_path: str) -> dict[str, Any]:
     }
 
 
+@lru_cache(maxsize=None)
 def _git(root: Path, *args: str, check: bool = True) -> str:
     completed = subprocess.run(
         ["git", "-C", str(root), "-c", "core.quotepath=false", *args],
@@ -910,6 +912,7 @@ def _git(root: Path, *args: str, check: bool = True) -> str:
     return completed.stdout.strip()
 
 
+@lru_cache(maxsize=None)
 def _is_ancestor(root: Path, ancestor: str, descendant: str) -> bool:
     return (
         subprocess.run(
@@ -930,6 +933,7 @@ def _is_ancestor(root: Path, ancestor: str, descendant: str) -> bool:
     )
 
 
+@lru_cache(maxsize=None)
 def _git_bytes(root: Path, *args: str, check: bool = True) -> bytes:
     """Run Git without C-style path quoting and preserve NUL records."""
     completed = subprocess.run(
@@ -960,18 +964,14 @@ def _git_path_list(root: Path, *args: str) -> list[str]:
 
 
 def _git_json_at(root: Path, ref: str, path: str) -> dict[str, Any] | None:
-    completed = subprocess.run(
-        ["git", "-C", str(root), "show", f"{ref}:{path}"],
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    if completed.returncode != 0:
+    payload = _git_file_bytes_at(root, ref, path)
+    if payload is None:
         return None
-    value = json.loads(completed.stdout.decode("utf-8-sig"))
+    value = json.loads(payload.decode("utf-8-sig"))
     return value if isinstance(value, dict) else None
 
 
+@lru_cache(maxsize=None)
 def _git_file_bytes_at(root: Path, ref: str, path: str) -> bytes | None:
     completed = subprocess.run(
         ["git", "-C", str(root), "show", f"{ref}:{path}"],
@@ -982,6 +982,7 @@ def _git_file_bytes_at(root: Path, ref: str, path: str) -> bytes | None:
     return completed.stdout if completed.returncode == 0 else None
 
 
+@lru_cache(maxsize=None)
 def _git_path_exists_at(root: Path, ref: str, path: str) -> bool:
     completed = subprocess.run(
         ["git", "-C", str(root), "cat-file", "-e", f"{ref}:{path}"],

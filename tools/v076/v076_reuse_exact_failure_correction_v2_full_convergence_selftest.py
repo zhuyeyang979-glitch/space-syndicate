@@ -1968,24 +1968,82 @@ def _historical_delta_metadata_input_coupling_case(root: Path) -> None:
 
 def _subject_projection_cli_and_input_coupling_case(root: Path) -> None:
     sidecar = Path("subject-projection-revalidation.json")
+    successor = Path("subject-projection-revalidation-successor-v2.json")
     ledger = Path("historical-delta-metadata-ledger.json")
     parsed = legacy_resolver._parser().parse_args([
         "resolve",
         "--subject-projection-revalidation",
         str(sidecar),
+        "--subject-projection-revalidation-successor-v2",
+        str(successor),
         "--historical-delta-metadata-ledger",
         str(ledger),
     ])
     _expect(parsed.subject_projection_revalidation == sidecar, str(parsed))
+    _expect(
+        parsed.subject_projection_revalidation_successor_v2 == successor,
+        str(parsed),
+    )
     _expect(parsed.historical_delta_metadata_ledger == ledger, str(parsed))
 
     current_head = _git(root, "rev-parse", "HEAD")
+    for lone_kwargs in (
+        {"subject_projection_revalidation_path": root / sidecar},
+        {
+            "subject_projection_revalidation_successor_v2_path": (
+                root / successor
+            )
+        },
+    ):
+        try:
+            legacy_resolver.validate_records(
+                root,
+                root,
+                current_head=current_head,
+                **lone_kwargs,
+            )
+        except ValueError as exc:
+            _expect(
+                str(exc)
+                == "SUBJECT_PROJECTION_REVALIDATION_EPOCH_PAIR_REQUIRED",
+                str(exc),
+            )
+        else:
+            raise AssertionError("one-sided subject-projection epoch was accepted")
+
+    for lone_cli in (
+        ["--subject-projection-revalidation", str(root / sidecar)],
+        [
+            "--subject-projection-revalidation-successor-v2",
+            str(root / successor),
+        ],
+    ):
+        try:
+            legacy_resolver.main([
+                "resolve",
+                "--project", str(root),
+                "--head-ref", "HEAD",
+                *lone_cli,
+            ])
+        except SystemExit as exc:
+            _expect(
+                str(exc) == (
+                    "--subject-projection-revalidation and "
+                    "--subject-projection-revalidation-successor-v2 must be "
+                    "supplied together"
+                ),
+                str(exc),
+            )
+        else:
+            raise AssertionError("resolver CLI accepted a one-sided epoch")
+
     try:
         legacy_resolver.validate_records(
             root,
             root,
             current_head=current_head,
             subject_projection_revalidation_path=root / sidecar,
+            subject_projection_revalidation_successor_v2_path=root / successor,
         )
     except ValueError as exc:
         _expect(
@@ -2010,6 +2068,7 @@ def _subject_projection_cli_and_input_coupling_case(root: Path) -> None:
             root,
             current_head=current_head,
             subject_projection_revalidation_path=root / sidecar,
+            subject_projection_revalidation_successor_v2_path=root / successor,
             **complete_full_convergence_inputs,
         )
     except ValueError as exc:
@@ -2032,6 +2091,7 @@ def _subject_projection_cli_and_input_coupling_case(root: Path) -> None:
         "--descendant-history-raw-report", "descendant-raw.json",
         "--descendant-history-scanner", "scanner.py",
         "--subject-projection-revalidation", str(root / sidecar),
+        "--subject-projection-revalidation-successor-v2", str(root / successor),
     ]
     try:
         legacy_resolver.main(verify_args)
@@ -2071,6 +2131,12 @@ def _subject_projection_cli_and_input_coupling_case(root: Path) -> None:
         str(captured_verify),
     )
     _expect(
+        captured_verify.get(
+            "subject_projection_revalidation_successor_v2_path"
+        ) == (root / successor).resolve(),
+        str(captured_verify),
+    )
+    _expect(
         captured_verify.get("historical_delta_metadata_ledger_path")
         == (root / ledger).resolve(),
         str(captured_verify),
@@ -2098,6 +2164,8 @@ def _subject_projection_cli_and_input_coupling_case(root: Path) -> None:
                 "--descendant-history-raw-report", "descendant-raw.json",
                 "--descendant-history-scanner", "scanner.py",
                 "--subject-projection-revalidation", str(root / sidecar),
+                "--subject-projection-revalidation-successor-v2",
+                str(root / successor),
                 "--historical-delta-metadata-ledger", str(root / ledger),
             ])
     finally:
@@ -2106,6 +2174,12 @@ def _subject_projection_cli_and_input_coupling_case(root: Path) -> None:
     _expect(
         captured_resolve.get("subject_projection_revalidation_path")
         == (root / sidecar).resolve(),
+        str(captured_resolve),
+    )
+    _expect(
+        captured_resolve.get(
+            "subject_projection_revalidation_successor_v2_path"
+        ) == (root / successor).resolve(),
         str(captured_resolve),
     )
     _expect(
@@ -5691,6 +5765,20 @@ def _subject_projection_trust_fixture() -> dict[str, dict[str, Any]]:
     }
 
 
+def _subject_projection_successor_v2_trust_fixture() -> dict[str, dict[str, Any]]:
+    validator = convergence._subject_projection_revalidation_successor_v2
+    return {
+        fingerprint: {
+            "allowed_invalidations": ["SUBJECT_PROJECTION_CHANGED_INVALID"],
+            "prior_record_path": validator.PRIOR_RECORD_PATHS[fingerprint],
+            "revalidation_id": f"SPR2-SELFTEST-{index}",
+            "record_path": validator.EXPECTED_RECORD_PATHS[fingerprint],
+            "revalidation_binding_head_sha": "a" * 40,
+        }
+        for index, fingerprint in enumerate(validator.TARGET_FINGERPRINTS, 1)
+    }
+
+
 def _subject_projection_dual_gate_and_parity_case() -> None:
     """No one-sided, miscounted, or nonidentical trust can escape the composite."""
 
@@ -6009,6 +6097,237 @@ def _subject_projection_dual_gate_and_parity_case() -> None:
             ) = original_independent
 
 
+def _subject_projection_four_gate_successor_case() -> None:
+    """Committed successor trust is usable only as a disjoint 82 + 2 union."""
+
+    with tempfile.TemporaryDirectory(prefix="v076-spr-four-gate-") as temporary:
+        root = Path(temporary).resolve()
+        v1_path = root / "subject-projection-revalidation.json"
+        successor_path = root / "subject-projection-revalidation-successor-v2.json"
+        v1_current = convergence._subject_projection_revalidation.CURRENT_BATCH_PATH
+        successor_current = (
+            convergence._subject_projection_revalidation_successor_v2
+            .CURRENT_BATCH_PATH
+        )
+        _write_json(v1_path, {"current_batch_manifest_path": v1_current})
+        _write_json(successor_path, {})
+        chain = [
+            (root / v1_current, {"batch_id": "batch-007"}),
+            (root / successor_current, {"batch_id": "batch-008"}),
+        ]
+        v1_trust = _subject_projection_trust_fixture()
+        successor_trust = _subject_projection_successor_v2_trust_fixture()
+
+        def v1_primary(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "status": "PASS", "failures": [],
+                "trusted_by_fingerprint": copy.deepcopy(v1_trust),
+                "trusted_fingerprint_count": 82, "record_count": 82,
+                "fingerprints": sorted(v1_trust),
+            }
+
+        def v1_independent(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "status": "GO", "findings": [],
+                "trusted_by_fingerprint": copy.deepcopy(v1_trust),
+                "trusted_fingerprint_count": 82, "record_count": 82,
+                "fingerprints": sorted(v1_trust),
+            }
+
+        successor_state: dict[str, dict[str, Any]] = {}
+
+        def reset_successor() -> None:
+            common = {
+                "mode": "COMMITTED", "trusted_by_fingerprint": (
+                    copy.deepcopy(successor_trust)
+                ),
+                "review_trusted_by_fingerprint": copy.deepcopy(successor_trust),
+                "trusted_fingerprint_count": 2,
+                "review_trusted_fingerprint_count": 2,
+                "record_count": 2,
+                "fingerprints": sorted(successor_trust),
+                "stage_only": False,
+            }
+            successor_state["primary"] = {
+                **copy.deepcopy(common), "status": "PASS", "failures": [],
+            }
+            successor_state["independent"] = {
+                **copy.deepcopy(common), "status": "GO", "findings": [],
+            }
+
+        reset_successor()
+        original_v1_primary = (
+            convergence._subject_projection_revalidation
+            .validate_manifest_and_records
+        )
+        original_v1_independent = (
+            convergence._subject_projection_revalidation_independent
+            .audit_manifest_and_records
+        )
+        original_successor_primary = (
+            convergence._subject_projection_revalidation_successor_v2
+            .validate_manifest_and_records
+        )
+        original_successor_independent = (
+            convergence._subject_projection_revalidation_successor_v2_independent
+            .audit_manifest_and_records
+        )
+        convergence._subject_projection_revalidation.validate_manifest_and_records = (
+            v1_primary
+        )
+        convergence._subject_projection_revalidation_independent.audit_manifest_and_records = (
+            v1_independent
+        )
+        convergence._subject_projection_revalidation_successor_v2.validate_manifest_and_records = (
+            lambda *args, **kwargs: copy.deepcopy(successor_state["primary"])
+        )
+        convergence._subject_projection_revalidation_successor_v2_independent.audit_manifest_and_records = (
+            lambda *args, **kwargs: copy.deepcopy(successor_state["independent"])
+        )
+
+        def evaluate() -> dict[str, Any]:
+            return convergence._subject_projection_revalidation_four_gate_composite(
+                root,
+                v1_path,
+                successor_path,
+                chain,
+                evaluated_head="b" * 40,
+                explicit_batch_chain_valid=True,
+                historical_delta_metadata_ledger_status="PASS",
+            )
+
+        try:
+            accepted = evaluate()
+            _expect(accepted["status"] == "PASS", str(accepted))
+            _expect(accepted["four_gate_complete"] is True, str(accepted))
+            _expect(accepted["trusted_fingerprint_count"] == 84, str(accepted))
+            _expect(accepted["union_fingerprint_count"] == 84, str(accepted))
+            _expect(accepted["cross_epoch_overlap_count"] == 0, str(accepted))
+            _expect(
+                set(accepted["trusted_by_fingerprint"])
+                == set(v1_trust) | set(successor_trust),
+                str(accepted),
+            )
+
+            reset_successor()
+            successor_state["primary"]["mode"] = "STAGE_REVIEW"
+            rejected = evaluate()
+            _expect(rejected["status"] == "FAIL", str(rejected))
+            _expect(rejected["trusted_by_fingerprint"] == {}, str(rejected))
+            _expect(rejected["v1_trusted_by_fingerprint"] == {}, str(rejected))
+            _expect(
+                rejected["successor_v2_trusted_by_fingerprint"] == {},
+                str(rejected),
+            )
+            _expect_failure(
+                rejected["failures"],
+                "SUBJECT_PROJECTION_SUCCESSOR_V2_GATE:"
+                "SUBJECT_PROJECTION_SUCCESSOR_V2_PRIMARY_COMMITTED_MODE_REQUIRED",
+            )
+
+            reset_successor()
+            successor_state["primary"]["record_count"] = "two"
+            rejected = evaluate()
+            _expect(rejected["status"] == "FAIL", str(rejected))
+            _expect(rejected["record_count"] == 82, str(rejected))
+            _expect(rejected["trusted_by_fingerprint"] == {}, str(rejected))
+            _expect(rejected["v1_trusted_by_fingerprint"] == {}, str(rejected))
+            _expect(
+                rejected["successor_v2_trusted_by_fingerprint"] == {},
+                str(rejected),
+            )
+            _expect_failure(
+                rejected["failures"],
+                "SUBJECT_PROJECTION_SUCCESSOR_V2_RECORD_COUNT_INVALID",
+            )
+
+            reset_successor()
+            unknown = _fingerprint(9900)
+            replaced = next(iter(successor_trust))
+            for label in ("primary", "independent"):
+                row = successor_state[label]["trusted_by_fingerprint"].pop(
+                    replaced
+                )
+                successor_state[label]["trusted_by_fingerprint"][unknown] = row
+                review_row = successor_state[label][
+                    "review_trusted_by_fingerprint"
+                ].pop(replaced)
+                successor_state[label]["review_trusted_by_fingerprint"][
+                    unknown
+                ] = review_row
+                successor_state[label]["fingerprints"] = sorted(
+                    successor_state[label]["trusted_by_fingerprint"]
+                )
+            rejected = evaluate()
+            _expect(rejected["status"] == "FAIL", str(rejected))
+            _expect(rejected["trusted_by_fingerprint"] == {}, str(rejected))
+            _expect_failure(
+                rejected["failures"],
+                "SUBJECT_PROJECTION_SUCCESSOR_V2_GATE:"
+                "SUBJECT_PROJECTION_SUCCESSOR_V2_PRIMARY_"
+                "TRUST_FINGERPRINT_INVALID",
+            )
+        finally:
+            convergence._subject_projection_revalidation.validate_manifest_and_records = (
+                original_v1_primary
+            )
+            convergence._subject_projection_revalidation_independent.audit_manifest_and_records = (
+                original_v1_independent
+            )
+            convergence._subject_projection_revalidation_successor_v2.validate_manifest_and_records = (
+                original_successor_primary
+            )
+            convergence._subject_projection_revalidation_successor_v2_independent.audit_manifest_and_records = (
+                original_successor_independent
+            )
+
+        original_v1_composite = (
+            convergence._subject_projection_revalidation_composite
+        )
+        original_successor_composite = (
+            convergence._subject_projection_revalidation_successor_v2_composite
+        )
+        overlap_trust = {
+            next(iter(v1_trust)): next(iter(successor_trust.values())),
+            next(iter(successor_trust)): next(iter(successor_trust.values())),
+        }
+        convergence._subject_projection_revalidation_composite = (
+            lambda *args, **kwargs: {
+                "status": "PASS", "failures": [], "record_count": 82,
+                "primary_status": "PASS", "independent_status": "GO",
+                "trust_set_parity": True,
+                "trusted_by_fingerprint": v1_trust,
+            }
+        )
+        convergence._subject_projection_revalidation_successor_v2_composite = (
+            lambda *args, **kwargs: {
+                "status": "PASS", "failures": [], "record_count": 2,
+                "primary_status": "PASS", "independent_status": "GO",
+                "trust_set_parity": True,
+                "trusted_by_fingerprint": overlap_trust,
+            }
+        )
+        try:
+            rejected = evaluate()
+        finally:
+            convergence._subject_projection_revalidation_composite = (
+                original_v1_composite
+            )
+            convergence._subject_projection_revalidation_successor_v2_composite = (
+                original_successor_composite
+            )
+        _expect(rejected["status"] == "FAIL", str(rejected))
+        _expect(rejected["trusted_by_fingerprint"] == {}, str(rejected))
+        _expect_failure(
+            rejected["failures"],
+            "SUBJECT_PROJECTION_CROSS_EPOCH_TRUST_OVERLAP:1",
+        )
+        _expect_failure(
+            rejected["failures"],
+            "SUBJECT_PROJECTION_CROSS_EPOCH_TRUST_UNION_INVALID:83",
+        )
+
+
 def _subject_projection_routing_fail_closed_case() -> None:
     """Broken chains and every noncanonical/nonexplicit route stop before audit."""
 
@@ -6149,6 +6468,124 @@ def _subject_projection_routing_fail_closed_case() -> None:
         _expect(selected is None, f"outside-root chain routed to {selected}")
 
 
+def _independent_subject_projection_epoch_pair_case() -> None:
+    """The standalone audit independently requires committed disjoint 82 + 2."""
+
+    _expect(
+        independent_audit._subject_projection_revalidation_successor_v2
+        .__name__.endswith("_independent_audit"),
+        independent_audit._subject_projection_revalidation_successor_v2.__name__,
+    )
+    with tempfile.TemporaryDirectory(prefix="v076-spr-independent-pair-") as temporary:
+        root = Path(temporary).resolve()
+        v1_path = root / "subject-projection-revalidation.json"
+        successor_path = root / "subject-projection-revalidation-successor-v2.json"
+        v1_current = independent_audit._subject_projection_revalidation.CURRENT_BATCH_PATH
+        successor_current = (
+            independent_audit._subject_projection_revalidation_successor_v2
+            .CURRENT_BATCH_PATH
+        )
+        _write_json(v1_path, {"current_batch_manifest_path": v1_current})
+        _write_json(successor_path, {})
+        chain = [
+            (root / v1_current, {"batch_id": "batch-007"}),
+            (root / successor_current, {"batch_id": "batch-008"}),
+        ]
+        v1_trust = _subject_projection_trust_fixture()
+        successor_trust = _subject_projection_successor_v2_trust_fixture()
+        v1_result = {
+            "status": "GO", "findings": [],
+            "trusted_by_fingerprint": copy.deepcopy(v1_trust),
+            "trusted_fingerprint_count": 82, "record_count": 82,
+            "fingerprints": sorted(v1_trust),
+        }
+        successor_result = {
+            "status": "GO", "mode": "COMMITTED", "findings": [],
+            "trusted_by_fingerprint": copy.deepcopy(successor_trust),
+            "review_trusted_by_fingerprint": copy.deepcopy(successor_trust),
+            "trusted_fingerprint_count": 2,
+            "review_trusted_fingerprint_count": 2,
+            "record_count": 2, "fingerprints": sorted(successor_trust),
+            "stage_only": False,
+        }
+        original_v1 = (
+            independent_audit._subject_projection_revalidation
+            .audit_manifest_and_records
+        )
+        original_successor = (
+            independent_audit._subject_projection_revalidation_successor_v2
+            .audit_manifest_and_records
+        )
+        independent_audit._subject_projection_revalidation.audit_manifest_and_records = (
+            lambda *args, **kwargs: copy.deepcopy(v1_result)
+        )
+        independent_audit._subject_projection_revalidation_successor_v2.audit_manifest_and_records = (
+            lambda *args, **kwargs: copy.deepcopy(successor_result)
+        )
+        try:
+            findings, exposed_v1, exposed_successor, summary = (
+                independent_audit
+                ._subject_projection_revalidation_epoch_pair_findings(
+                    root,
+                    v1_path,
+                    successor_path,
+                    chain,
+                    "b" * 40,
+                    explicit_batch_chain_valid=True,
+                )
+            )
+            _expect(not findings, str(findings))
+            _expect(set(exposed_v1) == set(v1_trust), str(summary))
+            _expect(set(exposed_successor) == set(successor_trust), str(summary))
+            _expect(summary["status"] == "PASS", str(summary))
+            _expect(summary["trusted_fingerprint_count"] == 84, str(summary))
+            _expect(summary["union_fingerprint_count"] == 84, str(summary))
+            _expect(summary["cross_epoch_overlap_count"] == 0, str(summary))
+
+            successor_result["mode"] = "STAGE_REVIEW"
+            findings, exposed_v1, exposed_successor, summary = (
+                independent_audit
+                ._subject_projection_revalidation_epoch_pair_findings(
+                    root,
+                    v1_path,
+                    successor_path,
+                    chain,
+                    "b" * 40,
+                    explicit_batch_chain_valid=True,
+                )
+            )
+            _expect(findings, str(summary))
+            _expect(exposed_v1 == {}, str(summary))
+            _expect(exposed_successor == {}, str(summary))
+            _expect(summary["status"] == "FAIL", str(summary))
+
+            findings, exposed_v1, exposed_successor, summary = (
+                independent_audit
+                ._subject_projection_revalidation_epoch_pair_findings(
+                    root,
+                    v1_path,
+                    None,
+                    chain,
+                    "b" * 40,
+                    explicit_batch_chain_valid=True,
+                )
+            )
+            _expect(findings, str(summary))
+            _expect(exposed_v1 == {} and exposed_successor == {}, str(summary))
+            _expect(
+                summary["failures"]
+                == ["SUBJECT_PROJECTION_REVALIDATION_EPOCH_PAIR_REQUIRED"],
+                str(summary),
+            )
+        finally:
+            independent_audit._subject_projection_revalidation.audit_manifest_and_records = (
+                original_v1
+            )
+            independent_audit._subject_projection_revalidation_successor_v2.audit_manifest_and_records = (
+                original_successor
+            )
+
+
 def _subject_projection_suppression_scope_and_v1_compatibility_case() -> None:
     """SPR suppresses only projection drift while Post-Touch V1 keeps its scope."""
 
@@ -6231,6 +6668,47 @@ def _subject_projection_suppression_scope_and_v1_compatibility_case() -> None:
         ],
         str(kept),
     )
+    original_independent_v1_allows = (
+        independent_audit._subject_projection_revalidation.allows_invalidation
+    )
+    original_independent_successor_allows = (
+        independent_audit._subject_projection_revalidation_successor_v2
+        .allows_invalidation
+    )
+
+    def unexpected_unknown_allows(*args: Any, **kwargs: Any) -> bool:
+        raise AssertionError("unknown fingerprint reached an allows helper")
+
+    independent_audit._subject_projection_revalidation.allows_invalidation = (
+        unexpected_unknown_allows
+    )
+    independent_audit._subject_projection_revalidation_successor_v2.allows_invalidation = (
+        unexpected_unknown_allows
+    )
+    unknown_finding = {
+        "code": "FULL_CONVERGENCE_SUBJECT_PROJECTION_CHANGED",
+        "evidence": {
+            "fingerprint": _fingerprint(7001),
+            "path": prior_path,
+        },
+    }
+    try:
+        kept_unknown = (
+            independent_audit
+            ._suppress_subject_projection_revalidation_findings(
+                [unknown_finding],
+                subject_trust,
+                _subject_projection_successor_v2_trust_fixture(),
+            )
+        )
+    finally:
+        independent_audit._subject_projection_revalidation.allows_invalidation = (
+            original_independent_v1_allows
+        )
+        independent_audit._subject_projection_revalidation_successor_v2.allows_invalidation = (
+            original_independent_successor_allows
+        )
+    _expect(kept_unknown == [unknown_finding], str(kept_unknown))
 
     with tempfile.TemporaryDirectory(prefix="v076-spr-suppression-") as temporary:
         root = Path(temporary).resolve()
@@ -6323,6 +6801,57 @@ def _subject_projection_suppression_scope_and_v1_compatibility_case() -> None:
         _expect(
             f"TOUCHED_CORRECTION_INVALID:{fingerprint}" in failures,
             str(failures),
+        )
+
+        unknown = _fingerprint(7001)
+        original_validator = convergence.validate_extension_record_against_repo
+        original_subject_allows = (
+            convergence._subject_projection_revalidation.allows_invalidation
+        )
+        original_successor_allows = (
+            convergence._subject_projection_revalidation_successor_v2
+            .allows_invalidation
+        )
+        convergence.validate_extension_record_against_repo = (
+            lambda *args, **kwargs: [
+                f"SUBJECT_PROJECTION_CHANGED_INVALID:{unknown}"
+            ]
+        )
+        convergence._subject_projection_revalidation.allows_invalidation = (
+            unexpected_unknown_allows
+        )
+        convergence._subject_projection_revalidation_successor_v2.allows_invalidation = (
+            unexpected_unknown_allows
+        )
+        try:
+            unknown_failures, _ = (
+                convergence._validate_manifest_records_against_repo(
+                    root,
+                    manifest,
+                    evaluated_head="b" * 40,
+                    authorized_fingerprints={
+                        "current": set(),
+                        "historical": {fingerprint},
+                    },
+                    authorized_identities={},
+                    legacy_fingerprints=set(),
+                    subject_projection_revalidation_trusted=subject_trust,
+                    subject_projection_revalidation_successor_v2_trusted=(
+                        _subject_projection_successor_v2_trust_fixture()
+                    ),
+                )
+            )
+        finally:
+            convergence.validate_extension_record_against_repo = original_validator
+            convergence._subject_projection_revalidation.allows_invalidation = (
+                original_subject_allows
+            )
+            convergence._subject_projection_revalidation_successor_v2.allows_invalidation = (
+                original_successor_allows
+            )
+        _expect(
+            f"SUBJECT_PROJECTION_CHANGED_INVALID:{unknown}" in unknown_failures,
+            str(unknown_failures),
         )
 
     v1_trust = {
@@ -6880,8 +7409,8 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("101", "a descendant Raw report passes only when internal scanner re-execution emits exact bytes", lambda: _live_raw_binding_cases(root, "DESCENDANT_PASS")))
     cases.append(Case("102", "classifier binding and scanner consume one immutable Live Raw and PR-body snapshot", lambda: _single_live_raw_snapshot_case(root)))
     cases.append(Case("103", "an explicit full-convergence PR body cannot be supplied without the complete FC input set", lambda: _full_convergence_pr_body_input_coupling_case(root)))
-    cases.append(Case("104", "subject-projection successor sidecar CLI routing requires the complete FC set and an explicit HDM ledger", lambda: _subject_projection_cli_and_input_coupling_case(root)))
-    cases.append(Case("105", "subject-projection trust requires primary PASS independent GO exact 82-map parity and PASS HDM", _subject_projection_dual_gate_and_parity_case))
+    cases.append(Case("104", "subject-projection v1 and successor-v2 CLI routing is both-or-none and requires the complete FC set plus HDM", lambda: _subject_projection_cli_and_input_coupling_case(root)))
+    cases.append(Case("105", "frozen subject-projection v1 trust still requires primary PASS independent GO exact 82-map parity and PASS HDM", _subject_projection_dual_gate_and_parity_case))
     cases.append(Case("106", "broken nonexplicit aliased and outside-root subject-projection routes never reach trust validators", _subject_projection_routing_fail_closed_case))
     cases.append(Case("107", "subject-projection suppresses only projection drift while Post-Touch V1 keeps its exact scope", _subject_projection_suppression_scope_and_v1_compatibility_case))
     cases.append(Case("108", "standalone terminal receipt proves exact 501 plus 86 equals 587 and thirteen-batch 489 coverage", _independent_terminal_exact_partition_case))
@@ -6898,6 +7427,8 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("119", "exact Alpha01 historical script links to its current Resource in both auditors", lambda: _alpha01_active_backfill_path_link_positive_case(root)))
     cases.append(Case("120", "Alpha01 active-backfill path link rejects every identity and authority mutation in both auditors", lambda: _alpha01_active_backfill_path_link_mutation_case(root)))
     cases.append(Case("121", "unrelated same-component active path drift remains rejected", lambda: _unrelated_active_path_drift_still_rejected_case(root)))
+    cases.append(Case("122", "full convergence exposes subject-projection trust only after committed four-gate disjoint 82 plus 2", _subject_projection_four_gate_successor_case))
+    cases.append(Case("123", "standalone independent audit imports only successor independent and clears both epochs on pair failure", _independent_subject_projection_epoch_pair_case))
     return cases
 
 
