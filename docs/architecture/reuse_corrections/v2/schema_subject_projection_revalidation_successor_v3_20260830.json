@@ -1,0 +1,59 @@
+{
+  "schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_successor_v3_schema.v1",
+  "manifest_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_successor_v3_manifest.v1",
+  "record_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_successor_v3_record.v1",
+  "manifest_kind": "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V3_MANIFEST",
+  "record_kind": "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V3_RECORD",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "authorization_base_head_sha": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "prior_epoch_id": "FULL_CONVERGENCE_20260827",
+  "prior_batch_id": "batch-007",
+  "prior_batch_manifest_path": "docs/architecture/reuse_corrections/v2/batches/full_convergence_20260827/batch-007/batch-007-manifest.json",
+  "prior_batch_manifest_sha256": "2f3e33d8933cead2254e6dde73485486dcc33fd3df4fd76ba65d51b06dc3c476",
+  "prior_correction_id": "V2-FC-batch-007-01-46b33bba77b3-e584cd4d8b0c-test_only",
+  "prior_record_path": "docs/architecture/reuse_corrections/v2/records/full_convergence_20260827/batch-007/transition_46b33bba77b3_e584cd4d8b0c_test-only.json",
+  "prior_record_sha256": "b4a26dfbbd28195606b9839b8dff9eb3032cfa7401570592805c53e44c25b947",
+  "prior_record_payload_sha256": "4fb8feda0747d7b082e8aa127c2edb595b08ff6b754c9436e2f904ffd2ea4a4e",
+  "prior_failure_fingerprint_set_sha256": "c58db2b8e7bae5f1eef0e37ebf1dd807e9c188e23109ae769ef6dc0f61ae2511",
+  "predecessor_manifest_path": "docs/architecture/reuse_corrections/v2/subject_projection_revalidation_successor_v2/manifest.json",
+  "predecessor_manifest_sha256": "3c5a6171a4faa6f297569470b4a5bccd52a7e07cdd72241579ef01123cc89db4",
+  "predecessor_record_count": 2,
+  "predecessor_record_chain_terminal_sha256": "ab5ec81bf2ca6c4a4a061fa31e104f682d678e15499e88359e40b9dddacca80e",
+  "predecessor_failure_fingerprint_set_sha256": "3a734ff7c57373b215dd7cb4dd6eb16206def7f4c7e5fc1f26a4a6b09b0a51d3",
+  "authority_source_paths": [
+    "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+    "docs/architecture/V076_SUPERSESSION_MAP.json"
+  ],
+  "target_change_class": "TEST_ORACLE_ONLY",
+  "target_domain_id": "current.v075_production_combat_candidate",
+  "target_owner_id": "component.current.v075_runtime_owner",
+  "target_record_count": 25,
+  "allowed_invalidation": "SUBJECT_PROJECTION_CHANGED_INVALID",
+  "selector_policy": {
+    "match_mode": "EXACT_FAILURE_FINGERPRINTS_ONLY",
+    "wildcard_allowed": false,
+    "regex_allowed": false,
+    "path_prefix_allowed": false,
+    "future_failure_auto_match": false
+  },
+  "future_failure_policy": {
+    "FUTURE_FAILURE_AUTO_REVALIDATION_COUNT": 0,
+    "NEW_FAILURE_REQUIRES_NEW_RECORD": true
+  },
+  "projection_fields": [
+    "dynamic_reference_rows",
+    "owner_map_lines",
+    "registry_rows",
+    "supersession_rows"
+  ],
+  "negative_policy": [
+    "NO_WILDCARD",
+    "NO_REGEX",
+    "NO_PATH_PREFIX",
+    "NO_FUTURE_FAILURE_AUTO_TRUST",
+    "NO_PRIOR_RECORD_MUTATION",
+    "NO_V1_OR_V2_TRUST_OVERLAP",
+    "NO_PRODUCT_PATH_TOUCH",
+    "NO_STAGE_AS_COMMITTED_TRUST"
+  ]
+}
