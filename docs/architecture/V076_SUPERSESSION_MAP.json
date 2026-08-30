@@ -1,8 +1,8 @@
 {
   "schema_version": "space_syndicate.v076.supersession_map.v2",
   "map_id": "v076-supersession-map-20260821",
-  "candidate_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
-  "candidate_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+  "candidate_head_sha": "3fe2f1fee5577dd7f3dd7260137d130f8c0f9f55",
+  "candidate_tree_sha": "1905bc00e72ccc1095bf67cd14c8438ddb5341fe",
   "change_class": "PRODUCTION_COMPOSITION",
   "production_cutover": false,
   "production_cutover_evidence": {
@@ -46,10 +46,10 @@
   },
   "production_cutover_revalidation": {
     "status": "PENDING_CURRENT_SUBJECT_REVALIDATION",
-    "candidate_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
-    "candidate_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
-    "pending_manifest_path": "reports/reuse/full_convergence/production_cutover_revalidation_pending_9f8659c8.json",
-    "pending_manifest_sha256": "b0a678c553db7ce766858e4ee2ab99dd3d4398fb485244d595f4d83acb28ab13",
+    "candidate_head_sha": "3fe2f1fee5577dd7f3dd7260137d130f8c0f9f55",
+    "candidate_tree_sha": "1905bc00e72ccc1095bf67cd14c8438ddb5341fe",
+    "pending_manifest_path": "reports/reuse/full_convergence/production_cutover_revalidation_pending_3fe2f1fe.json",
+    "pending_manifest_sha256": "333e77e4432d1da6ed58144a4fc924babaf6c5224192bf81275736ea66997bb5",
     "prior_evidence_retained_immutable": true,
     "production_cutover_authorized": false,
     "production_green": false,
