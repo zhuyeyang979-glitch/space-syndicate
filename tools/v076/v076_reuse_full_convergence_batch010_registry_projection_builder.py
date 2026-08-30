@@ -224,10 +224,17 @@ def build_candidate(root: Path, output_stage: Path, head_ref: str = "HEAD") -> d
     tree = git(root, "rev-parse", f"{head}^{{tree}}")
     frozen = materializer.validate_frozen_membership(root)
     rows: list[dict[str, Any]] = []
+    source_current_blob_drift_count = 0
     for fingerprint, path, old, new in materializer.FROZEN_MEMBERSHIP_SPECS:
+        source_payload = committed(root, SOURCE_COMMIT_BY_PREFIX[old], path)
+        current_payload = committed(root, head, path)
+        if source_payload != current_payload:
+            source_current_blob_drift_count += 1
         rows.append(_component_row(root, fingerprint, path, old, new))
     if len(rows) != 50:
         raise ValueError("BATCH010_ROW_COUNT_INVALID")
+    if source_current_blob_drift_count:
+        raise ValueError(f"SOURCE_CURRENT_BLOB_DRIFT:{source_current_blob_drift_count}")
     if sum(row["component_role"] == "DOCUMENTATION_ONLY" for row in rows) != 2:
         raise ValueError("BATCH010_DOCUMENTATION_CLASSIFICATION_INVALID")
     active_count = sum(row["production_reachable"] is True for row in rows)
@@ -262,7 +269,7 @@ def build_candidate(root: Path, output_stage: Path, head_ref: str = "HEAD") -> d
             "UNKNOWN": 0,
         },
         "source_commit_set": sorted({row["source_commit"] for row in rows}),
-        "source_current_blob_drift_count": 0,
+        "source_current_blob_drift_count": source_current_blob_drift_count,
         "rows": rows,
         "target_registry": {
             "path": REGISTRY_REL.as_posix(),
