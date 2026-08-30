@@ -198,7 +198,11 @@ def build(
     for path, _document, raw in records:
         (output / "records" / Path(path).name).write_bytes(raw)
     (output / "manifest.json").write_bytes(v3.canonical_bytes(manifest))
-    result = v3.validate_manifest_and_records(root, output / "manifest.json", evaluated_head=binding_head, stage_dir=None if committed_root else output)
+    # Validate the freshly written bytes through the stage path.  Even when
+    # output is the canonical committed root, the current worktree does not
+    # contain these files until this function has finished; committed trust is
+    # therefore established only by a subsequent clean-head validation.
+    result = v3.validate_manifest_and_records(root, output / "manifest.json", evaluated_head=binding_head, stage_dir=output)
     if result.get("status") != "PASS":
         raise ValueError("SPR3_BUILT_ARTIFACT_INVALID:" + json.dumps(result.get("failures", [])))
     return {"status": "PASS", "output": str(output), "record_count": 25, "binding_head": binding_head, "binding_tree": binding_tree, "validation": result}

@@ -258,7 +258,7 @@ def validate_manifest_and_records(root: Path, manifest_path: Path, *, evaluated_
             paths.append(binding.get("path")); previous = binding.get("record_payload_sha256", previous)
         if len(set(paths)) != 25: failures.append("SPR3_BINDING_DUPLICATE_PATH")
     trusted: dict[str, dict[str, Any]] = {}
-    root_for_artifacts = stage_dir if stage_dir is not None else root
+    root_for_artifacts = stage_dir if stage_dir is not None else root / SUCCESSOR_ROOT.rstrip("/")
     previous = PREDECESSOR_CHAIN_TERMINAL_SHA256
     for fp in targets:
         relative = expected_record_path(fp)[len(RECORD_ROOT):]
