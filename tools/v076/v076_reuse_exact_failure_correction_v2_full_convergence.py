@@ -2802,6 +2802,11 @@ def _validate_descendant_history_supplement_v3(
         expected_schema_version=DESCENDANT_HISTORY_SUPPLEMENT_V3_SCHEMA_VERSION,
         expected_supplement_id=DESCENDANT_HISTORY_SUPPLEMENT_V3_ID,
         expected_fields=DESCENDANT_HISTORY_SUPPLEMENT_V3_FIELDS,
+        # V3 seals scanner evolution at its own raw-report head. Later
+        # committed scanner hardening is evaluated by the current Raw
+        # authority and must not invalidate this historical supplement merely
+        # because live worktree bytes advanced.
+        require_live_scanner_bytes=False,
     )
     failures = list(result.get("failures", []))
     failures.extend(
