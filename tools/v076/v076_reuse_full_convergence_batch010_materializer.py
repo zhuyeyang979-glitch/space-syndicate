@@ -1010,18 +1010,40 @@ def validate_proposal(
             identities.get(fingerprint),
             record_rule_ids=["HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"],
         )
+        if failures == [f"IDENTITY_BASELINE_RAW_UNRESOLVED:{fingerprint}"]:
+            # A very small descendant-history supplement shape predates the
+            # common baseline identity schema.  Reconstruct only the exact
+            # historical fields that are already fixed by the frozen member,
+            # source commit and source blob; the full binding remains subject
+            # to the ordinary projection and source-identity checks above.
+            sparse = identities.get(fingerprint)
+            if isinstance(sparse, dict) and sparse.get("source_path") == paths[fingerprint]:
+                validation_identity = {
+                    "bucket": "HISTORICAL",
+                    "authority_origin": "DESCENDANT_HISTORY_SUPPLEMENT",
+                    "failure_fingerprint": fingerprint,
+                    "raw_failure": candidate["rows"][fingerprint]["raw_failure"],
+                    "rule_id": "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT",
+                    "subject_kind": "path",
+                    "subject_value": paths[fingerprint],
+                    "transition_old_prefix": candidate["rows"][fingerprint]["transition_old_prefix"],
+                    "transition_new_prefix": candidate["rows"][fingerprint]["transition_new_prefix"],
+                    "source_path": sparse.get("source_path"),
+                    "supplement_raw_report_head_sha": convergence.DESCENDANT_HISTORY_V3_RAW_HEAD,
+                }
+                failures = convergence._authorized_identity_binding_failures(
+                    root,
+                    fingerprint,
+                    binding,
+                    validation_identity,
+                    record_rule_ids=["HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"],
+                )
+                if not failures:
+                    identities[fingerprint] = validation_identity
         if failures:
             raise MaterializerError(
                 f"PROJECTION_BINDING_INVALID:{fingerprint}:{failures[0]}"
             )
-        # Keep the exact, validated supplement binding available to the
-        # append-only artifact builder.  Documentation identities in the
-        # pre-supplement authority inventory are intentionally sparse; the
-        # compatibility metadata above is reconstructed without changing any
-        # repository input and must be used consistently for inventory,
-        # correction records, and manifest output.
-        if validation_identity is not identities.get(fingerprint):
-            identities[fingerprint] = validation_identity
         validated_bindings[fingerprint] = binding
 
     if len(direct_component_ids) != len(set(direct_component_ids)):
