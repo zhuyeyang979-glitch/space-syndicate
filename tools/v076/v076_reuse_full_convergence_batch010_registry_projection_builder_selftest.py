@@ -68,7 +68,7 @@ def test_candidate_is_external_and_append_only(root: Path) -> None:
         expect(inventory[: len(prior)] == prior, "preexisting registry rows mutated")
         appended = inventory[len(prior):]
         allowed = {
-            "authority_source_kind", "component_id", "class_name", "path",
+            "component_id", "class_name", "path",
             "domain_id", "component_role", "production_reachable",
             "writes_authority", "reads_authority", "owns_rng", "owns_tick",
             "owns_save", "owns_replay", "owns_identity", "owns_presentation",
