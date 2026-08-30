@@ -41,7 +41,9 @@ def strict(raw: bytes) -> Any:
 
 
 def blob(root: Path, commit: str, path: str) -> bytes | None:
-    result = subprocess.run(["git", "show", f"{commit}:{path}"], cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    # Avoid Windows long-path failures from ``git show <rev>:<path>`` while
+    # preserving exact committed blob bytes for the independent audit.
+    result = subprocess.run(["git", "cat-file", "-p", f"{commit}:{path}"], cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
     return result.stdout if result.returncode == 0 else None
 
 
@@ -104,7 +106,10 @@ def audit(root: Path, manifest_path: Path) -> dict[str, Any]:
                 if not tree and re.fullmatch(r"[0-9a-f]{40}", head):
                     result = subprocess.run(["git", "rev-parse", f"{head}^{{tree}}"], cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
                     tree = result.stdout.strip() if result.returncode == 0 else ""
-                tuples.add((str(record.get("raw_report_path", "")), str(record.get("raw_report_sha256", "")), head, tree))
+                # The frozen predecessor records omit ``raw_report_path``;
+                # inherit the ledger-level path for this legacy schema.
+                record_path = str(record.get("raw_report_path", ledger.get("raw_report_path", "")))
+                tuples.add((record_path, str(record.get("raw_report_sha256", "")), head, tree))
             listed = {(item.get("path"), item.get("sha256"), item.get("head_sha"), item.get("tree_sha")) for item in manifest.get("predecessor_raw_authorities", []) if isinstance(item, dict)}
             if tuples != listed:
                 failures.append("HDMS_PREDECESSOR_RAW_PROVENANCE_SET_INVALID")

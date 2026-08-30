@@ -95,7 +95,11 @@ def _git(root: Path, *args: str, binary: bool = False) -> str | bytes:
 
 
 def _blob(root: Path, commit: str, path: str) -> bytes | None:
-    result = subprocess.run(["git", "show", f"{commit}:{path}"], cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    # ``git show <rev>:<long-path>`` can fail on Windows when the absolute
+    # worktree plus path crosses the platform path limit.  ``cat-file`` reads
+    # the same immutable tree entry by object id without materializing that
+    # path, so keep blob retrieval byte-exact and long-path safe.
+    result = subprocess.run(["git", "cat-file", "-p", f"{commit}:{path}"], cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
     return result.stdout if result.returncode == 0 else None
 
 
@@ -182,7 +186,7 @@ def _transition_failures(root: Path, manifest: dict[str, Any], evaluated_head: s
     if transition["parent_sha"] != CHANGE_PARENT or transition["commit_sha"] != CHANGE_COMMIT:
         failures.append("HDMS_TRANSITION_IDENTITY_INVALID")
     try:
-        if str(_git(root, "rev-parse", f"{CHANGE_COMMIT}^{{commit}}")).strip() != CHANGE_PARENT:
+        if str(_git(root, "rev-parse", f"{CHANGE_COMMIT}^1")).strip() != CHANGE_PARENT:
             failures.append("HDMS_TRANSITION_PARENT_INVALID")
         changed = str(_git(root, "diff", "--name-only", CHANGE_PARENT, CHANGE_COMMIT)).splitlines()
         if changed != [REGISTRY_PATH]:
@@ -265,12 +269,22 @@ def validate_manifest(root: Path, manifest_path: Path, *, evaluated_head: str = 
                 if not record_tree and _oid(record_head):
                     try: record_tree = str(_git(root, "rev-parse", f"{record_head}^{{tree}}")).strip()
                     except ValueError: record_tree = ""
-                record_key = (str(record.get("raw_report_path", "")), str(record.get("raw_report_sha256", "")), record_head, record_tree)
+                # Frozen predecessor records predating the mixed-epoch schema
+                # omit ``raw_report_path``; their ledger-level path remains
+                # the authoritative value.  Apply the same compatibility
+                # fallback used when deriving predecessor raw authorities.
+                record_path = str(record.get("raw_report_path", ledger.get("raw_report_path", "")))
+                record_key = (record_path, str(record.get("raw_report_sha256", "")), record_head, record_tree)
                 listed_keys = {(item.get("path"), item.get("sha256"), item.get("head_sha"), item.get("tree_sha")) for item in manifest.get("predecessor_raw_authorities", []) if isinstance(item, dict)}
                 if record_key not in listed_keys:
                     failures.append("HDMS_PREDECESSOR_RECORD_RAW_TUPLE_DRIFT:" + str(path))
                 else:
-                    raw_report = _blob(root, record_head, str(record.get("raw_report_path", "")))
+                    # The raw artifact is introduced with the predecessor
+                    # ledger, while its authority head records the scan
+                    # source commit.  Validate bytes from the committed
+                    # predecessor-ledger snapshot, not from that earlier
+                    # scan head where the artifact did not yet exist.
+                    raw_report = _blob(root, str(manifest.get("predecessor_ledger_head_sha", "")), record_path)
                     if raw_report is None or sha256_bytes(raw_report) != record.get("raw_report_sha256"):
                         failures.append("HDMS_PREDECESSOR_RECORD_RAW_BYTES_INVALID:" + str(path))
                 if isinstance(record, dict) and record.get("record_payload_sha256") != binding.get("record_payload_sha256"):
