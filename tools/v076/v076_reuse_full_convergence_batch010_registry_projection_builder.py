@@ -199,7 +199,7 @@ def _registry_target(root: Path, head: str, rows: list[dict[str, Any]]) -> tuple
     if len({row["path"] for row in rows}) != len(rows) or len({row["component_id"] for row in rows}) != len(rows):
         raise ValueError("PROJECTION_PRIMARY_KEY_COLLISION")
     registry_fields = {
-        "authority_source_kind", "component_id", "class_name", "path",
+        "component_id", "class_name", "path",
         "domain_id", "component_role", "production_reachable",
         "writes_authority", "reads_authority", "owns_rng", "owns_tick",
         "owns_save", "owns_replay", "owns_identity", "owns_presentation",

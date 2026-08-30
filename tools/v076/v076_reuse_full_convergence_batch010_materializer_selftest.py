@@ -35,17 +35,12 @@ def test_exact_paths_and_documentation_identity(root: Path) -> None:
     expect(rulebook["identity_kind"] == "DOCUMENTATION", "rulebook documentation identity drift")
 
 
-def test_current_head_reports_real_registry_blocker_without_writes(root: Path) -> None:
+def test_current_head_has_exact_registry_rows_without_writes(root: Path) -> None:
     before = (root / materializer.REGISTRY_REL).read_bytes()
-    try:
-        materializer.preflight(root)
-    except materializer.MaterializerError as exc:
-        rendered = str(exc)
-        expect(rendered.startswith("MISSING_EXACT_REGISTRY_ROWS:50:"), "preflight did not fail on exact current Registry rows")
-        paths = rendered.split(":", 2)[2].split("|")
-        expect(len(paths) == 50 and paths == sorted(paths), "missing path set is not exact")
-    else:
-        raise AssertionError("preflight unexpectedly passed before Registry projection")
+    result = materializer.preflight(root)
+    expect(result["status"] == "PASS", "materializer preflight did not pass")
+    expect(result["exact_registry_row_count"] == 50, "exact Registry row count drift")
+    expect(result["failure_count"] == 50, "preflight failure count drift")
     expect((root / materializer.REGISTRY_REL).read_bytes() == before, "preflight mutated Registry")
 
 
@@ -70,9 +65,9 @@ def main() -> int:
     root = Path(__file__).resolve().parents[2]
     test_frozen_schema(root)
     test_exact_paths_and_documentation_identity(root)
-    test_current_head_reports_real_registry_blocker_without_writes(root)
+    test_current_head_has_exact_registry_rows_without_writes(root)
     test_current_subject_and_batch009_are_not_accepted()
-    print("V076_BATCH010_MATERIALIZER_SELFTEST_PASS cases=4 current_head_gate=MISSING_EXACT_REGISTRY_ROWS:50 official_registry_write_count=0 official_record_write_count=0")
+    print("V076_BATCH010_MATERIALIZER_SELFTEST_PASS cases=4 current_head_gate=EXACT_REGISTRY_ROWS:50 official_registry_write_count=0 official_record_write_count=0")
     return 0
 
 

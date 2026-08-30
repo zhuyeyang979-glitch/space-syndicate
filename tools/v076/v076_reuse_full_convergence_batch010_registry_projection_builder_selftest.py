@@ -38,58 +38,15 @@ def test_candidate_is_external_and_append_only(root: Path) -> None:
     map_before = (root / builder.SUPERSESSION_REL).read_bytes()
     with tempfile.TemporaryDirectory(prefix="v076-batch010-projection-") as temp:
         stage = Path(temp) / "candidate-stage"
-        result = builder.build_candidate(root, stage)
-        path = stage / builder.OUTPUT_NAME
-        expect(path.is_file(), "candidate was not written")
-        payload = path.read_bytes()
-        candidate = json.loads(payload.decode("utf-8"))
-        expect(payload == builder.canonical(candidate), "candidate not canonical")
-        expect(candidate["batch_id"] == "batch-010", "candidate batch drift")
-        expect(candidate["failure_count"] == 50, "candidate count drift")
-        expect(candidate["official_registry_write_count"] == 0, "registry write claim")
-        expect(candidate["official_map_write_count"] == 0, "map write claim")
-        expect(len(candidate["rows"]) == 50, "candidate row count drift")
-        rows = candidate["rows"]
-        expect(len({row["path"] for row in rows}) == 50, "path collision")
-        expect(len({row["component_id"] for row in rows}) == 50, "component collision")
-        expect(sum(row["component_role"] == "DOCUMENTATION_ONLY" for row in rows) == 2, "documentation split drift")
-        expect(sum(row["production_reachable"] is True for row in rows) == 1, "active split drift")
-        expect(candidate["classification_counts"] == {
-            "HISTORICAL_ACTIVE_LINEAGE_REGISTERED": 1,
-            "HISTORICAL_DOCUMENTATION_ONLY": 2,
-            "HISTORICAL_TEST_ONLY": 48,
-            "UNKNOWN": 0,
-        }, "classification counts drift")
-        target = base64.b64decode(candidate["target_registry"]["target_bytes_base64"], validate=True)
-        target_doc = json.loads(target.decode("utf-8"))
-        before_doc = json.loads(registry_before.decode("utf-8"))
-        inventory = target_doc["component_inventory"]
-        prior = before_doc["component_inventory"]
-        expect(inventory[: len(prior)] == prior, "preexisting registry rows mutated")
-        appended = inventory[len(prior):]
-        allowed = {
-            "authority_source_kind", "component_id", "class_name", "path",
-            "domain_id", "component_role", "production_reachable",
-            "writes_authority", "reads_authority", "owns_rng", "owns_tick",
-            "owns_save", "owns_replay", "owns_identity", "owns_presentation",
-            "owner_component_id", "owner_path", "reuse_disposition",
-            "reuse_source_ids", "reuse_candidates_considered",
-            "new_component_justification", "supersedes", "superseded_by",
-            "change_class", "focused_test_ids", "golden_scenario_steps",
-        }
-        expect(len(appended) == 50, "registry target append count drift")
-        expect(all(set(row) == allowed for row in appended), "registry row schema drift")
-        expect(candidate["target_registry"]["target_bytes_sha256"] == builder.sha(target), "target hash drift")
-        expect(candidate["mutation_inventory"] and len(candidate["mutation_inventory"]) == 1, "mutation inventory drift")
-        expect(not (stage / "V076_SUPERSESSION_MAP.json").exists(), "map write leaked into stage")
-        expect((root / builder.REGISTRY_REL).read_bytes() == registry_before, "registry mutated")
-        expect((root / builder.SUPERSESSION_REL).read_bytes() == map_before, "map mutated")
         try:
             builder.build_candidate(root, stage)
         except ValueError as exc:
-            expect(str(exc) == "OUTPUT_STAGE_MUST_BE_FRESH_NONEXISTENT", "repeat stage was not rejected")
+            expect(str(exc) == "REGISTRY_PATH_COLLISION", "applied Registry was not fail-closed")
         else:
-            raise AssertionError("repeat stage unexpectedly succeeded")
+            raise AssertionError("projection unexpectedly rebuilt after Registry apply")
+        expect(not stage.exists(), "failed projection left a stage")
+        expect((root / builder.REGISTRY_REL).read_bytes() == registry_before, "registry mutated")
+        expect((root / builder.SUPERSESSION_REL).read_bytes() == map_before, "map mutated")
 
 
 def test_source_transition_partition_is_exact() -> None:
@@ -110,7 +67,7 @@ def main() -> int:
     test_frozen_membership_is_exact(root)
     test_candidate_is_external_and_append_only(root)
     test_source_transition_partition_is_exact()
-    print("V076_BATCH010_REGISTRY_PROJECTION_BUILDER_SELFTEST_PASS cases=3 rows=50 official_registry_write_count=0 official_map_write_count=0")
+    print("V076_BATCH010_REGISTRY_PROJECTION_BUILDER_SELFTEST_PASS cases=3 applied_state=REGISTRY_PATH_COLLISION rows=50 official_registry_write_count=0 official_map_write_count=0")
     return 0
 
 
