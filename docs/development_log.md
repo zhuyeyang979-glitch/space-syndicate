@@ -10092,3 +10092,24 @@ deleted. Evidence and the remaining action inventory are recorded in
   `STATUS=TRUE_HARD_STOP_REQUIRING_USER_DECISION`, `COMMERCIAL_M1_GREEN=false`,
   `READY_FOR_NEXT_CONSOLIDATED_HUMAN_PLAYTEST=false`, `HUMAN_GREEN=false`, and
   STEP13-15 remain `PENDING`; no Ready, merge, tag, or cutover is authorized.
+
+## 2026-08-30 — Full-convergence Batch-009 materialized
+
+- Preserved the exact Batch-009 registry projection commit `6209465d` and
+  appended the minimal historical Military identity alignment `4f6feab2`;
+  no Godot product files were changed and the original two-file projection was
+  not reapplied.
+- The sealed materializer proposal is bound to head
+  `4f6feab227bedfb8005d9fbf4bc2f6883c8b4c19` / tree
+  `47f22c79a56d0eb968e8bc73204b994498e4317a`, with 50 exact identities,
+  proposal `47180f70389405afec2e2e48940259551df7f566bde5fa47bf998a93b12fd262`,
+  and distinct reviewer A/B receipts, both `GO` with P0/P1 zero.
+- Batch-009 materializer generated and promoted exactly ten allowlisted files:
+  seven batch artifacts and three disposition records. All three records pass
+  document and repository identity-binding validation; materializer official
+  write count remains zero. The official evidence commit is `da9b6966`.
+- The pre-apply materializer self-test's stale negative cases intentionally no
+  longer apply after exact Registry rows exist; 15 non-stale focused cases pass.
+  Existing full-chain validation reports touched prior projections, which is
+  preserved as an append-only revalidation follow-up rather than hidden or
+  rewritten.
