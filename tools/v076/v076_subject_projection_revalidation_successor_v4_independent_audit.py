@@ -47,26 +47,33 @@ def projection(root:Path,ref:str,sel:dict[str,Any])->dict[str,Any]:
  return {"dynamic_reference_rows":sorted(dr,key=cb),"owner_map_lines":lines,"registry_rows":sorted(rr,key=cb),"supersession_rows":sorted(sr,key=cb)}
 def path(fp:str)->str:return ROOT+"records/spr4-"+fp[4:]+".json"
 
-def audit(root:Path,manifest_path:Path,evaluated_head:str,stage_dir:Path|None=None)->dict[str,Any]:
- fail=[];trusted={}
+def audit(root:Path,manifest_path:Path,evaluated_head:str,stage_dir:Path|None=None,artifact_head:str|None=None)->dict[str,Any]:
+ fail=[];trusted={};mode="COMMITTED" if stage_dir is None else "STAGE_REVIEW";artifact_ref=""
  try:
-  if stage_dir is None:m,mraw=doc(root,evaluated_head,ROOT+"manifest.json");schema_raw=blob(root,evaluated_head,SCHEMA)
+  evaluated_ref=git(root,"rev-parse",f"{evaluated_head}^{{commit}}")
+  if stage_dir is None:
+   artifact_ref=git(root,"rev-parse",f"{artifact_head or 'HEAD'}^{{commit}}")
+   manifest_relative=str(manifest_path.resolve().relative_to(root.resolve())).replace("\\","/")
+   if manifest_relative!=ROOT+"manifest.json":raise ValueError("SPR4I_MANIFEST_PATH_INVALID")
+   m,mraw=doc(root,artifact_ref,ROOT+"manifest.json");schema_raw=blob(root,artifact_ref,SCHEMA)
   else:mraw=manifest_path.read_bytes();m=strict(mraw);schema_raw=(root/SCHEMA).read_bytes()
-  pre,pre_raw=doc(root,evaluated_head,PRE)
- except Exception as e:return {"status":"FAIL","failures":[str(e)],"trusted_by_fingerprint":{},"record_count":0,"independent":True}
- if manifest_path.read_bytes()!=mraw:fail.append("SPR4I_MANIFEST_COMMITTED_BYTES_INVALID")
+  if not isinstance(m,dict):raise ValueError("SPR4I_MANIFEST_NOT_OBJECT")
+ except Exception as e:return {"status":"FAIL","mode":mode,"failures":[str(e)],"trusted_by_fingerprint":{},"review_trusted_by_fingerprint":{},"record_count":0,"independent":True,"artifact_head_sha":artifact_ref,"evaluated_head_sha":""}
+ if m.get("revalidation_binding_head_sha")!=evaluated_ref or m.get("revalidation_binding_tree_sha")!=git(root,"rev-parse",f"{evaluated_ref}^{{tree}}"):
+  return {"status":"FAIL","mode":mode,"failures":["SPR4I_BINDING_INVALID"],"trusted_by_fingerprint":{},"review_trusted_by_fingerprint":{},"record_count":0,"independent":True,"artifact_head_sha":artifact_ref,"evaluated_head_sha":evaluated_ref}
+ try:pre,pre_raw=doc(root,evaluated_ref,PRE)
+ except Exception as e:return {"status":"FAIL","mode":mode,"failures":[str(e)],"trusted_by_fingerprint":{},"review_trusted_by_fingerprint":{},"record_count":0,"independent":True,"artifact_head_sha":artifact_ref,"evaluated_head_sha":evaluated_ref}
  if sha(pre_raw)!=PRE_SHA or m.get("predecessor_manifest_sha256")!=PRE_SHA:fail.append("SPR4I_PREDECESSOR_SEAL_INVALID")
  if m.get("manifest_kind")!=KIND or m.get("authorization_id")!=AUTH or m.get("authorization_base_head_sha")!=BASE:fail.append("SPR4I_MANIFEST_IDENTITY_INVALID")
  if m.get("schema_sha256")!=sha(schema_raw):fail.append("SPR4I_SCHEMA_SEAL_INVALID")
- if m.get("revalidation_binding_head_sha")!=evaluated_head or m.get("revalidation_binding_tree_sha")!=git(root,"rev-parse",f"{evaluated_head}^{{tree}}"):fail.append("SPR4I_BINDING_INVALID")
  if git(root,"rev-parse",f"{CHANGE}^1")!=PARENT or git(root,"diff","--name-only",PARENT,CHANGE).splitlines()!=sorted([REG,SUP]):fail.append("SPR4I_TRANSITION_INVALID")
  bindings=pre.get("record_bindings",[]); source={}; drift=[];preserved=[]
  for b in bindings:
   fp=b.get("failure_fingerprints",[None])[0]
   if not isinstance(fp,str):continue
-  r,raw=doc(root,evaluated_head,b["path"])
+  r,raw=doc(root,evaluated_ref,b["path"])
   if sha(raw)!=b.get("record_sha256") or r.get("record_payload_sha256")!=b.get("record_payload_sha256"):fail.append("SPR4I_SOURCE_RECORD_SEAL:"+fp)
-  source[fp]=(r,b); a=projection(root,PARENT,r["authority_selectors"]); z=projection(root,CHANGE,r["authority_selectors"]); live=projection(root,evaluated_head,r["authority_selectors"])
+  source[fp]=(r,b); a=projection(root,PARENT,r["authority_selectors"]); z=projection(root,CHANGE,r["authority_selectors"]); live=projection(root,evaluated_ref,r["authority_selectors"])
   if z!=live:fail.append("SPR4I_LIVE_DRIFT:"+fp)
   (drift if a!=z else preserved).append(fp)
  drift.sort();preserved.sort()
@@ -76,7 +83,7 @@ def audit(root:Path,manifest_path:Path,evaluated_head:str,stage_dir:Path|None=No
  if not isinstance(mb,list) or len(mb)!=48:fail.append("SPR4I_BINDING_COUNT_INVALID");mb=[]
  for i,fp in enumerate(drift):
   try:
-   if stage_dir is None:r,raw=doc(root,evaluated_head,path(fp))
+   if stage_dir is None:r,raw=doc(root,artifact_ref,path(fp))
    else:raw=(stage_dir/"records"/Path(path(fp)).name).read_bytes();r=strict(raw)
    src,sb=source[fp]
   except Exception:fail.append("SPR4I_RECORD_UNREADABLE:"+fp);continue
@@ -84,20 +91,20 @@ def audit(root:Path,manifest_path:Path,evaluated_head:str,stage_dir:Path|None=No
   if expected!=sha(cb(payload)):local.append("PAYLOAD")
   if r.get("record_kind")!=RKIND or r.get("failure_fingerprints")!=[fp] or r.get("previous_revalidation_chain_sha256")!=previous:local.append("IDENTITY_CHAIN")
   if r.get("predecessor_revalidation_record_path")!=sb.get("path") or r.get("predecessor_revalidation_record_sha256")!=sb.get("record_sha256") or r.get("predecessor_revalidation_record_payload_sha256")!=sb.get("record_payload_sha256"):local.append("PREDECESSOR_RECORD")
-  sel=src["authority_selectors"];preproj=projection(root,PARENT,sel);reb=projection(root,CHANGE,sel);live=projection(root,evaluated_head,sel)
+  sel=src["authority_selectors"];preproj=projection(root,PARENT,sel);reb=projection(root,CHANGE,sel);live=projection(root,evaluated_ref,sel)
   if r.get("authority_selectors")!=sel or r.get("pre_change_subject_projection")!=preproj or r.get("rebound_subject_projection")!=reb or r.get("live_subject_projection")!=live or r.get("changed_projection_sections")!=["registry_rows"] or r.get("changed_projection_component_ids")!=["component.current.v075_runtime_owner"]:local.append("PROJECTION")
   if i>=len(mb) or mb[i].get("path")!=path(fp) or mb[i].get("record_sha256")!=sha(raw) or mb[i].get("previous_revalidation_chain_sha256")!=previous:local.append("BINDING")
   if local:fail.extend("SPR4I_"+x+":"+fp for x in local)
-  else:trusted[fp]={"allowed_invalidations":["SUBJECT_PROJECTION_CHANGED_INVALID"],"prior_record_path":r.get("prior_record_path", ""),"revalidation_id":r.get("revalidation_id", ""),"record_path":path(fp),"revalidation_binding_head_sha":evaluated_head}
+  else:trusted[fp]={"allowed_invalidations":["SUBJECT_PROJECTION_CHANGED_INVALID"],"prior_record_path":r.get("prior_record_path", ""),"revalidation_id":r.get("revalidation_id", ""),"record_path":path(fp),"revalidation_binding_head_sha":evaluated_ref}
   previous=str(r.get("record_payload_sha256",previous))
  for fp in preserved:
   src,_=source[fp]
-  if projection(root,PARENT,src["authority_selectors"])!=projection(root,evaluated_head,src["authority_selectors"]):fail.append("SPR4I_PRESERVED_DRIFT:"+fp)
-  else:trusted[fp]={"allowed_invalidations":["SUBJECT_PROJECTION_CHANGED_INVALID"],"prior_record_path":src.get("prior_record_path", ""),"revalidation_id":src.get("revalidation_id", ""),"record_path":"","revalidation_binding_head_sha":evaluated_head}
+  if projection(root,PARENT,src["authority_selectors"])!=projection(root,evaluated_ref,src["authority_selectors"]):fail.append("SPR4I_PRESERVED_DRIFT:"+fp)
+  else:trusted[fp]={"allowed_invalidations":["SUBJECT_PROJECTION_CHANGED_INVALID"],"prior_record_path":src.get("prior_record_path", ""),"revalidation_id":src.get("revalidation_id", ""),"record_path":"","revalidation_binding_head_sha":evaluated_ref}
  if previous!=m.get("record_chain_terminal_sha256"):fail.append("SPR4I_CHAIN_TERMINAL_INVALID")
  if fail:trusted={}
  committed=trusted if stage_dir is None else {};review=trusted if stage_dir is not None else {}
- return {"status":"PASS" if not fail else "FAIL","mode":"COMMITTED" if stage_dir is None else "STAGE_REVIEW","failures":sorted(set(fail)),"trusted_by_fingerprint":committed,"review_trusted_by_fingerprint":review,"record_count":len(trusted),"drift_record_count":48,"preserved_record_count":34,"independent":True}
+ return {"status":"PASS" if not fail else "FAIL","mode":mode,"failures":sorted(set(fail)),"trusted_by_fingerprint":committed,"review_trusted_by_fingerprint":review,"record_count":len(trusted),"drift_record_count":48,"preserved_record_count":34,"independent":True,"artifact_head_sha":artifact_ref,"evaluated_head_sha":evaluated_ref}
 def main(argv=None)->int:
- p=argparse.ArgumentParser();p.add_argument("--project",type=Path,default=Path.cwd());p.add_argument("--manifest",type=Path,required=True);p.add_argument("--evaluated-head",required=True);p.add_argument("--stage-dir",type=Path);a=p.parse_args(argv);r=audit(a.project.resolve(),a.manifest.resolve(),a.evaluated_head,a.stage_dir.resolve() if a.stage_dir else None);print(json.dumps(r,sort_keys=True,indent=2));return 0 if r["status"]=="PASS" else 1
+ p=argparse.ArgumentParser();p.add_argument("--project",type=Path,default=Path.cwd());p.add_argument("--manifest",type=Path,required=True);p.add_argument("--evaluated-head",required=True);p.add_argument("--artifact-head",default="HEAD");p.add_argument("--stage-dir",type=Path);a=p.parse_args(argv);r=audit(a.project.resolve(),a.manifest.resolve(),a.evaluated_head,a.stage_dir.resolve() if a.stage_dir else None,a.artifact_head);print(json.dumps(r,sort_keys=True,indent=2));return 0 if r["status"]=="PASS" else 1
 if __name__=="__main__":raise SystemExit(main())

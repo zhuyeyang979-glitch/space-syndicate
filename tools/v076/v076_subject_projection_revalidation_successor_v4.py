@@ -132,31 +132,52 @@ def _record(root: Path, fp: str, prior: dict[str, Any], previous: str, head: str
     out: dict[str, Any] = {"schema_version": RECORD_SCHEMA_VERSION, "record_kind": RECORD_KIND, "revalidation_id": expected_id(fp), "authorization_id": AUTHORIZATION_ID, "authorization_base_head_sha": AUTHORIZATION_BASE_HEAD, "prior_epoch_id": PRIOR_EPOCH_ID, "failure_fingerprints": [fp], "failure_fingerprint_set_sha256": line_set_sha([fp]), "prior_invalidations": [ALLOWED_INVALIDATION], "prior_record_path": prior.get("prior_record_path", ""), "prior_record_sha256": prior.get("prior_record_sha256", ""), "prior_record_payload_sha256": prior.get("prior_record_payload_sha256", ""), "prior_correction_id": prior.get("prior_correction_id", ""), "prior_batch_manifest_path": prior.get("correction_batch_manifest_path", ""), "prior_batch_manifest_sha256": prior.get("correction_batch_manifest_sha256", ""), "predecessor_revalidation_record_path": prior["_v4_predecessor_path"], "predecessor_revalidation_record_sha256": prior["_v4_predecessor_sha256"], "predecessor_revalidation_record_payload_sha256": prior["_v4_predecessor_payload_sha256"], "predecessor_revalidation_id": prior.get("revalidation_id", ""), "previous_revalidation_chain_sha256": previous, "revalidation_binding_head_sha": head, "revalidation_binding_tree_sha": tree, "authority_selectors": sel, "component_id": comp, "prior_identity_binding": identity, "prior_subject_projection": projection(root, PREDECESSOR_BINDING_HEAD, sel), "prior_subject_projection_sha256": sha256_bytes(canonical_bytes(projection(root, PREDECESSOR_BINDING_HEAD, sel))), "pre_change_subject_projection": pre, "pre_change_subject_projection_sha256": sha256_bytes(canonical_bytes(pre)), "rebound_subject_projection": reb, "rebound_subject_projection_sha256": sha256_bytes(canonical_bytes(reb)), "live_subject_projection": live, "live_subject_projection_sha256": sha256_bytes(canonical_bytes(live)), "changed_projection_sections": changed, "changed_projection_component_ids": changed_components, "authority_transition_proof": proof, "bound_product_blob_sha256_by_path": bound, "future_failure_policy": FUTURE_POLICY, "wildcard_count": 0, "new_effective_status": "CORRECTED_HISTORICAL_DEBT", "revalidation_reason": "REGISTRY_AUTHORITY_SOURCE_METADATA_ONLY_SUCCESSOR_V4", "created_at": created_at, "creator": "v076_subject_projection_revalidation_successor_v4_builder.py"}
     out["record_payload_sha256"] = payload_sha(out); return out
 
-def validate(root: Path, manifest_path: Path, evaluated_head: str, stage_dir: Path | None = None) -> dict[str, Any]:
+def validate(
+    root: Path,
+    manifest_path: Path,
+    evaluated_head: str,
+    stage_dir: Path | None = None,
+    artifact_head: str | None = None,
+) -> dict[str, Any]:
     failures: list[str] = []; trusted: dict[str, dict[str, Any]] = {}
+    mode = "COMMITTED" if stage_dir is None else "STAGE_REVIEW"
+    artifact_ref = ""
     try:
+        evaluated_ref = str(_git(root, "rev-parse", f"{evaluated_head}^{{commit}}"))
         if stage_dir is None:
-            m, mraw = document(root, evaluated_head, str(manifest_path.resolve().relative_to(root.resolve())).replace("\\", "/"))
+            artifact_ref = str(_git(root, "rev-parse", f"{artifact_head or 'HEAD'}^{{commit}}"))
+            manifest_relative = str(manifest_path.resolve().relative_to(root.resolve())).replace("\\", "/")
+            if manifest_relative != SUCCESSOR_ROOT + "manifest.json": raise ValueError("SPR4_MANIFEST_PATH_INVALID")
+            m, mraw = document(root, artifact_ref, manifest_relative)
+            schema_raw = blob(root, artifact_ref, SCHEMA_PATH)
+            if schema_raw is None: raise ValueError("SPR4_SCHEMA_BLOB_MISSING")
         else:
             mraw = manifest_path.read_bytes(); m = strict(mraw)
-        drift, preserved, rows, pred = target_sets(root, evaluated_head)
-    except Exception as e: return {"status": "FAIL", "failures": [str(e)], "trusted_by_fingerprint": {}, "record_count": 0}
+            schema_raw = (root / SCHEMA_PATH).read_bytes()
+        if not isinstance(m, dict): raise ValueError("SPR4_MANIFEST_NOT_OBJECT")
+    except Exception as e:
+        return {"status": "FAIL", "mode": mode, "failures": [str(e)], "trusted_by_fingerprint": {}, "review_trusted_by_fingerprint": {}, "record_count": 0, "artifact_head_sha": artifact_ref, "evaluated_head_sha": ""}
+    if m.get("revalidation_binding_head_sha") != evaluated_ref or m.get("revalidation_binding_tree_sha") != str(_git(root, "rev-parse", f"{evaluated_ref}^{{tree}}")):
+        return {"status": "FAIL", "mode": mode, "failures": ["SPR4_BINDING_INVALID"], "trusted_by_fingerprint": {}, "review_trusted_by_fingerprint": {}, "record_count": 0, "artifact_head_sha": artifact_ref, "evaluated_head_sha": evaluated_ref}
+    try:
+        drift, preserved, rows, pred = target_sets(root, evaluated_ref)
+    except Exception as e:
+        return {"status": "FAIL", "mode": mode, "failures": [str(e)], "trusted_by_fingerprint": {}, "review_trusted_by_fingerprint": {}, "record_count": 0, "artifact_head_sha": artifact_ref, "evaluated_head_sha": evaluated_ref}
     if set(m) != MANIFEST_FIELDS: failures.append("SPR4_MANIFEST_FIELD_SET_INVALID")
     if m.get("manifest_kind") != MANIFEST_KIND or m.get("schema_version") != MANIFEST_SCHEMA_VERSION: failures.append("SPR4_MANIFEST_KIND_INVALID")
     if m.get("predecessor_manifest_path") != PREDECESSOR_MANIFEST_PATH or m.get("predecessor_manifest_sha256") != PREDECESSOR_MANIFEST_SHA256: failures.append("SPR4_PREDECESSOR_INVALID")
     if m.get("failure_fingerprints") != drift or m.get("preserved_failure_fingerprints") != preserved or m.get("record_count") != 48 or m.get("preserved_record_count") != 34: failures.append("SPR4_TARGET_SET_INVALID")
     if m.get("failure_fingerprint_set_sha256") != line_set_sha(drift) or m.get("preserved_failure_fingerprint_set_sha256") != line_set_sha(preserved): failures.append("SPR4_TARGET_HASH_INVALID")
     if m.get("authority_transition_parent_sha") != TRANSITION_PARENT or m.get("authority_transition_commit_sha") != TRANSITION_COMMIT: failures.append("SPR4_TRANSITION_INVALID")
-    if m.get("revalidation_binding_head_sha") != evaluated_head or m.get("revalidation_binding_tree_sha") != str(_git(root, "rev-parse", f"{evaluated_head}^{{tree}}")): failures.append("SPR4_BINDING_INVALID")
-    if m.get("schema_sha256") != sha256_bytes((root / SCHEMA_PATH).read_bytes()): failures.append("SPR4_SCHEMA_SHA_INVALID")
+    if m.get("schema_sha256") != sha256_bytes(schema_raw): failures.append("SPR4_SCHEMA_SHA_INVALID")
     previous = str(m.get("record_chain_start_sha256", "")); bindings = m.get("record_bindings", [])
     if not isinstance(bindings, list) or len(bindings) != 48: failures.append("SPR4_BINDING_COUNT_INVALID"); bindings = []
     for i, fp in enumerate(drift):
         try:
-            if stage_dir is None: rec, raw = document(root, evaluated_head, expected_record_path(fp))
+            if stage_dir is None: rec, raw = document(root, artifact_ref, expected_record_path(fp))
             else:
                 raw = (stage_dir / "records" / Path(expected_record_path(fp)).name).read_bytes(); rec = strict(raw)
-            sel = rec["authority_selectors"]; pre = projection(root, TRANSITION_PARENT, sel); reb = projection(root, TRANSITION_COMMIT, sel); live = projection(root, evaluated_head, sel)
+            sel = rec["authority_selectors"]; pre = projection(root, TRANSITION_PARENT, sel); reb = projection(root, TRANSITION_COMMIT, sel); live = projection(root, evaluated_ref, sel)
         except Exception as e: failures.append("SPR4_RECORD_UNREADABLE:" + fp); continue
         local: list[str] = []
         if set(rec) != RECORD_FIELDS: local.append("RECORD_FIELD_SET")
@@ -169,20 +190,20 @@ def validate(root: Path, manifest_path: Path, evaluated_head: str, stage_dir: Pa
             b = bindings[i]
             if set(b) != BINDING_FIELDS or b.get("path") != expected_record_path(fp) or b.get("record_sha256") != sha256_bytes(raw) or b.get("record_payload_sha256") != rec.get("record_payload_sha256") or b.get("previous_revalidation_chain_sha256") != previous: local.append("MANIFEST_BINDING")
         if local: failures.extend(x + ":" + fp for x in local)
-        else: trusted[fp] = {"allowed_invalidations": [ALLOWED_INVALIDATION], "prior_record_path": rec.get("prior_record_path", ""), "revalidation_id": rec.get("revalidation_id", ""), "record_path": expected_record_path(fp), "revalidation_binding_head_sha": evaluated_head}
+        else: trusted[fp] = {"allowed_invalidations": [ALLOWED_INVALIDATION], "prior_record_path": rec.get("prior_record_path", ""), "revalidation_id": rec.get("revalidation_id", ""), "record_path": expected_record_path(fp), "revalidation_binding_head_sha": evaluated_ref}
         previous = str(rec.get("record_payload_sha256", previous))
     # Preserved rows are rechecked, but no duplicate successor record is emitted.
     for fp in preserved:
         rec = rows[fp]; sel = rec["authority_selectors"]
-        if projection(root, TRANSITION_PARENT, sel) != projection(root, evaluated_head, sel): failures.append("SPR4_PRESERVED_PROJECTION_DRIFT:" + fp)
-        else: trusted[fp] = {"allowed_invalidations": [ALLOWED_INVALIDATION], "prior_record_path": rec.get("prior_record_path", ""), "revalidation_id": rec.get("revalidation_id", ""), "record_path": "", "revalidation_binding_head_sha": evaluated_head}
+        if projection(root, TRANSITION_PARENT, sel) != projection(root, evaluated_ref, sel): failures.append("SPR4_PRESERVED_PROJECTION_DRIFT:" + fp)
+        else: trusted[fp] = {"allowed_invalidations": [ALLOWED_INVALIDATION], "prior_record_path": rec.get("prior_record_path", ""), "revalidation_id": rec.get("revalidation_id", ""), "record_path": "", "revalidation_binding_head_sha": evaluated_ref}
     if previous != m.get("record_chain_terminal_sha256"): failures.append("SPR4_CHAIN_TERMINAL_INVALID")
     if m.get("record_chain_start_sha256") != pred.get("record_chain_terminal_sha256"): failures.append("SPR4_CHAIN_START_INVALID")
     if failures: trusted = {}
     committed = trusted if stage_dir is None else {}
     review = trusted if stage_dir is not None else {}
-    return {"status": "PASS" if not failures else "FAIL", "mode": "COMMITTED" if stage_dir is None else "STAGE_REVIEW", "failures": sorted(set(failures)), "trusted_by_fingerprint": committed, "review_trusted_by_fingerprint": review, "record_count": len(trusted), "drift_record_count": 48, "preserved_record_count": 34}
+    return {"status": "PASS" if not failures else "FAIL", "mode": mode, "failures": sorted(set(failures)), "trusted_by_fingerprint": committed, "review_trusted_by_fingerprint": review, "record_count": len(trusted), "drift_record_count": 48, "preserved_record_count": 34, "artifact_head_sha": artifact_ref, "evaluated_head_sha": evaluated_ref}
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(); p.add_argument("--project", type=Path, default=Path.cwd()); p.add_argument("--manifest", type=Path, required=True); p.add_argument("--evaluated-head", required=True); p.add_argument("--stage-dir", type=Path); a = p.parse_args(argv); result = validate(a.project.resolve(), a.manifest.resolve(), a.evaluated_head, a.stage_dir.resolve() if a.stage_dir else None); print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2)); return 0 if result["status"] == "PASS" else 1
+    p = argparse.ArgumentParser(); p.add_argument("--project", type=Path, default=Path.cwd()); p.add_argument("--manifest", type=Path, required=True); p.add_argument("--evaluated-head", required=True); p.add_argument("--artifact-head", default="HEAD"); p.add_argument("--stage-dir", type=Path); a = p.parse_args(argv); result = validate(a.project.resolve(), a.manifest.resolve(), a.evaluated_head, a.stage_dir.resolve() if a.stage_dir else None, a.artifact_head); print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2)); return 0 if result["status"] == "PASS" else 1
 if __name__ == "__main__": raise SystemExit(main())

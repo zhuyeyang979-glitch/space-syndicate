@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Focused integrity checks for the exact SPR v1 successor-v4 stage."""
+"""Focused stage and committed integrity checks for SPR v1 successor-v4."""
 
 from __future__ import annotations
 
@@ -57,6 +57,7 @@ def _by_fingerprint(bindings: list[dict[str, Any]]) -> dict[str, dict[str, Any]]
 def main() -> int:
     root = Path(__file__).resolve().parents[2]
     stage = root / primary.SUCCESSOR_ROOT
+    artifact_head = str(primary._git(root, "rev-parse", "HEAD^{commit}"))
     manifest = _document(stage / "manifest.json")
     predecessor = _document(root / primary.PREDECESSOR_MANIFEST_PATH)
     checks = Checks()
@@ -149,6 +150,102 @@ def main() -> int:
         "independent stage review did not attest exact 82-row trust",
     )
 
+    primary_committed = primary.validate(
+        root,
+        stage / "manifest.json",
+        evaluated_head=BINDING_HEAD,
+        artifact_head=artifact_head,
+    )
+    primary_committed_trust = primary_committed.get("trusted_by_fingerprint", {})
+    checks.true(
+        primary_committed.get("status") == "PASS"
+        and primary_committed.get("mode") == "COMMITTED"
+        and primary_committed.get("failures") == []
+        and primary_committed.get("artifact_head_sha") == artifact_head
+        and primary_committed.get("evaluated_head_sha") == BINDING_HEAD
+        and len(primary_committed_trust) == 82
+        and primary_committed.get("review_trusted_by_fingerprint") == {},
+        "primary committed audit did not separate artifact and binding refs",
+    )
+
+    independent_committed = independent.audit(
+        root,
+        stage / "manifest.json",
+        evaluated_head=BINDING_HEAD,
+        artifact_head=artifact_head,
+    )
+    checks.true(
+        independent_committed.get("status") == "PASS"
+        and independent_committed.get("mode") == "COMMITTED"
+        and independent_committed.get("independent") is True
+        and independent_committed.get("failures") == []
+        and independent_committed.get("artifact_head_sha") == artifact_head
+        and independent_committed.get("evaluated_head_sha") == BINDING_HEAD
+        and len(independent_committed.get("trusted_by_fingerprint", {})) == 82
+        and independent_committed.get("review_trusted_by_fingerprint") == {},
+        "independent committed audit did not separate artifact and binding refs",
+    )
+
+    primary_wrong_artifact = primary.validate(
+        root,
+        stage / "manifest.json",
+        evaluated_head=BINDING_HEAD,
+        artifact_head=BINDING_HEAD,
+    )
+    primary_wrong_binding = primary.validate(
+        root,
+        stage / "manifest.json",
+        evaluated_head=artifact_head,
+        artifact_head=artifact_head,
+    )
+    primary_wrong_path = primary.validate(
+        root,
+        root / primary.SCHEMA_PATH,
+        evaluated_head=BINDING_HEAD,
+        artifact_head=artifact_head,
+    )
+    checks.true(
+        primary_wrong_artifact.get("status") == "FAIL"
+        and primary_wrong_artifact.get("trusted_by_fingerprint") == {}
+        and primary_wrong_binding.get("status") == "FAIL"
+        and primary_wrong_binding.get("failures") == ["SPR4_BINDING_INVALID"]
+        and primary_wrong_binding.get("trusted_by_fingerprint") == {}
+        and primary_wrong_path.get("status") == "FAIL"
+        and primary_wrong_path.get("failures") == ["SPR4_MANIFEST_PATH_INVALID"]
+        and primary_wrong_path.get("trusted_by_fingerprint") == {},
+        "primary committed audit accepted a wrong artifact, binding, or manifest path",
+    )
+
+    independent_wrong_artifact = independent.audit(
+        root,
+        stage / "manifest.json",
+        evaluated_head=BINDING_HEAD,
+        artifact_head=BINDING_HEAD,
+    )
+    independent_wrong_binding = independent.audit(
+        root,
+        stage / "manifest.json",
+        evaluated_head=artifact_head,
+        artifact_head=artifact_head,
+    )
+    independent_wrong_path = independent.audit(
+        root,
+        root / primary.SCHEMA_PATH,
+        evaluated_head=BINDING_HEAD,
+        artifact_head=artifact_head,
+    )
+    checks.true(
+        independent_wrong_artifact.get("status") == "FAIL"
+        and independent_wrong_artifact.get("trusted_by_fingerprint") == {}
+        and independent_wrong_binding.get("status") == "FAIL"
+        and independent_wrong_binding.get("failures") == ["SPR4I_BINDING_INVALID"]
+        and independent_wrong_binding.get("trusted_by_fingerprint") == {}
+        and independent_wrong_path.get("status") == "FAIL"
+        and independent_wrong_path.get("failures") == ["SPR4I_MANIFEST_PATH_INVALID"]
+        and independent_wrong_path.get("trusted_by_fingerprint") == {},
+        "independent committed audit accepted a wrong artifact, binding, or manifest path",
+    )
+
     fail_closed_policy_valid = (
         manifest.get("wildcard_count") == 0
         and manifest.get("future_failure_auto_revalidation") is False
@@ -172,6 +269,8 @@ def main() -> int:
     print(f"SPR_V4_SELF_TEST {checks.total}/{checks.total} PASS")
     print("BINDING_HEAD=" + BINDING_HEAD)
     print("BINDING_TREE=" + BINDING_TREE)
+    print("ARTIFACT_HEAD=" + artifact_head)
+    print("COMMITTED_PRIMARY_AND_INDEPENDENT=PASS")
     print("PARTITION=48_DRIFT+34_PRESERVED=82_DISJOINT")
     print("OLD_V1_V2_V3_CORRECTION_DIFF=ZERO")
     return 0
