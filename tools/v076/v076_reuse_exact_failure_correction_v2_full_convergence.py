@@ -6814,6 +6814,126 @@ def _historical_delta_metadata_authority_projection(
     }
 
 
+def _historical_delta_metadata_successor_v2_projection_counts(
+    primary: dict[str, Any],
+    manifest: dict[str, Any],
+    identities: dict[str, dict[str, Any]],
+    summaries: list[dict[str, Any]],
+) -> dict[str, int]:
+    """Synthesize successor-v2 counts without inventing legacy metrics.
+
+    The successor owns the exact historical identity projection and its record
+    cardinality.  Scanner and v1-ledger metrics remain owned by the v1
+    authority; when that authority is failing, a missing or inconsistent count
+    must fail closed instead of falling back to stale constants.
+    """
+
+    primary_fields = (
+        "raw_failure_count",
+        "preledger_native_historical_bucket_count",
+        "ledger_exact_promoted_count",
+        "semantic_historical_failure_count",
+        "true_current_failure_count",
+        "metadata_record_count",
+        "correction_record_count",
+    )
+    primary_counts: dict[str, int] = {}
+    invalid_primary = []
+    for field in primary_fields:
+        value = primary.get(field)
+        if type(value) is not int or value < 0:
+            invalid_primary.append(field)
+        else:
+            primary_counts[field] = value
+    if invalid_primary:
+        raise ValueError(
+            "SUCCESSOR_V2_PRIMARY_COUNT_INVALID:" + ",".join(invalid_primary)
+        )
+
+    manifest_fields = (
+        "identity_count",
+        "predecessor_failure_count",
+        "predecessor_record_count",
+        "record_count",
+    )
+    manifest_counts: dict[str, int] = {}
+    invalid_manifest = []
+    for field in manifest_fields:
+        value = manifest.get(field)
+        if type(value) is not int or value < 0:
+            invalid_manifest.append(field)
+        else:
+            manifest_counts[field] = value
+    if invalid_manifest:
+        raise ValueError(
+            "SUCCESSOR_V2_MANIFEST_COUNT_INVALID:" + ",".join(invalid_manifest)
+        )
+
+    identity_count = len(identities)
+    if manifest_counts["identity_count"] != identity_count:
+        raise ValueError(
+            "SUCCESSOR_V2_IDENTITY_COUNT_MISMATCH:"
+            f"manifest={manifest_counts['identity_count']}:actual={identity_count}"
+        )
+    if manifest_counts["predecessor_failure_count"] != identity_count:
+        raise ValueError(
+            "SUCCESSOR_V2_PREDECESSOR_FAILURE_COUNT_MISMATCH:"
+            f"manifest={manifest_counts['predecessor_failure_count']}:actual={identity_count}"
+        )
+    if manifest_counts["predecessor_record_count"] != primary_counts[
+        "correction_record_count"
+    ]:
+        raise ValueError(
+            "SUCCESSOR_V2_PREDECESSOR_RECORD_COUNT_MISMATCH:"
+            f"manifest={manifest_counts['predecessor_record_count']}:"
+            f"v1={primary_counts['correction_record_count']}"
+        )
+    if manifest_counts["record_count"] != len(summaries):
+        raise ValueError(
+            "SUCCESSOR_V2_RECORD_COUNT_MISMATCH:"
+            f"manifest={manifest_counts['record_count']}:actual={len(summaries)}"
+        )
+    if primary_counts["ledger_exact_promoted_count"] != identity_count:
+        raise ValueError(
+            "SUCCESSOR_V2_LEDGER_PROMOTED_COUNT_MISMATCH:"
+            f"v1={primary_counts['ledger_exact_promoted_count']}:actual={identity_count}"
+        )
+    if primary_counts["correction_record_count"] != manifest_counts["record_count"]:
+        raise ValueError(
+            "SUCCESSOR_V2_CORRECTION_RECORD_COUNT_MISMATCH:"
+            f"v1={primary_counts['correction_record_count']}:"
+            f"successor={manifest_counts['record_count']}"
+        )
+
+    source_transitions = {
+        str(identity.get("source_commit", ""))
+        for identity in identities.values()
+    }
+    source_transitions.discard("")
+    component_ids = {
+        str(identity.get("component_id", ""))
+        for identity in identities.values()
+    }
+    component_ids.discard("")
+    return {
+        "raw_failure_count": primary_counts["raw_failure_count"],
+        "preledger_native_historical_bucket_count": primary_counts[
+            "preledger_native_historical_bucket_count"
+        ],
+        "ledger_exact_promoted_count": primary_counts["ledger_exact_promoted_count"],
+        "semantic_historical_failure_count": primary_counts[
+            "semantic_historical_failure_count"
+        ],
+        "true_current_failure_count": primary_counts["true_current_failure_count"],
+        "metadata_record_count": primary_counts["metadata_record_count"],
+        "source_transition_count": len(source_transitions),
+        "correction_record_count": primary_counts["correction_record_count"],
+        "component_count": len(component_ids),
+        "authorized_failure_count": identity_count,
+        "verified_failure_count": identity_count,
+    }
+
+
 def _primary_historical_delta_metadata_authority_projection(
     root: Path,
     primary: dict[str, Any],
@@ -7182,25 +7302,27 @@ def validate_historical_delta_metadata_ledger_authority(
                                     "authority_origin": "HISTORICAL_DELTA_METADATA_SUCCESSOR_V2",
                                 })
                                 identities[fp] = projected
-                    if len(identities) == 86:
+                    expected_identity_count = (
+                        manifest.get("identity_count")
+                        if isinstance(manifest, dict)
+                        else None
+                    )
+                    if (
+                        type(expected_identity_count) is int
+                        and expected_identity_count >= 0
+                        and len(identities) == expected_identity_count
+                    ):
                         head = _git(root, "rev-parse", f"{evaluated_head}^{{commit}}")
                         tree = _git(root, "rev-parse", f"{head}^{{tree}}")
                         raw_head = str(manifest.get("raw_report_head_sha", "")) if isinstance(manifest, dict) else ""
                         scanner_bytes = _git_bytes(root, raw_head, "tools/v076/v076_reuse_point_inertia_gate.py")
                         if scanner_bytes is not None:
-                            counts = {
-                                "raw_failure_count": int(primary.get("raw_failure_count", 590)),
-                                "preledger_native_historical_bucket_count": int(primary.get("preledger_native_historical_bucket_count", 505)),
-                                "ledger_exact_promoted_count": 86,
-                                "semantic_historical_failure_count": int(primary.get("semantic_historical_failure_count", 587)),
-                                "true_current_failure_count": int(primary.get("true_current_failure_count", 3)),
-                                "metadata_record_count": int(primary.get("metadata_record_count", 3)),
-                                "source_transition_count": len({str(v.get("source_commit", "")) for v in identities.values()}),
-                                "correction_record_count": 4,
-                                "component_count": len({str(v.get("component_id", "")) for v in identities.values()}),
-                                "authorized_failure_count": 86,
-                                "verified_failure_count": 86,
-                            }
+                            counts = _historical_delta_metadata_successor_v2_projection_counts(
+                                primary,
+                                manifest,
+                                identities,
+                                summaries,
+                            )
                             projection = _historical_delta_metadata_authority_projection(
                                 evaluated_head_sha=head,
                                 evaluated_tree_sha=tree,
