@@ -1,0 +1,77 @@
+{
+  "schema_version": "space_syndicate.v076.current_subject_step_receipt.v1",
+  "receipt_id": "v076-current-subject-step12-c6a849be-20260830T200836Z",
+  "master_task_id": "V076_CURRENT_SUBJECT_MCP_REVALIDATION_REUSE_FULL_CONVERGENCE_AND_DECK_PRESENTATION_RESUME_V2",
+  "authorization_id": "USER_AUTHORIZATION_V076_CURRENT_SUBJECT_CONVERGENCE_AND_COMMERCIAL_RESUME_20260830",
+  "step_id": "STEP12",
+  "status": "REGRESSED_WITH_EVIDENCE",
+  "production_green_claimed": false,
+  "human_green_claimed": false,
+  "product_subject_head": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
+  "product_subject_tree": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
+  "live_pr_head": "c6a849be7346dcf9c0d9655a5769afa32c9e86b7",
+  "live_pr_tree": "5f161cdd18c68394968f62d03948214ef914de09",
+  "runtime_boundary": {
+    "scene_path": "res://scenes/main.tscn",
+    "project_godot_sha256": "849e8c9458b1f6f4431a00073a8d50119937e64a995303874354fb34da4fb06b",
+    "main_tscn_sha256": "aabe4e7f5dce63af558d22c2b77b0cffcfad03a763a7c6d11c4003e90e8e79f3",
+    "runtime_composition_sha256": "d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9",
+    "godot_binary_sha256": "b2ca888d5115a6cedee564764a2ee494a625f2ec2edbabd010fe33c9a88a6bf8"
+  },
+  "mcp": {
+    "tool_identity": "Funplay MCP 0.9.6",
+    "session_identity": "D:/t/v076cs/2ce2ce21/session-c6a849be-20260830T200836Z",
+    "runtime_bridge_stream_id": "1788120596-58870292-34678506968",
+    "editor_pid": 16048,
+    "game_pid": 7080,
+    "endpoint": "http://127.0.0.1:8795/",
+    "session_start_utc": "2026-08-30T20:08:36Z",
+    "session_end_utc": "2026-08-30T20:38:51Z"
+  },
+  "observed_ai_and_privacy": {
+    "ai_player_count": 3,
+    "ai_observation_count_by_actor": {
+      "player.ai.1": 1,
+      "player.ai.2": 1,
+      "player.ai.3": 1
+    },
+    "ai_public_action_receipt_count": 3,
+    "ai_public_action_receipts": {
+      "card_face_mode": "back",
+      "public_label": "一张匿名牌",
+      "target_public": "按公开结算顺序",
+      "direct_action_public_effect": false
+    },
+    "public_card_play_receipt_count": 30,
+    "public_card_play_privacy_class": "PUBLIC",
+    "action_feed_visible_count": 10,
+    "blank_public_action_count": 0,
+    "hidden_info_violation_count": 0,
+    "private_information_violation_count": 0,
+    "central_public_arrangement_private_projection_violation_count": 0,
+    "opponent_private_asset_disclosure_count": 0,
+    "actor_id_disclosed": false,
+    "private_queue_disclosed": false,
+    "hidden_order_disclosed": false
+  },
+  "missing_required_evidence": [
+    "persisted AI observation envelope and allowed-field manifest",
+    "observation source receipt bound to each AI action",
+    "field-level opponent-hand/private-plan source-to-sanitized projection binding"
+  ],
+  "blocker": "AI_OBSERVATION_AUTHORITY_NOT_PERSISTED_IN_RUNTIME_BRIDGE_DTO",
+  "notes": [
+    "AI observation and public action maps are reset at batch rollover; zero after rollover is not evidence that no observation occurred.",
+    "Anonymous public labels and zero leak counters prove observed presentation safety only, not complete observation-input legality."
+  ],
+  "process_cleanup": {
+    "exit_play_mode": "PASS",
+    "stop_role_godot_mcp": "PASS",
+    "editor_pid_after": 0,
+    "game_pid_after": 0,
+    "listener_8795_after": 0
+  },
+  "result_fingerprint": "step12-regressed-observation-envelope-not-persisted-c6a849be-session-c6a849be-20260830T200836Z",
+  "append_only": true,
+  "historical_receipts_overwritten": false
+}
