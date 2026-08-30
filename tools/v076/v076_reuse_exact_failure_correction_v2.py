@@ -2607,6 +2607,7 @@ def validate_records(
     subject_projection_revalidation_successor_v3_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     historical_delta_metadata_successor_path: Path | None = None,
+    historical_delta_metadata_successor_v2_path: Path | None = None,
     full_convergence_pr_body_file_path: Path | None = None,
 ) -> dict[str, Any]:
     full_convergence_inputs = (
@@ -2644,12 +2645,27 @@ def validate_records(
             "HISTORICAL_DELTA_METADATA_SUCCESSOR_REQUIRES_"
             "FULL_CONVERGENCE_INPUT_SET"
         )
+    if historical_delta_metadata_successor_v2_path is not None and not any(
+        value is not None for value in full_convergence_inputs
+    ):
+        raise ValueError(
+            "HISTORICAL_DELTA_METADATA_SUCCESSOR_V2_REQUIRES_"
+            "FULL_CONVERGENCE_INPUT_SET"
+        )
     if (
         historical_delta_metadata_successor_path is not None
         and historical_delta_metadata_ledger_path is None
     ):
         raise ValueError(
             "HISTORICAL_DELTA_METADATA_SUCCESSOR_REQUIRES_"
+            "HISTORICAL_DELTA_METADATA_LEDGER"
+        )
+    if (
+        historical_delta_metadata_successor_v2_path is not None
+        and historical_delta_metadata_ledger_path is None
+    ):
+        raise ValueError(
+            "HISTORICAL_DELTA_METADATA_SUCCESSOR_V2_REQUIRES_"
             "HISTORICAL_DELTA_METADATA_LEDGER"
         )
     if full_convergence_pr_body_file_path is not None and not any(
@@ -2724,6 +2740,9 @@ def validate_records(
             ),
             historical_delta_metadata_successor_path=(
                 historical_delta_metadata_successor_path
+            ),
+            historical_delta_metadata_successor_v2_path=(
+                historical_delta_metadata_successor_v2_path
             ),
             full_convergence_pr_body_file_path=(
                 full_convergence_pr_body_file_path
@@ -3740,6 +3759,7 @@ def _verified_full_convergence_authority(
     subject_projection_revalidation_successor_v3_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     historical_delta_metadata_successor_path: Path | None = None,
+    historical_delta_metadata_successor_v2_path: Path | None = None,
 ) -> dict[str, Any]:
     import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
 
@@ -3767,6 +3787,9 @@ def _verified_full_convergence_authority(
         ),
         historical_delta_metadata_successor_path=(
             historical_delta_metadata_successor_path
+        ),
+        historical_delta_metadata_successor_v2_path=(
+            historical_delta_metadata_successor_v2_path
         ),
     )
     failures = [str(value) for value in primary.get("failures", [])]
@@ -4635,6 +4658,7 @@ def validate_full_convergence_records(
     subject_projection_revalidation_successor_v3_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     historical_delta_metadata_successor_path: Path | None = None,
+    historical_delta_metadata_successor_v2_path: Path | None = None,
     full_convergence_pr_body_file_path: Path | None = None,
 ) -> dict[str, Any]:
     import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
@@ -4692,6 +4716,9 @@ def validate_full_convergence_records(
         ),
         historical_delta_metadata_successor_path=(
             historical_delta_metadata_successor_path
+        ),
+        historical_delta_metadata_successor_v2_path=(
+            historical_delta_metadata_successor_v2_path
         ),
     )
     live = _classify_full_convergence_live_raw(
@@ -5021,6 +5048,7 @@ def resolve_command(
     subject_projection_revalidation_successor_v3_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     historical_delta_metadata_successor_path: Path | None = None,
+    historical_delta_metadata_successor_v2_path: Path | None = None,
     full_convergence_pr_body_file_path: Path | None = None,
 ) -> int:
     report = validate_records(
@@ -5055,6 +5083,9 @@ def resolve_command(
         ),
         historical_delta_metadata_successor_path=(
             historical_delta_metadata_successor_path
+        ),
+        historical_delta_metadata_successor_v2_path=(
+            historical_delta_metadata_successor_v2_path
         ),
         full_convergence_pr_body_file_path=(
             full_convergence_pr_body_file_path
@@ -6465,6 +6496,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--historical-delta-metadata-successor-v2",
+        type=Path,
+        default=None,
+        help=(
+            "explicit predecessor-revalidation successor-v2 manifest for "
+            "the frozen 86-row HDM identity set; optional, never discovered"
+        ),
+    )
+    parser.add_argument(
         "--full-convergence-pr-body-file",
         type=Path,
         default=None,
@@ -6510,6 +6550,7 @@ def main(argv: list[str] | None = None) -> int:
             or args.subject_projection_revalidation_successor_v2 is not None
             or args.subject_projection_revalidation_successor_v3 is not None
             or args.historical_delta_metadata_successor is not None
+            or args.historical_delta_metadata_successor_v2 is not None
         )
         and args.command not in {"resolve", "verify-full-convergence-batch"}
     ):
@@ -6581,6 +6622,15 @@ def main(argv: list[str] | None = None) -> int:
                     "--historical-delta-metadata-successor requires "
                     "--historical-delta-metadata-ledger"
                 )
+            if (
+                args.historical_delta_metadata_successor_v2 is not None
+                and args.historical_delta_metadata_ledger is None
+            ):
+                raise SystemExit(
+                    "verify-full-convergence-batch with "
+                    "--historical-delta-metadata-successor-v2 requires "
+                    "--historical-delta-metadata-ledger"
+                )
             result = convergence.validate_batch_manifest_against_repo(
                 root,
                 args.batch_manifest.resolve(),
@@ -6627,6 +6677,11 @@ def main(argv: list[str] | None = None) -> int:
                 historical_delta_metadata_successor_path=(
                     args.historical_delta_metadata_successor.resolve()
                     if args.historical_delta_metadata_successor is not None
+                    else None
+                ),
+                historical_delta_metadata_successor_v2_path=(
+                    args.historical_delta_metadata_successor_v2.resolve()
+                    if args.historical_delta_metadata_successor_v2 is not None
                     else None
                 ),
             )
@@ -6722,6 +6777,11 @@ def main(argv: list[str] | None = None) -> int:
         historical_delta_metadata_successor_path=(
             args.historical_delta_metadata_successor.resolve()
             if args.historical_delta_metadata_successor is not None
+            else None
+        ),
+        historical_delta_metadata_successor_v2_path=(
+            args.historical_delta_metadata_successor_v2.resolve()
+            if args.historical_delta_metadata_successor_v2 is not None
             else None
         ),
         full_convergence_pr_body_file_path=(
