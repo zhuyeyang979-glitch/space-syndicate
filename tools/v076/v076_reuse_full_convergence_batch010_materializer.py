@@ -198,6 +198,11 @@ SUPPORTED_GROUPS = (
         "TEST_ONLY",
     ),
     (
+        "HISTORICAL_ACTIVE_LINEAGE_REGISTERED",
+        "transition_46b33bba77b3_e584cd4d8b0c_production-reachable.json",
+        "PRODUCTION_REACHABLE",
+    ),
+    (
         "HISTORICAL_DOCUMENTATION_ONLY",
         "batch010_documentation-only.json",
         "DOCUMENTATION_ONLY",
@@ -1009,6 +1014,14 @@ def validate_proposal(
             raise MaterializerError(
                 f"PROJECTION_BINDING_INVALID:{fingerprint}:{failures[0]}"
             )
+        # Keep the exact, validated supplement binding available to the
+        # append-only artifact builder.  Documentation identities in the
+        # pre-supplement authority inventory are intentionally sparse; the
+        # compatibility metadata above is reconstructed without changing any
+        # repository input and must be used consistently for inventory,
+        # correction records, and manifest output.
+        if validation_identity is not identities.get(fingerprint):
+            identities[fingerprint] = validation_identity
         validated_bindings[fingerprint] = binding
 
     if len(direct_component_ids) != len(set(direct_component_ids)):

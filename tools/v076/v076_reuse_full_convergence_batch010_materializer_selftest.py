@@ -61,6 +61,7 @@ def test_current_subject_and_batch009_are_not_accepted() -> None:
         "batch-010/batch_review_A.json",
         "batch-010/batch_review_B.json",
         "records/batch-010/transition_46b33bba77b3_e584cd4d8b0c_test-only.json",
+        "records/batch-010/transition_46b33bba77b3_e584cd4d8b0c_production-reachable.json",
         "records/batch-010/batch010_documentation-only.json",
     }, "output allowlist drift")
 
