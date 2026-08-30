@@ -2059,6 +2059,54 @@ def run_selftest() -> dict[str, Any]:
         "FAIL",
         illegal_hdm_successor_policy,
     ))
+
+    def successor_cli_and_input_coupling() -> None:
+        parser = correction._parser()
+        parsed = parser.parse_args([
+            "resolve",
+            "--post-touch-revalidation-successor-v2",
+            "pts2.json",
+            "--subject-projection-revalidation-successor-v4",
+            "spr4.json",
+            "--subject-projection-revalidation-successor-v5",
+            "spr5.json",
+        ])
+        _assert(parsed.post_touch_revalidation_successor_v2.name == "pts2.json", str(parsed))
+        _assert(parsed.subject_projection_revalidation_successor_v4.name == "spr4.json", str(parsed))
+        _assert(parsed.subject_projection_revalidation_successor_v5.name == "spr5.json", str(parsed))
+
+        def expect_value_error(expected: str, **kwargs: Any) -> None:
+            try:
+                correction.validate_records(
+                    project,
+                    project,
+                    current_head="a" * 40,
+                    **kwargs,
+                )
+            except ValueError as exc:
+                _assert(expected in str(exc), str(exc))
+            else:
+                raise CaseFailure(f"missing coupling failure: {expected}")
+
+        expect_value_error(
+            "POST_TOUCH_REVALIDATION_SUCCESSOR_V2_REQUIRES_PREDECESSOR",
+            post_touch_revalidation_successor_v2_path=Path("pts2.json"),
+        )
+        expect_value_error(
+            "SUBJECT_PROJECTION_TERMINAL_REPLACEMENT_REQUIRES_V1_V2_V3_V4_V5",
+            subject_projection_revalidation_successor_v4_path=Path("spr4.json"),
+        )
+        expect_value_error(
+            "SUBJECT_PROJECTION_TERMINAL_REPLACEMENT_REQUIRES_V1_V2_V3_V4_V5",
+            subject_projection_revalidation_successor_v5_path=Path("spr5.json"),
+        )
+
+    cases.append(Case(
+        "118",
+        "successor CLI flags are explicit and replacement inputs are all-or-none",
+        "PASS",
+        successor_cli_and_input_coupling,
+    ))
     integration_error = ""
     integration_cleanup: Callable[[], None] | None = None
     try:

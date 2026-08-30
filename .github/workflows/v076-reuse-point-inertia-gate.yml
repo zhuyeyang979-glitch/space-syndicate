@@ -221,15 +221,18 @@ jobs:
           # set.  Directory discovery is intentionally not an authority.
           $inputs = [ordered]@{
             baseline_report = "reports/reuse/correction_v2/epochs/full_convergence_20260827/baseline_raw_failure_report.json"
-            batch_manifest = "docs/architecture/reuse_corrections/v2/batches/full_convergence_20260827/batch-008/batch-008-manifest.json"
-            previous_batch_manifest = "docs/architecture/reuse_corrections/v2/batches/full_convergence_20260827/batch-007/batch-007-manifest.json"
+            batch_manifest = "docs/architecture/reuse_corrections/v2/batches/full_convergence_20260827/batch-010/batch-010-manifest.json"
+            previous_batch_manifest = "docs/architecture/reuse_corrections/v2/batches/full_convergence_20260827/batch-009/batch-009-manifest.json"
             descendant_history_supplement = "reports/reuse/correction_v2/epochs/full_convergence_20260827/descendant_history_supplement_da48a74b_003.json"
             descendant_history_raw_report = "reports/reuse/correction_v2/epochs/full_convergence_20260827/descendant_history_raw_da48a74b_003.json"
             descendant_history_scanner = "tools/v076/v076_reuse_point_inertia_gate.py"
             post_touch_revalidation = "docs/architecture/reuse_corrections/v2/post_touch_revalidation/full_convergence_batch004_20260828_manifest.json"
+            post_touch_revalidation_successor_v2 = "docs/architecture/reuse_corrections/v2/post_touch_revalidation_successor_v2/manifest.json"
             subject_projection_revalidation = "docs/architecture/reuse_corrections/v2/subject_projection_revalidation/manifest.json"
             subject_projection_revalidation_successor_v2 = "docs/architecture/reuse_corrections/v2/subject_projection_revalidation_successor_v2/manifest.json"
             subject_projection_revalidation_successor_v3 = "docs/architecture/reuse_corrections/v2/subject_projection_revalidation_successor_v3/manifest.json"
+            subject_projection_revalidation_successor_v4 = "docs/architecture/reuse_corrections/v2/subject_projection_revalidation_successor_v4/manifest.json"
+            subject_projection_revalidation_successor_v5 = "docs/architecture/reuse_corrections/v2/subject_projection_revalidation_successor_v5/manifest.json"
             historical_delta_metadata_ledger = "docs/architecture/V076_HISTORICAL_DELTA_METADATA_LEDGER.json"
             historical_delta_metadata_successor = "docs/architecture/reuse_corrections/v2/historical_delta_metadata_successor/manifest.json"
             historical_delta_metadata_successor_v2 = "docs/architecture/reuse_corrections/v2/historical_delta_metadata_successor_v2/manifest.json"
@@ -370,9 +373,12 @@ jobs:
             --descendant-history-raw-report "${{ steps.full_convergence_inputs.outputs.descendant_history_raw_report }}" `
             --descendant-history-scanner "${{ steps.full_convergence_inputs.outputs.descendant_history_scanner }}" `
             --post-touch-revalidation "${{ steps.full_convergence_inputs.outputs.post_touch_revalidation }}" `
+            --post-touch-revalidation-successor-v2 "${{ steps.full_convergence_inputs.outputs.post_touch_revalidation_successor_v2 }}" `
             --subject-projection-revalidation "${{ steps.full_convergence_inputs.outputs.subject_projection_revalidation }}" `
             --subject-projection-revalidation-successor-v2 "${{ steps.full_convergence_inputs.outputs.subject_projection_revalidation_successor_v2 }}" `
             --subject-projection-revalidation-successor-v3 "${{ steps.full_convergence_inputs.outputs.subject_projection_revalidation_successor_v3 }}" `
+            --subject-projection-revalidation-successor-v4 "${{ steps.full_convergence_inputs.outputs.subject_projection_revalidation_successor_v4 }}" `
+            --subject-projection-revalidation-successor-v5 "${{ steps.full_convergence_inputs.outputs.subject_projection_revalidation_successor_v5 }}" `
             --historical-delta-metadata-ledger "${{ steps.full_convergence_inputs.outputs.historical_delta_metadata_ledger }}" `
             --historical-delta-metadata-successor "${{ steps.full_convergence_inputs.outputs.historical_delta_metadata_successor }}" `
             --historical-delta-metadata-successor-v2 "${{ steps.full_convergence_inputs.outputs.historical_delta_metadata_successor_v2 }}" `
@@ -444,6 +450,7 @@ jobs:
           }
           $expectedV2Status = "PASS_WITH_APPEND_ONLY_HISTORICAL_IDENTITY_BACKFILL_AND_CORRECTIONS"
           $spr = $v2.subject_projection_revalidation
+          $postTouch = $v2.post_touch_revalidation
           $hdm = $v2.historical_delta_metadata_ledger
           $hdmSuccessor = $v2.historical_delta_metadata_successor
           $zeroCounters = [ordered]@{
@@ -480,18 +487,26 @@ jobs:
               [string]$v2.status -cne $expectedV2Status -or
               $v2.full_convergence_terminal_coverage_verified -ne $true -or
               @($v2.failures).Count -ne 0 -or
+              [string]$postTouch.status -cne "PASS" -or
+              $postTouch.replacement_complete -ne $true -or
+              [long]$postTouch.effective_trusted_fingerprint_count -ne 2 -or
               [string]$spr.status -cne "PASS" -or
               $spr.four_gate_complete -ne $true -or
+              $spr.terminal_replacement_complete -ne $true -or
               [long]$spr.union_fingerprint_count -ne 109 -or
               [long]$spr.cross_epoch_overlap_count -ne 0 -or
+              [long]$spr.successor_v4.trusted_fingerprint_count -ne 82 -or
+              [long]$spr.successor_v5.trusted_fingerprint_count -ne 2 -or
+              [long]$spr.successor_v3.trusted_fingerprint_count -ne 25 -or
               [string]$hdm.status -cne "PASS" -or
               [string]$hdmSuccessor.status -cne "PASS") {
-            throw "Effective Gate full-convergence contract mismatch: mode=$($v2.resolution_mode) status=$($v2.status) coverage=$($v2.full_convergence_terminal_coverage_verified) failures=$(@($v2.failures).Count) spr=$($spr.status)/$($spr.union_fingerprint_count)/$($spr.cross_epoch_overlap_count) hdm=$($hdm.status) hdm_successor=$($hdmSuccessor.status)"
+            throw "Effective Gate full-convergence contract mismatch: mode=$($v2.resolution_mode) status=$($v2.status) coverage=$($v2.full_convergence_terminal_coverage_verified) failures=$(@($v2.failures).Count) post_touch=$($postTouch.status)/$($postTouch.effective_trusted_fingerprint_count) spr=$($spr.status)/$($spr.union_fingerprint_count)/$($spr.cross_epoch_overlap_count)/v4=$($spr.successor_v4.trusted_fingerprint_count)/v5=$($spr.successor_v5.trusted_fingerprint_count)/v3=$($spr.successor_v3.trusted_fingerprint_count) hdm=$($hdm.status) hdm_successor=$($hdmSuccessor.status)"
           }
 
           Write-Output "RAW_SCANNER_EXIT_CODE=$rawExitText"
           Write-Output "V2_RESOLVER_EXIT_CODE=$v2ExitText"
           Write-Output "V076_FULL_CONVERGENCE_INPUT_SET=EXPLICIT_COMPLETE"
+          Write-Output "V076_POST_TOUCH_EFFECTIVE_TRUSTED_FINGERPRINT_COUNT=$($postTouch.effective_trusted_fingerprint_count)"
           Write-Output "V076_SUBJECT_PROJECTION_UNION_FINGERPRINT_COUNT=$($spr.union_fingerprint_count)"
           Write-Output "V076_SUBJECT_PROJECTION_CROSS_EPOCH_OVERLAP_COUNT=$($spr.cross_epoch_overlap_count)"
           Write-Output "V076_HISTORICAL_DELTA_METADATA_STATUS=$($hdm.status)"

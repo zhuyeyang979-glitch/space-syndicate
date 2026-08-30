@@ -23,28 +23,47 @@ from typing import Any, Iterable
 
 try:
     from . import v076_post_touch_revalidation as _post_touch
+    from . import v076_post_touch_revalidation_successor_v2 as _post_touch_successor_v2
+    from . import v076_post_touch_revalidation_successor_v2_independent_audit as _post_touch_successor_v2_independent
     from . import v076_subject_projection_revalidation as _subject_projection_revalidation
     from . import v076_subject_projection_revalidation_independent_audit as _subject_projection_revalidation_independent
     from . import v076_subject_projection_revalidation_successor_v2 as _subject_projection_revalidation_successor_v2
     from . import v076_subject_projection_revalidation_successor_v2_independent_audit as _subject_projection_revalidation_successor_v2_independent
     from . import v076_subject_projection_revalidation_successor_v3 as _subject_projection_revalidation_successor_v3
     from . import v076_subject_projection_revalidation_successor_v3_independent_audit as _subject_projection_revalidation_successor_v3_independent
+    from . import v076_subject_projection_revalidation_successor_v4 as _subject_projection_revalidation_successor_v4
+    from . import v076_subject_projection_revalidation_successor_v4_independent_audit as _subject_projection_revalidation_successor_v4_independent
     from . import v076_historical_delta_metadata_successor as _historical_delta_metadata_successor
     from . import v076_historical_delta_metadata_successor_independent_audit as _historical_delta_metadata_successor_independent
     from . import v076_historical_delta_metadata_successor_v2 as _historical_delta_metadata_successor_v2
     from . import v076_historical_delta_metadata_successor_v2_independent_audit as _historical_delta_metadata_successor_v2_independent
 except ImportError:  # direct script execution
     import v076_post_touch_revalidation as _post_touch
+    import v076_post_touch_revalidation_successor_v2 as _post_touch_successor_v2
+    import v076_post_touch_revalidation_successor_v2_independent_audit as _post_touch_successor_v2_independent
     import v076_subject_projection_revalidation as _subject_projection_revalidation
     import v076_subject_projection_revalidation_independent_audit as _subject_projection_revalidation_independent
     import v076_subject_projection_revalidation_successor_v2 as _subject_projection_revalidation_successor_v2
     import v076_subject_projection_revalidation_successor_v2_independent_audit as _subject_projection_revalidation_successor_v2_independent
     import v076_subject_projection_revalidation_successor_v3 as _subject_projection_revalidation_successor_v3
     import v076_subject_projection_revalidation_successor_v3_independent_audit as _subject_projection_revalidation_successor_v3_independent
+    import v076_subject_projection_revalidation_successor_v4 as _subject_projection_revalidation_successor_v4
+    import v076_subject_projection_revalidation_successor_v4_independent_audit as _subject_projection_revalidation_successor_v4_independent
     import v076_historical_delta_metadata_successor as _historical_delta_metadata_successor
     import v076_historical_delta_metadata_successor_independent_audit as _historical_delta_metadata_successor_independent
     import v076_historical_delta_metadata_successor_v2 as _historical_delta_metadata_successor_v2
     import v076_historical_delta_metadata_successor_v2_independent_audit as _historical_delta_metadata_successor_v2_independent
+
+try:
+    from . import v076_subject_projection_revalidation_successor_v5 as _subject_projection_revalidation_successor_v5
+    from . import v076_subject_projection_revalidation_successor_v5_independent_audit as _subject_projection_revalidation_successor_v5_independent
+except ImportError:
+    try:
+        import v076_subject_projection_revalidation_successor_v5 as _subject_projection_revalidation_successor_v5
+        import v076_subject_projection_revalidation_successor_v5_independent_audit as _subject_projection_revalidation_successor_v5_independent
+    except ImportError:
+        _subject_projection_revalidation_successor_v5 = None
+        _subject_projection_revalidation_successor_v5_independent = None
 
 
 EPOCH_ID = "FULL_CONVERGENCE_20260827"
@@ -6520,6 +6539,493 @@ def _subject_projection_revalidation_four_gate_composite(
     }
 
 
+def _committed_successor_manifest(
+    root: Path,
+    manifest_path: Path,
+    *,
+    artifact_head: str,
+) -> tuple[dict[str, Any], str, str]:
+    """Read successor authority from one explicit committed artifact Head."""
+
+    root_resolved = root.resolve()
+    resolved = manifest_path.resolve()
+    relative = resolved.relative_to(root_resolved).as_posix()
+    if normalize_path(relative) != relative:
+        raise ValueError("SUCCESSOR_MANIFEST_PATH_NOT_CANONICAL")
+    artifact = _git(root, "rev-parse", f"{artifact_head}^{{commit}}")
+    raw = _git_bytes(root, artifact, relative)
+    if raw is None:
+        raise ValueError("SUCCESSOR_MANIFEST_COMMITTED_BLOB_MISSING")
+    document = json.loads(
+        raw.decode("utf-8-sig"),
+        object_pairs_hook=_strict_object,
+        parse_constant=lambda value: (_ for _ in ()).throw(
+            ValueError(f"NONFINITE_JSON:{value}")
+        ),
+    )
+    if not isinstance(document, dict):
+        raise ValueError("SUCCESSOR_MANIFEST_NOT_OBJECT")
+    binding_head = str(document.get("revalidation_binding_head_sha", ""))
+    binding_tree = str(document.get("revalidation_binding_tree_sha", ""))
+    if re.fullmatch(r"[0-9a-f]{40}", binding_head) is None:
+        raise ValueError("SUCCESSOR_BINDING_HEAD_INVALID")
+    if re.fullmatch(r"[0-9a-f]{40}", binding_tree) is None:
+        raise ValueError("SUCCESSOR_BINDING_TREE_INVALID")
+    if _git(root, "rev-parse", f"{binding_head}^{{tree}}") != binding_tree:
+        raise ValueError("SUCCESSOR_BINDING_TREE_MISMATCH")
+    if not _is_ancestor(root, binding_head, artifact):
+        raise ValueError("SUCCESSOR_BINDING_NOT_ARTIFACT_ANCESTOR")
+    return document, artifact, binding_head
+
+
+def _post_touch_revalidation_successor_v2_composite(
+    root: Path,
+    predecessor_path: Path,
+    successor_path: Path,
+    *,
+    artifact_head: str,
+) -> dict[str, Any]:
+    """Expose exactly two post-touch owners from the terminal successor only."""
+
+    failures: list[str] = []
+    canonical_successor = (root / _post_touch_successor_v2.MANIFEST_PATH).resolve()
+    canonical_predecessor = (
+        root / _post_touch_successor_v2.PREDECESSOR_MANIFEST_PATH
+    ).resolve()
+    if successor_path.resolve() != canonical_successor:
+        failures.append("POST_TOUCH_SUCCESSOR_V2_MANIFEST_PATH_NOT_CANONICAL")
+    if predecessor_path.resolve() != canonical_predecessor:
+        failures.append("POST_TOUCH_SUCCESSOR_V2_PREDECESSOR_PATH_NOT_CANONICAL")
+    artifact = ""
+    binding_head = ""
+    try:
+        manifest, artifact, binding_head = _committed_successor_manifest(
+            root, successor_path, artifact_head=artifact_head
+        )
+        if manifest.get("predecessor_manifest_path") != (
+            _post_touch_successor_v2.PREDECESSOR_MANIFEST_PATH
+        ):
+            failures.append("POST_TOUCH_SUCCESSOR_V2_PREDECESSOR_INVALID")
+    except Exception as error:
+        failures.append(
+            "POST_TOUCH_SUCCESSOR_V2_MANIFEST_BINDING_INVALID:"
+            + type(error).__name__
+        )
+    primary: Any = {}
+    independent: Any = {}
+    if not failures:
+        try:
+            primary = _post_touch_successor_v2.validate(
+                root,
+                artifact_head=artifact,
+                evaluated_binding_head=binding_head,
+                stage=False,
+            )
+        except Exception as error:
+            primary = {
+                "status": "FAIL",
+                "failures": [
+                    "POST_TOUCH_SUCCESSOR_V2_PRIMARY_EXCEPTION:"
+                    + type(error).__name__
+                ],
+                "trusted_by_fingerprint": {},
+            }
+        try:
+            independent = _post_touch_successor_v2_independent.audit(
+                root,
+                successor_path,
+                artifact_head=artifact,
+                evaluated_binding_head=binding_head,
+            )
+        except Exception as error:
+            independent = {
+                "status": "FAIL",
+                "failures": [
+                    "POST_TOUCH_SUCCESSOR_V2_INDEPENDENT_EXCEPTION:"
+                    + type(error).__name__
+                ],
+                "trusted_by_fingerprint": {},
+            }
+
+    def shape(result: Any, label: str, *, require_mode: bool) -> dict[str, dict[str, Any]]:
+        if not isinstance(result, dict):
+            failures.append(f"POST_TOUCH_SUCCESSOR_V2_{label}_RESULT_NOT_OBJECT")
+            return {}
+        if result.get("status") != "PASS":
+            failures.append(f"POST_TOUCH_SUCCESSOR_V2_{label}_REQUIRED_PASS")
+        if require_mode and result.get("mode") != "COMMITTED":
+            failures.append(
+                f"POST_TOUCH_SUCCESSOR_V2_{label}_COMMITTED_MODE_REQUIRED"
+            )
+        diagnostics = result.get("failures")
+        if not isinstance(diagnostics, list) or any(
+            not isinstance(value, str) for value in diagnostics
+        ):
+            failures.append(f"POST_TOUCH_SUCCESSOR_V2_{label}_FAILURES_INVALID")
+            diagnostics = []
+        failures.extend(
+            f"POST_TOUCH_SUCCESSOR_V2_{label}:{value}" for value in diagnostics
+        )
+        trusted = result.get("trusted_by_fingerprint")
+        targets = set(_post_touch_successor_v2.TARGET_FINGERPRINTS)
+        if not isinstance(trusted, dict):
+            failures.append(f"POST_TOUCH_SUCCESSOR_V2_{label}_TRUST_NOT_OBJECT")
+            return {}
+        if len(trusted) != 2 or set(trusted) != targets:
+            failures.append(f"POST_TOUCH_SUCCESSOR_V2_{label}_TRUST_SET_INVALID")
+        if result.get("trusted_fingerprint_count") != 2:
+            failures.append(f"POST_TOUCH_SUCCESSOR_V2_{label}_COUNT_INVALID")
+        if result.get("record_count") != 2:
+            failures.append(f"POST_TOUCH_SUCCESSOR_V2_{label}_RECORD_COUNT_INVALID")
+        if result.get("artifact_head") != artifact:
+            failures.append(f"POST_TOUCH_SUCCESSOR_V2_{label}_ARTIFACT_INVALID")
+        if result.get("evaluated_binding_head") != binding_head:
+            failures.append(f"POST_TOUCH_SUCCESSOR_V2_{label}_BINDING_INVALID")
+        if result.get("wildcard_count") != 0 or result.get(
+            "future_failure_auto_revalidation_count"
+        ) != 0:
+            failures.append(f"POST_TOUCH_SUCCESSOR_V2_{label}_POLICY_INVALID")
+        return trusted
+
+    primary_trusted = shape(primary, "PRIMARY", require_mode=True) if primary else {}
+    independent_trusted = (
+        shape(independent, "INDEPENDENT", require_mode=False) if independent else {}
+    )
+    if primary_trusted != independent_trusted:
+        failures.append("POST_TOUCH_SUCCESSOR_V2_TRUST_SET_PARITY_INVALID")
+    failures = sorted(set(failures))
+    trusted = primary_trusted if not failures else {}
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "failures": failures,
+        "path": str(predecessor_path),
+        "successor_v2_path": str(successor_path),
+        "artifact_head_sha": artifact,
+        "revalidation_binding_head_sha": binding_head,
+        "record_count": len(trusted),
+        "trusted_fingerprint_count": len(trusted),
+        "effective_trusted_fingerprint_count": len(trusted),
+        "predecessor_overlap_count": len(
+            set(trusted) & set(_post_touch_successor_v2.TARGET_FINGERPRINTS)
+        ),
+        "replacement_complete": not failures,
+        "trust_set_parity": primary_trusted == independent_trusted,
+        "successor_v2": {
+            "status": "PASS" if not failures else "FAIL",
+            "trusted_fingerprint_count": len(trusted),
+            "artifact_head_sha": artifact,
+            "revalidation_binding_head_sha": binding_head,
+        },
+        "trusted_by_fingerprint": trusted,
+        "predecessor_trusted_by_fingerprint": {},
+        "successor_v2_trusted_by_fingerprint": trusted,
+    }
+
+
+def _subject_projection_replacement_epoch_composite(
+    root: Path,
+    sidecar_path: Path,
+    predecessor_path: Path,
+    *,
+    artifact_head: str,
+    label: str,
+    primary_module: Any,
+    independent_module: Any,
+    expected_count: int,
+    expected_drift_count: int | None = None,
+    expected_preserved_count: int | None = None,
+) -> dict[str, Any]:
+    """Admit one committed replacement epoch only after dual exact parity."""
+
+    failures: list[str] = []
+    manifest: dict[str, Any] = {}
+    artifact = ""
+    binding_head = ""
+    if primary_module is None or independent_module is None:
+        failures.append(f"{label}_MODULE_NOT_AVAILABLE")
+    else:
+        expected_root = str(getattr(primary_module, "SUCCESSOR_ROOT", "")).rstrip("/")
+        if expected_root:
+            canonical = (root / expected_root / "manifest.json").resolve()
+            if sidecar_path.resolve() != canonical:
+                failures.append(f"{label}_MANIFEST_PATH_NOT_CANONICAL")
+    try:
+        manifest, artifact, binding_head = _committed_successor_manifest(
+            root, sidecar_path, artifact_head=artifact_head
+        )
+    except Exception as error:
+        failures.append(f"{label}_MANIFEST_BINDING_INVALID:{type(error).__name__}")
+
+    predecessor_fingerprints: set[str] = set()
+    try:
+        predecessor_raw = _git_bytes(
+            root,
+            artifact or artifact_head,
+            predecessor_path.resolve().relative_to(root.resolve()).as_posix(),
+        )
+        if predecessor_raw is None:
+            raise ValueError("PREDECESSOR_BLOB_MISSING")
+        predecessor = json.loads(
+            predecessor_raw.decode("utf-8-sig"),
+            object_pairs_hook=_strict_object,
+        )
+        predecessor_fingerprints = {
+            str(value) for value in predecessor.get("failure_fingerprints", [])
+        }
+    except Exception as error:
+        failures.append(f"{label}_PREDECESSOR_UNREADABLE:{type(error).__name__}")
+
+    primary: Any = {}
+    independent: Any = {}
+    if not failures:
+        try:
+            primary = primary_module.validate(
+                root,
+                sidecar_path,
+                evaluated_head=binding_head,
+                stage_dir=None,
+                artifact_head=artifact,
+            )
+        except Exception as error:
+            primary = {
+                "status": "FAIL",
+                "failures": [f"{label}_PRIMARY_EXCEPTION:{type(error).__name__}"],
+                "trusted_by_fingerprint": {},
+            }
+        try:
+            independent = independent_module.audit(
+                root,
+                sidecar_path,
+                evaluated_head=binding_head,
+                stage_dir=None,
+                artifact_head=artifact,
+            )
+        except Exception as error:
+            independent = {
+                "status": "FAIL",
+                "failures": [
+                    f"{label}_INDEPENDENT_EXCEPTION:{type(error).__name__}"
+                ],
+                "trusted_by_fingerprint": {},
+            }
+
+    def shape(result: Any, suffix: str) -> dict[str, dict[str, Any]]:
+        if not isinstance(result, dict):
+            failures.append(f"{label}_{suffix}_RESULT_NOT_OBJECT")
+            return {}
+        if result.get("status") != "PASS":
+            failures.append(f"{label}_{suffix}_REQUIRED_PASS")
+        if result.get("mode") != "COMMITTED":
+            failures.append(f"{label}_{suffix}_COMMITTED_MODE_REQUIRED")
+        diagnostics = result.get("failures")
+        if not isinstance(diagnostics, list) or any(
+            not isinstance(value, str) for value in diagnostics
+        ):
+            failures.append(f"{label}_{suffix}_FAILURES_INVALID")
+            diagnostics = []
+        failures.extend(f"{label}_{suffix}:{value}" for value in diagnostics)
+        trusted = result.get("trusted_by_fingerprint")
+        if not isinstance(trusted, dict):
+            failures.append(f"{label}_{suffix}_TRUST_NOT_OBJECT")
+            return {}
+        if len(trusted) != expected_count or set(trusted) != predecessor_fingerprints:
+            failures.append(f"{label}_{suffix}_REPLACEMENT_SET_INVALID")
+        if result.get("record_count") != expected_count:
+            failures.append(f"{label}_{suffix}_RECORD_COUNT_INVALID")
+        if result.get("artifact_head_sha", result.get("artifact_head")) != artifact:
+            failures.append(f"{label}_{suffix}_ARTIFACT_HEAD_INVALID")
+        if result.get(
+            "evaluated_head_sha", result.get("evaluated_binding_head")
+        ) != binding_head:
+            failures.append(f"{label}_{suffix}_BINDING_HEAD_INVALID")
+        observed_drift_count = result.get(
+            "drift_record_count", result.get("replacement_record_count")
+        )
+        observed_preserved_count = result.get(
+            "preserved_record_count",
+            0 if "replacement_record_count" in result else None,
+        )
+        if expected_drift_count is not None and (
+            observed_drift_count != expected_drift_count
+        ):
+            failures.append(f"{label}_{suffix}_DRIFT_COUNT_INVALID")
+        if expected_preserved_count is not None and (
+            observed_preserved_count != expected_preserved_count
+        ):
+            failures.append(f"{label}_{suffix}_PRESERVED_COUNT_INVALID")
+        for fingerprint, row in trusted.items():
+            if (
+                not isinstance(row, dict)
+                or row.get("allowed_invalidations")
+                != ["SUBJECT_PROJECTION_CHANGED_INVALID"]
+                or not isinstance(row.get("prior_record_path"), str)
+                or not row.get("prior_record_path")
+            ):
+                failures.append(f"{label}_{suffix}_TRUST_ROW_INVALID:{fingerprint}")
+        return trusted
+
+    primary_trusted = shape(primary, "PRIMARY") if primary else {}
+    independent_trusted = shape(independent, "INDEPENDENT") if independent else {}
+    if primary_trusted != independent_trusted:
+        failures.append(f"{label}_TRUST_SET_PARITY_INVALID")
+    manifest_targets = set(str(value) for value in manifest.get("failure_fingerprints", []))
+    manifest_targets.update(
+        str(value) for value in manifest.get("preserved_failure_fingerprints", [])
+    )
+    if manifest_targets != predecessor_fingerprints:
+        failures.append(f"{label}_MANIFEST_REPLACEMENT_SET_INVALID")
+    if manifest.get("wildcard_count") != 0 or manifest.get(
+        "future_failure_auto_revalidation"
+    ) is not False:
+        failures.append(f"{label}_FAIL_CLOSED_POLICY_INVALID")
+    failures = sorted(set(failures))
+    trusted = primary_trusted if not failures else {}
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "failures": failures,
+        "path": str(sidecar_path),
+        "artifact_head_sha": artifact,
+        "revalidation_binding_head_sha": binding_head,
+        "record_count": expected_count,
+        "trusted_fingerprint_count": len(trusted),
+        "drift_record_count": expected_drift_count or expected_count,
+        "preserved_record_count": expected_preserved_count or 0,
+        "predecessor_fingerprint_count": len(predecessor_fingerprints),
+        "replacement_overlap_count": len(set(trusted) & predecessor_fingerprints),
+        "trust_set_parity": primary_trusted == independent_trusted,
+        "trusted_by_fingerprint": trusted,
+    }
+
+
+def _subject_projection_terminal_replacement_composite(
+    root: Path,
+    v1_sidecar_path: Path,
+    successor_v2_sidecar_path: Path,
+    successor_v3_sidecar_path: Path,
+    successor_v4_sidecar_path: Path,
+    successor_v5_sidecar_path: Path,
+    explicit_batch_chain: list[tuple[Path, dict[str, Any]]],
+    *,
+    artifact_head: str,
+    explicit_batch_chain_valid: bool,
+) -> dict[str, Any]:
+    """Replace v1/v2 trust with v4/v5 while preserving the v3 25-set."""
+
+    v4 = _subject_projection_replacement_epoch_composite(
+        root,
+        successor_v4_sidecar_path,
+        v1_sidecar_path,
+        artifact_head=artifact_head,
+        label="SUBJECT_PROJECTION_SUCCESSOR_V4",
+        primary_module=_subject_projection_revalidation_successor_v4,
+        independent_module=_subject_projection_revalidation_successor_v4_independent,
+        expected_count=82,
+        expected_drift_count=48,
+        expected_preserved_count=34,
+    )
+    v5 = _subject_projection_replacement_epoch_composite(
+        root,
+        successor_v5_sidecar_path,
+        successor_v2_sidecar_path,
+        artifact_head=artifact_head,
+        label="SUBJECT_PROJECTION_SUCCESSOR_V5",
+        primary_module=_subject_projection_revalidation_successor_v5,
+        independent_module=_subject_projection_revalidation_successor_v5_independent,
+        expected_count=2,
+        expected_drift_count=2,
+        expected_preserved_count=0,
+    )
+    v3 = _subject_projection_revalidation_successor_v3_composite(
+        root,
+        successor_v3_sidecar_path,
+        explicit_batch_chain,
+        evaluated_head=artifact_head,
+        explicit_batch_chain_valid=explicit_batch_chain_valid,
+    )
+    failures = [
+        f"SUBJECT_PROJECTION_SUCCESSOR_V4_GATE:{value}"
+        for value in v4.get("failures", [])
+    ] + [
+        f"SUBJECT_PROJECTION_SUCCESSOR_V5_GATE:{value}"
+        for value in v5.get("failures", [])
+    ] + [
+        f"SUBJECT_PROJECTION_SUCCESSOR_V3_GATE:{value}"
+        for value in v3.get("failures", [])
+    ]
+    for label, value in (("V4", v4), ("V5", v5), ("V3", v3)):
+        if value.get("status") != "PASS":
+            failures.append(f"SUBJECT_PROJECTION_SUCCESSOR_{label}_REQUIRED_PASS")
+    effective_sets = [
+        set(v4.get("trusted_by_fingerprint", {})),
+        set(v5.get("trusted_by_fingerprint", {})),
+        set(v3.get("trusted_by_fingerprint", {})),
+    ]
+    overlap: set[str] = set()
+    for index, current in enumerate(effective_sets):
+        for prior in effective_sets[:index]:
+            overlap.update(current & prior)
+    union = set().union(*effective_sets)
+    if overlap:
+        failures.append(
+            f"SUBJECT_PROJECTION_EFFECTIVE_TRUST_OVERLAP:{len(overlap)}"
+        )
+    if len(union) != 109:
+        failures.append(
+            f"SUBJECT_PROJECTION_EFFECTIVE_TRUST_UNION_INVALID:{len(union)}"
+        )
+    if v4.get("replacement_overlap_count") != 82:
+        failures.append("SUBJECT_PROJECTION_V4_REPLACEMENT_COVERAGE_INVALID")
+    if v5.get("replacement_overlap_count") != 2:
+        failures.append("SUBJECT_PROJECTION_V5_REPLACEMENT_COVERAGE_INVALID")
+    failures = sorted(set(failures))
+    exposed_v4 = v4.get("trusted_by_fingerprint", {}) if not failures else {}
+    exposed_v5 = v5.get("trusted_by_fingerprint", {}) if not failures else {}
+    exposed_v3 = v3.get("trusted_by_fingerprint", {}) if not failures else {}
+    trusted = {**exposed_v4, **exposed_v5, **exposed_v3}
+
+    def summary(value: dict[str, Any]) -> dict[str, Any]:
+        return {
+            key: item
+            for key, item in value.items()
+            if key != "trusted_by_fingerprint"
+        }
+
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "failures": failures,
+        "path": str(v1_sidecar_path),
+        "successor_v2_path": str(successor_v2_sidecar_path),
+        "successor_v3_path": str(successor_v3_sidecar_path),
+        "successor_v4_path": str(successor_v4_sidecar_path),
+        "successor_v5_path": str(successor_v5_sidecar_path),
+        "record_count": len(trusted),
+        "trusted_fingerprint_count": len(trusted),
+        "union_fingerprint_count": len(union),
+        "cross_epoch_overlap_count": len(overlap),
+        "superseded_predecessor_overlap_count": 84,
+        "terminal_replacement_complete": not failures,
+        "four_gate_complete": not failures,
+        "trust_set_parity": (
+            v4.get("trust_set_parity") is True
+            and v5.get("trust_set_parity") is True
+            and v3.get("trust_set_parity") is True
+        ),
+        "v1": {"status": "LINEAGE_ONLY", "trusted_fingerprint_count": 0},
+        "successor_v2": {
+            "status": "LINEAGE_ONLY", "trusted_fingerprint_count": 0,
+        },
+        "successor_v3": summary(v3),
+        "successor_v4": summary(v4),
+        "successor_v5": summary(v5),
+        "trusted_by_fingerprint": trusted,
+        "v1_trusted_by_fingerprint": {},
+        "successor_v2_trusted_by_fingerprint": {},
+        "successor_v3_trusted_by_fingerprint": exposed_v3,
+        "successor_v4_trusted_by_fingerprint": exposed_v4,
+        "successor_v5_trusted_by_fingerprint": exposed_v5,
+    }
+
+
 def _validate_manifest_binding_against_repo(
     root: Path,
     manifest: dict[str, Any],
@@ -6553,11 +7059,20 @@ def _validate_manifest_records_against_repo(
     authorized_identities: dict[str, dict[str, str]],
     legacy_fingerprints: set[str],
     post_touch_trusted: dict[str, dict[str, Any]] | None = None,
+    post_touch_revalidation_successor_v2_trusted: (
+        dict[str, dict[str, Any]] | None
+    ) = None,
     subject_projection_revalidation_trusted: dict[str, dict[str, Any]] | None = None,
     subject_projection_revalidation_successor_v2_trusted: (
         dict[str, dict[str, Any]] | None
     ) = None,
     subject_projection_revalidation_successor_v3_trusted: (
+        dict[str, dict[str, Any]] | None
+    ) = None,
+    subject_projection_revalidation_successor_v4_trusted: (
+        dict[str, dict[str, Any]] | None
+    ) = None,
+    subject_projection_revalidation_successor_v5_trusted: (
         dict[str, dict[str, Any]] | None
     ) = None,
     implementation_trusted: dict[str, dict[str, Any]] | None = None,
@@ -6596,12 +7111,21 @@ def _validate_manifest_records_against_repo(
             implementation_trusted=implementation_trusted,
         )
         trusted = post_touch_trusted or {}
+        post_touch_successor_trusted = (
+            post_touch_revalidation_successor_v2_trusted or {}
+        )
         subject_projection_trusted = subject_projection_revalidation_trusted or {}
         subject_projection_successor_trusted = (
             subject_projection_revalidation_successor_v2_trusted or {}
         )
         subject_projection_successor_v3_trusted = (
             subject_projection_revalidation_successor_v3_trusted or {}
+        )
+        subject_projection_successor_v4_trusted = (
+            subject_projection_revalidation_successor_v4_trusted or {}
+        )
+        subject_projection_successor_v5_trusted = (
+            subject_projection_revalidation_successor_v5_trusted or {}
         )
         # Suppression is one-for-one: only the exact declared invalidation
         # code for the exact trusted fingerprint may be removed.  Every
@@ -6623,8 +7147,18 @@ def _validate_manifest_records_against_repo(
                     successor_v3_owns = (
                         fingerprint in subject_projection_successor_v3_trusted
                     )
-                    owners = int(v1_owns) + int(successor_owns) + int(
-                        successor_v3_owns
+                    successor_v4_owns = (
+                        fingerprint in subject_projection_successor_v4_trusted
+                    )
+                    successor_v5_owns = (
+                        fingerprint in subject_projection_successor_v5_trusted
+                    )
+                    owners = (
+                        int(v1_owns)
+                        + int(successor_owns)
+                        + int(successor_v3_owns)
+                        + int(successor_v4_owns)
+                        + int(successor_v5_owns)
                     )
                     if owners == 1:
                         if v1_owns and (
@@ -6658,13 +7192,44 @@ def _validate_manifest_records_against_repo(
                             )
                         ):
                             continue
-                if _post_touch.allows_invalidation(
-                    trusted,
-                    fingerprint=fingerprint,
-                    invalidation_code=code,
-                    prior_record_path=relative,
-                ):
-                    continue
+                        if successor_v4_owns and (
+                            _subject_projection_revalidation.allows_invalidation(
+                                subject_projection_successor_v4_trusted,
+                                fingerprint=fingerprint,
+                                invalidation_code=code,
+                                prior_record_path=relative,
+                            )
+                        ):
+                            continue
+                        if successor_v5_owns and (
+                            _subject_projection_revalidation.allows_invalidation(
+                                subject_projection_successor_v5_trusted,
+                                fingerprint=fingerprint,
+                                invalidation_code=code,
+                                prior_record_path=relative,
+                            )
+                        ):
+                            continue
+                post_touch_v1_owns = fingerprint in trusted
+                post_touch_v2_owns = fingerprint in post_touch_successor_trusted
+                if int(post_touch_v1_owns) + int(post_touch_v2_owns) == 1:
+                    if post_touch_v1_owns and _post_touch.allows_invalidation(
+                        trusted,
+                        fingerprint=fingerprint,
+                        invalidation_code=code,
+                        prior_record_path=relative,
+                    ):
+                        continue
+                    if (
+                        post_touch_v2_owns
+                        and _post_touch_successor_v2.allows_invalidation(
+                            post_touch_successor_trusted,
+                            fingerprint=fingerprint,
+                            invalidation_code=code,
+                            prior_record_path=relative,
+                        )
+                    ):
+                        continue
             filtered.append(failure)
         failures.extend(filtered)
         if record.get("batch_id") != manifest.get("batch_id"):
@@ -7753,9 +8318,12 @@ def validate_batch_manifest_against_repo(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
+    post_touch_revalidation_successor_v2_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
     subject_projection_revalidation_successor_v2_path: Path | None = None,
     subject_projection_revalidation_successor_v3_path: Path | None = None,
+    subject_projection_revalidation_successor_v4_path: Path | None = None,
+    subject_projection_revalidation_successor_v5_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     historical_delta_metadata_successor_path: Path | None = None,
     historical_delta_metadata_successor_v2_path: Path | None = None,
@@ -7847,6 +8415,7 @@ def validate_batch_manifest_against_repo(
         "trusted_by_fingerprint": {},
         "record_count": 0,
         "fingerprints": [],
+        "successor_v2_trusted_by_fingerprint": {},
     }
     subject_projection_revalidation_result: dict[str, Any] = {
         "status": "NOT_PROVIDED",
@@ -7859,16 +8428,23 @@ def validate_batch_manifest_against_repo(
         "successor_v2_independent_status": "NOT_PROVIDED",
         "successor_v3_primary_status": "NOT_PROVIDED",
         "successor_v3_independent_status": "NOT_PROVIDED",
+        "successor_v4_primary_status": "NOT_PROVIDED",
+        "successor_v4_independent_status": "NOT_PROVIDED",
+        "successor_v5_primary_status": "NOT_PROVIDED",
+        "successor_v5_independent_status": "NOT_PROVIDED",
         "primary_trusted_fingerprint_count": 0,
         "independent_trusted_fingerprint_count": 0,
         "v1_trusted_fingerprint_count": 0,
         "successor_v2_trusted_fingerprint_count": 0,
         "successor_v3_trusted_fingerprint_count": 0,
+        "successor_v4_trusted_fingerprint_count": 0,
+        "successor_v5_trusted_fingerprint_count": 0,
         "trusted_fingerprint_count": 0,
         "union_fingerprint_count": 0,
         "cross_epoch_overlap_count": 0,
         "trust_set_parity": False,
         "four_gate_complete": False,
+        "terminal_replacement_complete": False,
         "v1": {
             "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
         },
@@ -7878,10 +8454,18 @@ def validate_batch_manifest_against_repo(
         "successor_v3": {
             "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
         },
+        "successor_v4": {
+            "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
+        },
+        "successor_v5": {
+            "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
+        },
         "trusted_by_fingerprint": {},
         "v1_trusted_by_fingerprint": {},
         "successor_v2_trusted_by_fingerprint": {},
         "successor_v3_trusted_by_fingerprint": {},
+        "successor_v4_trusted_by_fingerprint": {},
+        "successor_v5_trusted_by_fingerprint": {},
     }
     all_manifests = list(reversed(previous_chain)) + [(manifest_path, manifest)]
     historical_delta_metadata_ledger = (
@@ -8053,7 +8637,36 @@ def validate_batch_manifest_against_repo(
         )
     failures.extend(pre_sidecar_manifest_failures)
     explicit_batch_chain_valid = not failures
-    if post_touch_revalidation_path is not None:
+    if post_touch_revalidation_successor_v2_path is not None:
+        if post_touch_revalidation_path is None:
+            successor_coupling_failure = (
+                "POST_TOUCH_REVALIDATION_SUCCESSOR_V2_REQUIRES_PREDECESSOR"
+            )
+            failures.append(successor_coupling_failure)
+            post_touch_result = {
+                **post_touch_result,
+                "status": "FAIL",
+                "failures": [successor_coupling_failure],
+                "successor_v2_path": str(
+                    post_touch_revalidation_successor_v2_path
+                ),
+            }
+        else:
+            post_touch_result = _post_touch_revalidation_successor_v2_composite(
+                root,
+                post_touch_revalidation_path,
+                post_touch_revalidation_successor_v2_path,
+                artifact_head=evaluated_head,
+            )
+            failures.extend(
+                f"POST_TOUCH_REVALIDATION_SUCCESSOR_V2_INVALID:{failure}"
+                for failure in post_touch_result.get("failures", [])
+            )
+            if post_touch_result.get("status") != "PASS":
+                failures.append(
+                    "POST_TOUCH_REVALIDATION_SUCCESSOR_V2_REQUIRED_VALID_SIDECAR"
+                )
+    elif post_touch_revalidation_path is not None:
         routing_failures, sidecar_batch_manifest_path = (
             _resolve_post_touch_batch_manifest_path(
                 root,
@@ -8092,12 +8705,81 @@ def validate_batch_manifest_against_repo(
         )
         if post_touch_result.get("status") != "PASS":
             failures.append("POST_TOUCH_REVALIDATION_REQUIRED_VALID_SIDECAR")
-    post_touch_trusted = post_touch_result.get("trusted_by_fingerprint", {})
+    post_touch_trusted = (
+        post_touch_result.get("trusted_by_fingerprint", {})
+        if post_touch_revalidation_successor_v2_path is None
+        else {}
+    )
+    post_touch_revalidation_successor_v2_trusted = (
+        post_touch_result.get("successor_v2_trusted_by_fingerprint", {})
+        if post_touch_revalidation_successor_v2_path is not None
+        else {}
+    )
+    replacement_requested = (
+        subject_projection_revalidation_successor_v4_path is not None
+        or subject_projection_revalidation_successor_v5_path is not None
+    )
+    replacement_paths = (
+        subject_projection_revalidation_path,
+        subject_projection_revalidation_successor_v2_path,
+        subject_projection_revalidation_successor_v3_path,
+        subject_projection_revalidation_successor_v4_path,
+        subject_projection_revalidation_successor_v5_path,
+    )
+    if replacement_requested:
+        if any(path is None for path in replacement_paths):
+            replacement_failure = (
+                "SUBJECT_PROJECTION_TERMINAL_REPLACEMENT_REQUIRES_V1_V2_V3_V4_V5"
+            )
+            failures.append(replacement_failure)
+            subject_projection_revalidation_result = {
+                **subject_projection_revalidation_result,
+                "status": "FAIL",
+                "failures": [replacement_failure],
+                "path": str(subject_projection_revalidation_path or ""),
+                "successor_v2_path": str(
+                    subject_projection_revalidation_successor_v2_path or ""
+                ),
+                "successor_v3_path": str(
+                    subject_projection_revalidation_successor_v3_path or ""
+                ),
+                "successor_v4_path": str(
+                    subject_projection_revalidation_successor_v4_path or ""
+                ),
+                "successor_v5_path": str(
+                    subject_projection_revalidation_successor_v5_path or ""
+                ),
+            }
+        else:
+            subject_projection_revalidation_result = (
+                _subject_projection_terminal_replacement_composite(
+                    root,
+                    subject_projection_revalidation_path,
+                    subject_projection_revalidation_successor_v2_path,
+                    subject_projection_revalidation_successor_v3_path,
+                    subject_projection_revalidation_successor_v4_path,
+                    subject_projection_revalidation_successor_v5_path,
+                    all_manifests,
+                    artifact_head=evaluated_head,
+                    explicit_batch_chain_valid=explicit_batch_chain_valid,
+                )
+            )
+            failures.extend(
+                f"SUBJECT_PROJECTION_REVALIDATION_INVALID:{failure}"
+                for failure in subject_projection_revalidation_result.get(
+                    "failures", []
+                )
+            )
+            if subject_projection_revalidation_result.get("status") != "PASS":
+                failures.append(
+                    "SUBJECT_PROJECTION_REVALIDATION_REQUIRED_VALID_"
+                    "TERMINAL_REPLACEMENT"
+                )
     subject_projection_pair_complete = (
         subject_projection_revalidation_path is not None
         and subject_projection_revalidation_successor_v2_path is not None
     )
-    if (
+    if not replacement_requested and (
         subject_projection_revalidation_successor_v3_path is not None
         and not subject_projection_pair_complete
     ):
@@ -8113,7 +8795,7 @@ def validate_batch_manifest_against_repo(
                 subject_projection_revalidation_successor_v3_path
             ),
         }
-    if (
+    if not replacement_requested and (
         (subject_projection_revalidation_path is None)
         != (subject_projection_revalidation_successor_v2_path is None)
     ):
@@ -8133,7 +8815,7 @@ def validate_batch_manifest_against_repo(
                 else ""
             ),
         }
-    elif subject_projection_pair_complete:
+    elif not replacement_requested and subject_projection_pair_complete:
         composite_kwargs: dict[str, Any] = {
             "evaluated_head": evaluated_head,
             "explicit_batch_chain_valid": explicit_batch_chain_valid,
@@ -8175,6 +8857,16 @@ def validate_batch_manifest_against_repo(
     subject_projection_revalidation_successor_v3_trusted = (
         subject_projection_revalidation_result.get(
             "successor_v3_trusted_by_fingerprint", {}
+        )
+    )
+    subject_projection_revalidation_successor_v4_trusted = (
+        subject_projection_revalidation_result.get(
+            "successor_v4_trusted_by_fingerprint", {}
+        )
+    )
+    subject_projection_revalidation_successor_v5_trusted = (
+        subject_projection_revalidation_result.get(
+            "successor_v5_trusted_by_fingerprint", {}
         )
     )
     legacy_fingerprints = set(legacy.get("legacy_corrected_fingerprints", []))
@@ -8225,6 +8917,9 @@ def validate_batch_manifest_against_repo(
             authorized_identities=authorized_identities,
             legacy_fingerprints=legacy_fingerprints,
             post_touch_trusted=post_touch_trusted,
+            post_touch_revalidation_successor_v2_trusted=(
+                post_touch_revalidation_successor_v2_trusted
+            ),
             subject_projection_revalidation_trusted=(
                 subject_projection_revalidation_trusted
             ),
@@ -8233,6 +8928,12 @@ def validate_batch_manifest_against_repo(
             ),
             subject_projection_revalidation_successor_v3_trusted=(
                 subject_projection_revalidation_successor_v3_trusted
+            ),
+            subject_projection_revalidation_successor_v4_trusted=(
+                subject_projection_revalidation_successor_v4_trusted
+            ),
+            subject_projection_revalidation_successor_v5_trusted=(
+                subject_projection_revalidation_successor_v5_trusted
             ),
             implementation_trusted=implementation_trusted,
         )
@@ -8256,8 +8957,22 @@ def validate_batch_manifest_against_repo(
         "post_touch_revalidation": {
             "status": post_touch_result.get("status", "NOT_PROVIDED"),
             "path": str(post_touch_revalidation_path) if post_touch_revalidation_path else "",
+            "successor_v2_path": (
+                str(post_touch_revalidation_successor_v2_path)
+                if post_touch_revalidation_successor_v2_path else ""
+            ),
             "record_count": post_touch_result.get("record_count", 0),
-            "trusted_fingerprint_count": len(post_touch_trusted or {}),
+            "trusted_fingerprint_count": (
+                len(post_touch_trusted or {})
+                + len(post_touch_revalidation_successor_v2_trusted or {})
+            ),
+            "effective_trusted_fingerprint_count": (
+                len(post_touch_trusted or {})
+                + len(post_touch_revalidation_successor_v2_trusted or {})
+            ),
+            "replacement_complete": post_touch_result.get(
+                "replacement_complete", False
+            ),
             "failures": post_touch_result.get("failures", []),
         },
         "subject_projection_revalidation": {

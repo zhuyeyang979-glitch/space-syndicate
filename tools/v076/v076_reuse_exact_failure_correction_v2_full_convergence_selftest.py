@@ -7304,6 +7304,229 @@ def _successor_v4_target_drift_negative_case(root: Path) -> None:
     )
 
 
+def _terminal_subject_projection_replacement_case() -> None:
+    """Only v4/v5/v3 form the terminal 109-set and every mismatch clears trust."""
+
+    def trust(start: int, count: int) -> dict[str, dict[str, Any]]:
+        return {
+            _fingerprint(start + index): {
+                "allowed_invalidations": ["SUBJECT_PROJECTION_CHANGED_INVALID"],
+                "prior_record_path": f"records/{start + index}.json",
+            }
+            for index in range(count)
+        }
+
+    v4_trust = trust(10000, 82)
+    v5_trust = trust(20000, 2)
+    v3_trust = trust(30000, 25)
+    state = {"v4": v4_trust, "v5": v5_trust, "v3": v3_trust}
+    original_epoch = convergence._subject_projection_replacement_epoch_composite
+    original_v3 = convergence._subject_projection_revalidation_successor_v3_composite
+
+    def epoch(*args: Any, label: str, expected_count: int, **kwargs: Any) -> dict[str, Any]:
+        selected = state["v4" if label.endswith("V4") else "v5"]
+        return {
+            "status": "PASS",
+            "failures": [],
+            "trusted_by_fingerprint": copy.deepcopy(selected),
+            "trusted_fingerprint_count": len(selected),
+            "replacement_overlap_count": expected_count,
+            "trust_set_parity": True,
+        }
+
+    def v3(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return {
+            "status": "PASS",
+            "failures": [],
+            "trusted_by_fingerprint": copy.deepcopy(state["v3"]),
+            "trusted_fingerprint_count": len(state["v3"]),
+            "trust_set_parity": True,
+        }
+
+    convergence._subject_projection_replacement_epoch_composite = epoch
+    convergence._subject_projection_revalidation_successor_v3_composite = v3
+
+    def evaluate() -> dict[str, Any]:
+        paths = [Path(f"sidecar-{index}.json") for index in range(5)]
+        return convergence._subject_projection_terminal_replacement_composite(
+            Path.cwd(),
+            *paths,
+            [],
+            artifact_head="a" * 40,
+            explicit_batch_chain_valid=True,
+        )
+
+    try:
+        accepted = evaluate()
+        _expect(accepted["status"] == "PASS", str(accepted))
+        _expect(accepted["terminal_replacement_complete"] is True, str(accepted))
+        _expect(accepted["union_fingerprint_count"] == 109, str(accepted))
+        _expect(accepted["cross_epoch_overlap_count"] == 0, str(accepted))
+        _expect(accepted["v1_trusted_by_fingerprint"] == {}, str(accepted))
+        _expect(
+            accepted["successor_v2_trusted_by_fingerprint"] == {},
+            str(accepted),
+        )
+        _expect(
+            len(accepted["successor_v4_trusted_by_fingerprint"]) == 82
+            and len(accepted["successor_v5_trusted_by_fingerprint"]) == 2
+            and len(accepted["successor_v3_trusted_by_fingerprint"]) == 25,
+            str(accepted),
+        )
+
+        duplicate = next(iter(v4_trust))
+        state["v5"] = {
+            duplicate: next(iter(v5_trust.values())),
+            next(iter(v5_trust)): next(iter(v5_trust.values())),
+        }
+        rejected = evaluate()
+        _expect(rejected["status"] == "FAIL", str(rejected))
+        _expect(rejected["trusted_by_fingerprint"] == {}, str(rejected))
+        _expect_failure(
+            rejected["failures"],
+            "SUBJECT_PROJECTION_EFFECTIVE_TRUST_OVERLAP:1",
+        )
+
+        state["v5"] = v5_trust
+
+        def parity_failure(*args: Any, label: str, **kwargs: Any) -> dict[str, Any]:
+            if label.endswith("V4"):
+                return {
+                    "status": "FAIL",
+                    "failures": ["TRUST_SET_PARITY_INVALID"],
+                    "trusted_by_fingerprint": {},
+                    "trusted_fingerprint_count": 0,
+                    "replacement_overlap_count": 0,
+                    "trust_set_parity": False,
+                }
+            return epoch(*args, label=label, **kwargs)
+
+        convergence._subject_projection_replacement_epoch_composite = parity_failure
+        rejected = evaluate()
+        _expect(rejected["status"] == "FAIL", str(rejected))
+        _expect(rejected["trusted_by_fingerprint"] == {}, str(rejected))
+        _expect_failure(
+            rejected["failures"],
+            "SUBJECT_PROJECTION_SUCCESSOR_V4_GATE:TRUST_SET_PARITY_INVALID",
+        )
+    finally:
+        convergence._subject_projection_replacement_epoch_composite = original_epoch
+        convergence._subject_projection_revalidation_successor_v3_composite = original_v3
+
+
+def _post_touch_successor_v2_effective_owner_case() -> None:
+    """The successor replaces rather than doubles the exact two post-touch owners."""
+
+    root = Path.cwd()
+    predecessor = root / convergence._post_touch_successor_v2.PREDECESSOR_MANIFEST_PATH
+    successor = root / convergence._post_touch_successor_v2.MANIFEST_PATH
+    targets = tuple(convergence._post_touch_successor_v2.TARGET_FINGERPRINTS)
+    trust = {
+        fingerprint: {
+            "allowed_invalidations": [
+                "BLOB_CHANGED_CORRECTION_INVALID",
+                "TOUCHED_CORRECTION_INVALID",
+            ],
+            "prior_record_path": f"records/{fingerprint}.json",
+        }
+        for fingerprint in targets
+    }
+    artifact = "a" * 40
+    binding = "b" * 40
+    primary = {
+        "status": "PASS",
+        "mode": "COMMITTED",
+        "failures": [],
+        "trusted_by_fingerprint": copy.deepcopy(trust),
+        "trusted_fingerprint_count": 2,
+        "record_count": 2,
+        "artifact_head": artifact,
+        "evaluated_binding_head": binding,
+        "wildcard_count": 0,
+        "future_failure_auto_revalidation_count": 0,
+    }
+    independent = copy.deepcopy(primary)
+    original_manifest = convergence._committed_successor_manifest
+    original_primary = convergence._post_touch_successor_v2.validate
+    original_independent = convergence._post_touch_successor_v2_independent.audit
+    convergence._committed_successor_manifest = lambda *args, **kwargs: (
+        {
+            "predecessor_manifest_path": (
+                convergence._post_touch_successor_v2.PREDECESSOR_MANIFEST_PATH
+            )
+        },
+        artifact,
+        binding,
+    )
+    convergence._post_touch_successor_v2.validate = (
+        lambda *args, **kwargs: copy.deepcopy(primary)
+    )
+    convergence._post_touch_successor_v2_independent.audit = (
+        lambda *args, **kwargs: copy.deepcopy(independent)
+    )
+    try:
+        accepted = convergence._post_touch_revalidation_successor_v2_composite(
+            root,
+            predecessor,
+            successor,
+            artifact_head=artifact,
+        )
+        _expect(accepted["status"] == "PASS", str(accepted))
+        _expect(accepted["effective_trusted_fingerprint_count"] == 2, str(accepted))
+        _expect(accepted["predecessor_trusted_by_fingerprint"] == {}, str(accepted))
+        _expect(
+            len(accepted["successor_v2_trusted_by_fingerprint"]) == 2,
+            str(accepted),
+        )
+
+        changed = next(iter(targets))
+        independent["trusted_by_fingerprint"][changed]["prior_record_path"] = (
+            "records/mismatch.json"
+        )
+        rejected = convergence._post_touch_revalidation_successor_v2_composite(
+            root,
+            predecessor,
+            successor,
+            artifact_head=artifact,
+        )
+        _expect(rejected["status"] == "FAIL", str(rejected))
+        _expect(rejected["trusted_by_fingerprint"] == {}, str(rejected))
+        _expect_failure(
+            rejected["failures"],
+            "POST_TOUCH_SUCCESSOR_V2_TRUST_SET_PARITY_INVALID",
+        )
+    finally:
+        convergence._committed_successor_manifest = original_manifest
+        convergence._post_touch_successor_v2.validate = original_primary
+        convergence._post_touch_successor_v2_independent.audit = original_independent
+
+
+def _optional_v5_import_fails_only_on_replacement_case() -> None:
+    """A missing v5 module leaves imports usable and fails only an explicit v5 epoch."""
+
+    _expect(callable(convergence.validate_batch_manifest_against_repo), "module import failed")
+    if convergence._subject_projection_revalidation_successor_v5 is not None:
+        return
+    result = convergence._subject_projection_replacement_epoch_composite(
+        Path.cwd(),
+        Path("missing-v5/manifest.json"),
+        Path("missing-v2/manifest.json"),
+        artifact_head="a" * 40,
+        label="SUBJECT_PROJECTION_SUCCESSOR_V5",
+        primary_module=None,
+        independent_module=None,
+        expected_count=2,
+        expected_drift_count=2,
+        expected_preserved_count=0,
+    )
+    _expect(result["status"] == "FAIL", str(result))
+    _expect(result["trusted_by_fingerprint"] == {}, str(result))
+    _expect_failure(
+        result["failures"],
+        "SUBJECT_PROJECTION_SUCCESSOR_V5_MODULE_NOT_AVAILABLE",
+    )
+
+
 def build_cases(root: Path) -> list[Case]:
     cases: list[Case] = []
     cases.append(Case("01", "new schema is exact and authorized", lambda: _expect(not convergence.validate_schema(root), str(convergence.validate_schema(root)))))
@@ -7429,6 +7652,9 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("121", "unrelated same-component active path drift remains rejected", lambda: _unrelated_active_path_drift_still_rejected_case(root)))
     cases.append(Case("122", "full convergence exposes subject-projection trust only after committed four-gate disjoint 82 plus 2", _subject_projection_four_gate_successor_case))
     cases.append(Case("123", "standalone independent audit imports only successor independent and clears both epochs on pair failure", _independent_subject_projection_epoch_pair_case))
+    cases.append(Case("124", "terminal subject-projection replacement activates only disjoint v4 v5 v3 union 109", _terminal_subject_projection_replacement_case))
+    cases.append(Case("125", "post-touch successor-v2 replaces the old owner at an effective exact count of two", _post_touch_successor_v2_effective_owner_case))
+    cases.append(Case("126", "optional successor-v5 import fails closed only when its replacement path is requested", _optional_v5_import_fails_only_on_replacement_case))
     return cases
 
 

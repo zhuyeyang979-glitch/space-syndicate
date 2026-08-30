@@ -1765,17 +1765,43 @@ print('not-json'); raise SystemExit(2)
     v075_workflow = (
         project_root / ".github" / "workflows" / "v075-pr90-acceptance.yml"
     ).read_text(encoding="utf-8-sig")
+    batch_009_path = (
+        project_root
+        / "docs/architecture/reuse_corrections/v2/batches/"
+        "full_convergence_20260827/batch-009/batch-009-manifest.json"
+    )
+    batch_010_path = (
+        project_root
+        / "docs/architecture/reuse_corrections/v2/batches/"
+        "full_convergence_20260827/batch-010/batch-010-manifest.json"
+    )
+    batch_009_sha256 = hashlib.sha256(batch_009_path.read_bytes()).hexdigest()
+    batch_010 = json.loads(batch_010_path.read_text(encoding="utf-8-sig"))
     workflow_invariants = bool(
         f'$gateBase = "{gate.V076_GATE_BASE_SHA}"' in v076_workflow
         and "HEAD^" not in v076_workflow
         and "external_activation_boundary" in v076_workflow
         and "point_inertia_baseline_sha" in v076_workflow
+        and "batch-010/batch-010-manifest.json" in v076_workflow
+        and "batch-009/batch-009-manifest.json" in v076_workflow
+        and "--post-touch-revalidation-successor-v2" in v076_workflow
+        and "--subject-projection-revalidation-successor-v4" in v076_workflow
+        and "--subject-projection-revalidation-successor-v5" in v076_workflow
+        and "$postTouch.replacement_complete -ne $true" in v076_workflow
+        and "$postTouch.effective_trusted_fingerprint_count -ne 2" in v076_workflow
+        and "$spr.terminal_replacement_complete -ne $true" in v076_workflow
+        and "$spr.successor_v4.trusted_fingerprint_count -ne 82" in v076_workflow
+        and "$spr.successor_v5.trusted_fingerprint_count -ne 2" in v076_workflow
+        and "$spr.successor_v3.trusted_fingerprint_count -ne 25" in v076_workflow
+        and batch_009_sha256
+        == "cba70568c60395bc65916ec22e33239a9d103d66315b5f58781ce16f2625ef04"
+        and batch_010.get("previous_batch_append_sha256") == batch_009_sha256
         and "previous Head lacks a completed successful V075 acceptance" in v075_workflow
         and "actions/workflows/v075-pr90-acceptance.yml/runs" in v075_workflow
     )
     append_direct_case(
         "61",
-        "CI binds immutable Gate history and inherits product skips only from a green Head",
+        "CI binds immutable Gate history terminal successor inputs and green-Head product skips",
         "PASS",
         "PASS" if workflow_invariants else "FAIL",
         [] if workflow_invariants else ["WORKFLOW_EXTERNAL_INVARIANT_MISSING"],

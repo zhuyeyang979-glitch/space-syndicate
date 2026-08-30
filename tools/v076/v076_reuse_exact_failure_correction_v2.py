@@ -2602,9 +2602,12 @@ def validate_records(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
+    post_touch_revalidation_successor_v2_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
     subject_projection_revalidation_successor_v2_path: Path | None = None,
     subject_projection_revalidation_successor_v3_path: Path | None = None,
+    subject_projection_revalidation_successor_v4_path: Path | None = None,
+    subject_projection_revalidation_successor_v5_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     historical_delta_metadata_successor_path: Path | None = None,
     historical_delta_metadata_successor_v2_path: Path | None = None,
@@ -2631,6 +2634,20 @@ def validate_records(
     ):
         raise ValueError(
             "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V3_REQUIRES_EPOCH_PAIR"
+        )
+    replacement_paths = (
+        subject_projection_revalidation_path,
+        subject_projection_revalidation_successor_v2_path,
+        subject_projection_revalidation_successor_v3_path,
+        subject_projection_revalidation_successor_v4_path,
+        subject_projection_revalidation_successor_v5_path,
+    )
+    if (
+        subject_projection_revalidation_successor_v4_path is not None
+        or subject_projection_revalidation_successor_v5_path is not None
+    ) and any(value is None for value in replacement_paths):
+        raise ValueError(
+            "SUBJECT_PROJECTION_TERMINAL_REPLACEMENT_REQUIRES_V1_V2_V3_V4_V5"
         )
     if historical_delta_metadata_ledger_path is not None and not any(
         value is not None for value in full_convergence_inputs
@@ -2680,6 +2697,20 @@ def validate_records(
         raise ValueError(
             "POST_TOUCH_REVALIDATION_REQUIRES_FULL_CONVERGENCE_INPUT_SET"
         )
+    if (
+        post_touch_revalidation_successor_v2_path is not None
+        and post_touch_revalidation_path is None
+    ):
+        raise ValueError(
+            "POST_TOUCH_REVALIDATION_SUCCESSOR_V2_REQUIRES_PREDECESSOR"
+        )
+    if post_touch_revalidation_successor_v2_path is not None and not any(
+        value is not None for value in full_convergence_inputs
+    ):
+        raise ValueError(
+            "POST_TOUCH_REVALIDATION_SUCCESSOR_V2_REQUIRES_"
+            "FULL_CONVERGENCE_INPUT_SET"
+        )
     if subject_projection_revalidation_path is not None and not any(
         value is not None for value in full_convergence_inputs
     ):
@@ -2702,6 +2733,20 @@ def validate_records(
             "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V3_REQUIRES_"
             "FULL_CONVERGENCE_INPUT_SET"
         )
+    for label, path in (
+        (
+            "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V4",
+            subject_projection_revalidation_successor_v4_path,
+        ),
+        (
+            "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V5",
+            subject_projection_revalidation_successor_v5_path,
+        ),
+    ):
+        if path is not None and not any(
+            value is not None for value in full_convergence_inputs
+        ):
+            raise ValueError(f"{label}_REQUIRES_FULL_CONVERGENCE_INPUT_SET")
     if (
         subject_projection_revalidation_path is not None
         and historical_delta_metadata_ledger_path is None
@@ -2726,6 +2771,9 @@ def validate_records(
             descendant_history_raw_report_path=descendant_history_raw_report_path,
             descendant_history_scanner_path=descendant_history_scanner_path,
             post_touch_revalidation_path=post_touch_revalidation_path,
+            post_touch_revalidation_successor_v2_path=(
+                post_touch_revalidation_successor_v2_path
+            ),
             subject_projection_revalidation_path=(
                 subject_projection_revalidation_path
             ),
@@ -2734,6 +2782,12 @@ def validate_records(
             ),
             subject_projection_revalidation_successor_v3_path=(
                 subject_projection_revalidation_successor_v3_path
+            ),
+            subject_projection_revalidation_successor_v4_path=(
+                subject_projection_revalidation_successor_v4_path
+            ),
+            subject_projection_revalidation_successor_v5_path=(
+                subject_projection_revalidation_successor_v5_path
             ),
             historical_delta_metadata_ledger_path=(
                 historical_delta_metadata_ledger_path
@@ -3754,9 +3808,12 @@ def _verified_full_convergence_authority(
     descendant_history_raw_report_path: Path,
     descendant_history_scanner_path: Path,
     post_touch_revalidation_path: Path | None = None,
+    post_touch_revalidation_successor_v2_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
     subject_projection_revalidation_successor_v2_path: Path | None = None,
     subject_projection_revalidation_successor_v3_path: Path | None = None,
+    subject_projection_revalidation_successor_v4_path: Path | None = None,
+    subject_projection_revalidation_successor_v5_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     historical_delta_metadata_successor_path: Path | None = None,
     historical_delta_metadata_successor_v2_path: Path | None = None,
@@ -3773,6 +3830,9 @@ def _verified_full_convergence_authority(
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
         post_touch_revalidation_path=post_touch_revalidation_path,
+        post_touch_revalidation_successor_v2_path=(
+            post_touch_revalidation_successor_v2_path
+        ),
         subject_projection_revalidation_path=(
             subject_projection_revalidation_path
         ),
@@ -3781,6 +3841,12 @@ def _verified_full_convergence_authority(
         ),
         subject_projection_revalidation_successor_v3_path=(
             subject_projection_revalidation_successor_v3_path
+        ),
+        subject_projection_revalidation_successor_v4_path=(
+            subject_projection_revalidation_successor_v4_path
+        ),
+        subject_projection_revalidation_successor_v5_path=(
+            subject_projection_revalidation_successor_v5_path
         ),
         historical_delta_metadata_ledger_path=(
             historical_delta_metadata_ledger_path
@@ -4133,6 +4199,8 @@ def _verified_full_convergence_authority(
             "path": "",
             "successor_v2_path": "",
             "successor_v3_path": "",
+            "successor_v4_path": "",
+            "successor_v5_path": "",
             "failures": ["COMPOSITE_FULL_CONVERGENCE_AUTHORITY_FAILED"],
             "primary_status": "FAIL",
             "independent_status": "NO_GO",
@@ -4140,8 +4208,13 @@ def _verified_full_convergence_authority(
             "successor_v2_independent_status": "NO_GO",
             "successor_v3_primary_status": "FAIL",
             "successor_v3_independent_status": "FAIL",
+            "successor_v4_primary_status": "FAIL",
+            "successor_v4_independent_status": "FAIL",
+            "successor_v5_primary_status": "FAIL",
+            "successor_v5_independent_status": "FAIL",
             "trust_set_parity": False,
             "four_gate_complete": False,
+            "terminal_replacement_complete": False,
             "v1": {
                 **(
                     subject_projection_summary.get("v1", {})
@@ -4173,6 +4246,28 @@ def _verified_full_convergence_authority(
                 "status": "FAIL",
                 "trusted_fingerprint_count": 0,
             },
+            "successor_v4": {
+                **(
+                    subject_projection_summary.get("successor_v4", {})
+                    if isinstance(
+                        subject_projection_summary.get("successor_v4"), dict
+                    )
+                    else {}
+                ),
+                "status": "FAIL",
+                "trusted_fingerprint_count": 0,
+            },
+            "successor_v5": {
+                **(
+                    subject_projection_summary.get("successor_v5", {})
+                    if isinstance(
+                        subject_projection_summary.get("successor_v5"), dict
+                    )
+                    else {}
+                ),
+                "status": "FAIL",
+                "trusted_fingerprint_count": 0,
+            },
         }
     elif not subject_projection_summary:
         subject_projection_summary = {
@@ -4184,6 +4279,8 @@ def _verified_full_convergence_authority(
             "path": "",
             "successor_v2_path": "",
             "successor_v3_path": "",
+            "successor_v4_path": "",
+            "successor_v5_path": "",
             "failures": [],
             "primary_status": "NOT_PROVIDED",
             "independent_status": "NOT_PROVIDED",
@@ -4191,8 +4288,13 @@ def _verified_full_convergence_authority(
             "successor_v2_independent_status": "NOT_PROVIDED",
             "successor_v3_primary_status": "NOT_PROVIDED",
             "successor_v3_independent_status": "NOT_PROVIDED",
+            "successor_v4_primary_status": "NOT_PROVIDED",
+            "successor_v4_independent_status": "NOT_PROVIDED",
+            "successor_v5_primary_status": "NOT_PROVIDED",
+            "successor_v5_independent_status": "NOT_PROVIDED",
             "trust_set_parity": False,
             "four_gate_complete": False,
+            "terminal_replacement_complete": False,
             "v1": {
                 "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
             },
@@ -4200,6 +4302,12 @@ def _verified_full_convergence_authority(
                 "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
             },
             "successor_v3": {
+                "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
+            },
+            "successor_v4": {
+                "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
+            },
+            "successor_v5": {
                 "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
             },
         }
@@ -4319,12 +4427,18 @@ def _verified_full_convergence_authority(
         "post_touch_revalidation": (
             primary.get("post_touch_revalidation", {
                 "status": "NOT_PROVIDED", "record_count": 0,
-                "trusted_fingerprint_count": 0, "path": "", "failures": []
+                "trusted_fingerprint_count": 0,
+                "effective_trusted_fingerprint_count": 0,
+                "replacement_complete": False,
+                "path": "", "successor_v2_path": "", "failures": []
             })
             if not failures
             else {
                 "status": "FAIL", "record_count": 0,
-                "trusted_fingerprint_count": 0, "path": "",
+                "trusted_fingerprint_count": 0,
+                "effective_trusted_fingerprint_count": 0,
+                "replacement_complete": False,
+                "path": "", "successor_v2_path": "",
                 "failures": ["COMPOSITE_FULL_CONVERGENCE_AUTHORITY_FAILED"],
             }
         ),
@@ -4653,9 +4767,12 @@ def validate_full_convergence_records(
     descendant_history_raw_report_path: Path,
     descendant_history_scanner_path: Path,
     post_touch_revalidation_path: Path | None = None,
+    post_touch_revalidation_successor_v2_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
     subject_projection_revalidation_successor_v2_path: Path | None = None,
     subject_projection_revalidation_successor_v3_path: Path | None = None,
+    subject_projection_revalidation_successor_v4_path: Path | None = None,
+    subject_projection_revalidation_successor_v5_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     historical_delta_metadata_successor_path: Path | None = None,
     historical_delta_metadata_successor_v2_path: Path | None = None,
@@ -4702,6 +4819,9 @@ def validate_full_convergence_records(
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
         post_touch_revalidation_path=post_touch_revalidation_path,
+        post_touch_revalidation_successor_v2_path=(
+            post_touch_revalidation_successor_v2_path
+        ),
         subject_projection_revalidation_path=(
             subject_projection_revalidation_path
         ),
@@ -4710,6 +4830,12 @@ def validate_full_convergence_records(
         ),
         subject_projection_revalidation_successor_v3_path=(
             subject_projection_revalidation_successor_v3_path
+        ),
+        subject_projection_revalidation_successor_v4_path=(
+            subject_projection_revalidation_successor_v4_path
+        ),
+        subject_projection_revalidation_successor_v5_path=(
+            subject_projection_revalidation_successor_v5_path
         ),
         historical_delta_metadata_ledger_path=(
             historical_delta_metadata_ledger_path
@@ -5043,9 +5169,12 @@ def resolve_command(
     descendant_history_raw_report_path: Path | None = None,
     descendant_history_scanner_path: Path | None = None,
     post_touch_revalidation_path: Path | None = None,
+    post_touch_revalidation_successor_v2_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
     subject_projection_revalidation_successor_v2_path: Path | None = None,
     subject_projection_revalidation_successor_v3_path: Path | None = None,
+    subject_projection_revalidation_successor_v4_path: Path | None = None,
+    subject_projection_revalidation_successor_v5_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     historical_delta_metadata_successor_path: Path | None = None,
     historical_delta_metadata_successor_v2_path: Path | None = None,
@@ -5069,6 +5198,9 @@ def resolve_command(
         descendant_history_raw_report_path=descendant_history_raw_report_path,
         descendant_history_scanner_path=descendant_history_scanner_path,
         post_touch_revalidation_path=post_touch_revalidation_path,
+        post_touch_revalidation_successor_v2_path=(
+            post_touch_revalidation_successor_v2_path
+        ),
         subject_projection_revalidation_path=(
             subject_projection_revalidation_path
         ),
@@ -5077,6 +5209,12 @@ def resolve_command(
         ),
         subject_projection_revalidation_successor_v3_path=(
             subject_projection_revalidation_successor_v3_path
+        ),
+        subject_projection_revalidation_successor_v4_path=(
+            subject_projection_revalidation_successor_v4_path
+        ),
+        subject_projection_revalidation_successor_v5_path=(
+            subject_projection_revalidation_successor_v5_path
         ),
         historical_delta_metadata_ledger_path=(
             historical_delta_metadata_ledger_path
@@ -6444,6 +6582,15 @@ def _parser() -> argparse.ArgumentParser:
         help="explicit append-only post-touch revalidation manifest; never discovered implicitly",
     )
     parser.add_argument(
+        "--post-touch-revalidation-successor-v2",
+        type=Path,
+        default=None,
+        help=(
+            "explicit committed post-touch successor-v2 manifest; valid only "
+            "with its predecessor and the complete FULL_CONVERGENCE input set"
+        ),
+    )
+    parser.add_argument(
         "--subject-projection-revalidation",
         type=Path,
         default=None,
@@ -6473,6 +6620,24 @@ def _parser() -> argparse.ArgumentParser:
             "explicit committed subject-projection successor-v3 manifest; "
             "valid only together with the v1/v2 epoch pair and the complete "
             "FULL_CONVERGENCE input set"
+        ),
+    )
+    parser.add_argument(
+        "--subject-projection-revalidation-successor-v4",
+        type=Path,
+        default=None,
+        help=(
+            "explicit committed terminal replacement for the v1 82-set; valid "
+            "only with explicitly supplied v1/v2/v3/v4/v5 manifests"
+        ),
+    )
+    parser.add_argument(
+        "--subject-projection-revalidation-successor-v5",
+        type=Path,
+        default=None,
+        help=(
+            "explicit committed terminal replacement for the v2 2-set; valid "
+            "only with explicitly supplied v1/v2/v3/v4/v5 manifests"
         ),
     )
     parser.add_argument(
@@ -6544,11 +6709,37 @@ def main(argv: list[str] | None = None) -> int:
             "--subject-projection-revalidation-successor-v3 requires the "
             "v1/v2 subject-projection epoch pair"
         )
+    replacement_args = (
+        args.subject_projection_revalidation,
+        args.subject_projection_revalidation_successor_v2,
+        args.subject_projection_revalidation_successor_v3,
+        args.subject_projection_revalidation_successor_v4,
+        args.subject_projection_revalidation_successor_v5,
+    )
+    if (
+        args.subject_projection_revalidation_successor_v4 is not None
+        or args.subject_projection_revalidation_successor_v5 is not None
+    ) and any(value is None for value in replacement_args):
+        raise SystemExit(
+            "--subject-projection-revalidation-successor-v4/v5 require the "
+            "complete explicit v1/v2/v3/v4/v5 replacement set"
+        )
+    if (
+        args.post_touch_revalidation_successor_v2 is not None
+        and args.post_touch_revalidation is None
+    ):
+        raise SystemExit(
+            "--post-touch-revalidation-successor-v2 requires "
+            "--post-touch-revalidation"
+        )
     if (
         (
             args.subject_projection_revalidation is not None
             or args.subject_projection_revalidation_successor_v2 is not None
             or args.subject_projection_revalidation_successor_v3 is not None
+            or args.subject_projection_revalidation_successor_v4 is not None
+            or args.subject_projection_revalidation_successor_v5 is not None
+            or args.post_touch_revalidation_successor_v2 is not None
             or args.historical_delta_metadata_successor is not None
             or args.historical_delta_metadata_successor_v2 is not None
         )
@@ -6654,6 +6845,11 @@ def main(argv: list[str] | None = None) -> int:
                     args.post_touch_revalidation.resolve()
                     if args.post_touch_revalidation is not None else None
                 ),
+                post_touch_revalidation_successor_v2_path=(
+                    args.post_touch_revalidation_successor_v2.resolve()
+                    if args.post_touch_revalidation_successor_v2 is not None
+                    else None
+                ),
                 subject_projection_revalidation_path=(
                     args.subject_projection_revalidation.resolve()
                     if args.subject_projection_revalidation is not None
@@ -6667,6 +6863,16 @@ def main(argv: list[str] | None = None) -> int:
                 subject_projection_revalidation_successor_v3_path=(
                     args.subject_projection_revalidation_successor_v3.resolve()
                     if args.subject_projection_revalidation_successor_v3 is not None
+                    else None
+                ),
+                subject_projection_revalidation_successor_v4_path=(
+                    args.subject_projection_revalidation_successor_v4.resolve()
+                    if args.subject_projection_revalidation_successor_v4 is not None
+                    else None
+                ),
+                subject_projection_revalidation_successor_v5_path=(
+                    args.subject_projection_revalidation_successor_v5.resolve()
+                    if args.subject_projection_revalidation_successor_v5 is not None
                     else None
                 ),
                 historical_delta_metadata_ledger_path=(
@@ -6754,6 +6960,11 @@ def main(argv: list[str] | None = None) -> int:
             if args.post_touch_revalidation is not None
             else None
         ),
+        post_touch_revalidation_successor_v2_path=(
+            args.post_touch_revalidation_successor_v2.resolve()
+            if args.post_touch_revalidation_successor_v2 is not None
+            else None
+        ),
         subject_projection_revalidation_path=(
             args.subject_projection_revalidation.resolve()
             if args.subject_projection_revalidation is not None
@@ -6767,6 +6978,16 @@ def main(argv: list[str] | None = None) -> int:
         subject_projection_revalidation_successor_v3_path=(
             args.subject_projection_revalidation_successor_v3.resolve()
             if args.subject_projection_revalidation_successor_v3 is not None
+            else None
+        ),
+        subject_projection_revalidation_successor_v4_path=(
+            args.subject_projection_revalidation_successor_v4.resolve()
+            if args.subject_projection_revalidation_successor_v4 is not None
+            else None
+        ),
+        subject_projection_revalidation_successor_v5_path=(
+            args.subject_projection_revalidation_successor_v5.resolve()
+            if args.subject_projection_revalidation_successor_v5 is not None
             else None
         ),
         historical_delta_metadata_ledger_path=(
