@@ -337,9 +337,16 @@ def _require_plain_repo_file(root: Path, relative: Path) -> Path:
 
 
 def _committed_bytes(root: Path, head: str, relative: Path) -> bytes:
+    if not _exact_commit(head):
+        raise BuilderError("AUTHORITY_HEAD_INVALID")
+    if relative.is_absolute() or ".." in relative.parts:
+        raise BuilderError(f"AUTHORITY_PATH_INVALID:{relative.as_posix()}")
     process = subprocess.run(
-        ["git", "show", f"{head}:{relative.as_posix()}"], cwd=root,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        ["git", "cat-file", "blob", "--", f"{head}:{relative.as_posix()}"],
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
     )
     if process.returncode:
         raise BuilderError(f"AUTHORITY_NOT_COMMITTED:{relative.as_posix()}")
@@ -402,18 +409,140 @@ def _load_authority(root: Path, head: str) -> tuple[dict[str, dict[str, Any]], s
     return identities, primary, legacy
 
 
-def derive_plan(root: Path, head_ref: str = "HEAD") -> dict[str, Any]:
-    root = root.resolve()
-    head = git(root, "rev-parse", f"{head_ref}^{{commit}}")
-    if not convergence._is_ancestor(root, convergence.AUTHORIZATION_BASE_HEAD_SHA, head):
-        raise BuilderError("HEAD_NOT_AUTHORIZED_DESCENDANT")
-    identities, primary, legacy = _load_authority(root, head)
+def _committed_reader(root: Path, head: str):
+    """Return an immutable reader for files in one exact authorized commit."""
+    if not _exact_commit(head):
+        raise BuilderError("FROZEN_HEAD_INVALID")
+    cache: dict[str, bytes] = {}
+
+    def read(relative: Path) -> bytes:
+        relative = Path(relative)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise BuilderError(f"FROZEN_PATH_INVALID:{relative.as_posix()}")
+        key = relative.as_posix()
+        if key not in cache:
+            cache[key] = _committed_bytes(root, head, relative)
+        return cache[key]
+
+    return read
+
+
+def _verify_legacy_anchor_from_reader(read) -> dict[str, Any]:
+    """Verify the frozen legacy chain without consulting live worktree files."""
+    failures: list[str] = []
+    previous = ""
+    fingerprints: list[str] = []
+    correction_ids: list[str] = []
+    record_paths: list[str] = []
+    for binding in convergence.LEGACY_RECORD_BINDINGS:
+        relative = Path(str(binding["path"]))
+        record_paths.append(relative.as_posix())
+        try:
+            payload = read(relative)
+        except BuilderError:
+            failures.append(f"LEGACY_RECORD_MISSING:{relative.as_posix()}")
+            continue
+        if sha(payload) != binding["sha256"]:
+            failures.append(f"LEGACY_RECORD_BYTE_DRIFT:{relative.as_posix()}")
+            continue
+        try:
+            record = strict_json_bytes(payload, relative.as_posix())
+        except BuilderError:
+            failures.append(f"LEGACY_RECORD_JSON_INVALID:{relative.as_posix()}")
+            continue
+        if record.get("authorization_id") != convergence.LEGACY_AUTHORIZATION_ID:
+            failures.append(f"LEGACY_RECORD_AUTHORIZATION_DRIFT:{relative.as_posix()}")
+        if record.get("authorized_head_sha") != convergence.LEGACY_AUTHORIZED_HEAD_SHA:
+            failures.append(f"LEGACY_RECORD_HEAD_DRIFT:{relative.as_posix()}")
+        if record.get("baseline_report_sha256") != convergence.LEGACY_BASELINE_REPORT_SHA256:
+            failures.append(f"LEGACY_RECORD_BASELINE_DRIFT:{relative.as_posix()}")
+        if record.get("previous_correction_chain_sha256", "") != previous:
+            failures.append(f"LEGACY_RECORD_CHAIN_BREAK:{relative.as_posix()}")
+        if record.get("record_payload_sha256") != binding["payload_sha256"]:
+            failures.append(f"LEGACY_RECORD_PAYLOAD_DRIFT:{relative.as_posix()}")
+        correction_id = str(record.get("correction_id", ""))
+        if not correction_id:
+            failures.append(f"LEGACY_RECORD_CORRECTION_ID_MISSING:{relative.as_posix()}")
+        correction_ids.append(correction_id)
+        previous = str(record.get("record_payload_sha256", ""))
+        fingerprints.extend(str(value) for value in record.get("failure_fingerprints", []))
+    if previous != convergence.LEGACY_RECORD_CHAIN_TERMINAL_SHA256:
+        failures.append("LEGACY_RECORD_CHAIN_TERMINAL_MISMATCH")
+    if len(fingerprints) != 12 or len(fingerprints) != len(set(fingerprints)):
+        failures.append("LEGACY_RECORD_FINGERPRINT_SET_INVALID")
+    if len(correction_ids) != len(set(correction_ids)):
+        failures.append("LEGACY_RECORD_CORRECTION_ID_SET_INVALID")
+    for relative, expected in (
+        (convergence.LEGACY_SCHEMA_REL, convergence.LEGACY_SCHEMA_SHA256),
+        (convergence.LEGACY_SEAL_MANIFEST_REL, convergence.LEGACY_SEAL_MANIFEST_SHA256),
+        (convergence.LEGACY_SEAL_PLAN_REL, convergence.LEGACY_SEAL_PLAN_SHA256),
+    ):
+        try:
+            payload = read(Path(relative))
+        except BuilderError:
+            failures.append(f"LEGACY_ANCHOR_BYTE_DRIFT:{relative.as_posix()}")
+            continue
+        if sha(payload) != expected:
+            failures.append(f"LEGACY_ANCHOR_BYTE_DRIFT:{relative.as_posix()}")
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "legacy_record_count": len(convergence.LEGACY_RECORD_BINDINGS),
+        "legacy_corrected_fingerprint_count": len(fingerprints),
+        "legacy_corrected_fingerprints": sorted(fingerprints),
+        "legacy_correction_ids": sorted(correction_ids),
+        "legacy_record_paths": sorted(record_paths),
+        "legacy_record_chain_terminal_sha256": previous,
+        "legacy_seal_manifest_sha256": convergence.LEGACY_SEAL_MANIFEST_SHA256,
+        "failures": sorted(set(failures)),
+    }
+
+
+def _load_authority_from_committed_head(root: Path, head: str, read):
+    payloads = {relative: read(relative) for relative in AUTHORITY_INPUTS}
+    baseline = strict_json_bytes(payloads[BASELINE], BASELINE.as_posix())
+    supplement = strict_json_bytes(payloads[SUPPLEMENT], SUPPLEMENT.as_posix())
+    identities: dict[str, dict[str, Any]] = {
+        key: dict(value)
+        for key, value in convergence.authorized_failure_identity_by_fingerprint(baseline).items()
+    }
+    descendant = supplement.get("identity_binding_by_failure")
+    if not isinstance(descendant, dict):
+        raise BuilderError("DESCENDANT_IDENTITY_MAP_INVALID")
+    for fingerprint, identity in descendant.items():
+        if not isinstance(identity, dict):
+            raise BuilderError(f"DESCENDANT_IDENTITY_INVALID:{fingerprint}")
+        identities[str(fingerprint)] = dict(identity)
+    live = supplement.get("live_frozen_historical_fingerprints")
+    added = supplement.get("descendant_history_fingerprints")
+    if not isinstance(live, list) or not isinstance(added, list):
+        raise BuilderError("PRIMARY_AUTHORITY_SET_INVALID")
+    primary = {str(value) for value in live} | {str(value) for value in added}
+    legacy_result = _verify_legacy_anchor_from_reader(read)
+    if legacy_result.get("status") != "PASS":
+        raise BuilderError("LEGACY_ANCHOR_NOT_PASS")
+    legacy = {str(value) for value in legacy_result["legacy_corrected_fingerprints"]}
+    if len(primary) != 501 or len(legacy) != 12 or primary & legacy != legacy:
+        raise BuilderError("FROZEN_PARTITION_CARDINALITY_INVALID")
+    if not primary.issubset(identities):
+        raise BuilderError("PRIMARY_IDENTITY_COVERAGE_INCOMPLETE")
+    return identities, primary, legacy, payloads
+
+
+def _derive_plan_core(
+    root: Path,
+    head: str,
+    identities: dict[str, dict[str, Any]],
+    primary: set[str],
+    legacy: set[str],
+    read,
+    *,
+    parse_manifest,
+) -> dict[str, Any]:
     consumed = set(legacy)
     manifests: dict[int, dict[str, Any]] = {}
     for batch in range(1, 8):
         relative = _batch_manifest(batch)
-        _require_committed_parity(root, head, relative)
-        manifest = strict_json(root / relative)
+        manifest = parse_manifest(relative)
         if manifest.get("batch_id") != f"batch-{batch:03d}":
             raise BuilderError(f"PRIOR_BATCH_ID_INVALID:{batch}")
         fingerprints = manifest.get("failure_fingerprints")
@@ -468,12 +597,63 @@ def derive_plan(root: Path, head_ref: str = "HEAD") -> dict[str, Any]:
         "dynamic_remaining_count": len(dynamic),
         "batches": batches,
         "authority_inputs": {
-            relative.as_posix(): sha(_committed_bytes(root, head, relative))
+            relative.as_posix(): sha(read(relative))
             for relative in AUTHORITY_INPUTS
         },
     }
     result["plan_sha256"] = sha(canonical(result))
     return result
+
+
+def derive_plan(root: Path, head_ref: str = "HEAD") -> dict[str, Any]:
+    root = root.resolve()
+    head = git(root, "rev-parse", f"{head_ref}^{{commit}}")
+    if not convergence._is_ancestor(root, convergence.AUTHORIZATION_BASE_HEAD_SHA, head):
+        raise BuilderError("HEAD_NOT_AUTHORIZED_DESCENDANT")
+    identities, primary, legacy = _load_authority(root, head)
+    def read(relative: Path) -> bytes:
+        _require_committed_parity(root, head, relative)
+        return (root / relative).read_bytes()
+    return _derive_plan_core(
+        root,
+        head,
+        identities,
+        primary,
+        legacy,
+        read,
+        parse_manifest=lambda relative: strict_json(root / relative),
+    )
+
+
+def derive_plan_from_committed_head(root: Path, head: str) -> dict[str, Any]:
+    """Reconstruct a frozen plan exclusively from one exact commit's blobs."""
+    root = root.resolve()
+    if not _exact_commit(head):
+        raise BuilderError("FROZEN_HEAD_INVALID")
+    if not convergence._is_ancestor(root, convergence.AUTHORIZATION_BASE_HEAD_SHA, head):
+        raise BuilderError("FROZEN_HEAD_NOT_AUTHORIZED_DESCENDANT")
+    read = _committed_reader(root, head)
+    identities, primary, legacy, payloads = _load_authority_from_committed_head(
+        root, head, read
+    )
+    plan = _derive_plan_core(
+        root,
+        head,
+        identities,
+        primary,
+        legacy,
+        read,
+        parse_manifest=lambda relative: strict_json_bytes(
+            read(relative), relative.as_posix()
+        ),
+    )
+    expected_authority = {
+        relative.as_posix(): sha(payloads[relative])
+        for relative in AUTHORITY_INPUTS
+    }
+    if plan["authority_inputs"] != expected_authority:
+        raise BuilderError("FROZEN_AUTHORITY_INPUT_HASH_INVALID")
+    return plan
 
 
 def _lexical_absolute(path: Path, label: str) -> Path:
@@ -611,6 +791,53 @@ def _expected_membership_rows(
     identities, _, _ = _load_authority(root, head)
     rows: dict[str, Any] = {}
     for fp in fingerprints:
+        identity = identities[fp]
+        old, new = _transition(identity)
+        rows[fp] = {
+            "failure_fingerprint": fp,
+            "raw_failure": str(identity.get("raw_failure", "")),
+            "rule_id": str(identity.get("rule_id", "")),
+            "transition_old_prefix": old,
+            "transition_new_prefix": new,
+            "subject_kind": str(identity.get("subject_kind", "")),
+            "subject_value": str(
+                identity.get("subject_value", identity.get("source_path", ""))
+            ),
+            "classification_status": "REQUIRES_EXACT_AUTHORITY_PROJECTION",
+        }
+    return rows
+
+
+def expected_membership_rows_from_committed_head(
+    root: Path,
+    head: str,
+    fingerprints: list[str],
+) -> dict[str, Any]:
+    """Build membership rows from the same immutable committed authority view."""
+    root = root.resolve()
+    plan = derive_plan_from_committed_head(root, head)
+    planned = plan.get("batches", {}).get("batch-009", {})
+    expected = planned.get("failure_fingerprints")
+    if fingerprints != expected:
+        raise BuilderError("FROZEN_MEMBERSHIP_FINGERPRINT_SET_INVALID")
+    read = _committed_reader(root, head)
+    baseline = strict_json_bytes(read(BASELINE), BASELINE.as_posix())
+    supplement = strict_json_bytes(read(SUPPLEMENT), SUPPLEMENT.as_posix())
+    identities: dict[str, dict[str, Any]] = {
+        key: dict(value)
+        for key, value in convergence.authorized_failure_identity_by_fingerprint(baseline).items()
+    }
+    descendant = supplement.get("identity_binding_by_failure")
+    if not isinstance(descendant, dict):
+        raise BuilderError("DESCENDANT_IDENTITY_MAP_INVALID")
+    for fingerprint, identity in descendant.items():
+        if not isinstance(identity, dict):
+            raise BuilderError(f"DESCENDANT_IDENTITY_INVALID:{fingerprint}")
+        identities[str(fingerprint)] = dict(identity)
+    rows: dict[str, Any] = {}
+    for fp in fingerprints:
+        if fp not in identities:
+            raise BuilderError(f"FROZEN_MEMBERSHIP_IDENTITY_MISSING:{fp}")
         identity = identities[fp]
         old, new = _transition(identity)
         rows[fp] = {
