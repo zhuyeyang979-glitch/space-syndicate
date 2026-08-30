@@ -8010,6 +8010,19 @@ def validate_batch_manifest_against_repo(
         },
         "historical_delta_metadata_ledger": historical_delta_metadata_ledger,
         "historical_delta_metadata_successor": historical_delta_metadata_successor,
+        "historical_delta_metadata_successor_failure_count": (
+            historical_delta_metadata_successor.get(
+                "successor_failure_count", 0
+            )
+        ),
+        "historical_delta_metadata_union_failure_count": (
+            int(historical_delta_metadata_ledger.get("verified_failure_count", 0))
+            + int(
+                historical_delta_metadata_successor.get(
+                    "successor_failure_count", 0
+                )
+            )
+        ),
         "implementation_binding_v4": {
             "status": implementation_binding_result.get("status", "FAIL"),
             "binding_id": implementation_binding_result.get("binding_id", ""),

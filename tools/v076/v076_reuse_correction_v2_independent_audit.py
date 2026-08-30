@@ -26,11 +26,13 @@ try:
     from . import v076_post_touch_revalidation as _post_touch
     from . import v076_subject_projection_revalidation_independent_audit as _subject_projection_revalidation
     from . import v076_subject_projection_revalidation_successor_v2_independent_audit as _subject_projection_revalidation_successor_v2
+    from . import v076_subject_projection_revalidation_successor_v3_independent_audit as _subject_projection_revalidation_successor_v3
 except ImportError:
     import v076_historical_delta_metadata_independent_audit as _historical_delta_metadata_independent_audit
     import v076_post_touch_revalidation as _post_touch
     import v076_subject_projection_revalidation_independent_audit as _subject_projection_revalidation
     import v076_subject_projection_revalidation_successor_v2_independent_audit as _subject_projection_revalidation_successor_v2
+    import v076_subject_projection_revalidation_successor_v3_independent_audit as _subject_projection_revalidation_successor_v3
 
 
 AUTHORIZED_HEAD = "1e24cea73fc23e69e575fcea09df57238156af67"
@@ -6304,6 +6306,171 @@ def _subject_projection_revalidation_successor_v2_sidecar_findings(
     }
 
 
+def _subject_projection_revalidation_successor_v3_sidecar_findings(
+    root: Path,
+    sidecar_path: Path | None,
+    explicit_batch_chain: list[tuple[Path, dict[str, Any]]],
+    evaluated_head: str,
+    *,
+    explicit_batch_chain_valid: bool,
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
+    """Independently admit the committed successor-v3 trust rows.
+
+    Successor-v3 is an append-only third epoch.  Its standalone audit has no
+    batch-chain discovery API, so this wrapper requires the canonical manifest
+    path and the exact predecessor batch to be present in the caller's
+    explicit chain.  The compact three-field trust rows emitted by that audit
+    are normalized to the common reducer contract only after the complete
+    25-fingerprint set and binding head have been checked.
+    """
+
+    if sidecar_path is None:
+        return [], {}, {
+            "status": "NOT_PROVIDED",
+            "record_count": 0,
+            "trusted_fingerprint_count": 0,
+            "path": "",
+            "failures": [],
+            "committed_only": False,
+        }
+
+    failures: list[str] = []
+    canonical_manifest = (
+        root / _subject_projection_revalidation_successor_v3.ROOT
+        / "manifest.json"
+    ).resolve()
+    if not explicit_batch_chain_valid:
+        failures.append("SPR3_EXPLICIT_BATCH_CHAIN_INVALID")
+    if sidecar_path.resolve() != canonical_manifest:
+        failures.append("SPR3_MANIFEST_PATH_NOT_CANONICAL")
+    explicit_paths = {path.resolve() for path, _ in explicit_batch_chain}
+    prior_batch_path = (
+        root / _subject_projection_revalidation_successor_v3.PRIOR_BATCH
+    ).resolve()
+    if prior_batch_path not in explicit_paths:
+        failures.append("SPR3_PRIOR_BATCH_NOT_IN_EXPLICIT_CHAIN")
+
+    result: Any = None
+    manifest: dict[str, Any] = {}
+    if not failures:
+        try:
+            manifest = _json(sidecar_path)
+            result = _subject_projection_revalidation_successor_v3.audit(
+                root,
+                sidecar_path,
+                evaluated_head,
+            )
+        except Exception as exc:
+            failures.append(f"SPR3_INDEPENDENT_VALIDATOR_EXCEPTION:{type(exc).__name__}")
+
+    target_fingerprints: set[str] = set()
+    if isinstance(manifest, dict):
+        raw_targets = manifest.get("failure_fingerprints")
+        if (
+            isinstance(raw_targets, list)
+            and len(raw_targets) == 25
+            and raw_targets == sorted(raw_targets)
+            and len(set(raw_targets)) == 25
+            and all(
+                type(value) is str
+                and re.fullmatch(r"V2F-[0-9a-f]{64}", value) is not None
+                for value in raw_targets
+            )
+        ):
+            target_fingerprints = set(raw_targets)
+        else:
+            failures.append("SPR3_MANIFEST_TARGET_SET_INVALID")
+
+    def exact_path(value: Any) -> bool:
+        if type(value) is not str or not value or value.startswith("/") or "\\" in value:
+            return False
+        parts = value.split("/")
+        return all(part not in {"", ".", ".."} for part in parts) and not any(
+            token in value for token in ("*", "?", "[", "]", ":", "\0")
+        )
+
+    binding_head = str(manifest.get("revalidation_binding_head_sha", ""))
+    if not re.fullmatch(r"[0-9a-f]{40}", binding_head):
+        failures.append("SPR3_BINDING_HEAD_INVALID")
+
+    raw_trusted: Any = result.get("trusted_by_fingerprint") if isinstance(result, dict) else None
+    diagnostics: Any = result.get("failures", []) if isinstance(result, dict) else []
+    if isinstance(result, dict):
+        if result.get("status") != "PASS":
+            failures.append("SPR3_INDEPENDENT_VALIDATOR_REQUIRED_PASS")
+        if result.get("independent") is not True:
+            failures.append("SPR3_INDEPENDENT_VALIDATOR_MARKER_INVALID")
+        if type(result.get("record_count")) is not int or result.get("record_count") != 25:
+            failures.append("SPR3_RECORD_COUNT_INVALID")
+    else:
+        failures.append("SPR3_INDEPENDENT_VALIDATOR_RESULT_NOT_OBJECT")
+    if not isinstance(diagnostics, list) or any(type(value) is not str for value in diagnostics):
+        failures.append("SPR3_FAILURES_NOT_STRING_LIST")
+        diagnostics = []
+    failures.extend(f"SPR3:{value}" for value in diagnostics)
+    if not isinstance(raw_trusted, dict):
+        failures.append("SPR3_TRUST_NOT_OBJECT")
+        raw_trusted = {}
+    if len(raw_trusted) != 25 or set(raw_trusted) != target_fingerprints:
+        failures.append("SPR3_TRUST_FINGERPRINT_SET_INVALID")
+
+    normalized: dict[str, dict[str, Any]] = {}
+    for fingerprint, row in raw_trusted.items():
+        if type(fingerprint) is not str or fingerprint not in target_fingerprints:
+            failures.append(f"SPR3_TRUST_ROW_FINGERPRINT_INVALID:{fingerprint}")
+            continue
+        if not isinstance(row, dict) or set(row) != {
+            "revalidation_id", "record_payload_sha256", "prior_record_path"
+        }:
+            failures.append(f"SPR3_TRUST_ROW_SHAPE_INVALID:{fingerprint}")
+            continue
+        prior_record_path = row.get("prior_record_path")
+        revalidation_id = row.get("revalidation_id")
+        payload_sha = row.get("record_payload_sha256")
+        if (
+            not isinstance(prior_record_path, str)
+            or not exact_path(prior_record_path)
+            or prior_record_path
+            != _subject_projection_revalidation_successor_v3.PRIOR_RECORD_PATH
+            or not isinstance(revalidation_id, str)
+            or not revalidation_id
+            or not isinstance(payload_sha, str)
+            or re.fullmatch(r"[0-9a-f]{64}", payload_sha) is None
+        ):
+            failures.append(f"SPR3_TRUST_ROW_VALUE_INVALID:{fingerprint}")
+            continue
+        normalized[fingerprint] = {
+            "allowed_invalidations": ["SUBJECT_PROJECTION_CHANGED_INVALID"],
+            "prior_record_path": prior_record_path,
+            "record_path": _subject_projection_revalidation_successor_v3.ROOT
+            + "records/spr3-"
+            + fingerprint[4:]
+            + ".json",
+            "revalidation_binding_head_sha": binding_head,
+            "revalidation_id": revalidation_id,
+        }
+
+    failures = sorted(set(failures))
+    trusted = normalized if not failures else {}
+    findings = [
+        _finding(
+            "FULL_CONVERGENCE_SUBJECT_PROJECTION_SUCCESSOR_V3_INVALID",
+            "P0",
+            failure,
+            manifest_path=str(sidecar_path),
+        )
+        for failure in failures
+    ]
+    return findings, trusted, {
+        "status": "PASS" if not failures else "FAIL",
+        "record_count": len(trusted),
+        "trusted_fingerprint_count": len(trusted),
+        "path": str(sidecar_path),
+        "failures": failures,
+        "committed_only": not failures,
+    }
+
+
 def _subject_projection_revalidation_epoch_pair_findings(
     root: Path,
     v1_sidecar_path: Path | None,
@@ -6312,15 +6479,21 @@ def _subject_projection_revalidation_epoch_pair_findings(
     evaluated_head: str,
     *,
     explicit_batch_chain_valid: bool,
-) -> tuple[
-    list[dict[str, Any]],
-    dict[str, dict[str, Any]],
-    dict[str, dict[str, Any]],
-    dict[str, Any],
-]:
-    """Require independent 82 + 2 disjoint trust before suppression."""
+    successor_v3_sidecar_path: Path | None = None,
+) -> tuple[Any, ...]:
+    """Require independent 82 + 2 (+25) disjoint trust before suppression.
 
-    if v1_sidecar_path is None and successor_v2_sidecar_path is None:
+    The legacy no-v3 call keeps its four-value return shape for callers and
+    self-tests from the predecessor epoch.  Supplying the explicit v3 sidecar
+    returns a fifth trusted map so the reducer can enforce one-and-only-one
+    invalidation ownership across all three epochs.
+    """
+
+    if (
+        v1_sidecar_path is None
+        and successor_v2_sidecar_path is None
+        and successor_v3_sidecar_path is None
+    ):
         return [], {}, {}, {
             "status": "NOT_PROVIDED", "record_count": 0,
             "trusted_fingerprint_count": 0, "union_fingerprint_count": 0,
@@ -6330,10 +6503,23 @@ def _subject_projection_revalidation_epoch_pair_findings(
             "successor_v2": {
                 "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
             },
+            "successor_v3": {
+                "status": "NOT_PROVIDED", "trusted_fingerprint_count": 0,
+            },
             "failures": [],
         }
-    if (v1_sidecar_path is None) != (successor_v2_sidecar_path is None):
+    if (
+        (v1_sidecar_path is None) != (successor_v2_sidecar_path is None)
+        or (
+            successor_v3_sidecar_path is not None
+            and (v1_sidecar_path is None or successor_v2_sidecar_path is None)
+        )
+    ):
         failure = "SUBJECT_PROJECTION_REVALIDATION_EPOCH_PAIR_REQUIRED"
+        if successor_v3_sidecar_path is not None and (
+            v1_sidecar_path is None or successor_v2_sidecar_path is None
+        ):
+            failure = "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V3_REQUIRES_EPOCH_PAIR"
         return [
             _finding(
                 "FULL_CONVERGENCE_SUBJECT_PROJECTION_REVALIDATION_INVALID",
@@ -6349,8 +6535,28 @@ def _subject_projection_revalidation_epoch_pair_findings(
             "successor_v2": {
                 "status": "FAIL", "trusted_fingerprint_count": 0,
             },
+            "successor_v3": {
+                "status": "FAIL", "trusted_fingerprint_count": 0,
+            },
             "failures": [failure],
-        }
+        } if successor_v3_sidecar_path is None else (
+            [
+                _finding(
+                    "FULL_CONVERGENCE_SUBJECT_PROJECTION_REVALIDATION_INVALID",
+                    "P0",
+                    failure,
+                )
+            ], {}, {}, {}, {
+                "status": "FAIL", "record_count": 0,
+                "trusted_fingerprint_count": 0, "union_fingerprint_count": 0,
+                "cross_epoch_overlap_count": 0,
+                "independent_epoch_pair_complete": False,
+                "v1": {"status": "FAIL", "trusted_fingerprint_count": 0},
+                "successor_v2": {"status": "FAIL", "trusted_fingerprint_count": 0},
+                "successor_v3": {"status": "FAIL", "trusted_fingerprint_count": 0},
+                "failures": [failure],
+            }
+        )
 
     v1_findings, v1_trusted, v1_summary = (
         _subject_projection_revalidation_sidecar_findings(
@@ -6370,15 +6576,39 @@ def _subject_projection_revalidation_epoch_pair_findings(
             explicit_batch_chain_valid=explicit_batch_chain_valid,
         )
     )
-    findings = v1_findings + successor_findings
-    overlap = set(v1_trusted) & set(successor_trusted)
-    union = set(v1_trusted) | set(successor_trusted)
+    if successor_v3_sidecar_path is not None:
+        successor_v3_findings, successor_v3_trusted, successor_v3_summary = (
+            _subject_projection_revalidation_successor_v3_sidecar_findings(
+                root,
+                successor_v3_sidecar_path,
+                explicit_batch_chain,
+                evaluated_head,
+                explicit_batch_chain_valid=explicit_batch_chain_valid,
+            )
+        )
+    else:
+        successor_v3_findings, successor_v3_trusted, successor_v3_summary = (
+            [], {}, {
+                "status": "NOT_PROVIDED", "record_count": 0,
+                "trusted_fingerprint_count": 0, "path": "", "failures": [],
+            }
+        )
+    findings = v1_findings + successor_findings + successor_v3_findings
+    trust_sets = [set(v1_trusted), set(successor_trusted)]
+    if successor_v3_sidecar_path is not None:
+        trust_sets.append(set(successor_v3_trusted))
+    overlap: set[str] = set()
+    for index, current in enumerate(trust_sets):
+        for prior in trust_sets[:index]:
+            overlap.update(current & prior)
+    union = set().union(*trust_sets)
     pair_failures: list[str] = []
     if overlap:
         pair_failures.append(
             f"SUBJECT_PROJECTION_CROSS_EPOCH_TRUST_OVERLAP:{len(overlap)}"
         )
-    if len(union) != 84:
+    expected_union_count = 109 if successor_v3_sidecar_path is not None else 84
+    if len(union) != expected_union_count:
         pair_failures.append(
             f"SUBJECT_PROJECTION_CROSS_EPOCH_TRUST_UNION_INVALID:{len(union)}"
         )
@@ -6393,35 +6623,53 @@ def _subject_projection_revalidation_epoch_pair_findings(
     if findings:
         exposed_v1: dict[str, dict[str, Any]] = {}
         exposed_successor: dict[str, dict[str, Any]] = {}
+        exposed_successor_v3: dict[str, dict[str, Any]] = {}
     else:
         exposed_v1 = v1_trusted
         exposed_successor = successor_trusted
-    return findings, exposed_v1, exposed_successor, {
+        exposed_successor_v3 = successor_v3_trusted
+    summary = {
         "status": "PASS" if not findings else "FAIL",
         "record_count": (
             int(v1_summary.get("record_count", 0))
             + int(successor_summary.get("record_count", 0))
+            + int(successor_v3_summary.get("record_count", 0))
         ),
-        "trusted_fingerprint_count": len(exposed_v1) + len(exposed_successor),
+        "trusted_fingerprint_count": (
+            len(exposed_v1) + len(exposed_successor) + len(exposed_successor_v3)
+        ),
         "union_fingerprint_count": len(union),
         "cross_epoch_overlap_count": len(overlap),
         "independent_epoch_pair_complete": not findings,
         "v1": v1_summary,
         "successor_v2": successor_summary,
+        "successor_v3": successor_v3_summary,
         "failures": sorted(set(
             list(v1_summary.get("failures", []))
             + list(successor_summary.get("failures", []))
+            + list(successor_v3_summary.get("failures", []))
             + pair_failures
         )),
     }
+    if successor_v3_sidecar_path is None:
+        return findings, exposed_v1, exposed_successor, summary
+    return (
+        findings,
+        exposed_v1,
+        exposed_successor,
+        exposed_successor_v3,
+        summary,
+    )
 
 
 def _suppress_subject_projection_revalidation_findings(
     findings: list[dict[str, Any]],
     trusted: dict[str, dict[str, Any]],
     successor_v2_trusted: dict[str, dict[str, Any]] | None = None,
+    successor_v3_trusted: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     successor_v2_trusted = successor_v2_trusted or {}
+    successor_v3_trusted = successor_v3_trusted or {}
     kept: list[dict[str, Any]] = []
     for finding in findings:
         if str(finding.get("code", "")) != "FULL_CONVERGENCE_SUBJECT_PROJECTION_CHANGED":
@@ -6432,7 +6680,12 @@ def _suppress_subject_projection_revalidation_findings(
         path = _normalize_path(str(evidence.get("path", "")))
         v1_owns = fingerprint in trusted
         successor_owns = fingerprint in successor_v2_trusted
-        if v1_owns != successor_owns:
+        successor_v3_owns = fingerprint in successor_v3_trusted
+        owners = int(v1_owns) + int(successor_owns) + int(successor_v3_owns)
+        # Exactly one independently trusted epoch may suppress the one exact
+        # subject-projection invalidation. Zero or multiple owners remain
+        # blocking, preventing cross-epoch ambiguity or accidental trust union.
+        if owners == 1:
             if v1_owns and _subject_projection_revalidation.allows_invalidation(
                 trusted,
                 fingerprint=fingerprint,
@@ -6445,6 +6698,16 @@ def _suppress_subject_projection_revalidation_findings(
                 and _subject_projection_revalidation_successor_v2
                 .allows_invalidation(
                     successor_v2_trusted,
+                    fingerprint=fingerprint,
+                    invalidation_code="SUBJECT_PROJECTION_CHANGED_INVALID",
+                    prior_record_path=path,
+                )
+            ):
+                continue
+            if (
+                successor_v3_owns
+                and _subject_projection_revalidation.allows_invalidation(
+                    successor_v3_trusted,
                     fingerprint=fingerprint,
                     invalidation_code="SUBJECT_PROJECTION_CHANGED_INVALID",
                     prior_record_path=path,
@@ -7004,6 +7267,7 @@ def audit_full_convergence_batch(
     post_touch_revalidation_path: Path | None = None,
     subject_projection_revalidation_path: Path | None = None,
     subject_projection_revalidation_successor_v2_path: Path | None = None,
+    subject_projection_revalidation_successor_v3_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
 ) -> dict[str, Any]:
     """Independently verify one explicit new-epoch batch and its legacy anchor.
@@ -7205,21 +7469,31 @@ def audit_full_convergence_batch(
         explicit_batch_chain_valid=not findings,
     )
     findings.extend(post_touch_findings)
-    (
-        subject_revalidation_findings,
-        subject_revalidation_trusted,
-        subject_revalidation_successor_v2_trusted,
-        subject_revalidation_summary,
-    ) = (
-        _subject_projection_revalidation_epoch_pair_findings(
-            root,
-            subject_projection_revalidation_path,
-            subject_projection_revalidation_successor_v2_path,
-            explicit_batch_chain,
-            evaluated_head,
-            explicit_batch_chain_valid=not findings,
-        )
+    epoch_pair_result = _subject_projection_revalidation_epoch_pair_findings(
+        root,
+        subject_projection_revalidation_path,
+        subject_projection_revalidation_successor_v2_path,
+        explicit_batch_chain,
+        evaluated_head,
+        explicit_batch_chain_valid=not findings,
+        successor_v3_sidecar_path=subject_projection_revalidation_successor_v3_path,
     )
+    if subject_projection_revalidation_successor_v3_path is None:
+        (
+            subject_revalidation_findings,
+            subject_revalidation_trusted,
+            subject_revalidation_successor_v2_trusted,
+            subject_revalidation_summary,
+        ) = epoch_pair_result
+        subject_revalidation_successor_v3_trusted: dict[str, dict[str, Any]] = {}
+    else:
+        (
+            subject_revalidation_findings,
+            subject_revalidation_trusted,
+            subject_revalidation_successor_v2_trusted,
+            subject_revalidation_successor_v3_trusted,
+            subject_revalidation_summary,
+        ) = epoch_pair_result
     findings.extend(subject_revalidation_findings)
     manifest_fingerprints = [
         str(value) for value in manifest.get("failure_fingerprints", [])
@@ -7752,6 +8026,7 @@ def audit_full_convergence_batch(
         findings,
         subject_revalidation_trusted,
         subject_revalidation_successor_v2_trusted,
+        subject_revalidation_successor_v3_trusted,
     )
     return {
         "schema_version": "space_syndicate.v076.reuse_correction_v2.full_convergence_independent_audit.v2",
@@ -7880,6 +8155,16 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--subject-projection-revalidation-successor-v3",
+        type=Path,
+        default=None,
+        help=(
+            "explicit committed subject-projection successor-v3 manifest; "
+            "valid only together with the v1/v2 pair and the complete "
+            "full-convergence input set"
+        ),
+    )
+    parser.add_argument(
         "--historical-delta-metadata-ledger",
         type=Path,
         default=None,
@@ -7899,6 +8184,18 @@ def main(argv: list[str] | None = None) -> int:
             "--subject-projection-revalidation and "
             "--subject-projection-revalidation-successor-v2 must be supplied "
             "together"
+        )
+    if (
+        args.subject_projection_revalidation_successor_v3 is not None
+        and (
+            args.subject_projection_revalidation is None
+            or args.subject_projection_revalidation_successor_v2 is None
+        )
+    ):
+        parser.error(
+            "--subject-projection-revalidation-successor-v3 requires "
+            "--subject-projection-revalidation and "
+            "--subject-projection-revalidation-successor-v2"
         )
     if (
         args.post_touch_revalidation is not None
@@ -7922,6 +8219,15 @@ def main(argv: list[str] | None = None) -> int:
     ):
         parser.error(
             "--subject-projection-revalidation-successor-v2 requires "
+            "--full-convergence-batch-manifest and its complete "
+            "full-convergence input set"
+        )
+    if (
+        args.subject_projection_revalidation_successor_v3 is not None
+        and args.full_convergence_batch_manifest is None
+    ):
+        parser.error(
+            "--subject-projection-revalidation-successor-v3 requires "
             "--full-convergence-batch-manifest and its complete "
             "full-convergence input set"
         )
@@ -7981,6 +8287,11 @@ def main(argv: list[str] | None = None) -> int:
             subject_projection_revalidation_successor_v2_path=(
                 args.subject_projection_revalidation_successor_v2.resolve()
                 if args.subject_projection_revalidation_successor_v2 is not None
+                else None
+            ),
+            subject_projection_revalidation_successor_v3_path=(
+                args.subject_projection_revalidation_successor_v3.resolve()
+                if args.subject_projection_revalidation_successor_v3 is not None
                 else None
             ),
             historical_delta_metadata_ledger_path=(
