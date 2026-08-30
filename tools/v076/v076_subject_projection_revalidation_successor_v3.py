@@ -281,7 +281,20 @@ def validate_manifest_and_records(root: Path, manifest_path: Path, *, evaluated_
             trusted[fp] = {"revalidation_id": record.get("revalidation_id"), "record_payload_sha256": record.get("record_payload_sha256"), "prior_record_path": PRIOR_RECORD_PATH}
         previous = record.get("record_payload_sha256", previous)
     status = "PASS" if not failures else "FAIL"
-    result = {"status": status, "mode": "STAGE_REVIEW" if stage_dir is not None else "COMMITTED", "stage_only": stage_dir is not None, "failures": sorted(set(failures)), "trusted_by_fingerprint": trusted if stage_dir is None and status == "PASS" else {}, "review_trusted_by_fingerprint": trusted if stage_dir is not None and status == "PASS" else {}, "review_trusted_fingerprint_count": len(trusted) if stage_dir is not None and status == "PASS" else 0}
+    committed_trust = trusted if stage_dir is None and status == "PASS" else {}
+    review_trust = trusted if stage_dir is not None and status == "PASS" else {}
+    result = {
+        "status": status,
+        "mode": "STAGE_REVIEW" if stage_dir is not None else "COMMITTED",
+        "stage_only": stage_dir is not None,
+        "failures": sorted(set(failures)),
+        "trusted_by_fingerprint": committed_trust,
+        "review_trusted_by_fingerprint": review_trust,
+        "trusted_fingerprint_count": len(committed_trust),
+        "review_trusted_fingerprint_count": len(review_trust),
+        "record_count": len(trusted),
+        "fingerprints": sorted(trusted),
+    }
     return result
 
 
