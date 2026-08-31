@@ -1,0 +1,1537 @@
+{
+  "schema_version": "space_syndicate.v076.candidate_subject_manifest.v3",
+  "manifest_id": "v076-candidate-subject-ac5efcc5",
+  "master_task_id": "V076_CURRENT_SUBJECT_MCP_REVALIDATION_REUSE_FULL_CONVERGENCE_AND_DECK_PRESENTATION_RESUME_V2",
+  "authorization_id": "USER_AUTHORIZATION_V076_CURRENT_SUBJECT_CONVERGENCE_AND_COMMERCIAL_RESUME_20260830",
+  "recorded_at_utc": "08/31/2026 02:12:55",
+  "status": "EXACT_SUBJECT_REGISTERED_PRODUCTION_REVALIDATION_PENDING",
+  "subject": {
+    "head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+    "tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
+    "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+    "is_head_ancestor_of_evaluated_governance_head": true,
+    "is_descendant_of_point_inertia_base": true
+  },
+  "previous_subject": {
+    "head_sha": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
+    "tree_sha": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
+    "transition_kind": "APPEND_ONLY_SUBJECT_ADVANCE"
+  },
+  "evaluated_governance_head": {
+    "head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+    "tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
+    "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+    "manifest_landing_head": "PENDING_SUCCESSOR_COMMIT",
+    "raw_report_status": "PENDING_CURRENT_EVALUATED_HEAD_SCAN",
+    "raw_report_path": null,
+    "raw_report_sha256": null
+  },
+  "previous_subject_to_subject": {
+    "commit_count": 42,
+    "commit_set_sha256": "f9090e186e694a128465f84c41876bd79d083e8ce4f426e047f96297ad8b6b6e",
+    "commits": [
+      "9926d3955da7c14a292259e270f2ac2ff7559dcd",
+      "6209465da4a9ca0c1cb6f0db0cd8a088bd63e793",
+      "4f6feab227bedfb8005d9fbf4bc2f6883c8b4c19",
+      "ee716a80b6a3306dde700b1e822419f6f3053cc2",
+      "32e0800c5b1d521f4167049867d445aaabe9d8ac",
+      "0a5520893ee39c130a38ceb1a5580a7ee2b46b83",
+      "da9b69663f978d99958bd4b429caf02e79df1848",
+      "422ce19ce9dae3b8a60ccc58ce2891cfb0005789",
+      "7c31daec8094397de7f6d483ce86af39396e847e",
+      "9e8d65da4c5aa3e03b1a099f73e53c967adeb0b7",
+      "e35dc968b9ba18bd76c45d121c544ca450b8b12c",
+      "83873a4a2fcba3121a42a8cb795cd53b80fa3d5e",
+      "c2c6aa54f1d0bd2004b38e5bb1862cfafe6f9dea",
+      "d44d8c5e4d6fe9209b25ea9e6284bbfe1dbacdda",
+      "7936cdefd933fb78b7bfcec01bc48fb3c4880ccb",
+      "ae67a00402055af300852ae700a55422dd6015b9",
+      "e645c74ac1b9bff25e3898f881f3f944be73525d",
+      "1dd03dab087bb6c0b9a5dc24812437b0170facc3",
+      "c3663058329bd7dd354080bfa2251eeabf385c26",
+      "dff12c6c304e04302dea25de512602cf736798b5",
+      "38e3776accee3cbe64e5abbf3d776561114d8d01",
+      "a3e297557f8108b63ed1947ade5fe446ffe47472",
+      "3df6669556fbff98b86830b2fbd40f649198ff2a",
+      "ad5c4ca8e9793f4bbc2e637410498bf33858144a",
+      "3beb9906812ee4cd9b1e9bf564f077b3e6025b3d",
+      "7e87c564fc2c092a0fb00519c15711d19f99305f",
+      "6595f49af953fe26904451a59149dccceb7e37aa",
+      "218a4b54ef2ec20e56c204950a39487d5bf627d8",
+      "afe194f264bf9411cdf2ee1741529767e13d9842",
+      "3a4c8b0d32dd3821b15a98c30bab7107b5f693ab",
+      "cc1fa48de6125312af9388aef1c68631cbed9a6c",
+      "543f4eff79ee5030eb2f18d3cd235e44b59f6322",
+      "0aee2451cb144ab4aef1868e66cd459a58de28ea",
+      "056f887b90f8f309bdc1f0bae91389cf40a95dc0",
+      "3caecb006e397dc45127cf7a2c115f3e4fe1e6ff",
+      "c6a849be7346dcf9c0d9655a5769afa32c9e86b7",
+      "46d76b57a5ad848da6487e69993afc9bdae6fd95",
+      "846810513887e8a32c4345df0e14129a35764e09",
+      "9da63b8c90a408c3dd64e7f0d55a0d78726cc5a7",
+      "24ceb6fc04070c77829aee1aa6df58bf218f5ba1",
+      "981455536497dbf895a6f10f51bc0955edcd79c2",
+      "ac5efcc5a5119b8022b573333f707b3a73bff590"
+    ],
+    "changed_path_count": 138,
+    "changed_path_set_sha256": "e112b36636cf1da22943c3a4035ca83c5bf5bd9d2828e3ed0a42b26cddc789ef",
+    "product_delta_path_count": 1,
+    "product_delta_paths": [
+      "scripts/v075_runtime/v075_runtime_owner.gd"
+    ],
+    "non_product_delta_path_count": 137,
+    "product_delta_definition": "Godot product scripts/scenes/resources/shaders/project.godot outside tests, tooling, docs, reports, and CI, plus runtime data/resources JSON.",
+    "covered_product_delta_path_count": 1,
+    "unknown_product_delta_paths": []
+  },
+  "subject_to_evaluated_governance_head": {
+    "commit_count": 0,
+    "commit_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "commits": [],
+    "changed_path_count": 0,
+    "changed_path_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "product_delta_path_count": 0,
+    "product_delta_paths": [],
+    "non_product_delta_path_count": 0,
+    "product_delta_definition": "Godot product scripts/scenes/resources/shaders/project.godot outside tests, tooling, docs, reports, and CI, plus runtime data/resources JSON.",
+    "product_bytes_changed_after_subject": false,
+    "tree_binding_is_distinct_from_subject_tree": false,
+    "allowed_non_product_delta_classes": [
+      "GOVERNANCE_REGISTRY",
+      "GOVERNANCE_SCHEMA",
+      "EVIDENCE_MANIFEST",
+      "EVIDENCE_RECEIPT",
+      "MCP_RECEIPT",
+      "MCP_EVIDENCE",
+      "REPORT",
+      "TOOLING",
+      "CI_WORKFLOW"
+    ]
+  },
+  "product_path_coverage": {
+    "registry_path": "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+    "registry_sha256_at_subject_head": "41a771eeda3e0a8ede2379ef8eaba31970add09d875e94f6fbb9e822fe64c5fc",
+    "registry_sha256_at_evaluated_head": "41a771eeda3e0a8ede2379ef8eaba31970add09d875e94f6fbb9e822fe64c5fc",
+    "derivation": {
+      "component_inventory_selector": "production_reachable === true",
+      "component_inventory_fields": [
+        "path",
+        "owner_path"
+      ],
+      "unique_owner_domain_fields": [
+        "owner_path",
+        "root_resource",
+        "source_json"
+      ],
+      "empty_values_dropped": true,
+      "path_separator_normalization": "BACKSLASH_TO_FORWARD_SLASH",
+      "dedupe": "CASE_SENSITIVE_EXACT",
+      "sort": "ORDINAL_ASCENDING",
+      "encoding": "UTF8_NO_BOM",
+      "record_separator": "LF",
+      "terminal_lf": true,
+      "product_delta_classifier": {
+        "suffixes": [
+          ".gd",
+          ".tscn",
+          ".tres",
+          ".res",
+          ".gdshader",
+          ".gdshaderinc",
+          ".shader",
+          ".theme"
+        ],
+        "non_product_prefixes": [
+          ".github/",
+          "docs/",
+          "reports/",
+          "tests/",
+          "tools/",
+          "scripts/tools/"
+        ],
+        "runtime_json_prefixes": [
+          "data/",
+          "resources/"
+        ]
+      }
+    },
+    "registered_path_count": 213,
+    "registered_path_set_sha256": "a945f77339fcd8f96279faf1a9260a2b0cfa531263e380efa3b986c3b39b2712",
+    "registered_path_set_payload": "path + LF",
+    "subject_path_sha256_map_sha256": "13c5034c3fd92cff04bd7a4ef943cc5b57e86d40eb59c42769d7d19c3e8085f2",
+    "subject_path_sha256_map_payload": "path + ASCII_PIPE + lowercase_content_sha256 + LF",
+    "subject_path_blob_map_sha256": "37c7885a37f68e1c63d838959617c1cff23df7610a224243b66cc55eddb81447",
+    "subject_path_blob_map_payload": "path + ASCII_PIPE + lowercase_git_blob_sha1 + LF",
+    "subject_missing_path_count": 0,
+    "subject_missing_paths": [],
+    "evaluated_head_missing_path_count": 0,
+    "evaluated_head_missing_paths": [],
+    "registered_path_blob_drift_count": 0,
+    "registered_path_blob_drift_paths": [],
+    "observed_product_delta_path_count": 1,
+    "observed_product_delta_paths": [
+      "scripts/v075_runtime/v075_runtime_owner.gd"
+    ],
+    "covered_product_delta_path_count": 1,
+    "unknown_product_path_count": 0,
+    "unknown_product_paths": [],
+    "coverage_percent": 100
+  },
+  "runtime_boundary_bindings": [
+    {
+      "path": "project.godot",
+      "sha256": "849e8c9458b1f6f4431a00073a8d50119937e64a995303874354fb34da4fb06b",
+      "git_blob_sha1": "027bca3ab5817c2f517d060593bfd8e4dbf9a7fc",
+      "size_bytes": 1056,
+      "evaluated_head_drift": false
+    },
+    {
+      "path": "scenes/main.tscn",
+      "sha256": "aabe4e7f5dce63af558d22c2b77b0cffcfad03a763a7c6d11c4003e90e8e79f3",
+      "git_blob_sha1": "4b78b3e403d666e5ebfcc5884452a341e8f7dab3",
+      "size_bytes": 2898,
+      "evaluated_head_drift": false
+    },
+    {
+      "path": "scenes/runtime/V075RuntimeComposition.tscn",
+      "sha256": "d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9",
+      "git_blob_sha1": "0ca98b170a8f82828ed75e55ca1fec083c117111",
+      "size_bytes": 2611,
+      "evaluated_head_drift": false
+    },
+    {
+      "path": "scenes/ui/v075/V075SampleGameScreen.tscn",
+      "sha256": "1e3461fe385f64e5ef830ce96f64a0e5ab8cf6faf1832fd8cbf3baa17acb3e19",
+      "git_blob_sha1": "35b7ba0b863e734b08a070cd3216209d1d5c6a97",
+      "size_bytes": 16730,
+      "evaluated_head_drift": false
+    },
+    {
+      "path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "sha256": "f8b65c70a59b079933fad9b0ca9cf2f0782c49180d2038de58bdeeb8388d9e11",
+      "git_blob_sha1": "624ca774f49ee5aabdcc2eeaa00e574d7770fa3c",
+      "size_bytes": 343184,
+      "evaluated_head_drift": false
+    },
+    {
+      "path": "scripts/v075_runtime/v075_application_bootstrap.gd",
+      "sha256": "20876238878ae34d6cc4c26060ae441a6c980f72102b12280fa76f9d36d9c958",
+      "git_blob_sha1": "922bff9ea3777de9b9a46e4a8249d5f6d3553cad",
+      "size_bytes": 3804,
+      "evaluated_head_drift": false
+    }
+  ],
+  "product_path_bindings": [
+    {
+      "path": "assets/third_party/game_icons_ccby/bank.svg",
+      "sha256": "48930c419085e749d0a523bf37cfe94665c5559a0d3b5a97096b434e44ff24a9",
+      "git_blob_sha1": "114178daaad25875107aa155034461ec8cf7189a",
+      "size_bytes": 1139
+    },
+    {
+      "path": "assets/third_party/game_icons_ccby/breaking_chain.svg",
+      "sha256": "cb9471bebdb0ad2da0f723e650c4ef853cb8810d494145b017da1e14259cd839",
+      "git_blob_sha1": "0142549a1cadb90fbbc1ae78b938ee77e2321f42",
+      "size_bytes": 2172
+    },
+    {
+      "path": "assets/third_party/game_icons_ccby/coins_pile.svg",
+      "sha256": "13acaac7dbbecee3492c7137454329a510e5c6ec10be8ac8f7002c9e39bf48c9",
+      "git_blob_sha1": "fb8e0ac0de78236ae9fea9b009250a9f44c03593",
+      "size_bytes": 6426
+    },
+    {
+      "path": "assets/third_party/game_icons_ccby/contract.svg",
+      "sha256": "17178c93f868adf3e5e68a2141b717c25d0f764d6260ad43a6b89de65d2ef1d4",
+      "git_blob_sha1": "a111084cbdd7380025d16383909bd96584c684c1",
+      "size_bytes": 300
+    },
+    {
+      "path": "assets/third_party/game_icons_ccby/fall_down.svg",
+      "sha256": "46bd50ffdba1740ed37d71b48f43bd77212faf32c36d628b67dffeaeaae5cd7a",
+      "git_blob_sha1": "605bc6bd93caa9b735945c86dd37bda19dd80c92",
+      "size_bytes": 307
+    },
+    {
+      "path": "assets/third_party/game_icons_ccby/profit.svg",
+      "sha256": "cee5b49351642b22237ab0393eaefb28e25a4727e9e72ba1301745c05d6d3f1a",
+      "git_blob_sha1": "b385ee08d81096a87c7536ee159c1cba28d5414f",
+      "size_bytes": 1267
+    },
+    {
+      "path": "assets/third_party/game_icons_ccby/robber_hand.svg",
+      "sha256": "64760b8771d3951b87eda2eaa8435336b135c93e73f1c13a7332b72b9244f0b9",
+      "git_blob_sha1": "8efea3b1eb47c478529f1a05a47d32cd60a81958",
+      "size_bytes": 2993
+    },
+    {
+      "path": "assets/third_party/game_icons_ccby/shaking_hands.svg",
+      "sha256": "e222d289358dd960af44e83d28c53f07c382c62ebf592ac8d9ad4d50a7d96fa2",
+      "git_blob_sha1": "59dc7df57cb541ecad5e98c88c7de403597151dd",
+      "size_bytes": 2522
+    },
+    {
+      "path": "assets/third_party/game_icons_ccby/warehouse.svg",
+      "sha256": "c28cbd018b330d917ac2de7b578e6e07f621d084b36b8d9ddb17c39f994aa0a3",
+      "git_blob_sha1": "2c07b94b687a35268270c8913905ac127169f596",
+      "size_bytes": 728
+    },
+    {
+      "path": "assets/third_party/moth_kaijuice/city/buildings/mothkaiju_bldg_m.png",
+      "sha256": "76aebb79bfcf4b642c2b4acbd7c78e2ab5b7c1d3dccb2d0399195d542b25d112",
+      "git_blob_sha1": "1172f87d26a9230a5592f26afc3419d01e9a5446",
+      "size_bytes": 1108
+    },
+    {
+      "path": "assets/third_party/moth_kaijuice/city/buildings/mothkaiju_bldg_s.png",
+      "sha256": "6602f402d00af70007de6fb69a5239f07501d0dd76d26c2f8497446910ba9c59",
+      "git_blob_sha1": "9267c4db8d12c1baa1fcfd59ad6c4daec189a099",
+      "size_bytes": 832
+    },
+    {
+      "path": "assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_atfield.png",
+      "sha256": "6df24982887e4e37001a510079ec1e625876d15780efd58cb69bda836947812a",
+      "git_blob_sha1": "75f59903e9e88e8418a3f46b400672c829263857",
+      "size_bytes": 1008
+    },
+    {
+      "path": "assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_laser.png",
+      "sha256": "669e1497a28fcfb0a3e002d595cec2707140179186acfd31d84a263c435b3650",
+      "git_blob_sha1": "81e3b2bcc18331e3a7d4460be6cda108e8d5f557",
+      "size_bytes": 475
+    },
+    {
+      "path": "assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_mech.png",
+      "sha256": "69f1bef15887fbb827afd89c0c30e24e3574184926005d95547e43d5e7416f34",
+      "git_blob_sha1": "dab35186bb589d2a714f227d90826f7f0119f93d",
+      "size_bytes": 11317
+    },
+    {
+      "path": "assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_soldier.png",
+      "sha256": "60a2211267a6060809a67ce93cb24edb88a5168366b31595e614c8c030c770f1",
+      "git_blob_sha1": "e346c9c58fb2c61dc7cfae376608fb277a440003",
+      "size_bytes": 217
+    },
+    {
+      "path": "assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png",
+      "sha256": "37b27c21eae4540b4a025c1f898b3ddd5028376f9dfc220c157434baf3ade817",
+      "git_blob_sha1": "7aad64a0cc208186c29cfa6b921be0adcdb586f0",
+      "size_bytes": 472
+    },
+    {
+      "path": "assets/third_party/night_patrol/ui/button-blue.png",
+      "sha256": "265028828f9406d8325c9a4af38e797507f5a98efe4752433bfa8cc0ed5fe3b1",
+      "git_blob_sha1": "3a325d791c0d0ddc47ff1adf72d3ad091d21975e",
+      "size_bytes": 67110
+    },
+    {
+      "path": "assets/third_party/night_patrol/ui/button-red.png",
+      "sha256": "8f153b92765c73bdd0d9776d2d4adf43954964ac783dca214d39debeb3388717",
+      "git_blob_sha1": "11d5989b7e9149551e50416cdc1c496ae9e7b226",
+      "size_bytes": 35130
+    },
+    {
+      "path": "assets/third_party/night_patrol/ui/card-frame-skill.png",
+      "sha256": "4e8386c0b5c6ea0bc3c51901b568da4b433383adabe072cbbf15be67221f61ac",
+      "git_blob_sha1": "7f7e0e4651473278d9c84ec1297d72c467e1759a",
+      "size_bytes": 27598
+    },
+    {
+      "path": "assets/third_party/night_patrol/ui/card-sigil.svg",
+      "sha256": "bb76f0a8bb06eb2a22c401b9751cb978e6ac25ba88d5a5f90dbe54d2fdec0b2c",
+      "git_blob_sha1": "408ac80ed235fd9786e3befea65340df9571cd45",
+      "size_bytes": 953
+    },
+    {
+      "path": "assets/third_party/night_patrol/ui/panel-talisman.png",
+      "sha256": "30c5055b83229f8f710eccb7fe69095fb7049294c018f2b66a2bef22a7e02e11",
+      "git_blob_sha1": "c0839952330c65b37eb362c4db5849a921e41497",
+      "size_bytes": 46638
+    },
+    {
+      "path": "data/cards/card_runtime_catalog_v06.json",
+      "sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40",
+      "git_blob_sha1": "1275f22f6617a76882fa8088467a11c176cf8a54",
+      "size_bytes": 929234
+    },
+    {
+      "path": "data/diagnostics/v076_military_card_crosswalk_v1.json",
+      "sha256": "4638310d3839ea656d953f94f598bc95c04bff7ca6be9988ef879154e19e5fc6",
+      "git_blob_sha1": "1464b649333d83c11e43162e0f6fe8d0b7ee1560",
+      "size_bytes": 52860
+    },
+    {
+      "path": "data/presentation/v076_animation_cue_catalog.json",
+      "sha256": "a8b913953b9f7baebd27b0a4c8fac42ca6ae5dd60822878aae0f124dc37bfa4f",
+      "git_blob_sha1": "3d68d6f1680837b9c109c41b5b555ec8c5b7ed02",
+      "size_bytes": 26295
+    },
+    {
+      "path": "data/presentation/v076_sound_cue_routes.json",
+      "sha256": "f43b4eb4f0d50c811a029dde50f4d94e322a3867fe05e8be869edc9468e345bb",
+      "git_blob_sha1": "962f3c7f88ca049eea363d538dc34c043ee514aa",
+      "size_bytes": 7015
+    },
+    {
+      "path": "data/showcase/hearthstone_grade_sequence.json",
+      "sha256": "76f02bd75793a1d0bc26d9ca99aaf1fe952d419f2f5b0843b0783f6fe68bacf8",
+      "git_blob_sha1": "c150c429b6171c1f1628293e6721462a4849f512",
+      "size_bytes": 8485
+    },
+    {
+      "path": "data/v076/v076_military_unit_profiles_v1.json",
+      "sha256": "258714e55aa4a685cc1ed747354c716afe636684374a14be4811b335073d282a",
+      "git_blob_sha1": "4817c7029c75a113089b05a64291d4cabc296f33",
+      "size_bytes": 62712
+    },
+    {
+      "path": "default_bus_layout.tres",
+      "sha256": "f75807b2492be3b240515607ef64f9c8eb08c4fd76c7f2951ff0c4e1e64b5acd",
+      "git_blob_sha1": "665b0e9e71218d027c1c3605c9abb690755d2cdd",
+      "size_bytes": 437
+    },
+    {
+      "path": "resources/cards/runtime/card_runtime_catalog_v04.tres",
+      "sha256": "a468dd4231906904f521232e4c58ee8882c4fa834f958c43438eeaf3338136a6",
+      "git_blob_sha1": "781259e139c997ef8d8896c7653586b75b19b96b",
+      "size_bytes": 21920
+    },
+    {
+      "path": "resources/cards/runtime/card_runtime_catalog_v06.tres",
+      "sha256": "5872ffc01a91860d697deb4fe23765c80feb5697e085b2873dd0872136fb04e8",
+      "git_blob_sha1": "693d73cebfc0654ff2f15ecf5f4b763b427f56a5",
+      "size_bytes": 392
+    },
+    {
+      "path": "resources/content/alpha01/alpha01_content_manifest.tres",
+      "sha256": "302bffb7912b2890ef8b02e37dc85f9d011341dde2d5d5aa2a3685f0245902ff",
+      "git_blob_sha1": "d4d24430417c5afd3aba8b6b55794b7165d0e401",
+      "size_bytes": 3920
+    },
+    {
+      "path": "resources/content/product_industry_catalog_v05.tres",
+      "sha256": "5544f01d1f0e50a7be38e4fa8686ba249a89517782d2b77646b913ed93cbd77a",
+      "git_blob_sha1": "8284cdcd6b0653c9bc44de795025c167789e71dd",
+      "size_bytes": 17363
+    },
+    {
+      "path": "scenes/CardUI.tscn",
+      "sha256": "afab9c84219abad7a2a1ce800cfb75a2e51783fd83a13c8c5123f1e36874a4d3",
+      "git_blob_sha1": "f501bc02263a1bf9e53eadc36fa201cfd73ddbe1",
+      "size_bytes": 5141
+    },
+    {
+      "path": "scenes/main.tscn",
+      "sha256": "aabe4e7f5dce63af558d22c2b77b0cffcfad03a763a7c6d11c4003e90e8e79f3",
+      "git_blob_sha1": "4b78b3e403d666e5ebfcc5884452a341e8f7dab3",
+      "size_bytes": 2898
+    },
+    {
+      "path": "scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+      "sha256": "f96d6bda53fd8365146ee74f376666a145d2cdd5e7f9bc1b6c3ca5df792a552f",
+      "git_blob_sha1": "52be4b9fac0af8895b77095b1c857b16cd924c2a",
+      "size_bytes": 449
+    },
+    {
+      "path": "scenes/runtime/RoleCatalogRuntimeService.tscn",
+      "sha256": "6cc2556acfaba5862d4b7352f64c4f2bc2ae809230a79145ec93d160490facbc",
+      "git_blob_sha1": "265cd925ff6efffa86198ede1a4fe3a5d1f025a9",
+      "size_bytes": 405
+    },
+    {
+      "path": "scenes/runtime/V075RuntimeComposition.tscn",
+      "sha256": "d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9",
+      "git_blob_sha1": "0ca98b170a8f82828ed75e55ca1fec083c117111",
+      "size_bytes": 2611
+    },
+    {
+      "path": "scenes/runtime/presentation/CommercialAudioPresentationHost.tscn",
+      "sha256": "be99c3b68771e6013a248e1b0185cb3fcd10c2f7a4363ccd7d6ffc33f3143dad",
+      "git_blob_sha1": "d7a48a7508adab4d770e4497d82c7f3478051845",
+      "size_bytes": 1520
+    },
+    {
+      "path": "scenes/runtime/presentation/GameThemeLocaleResolver.tscn",
+      "sha256": "cb68d55ccc798bebfef39388f3719722a0f8067a21b50183aa7dfb7c1c465fed",
+      "git_blob_sha1": "a13a3dbdfdb8b842f8440d383e95ff246dfb4d4a",
+      "size_bytes": 388
+    },
+    {
+      "path": "scenes/ui/BestiaryCodexBrowser.tscn",
+      "sha256": "c6b3db41ee4b68fb809bf6001617a206346d226ae0180f4f6c867167e9c7af20",
+      "git_blob_sha1": "80fa424319f5afb0fa65547e2839dfc5705c3b80",
+      "size_bytes": 2141
+    },
+    {
+      "path": "scenes/ui/BestiaryDetail.tscn",
+      "sha256": "3e0a8835d6ad486557244681d54cf3339e76b88c4b8efe74113b28165b032642",
+      "git_blob_sha1": "5075fcd22215c529b9ac00375c1f0d50704ae11c",
+      "size_bytes": 3244
+    },
+    {
+      "path": "scenes/ui/BottomCountdownBar.tscn",
+      "sha256": "185305f4a7eea45373eef8356b675f6fad7d5fe995c62ed40b548ec5e91b7223",
+      "git_blob_sha1": "ecb146628d15d5d2cd07b6af8f513c519d529616",
+      "size_bytes": 2061
+    },
+    {
+      "path": "scenes/ui/CardCodexBrowser.tscn",
+      "sha256": "0e3b7777fce4c91990a69827e65a75908864df91d891a092dd790e0d23293e6a",
+      "git_blob_sha1": "3acc57ebe602d5c663315b41566084103e0f5384",
+      "size_bytes": 3416
+    },
+    {
+      "path": "scenes/ui/CardCodexDetail.tscn",
+      "sha256": "dea2c1e5ce80b41b9060dc4199ed7a1f8bb900064f8846066e99c98816e75746",
+      "git_blob_sha1": "c14ecc00faa982f28ab7e3ddfbd987db369a2c51",
+      "size_bytes": 7988
+    },
+    {
+      "path": "scenes/ui/CardFace.tscn",
+      "sha256": "d2af0bf0677ba5287237b88ad35256fc6138e6a6b47b76ff7d624a070084f62a",
+      "git_blob_sha1": "dd987fa4ac96dd7d2d1787913aef3ad7c4aefaec",
+      "size_bytes": 335
+    },
+    {
+      "path": "scenes/ui/CardResolutionTrack.tscn",
+      "sha256": "bb37cdc5a3793d787628345b9a30c30e8f9229f5f394f94feffeb4ac0a1e10bd",
+      "git_blob_sha1": "2446659949b1b56194710569a5d6856260531299",
+      "size_bytes": 6722
+    },
+    {
+      "path": "scenes/ui/CardResolutionTrackSlot.tscn",
+      "sha256": "dffd80690d63fae1da6090fa327c396f7007bc31298290518ffec393cce707b3",
+      "git_blob_sha1": "244f00dedce47b13433aa32344f5a53bf63285d8",
+      "size_bytes": 2721
+    },
+    {
+      "path": "scenes/ui/CodexCompendiumSurface.tscn",
+      "sha256": "960162f19453d1619e1d159a5c3cb0caeece960771708a35d89744e975f0db2c",
+      "git_blob_sha1": "504183eda9fbe0876dc7152af1df9bda131bc52b",
+      "size_bytes": 4588
+    },
+    {
+      "path": "scenes/ui/CommercialSettingsSurface.tscn",
+      "sha256": "d7202c90a22332357fd0d5fe4263b92138ca052fc9d6b6bc636e9a16ee8224cd",
+      "git_blob_sha1": "0be1bcaa8c77d7bed5bf6bccfaf1394ecdc3fdf8",
+      "size_bytes": 4235
+    },
+    {
+      "path": "scenes/ui/CompendiumHubBoard.tscn",
+      "sha256": "c68fb91ea2131c3719fde2282cc10e135042b78f6f2b8464860d352818b3c3ab",
+      "git_blob_sha1": "08fac0da1bebad03e4f753913ae6e9de4ad02c40",
+      "size_bytes": 2615
+    },
+    {
+      "path": "scenes/ui/MenuOverlay.tscn",
+      "sha256": "71e0e1adfdd23977bdf65746f2d0a71b142b87754c62b8ea25898930338052bb",
+      "git_blob_sha1": "3ce733b6d007bc0e55d106118c613b129fb45e9d",
+      "size_bytes": 9473
+    },
+    {
+      "path": "scenes/ui/MenuQuickNavigation.tscn",
+      "sha256": "a47028a204e9b341ac3f4b913b1ecc5ef3f31c4c28128b5023841566a83313ef",
+      "git_blob_sha1": "300026aa4285b19269478fef8a51e40479576202",
+      "size_bytes": 1254
+    },
+    {
+      "path": "scenes/ui/ProductCodexBrowser.tscn",
+      "sha256": "0b53fc702492ed347ddb0105a6f2626981f7d4f874af65297cbafaa52c2a9ef9",
+      "git_blob_sha1": "316e2159d37343c67a24cc65d2a3bcda87f47f3d",
+      "size_bytes": 2133
+    },
+    {
+      "path": "scenes/ui/ProductCodexDetail.tscn",
+      "sha256": "125994a3a45fd9132b4f45f1a0f68668ed980c551f35a791083e2bb98efd5302",
+      "git_blob_sha1": "077369cf4c3943b81cc641e25e1164443c098011",
+      "size_bytes": 2989
+    },
+    {
+      "path": "scenes/ui/RegionCodexDetail.tscn",
+      "sha256": "b12e4e89e2f694a58f4eebad68d56299d4f4eb171cb3b008ced6e1253d8488a5",
+      "git_blob_sha1": "48cf0e7289b86a76d16fb7d1eaa99fa10a6dd451",
+      "size_bytes": 2796
+    },
+    {
+      "path": "scenes/ui/RoleCodexIdentityBoard.tscn",
+      "sha256": "c846d959ffd264c835591d5464654c77adbe862f27cd4b53874abf94a5e6984a",
+      "git_blob_sha1": "35c3409380f5fbfbb4bfda529aad31358ac46464",
+      "size_bytes": 2984
+    },
+    {
+      "path": "scenes/ui/RulesQuickReferenceBoard.tscn",
+      "sha256": "3f2534cb2587084303e1d88ebe7cf62027c49b865788f2aacc5984e9cf9861fa",
+      "git_blob_sha1": "a895f49ba8a8a5114af06ee5458675344aee24a8",
+      "size_bytes": 3286
+    },
+    {
+      "path": "scenes/ui/VisualEventLayer.tscn",
+      "sha256": "9c70082ea528c691bcb6646bf36da16816bc30d5e85493f4dbc3b5e43c05b704",
+      "git_blob_sha1": "2a93229e743503fcd855e5cf0abf133280a7d515",
+      "size_bytes": 357
+    },
+    {
+      "path": "scenes/ui/codex/BestiaryCodexThumbnailCard.tscn",
+      "sha256": "199b07a2ab82e0f48da7d29b8400cb0f1e84f883134f7be3ab3970817a1ea973",
+      "git_blob_sha1": "8b8680dfc9449f0160f22b309dcc5b38067ba305",
+      "size_bytes": 2272
+    },
+    {
+      "path": "scenes/ui/codex/BestiaryMonsterActionCard.tscn",
+      "sha256": "443d1327a63aa9032a990c7e8528634f878bbda544114f784fbed40f82b64a09",
+      "git_blob_sha1": "1b587103725ba8693c8d561ec962eac3f4c82af2",
+      "size_bytes": 2611
+    },
+    {
+      "path": "scenes/ui/codex/BestiaryMonsterKpiCard.tscn",
+      "sha256": "fd4f44671594e5c148f33701679b452c8fff147d356d75a36cdb1ae8f56cf3c4",
+      "git_blob_sha1": "fdf63b6cf0e320aa63b27596f25b0e319a1fcb72",
+      "size_bytes": 1466
+    },
+    {
+      "path": "scenes/ui/codex/CardCodexFilterChip.tscn",
+      "sha256": "d63c10c5437e6edd71260b1a4cbeadbfa88d1bf604e13f7c3d0e533ae4a1f23a",
+      "git_blob_sha1": "b4af0f241aa7183b40756937041423713375213e",
+      "size_bytes": 291
+    },
+    {
+      "path": "scenes/ui/codex/CardCodexInfoCard.tscn",
+      "sha256": "f917b13bb22c95e4bad6567b0338cdc9a6e3fca5457826692272c20b26a4e587",
+      "git_blob_sha1": "090cf1ab352df79992399e7a6a5724eb2c6fd59a",
+      "size_bytes": 1622
+    },
+    {
+      "path": "scenes/ui/codex/CardCodexThumbnailCard.tscn",
+      "sha256": "3fe0f1d362be8eab189b527818a847a9242d3b5d6bca8ffd8da0f0629d7c20dc",
+      "git_blob_sha1": "961190de24add10a551f291cc059cead3d59ed8e",
+      "size_bytes": 3999
+    },
+    {
+      "path": "scenes/ui/codex/CodexBrowserSummaryCard.tscn",
+      "sha256": "447527cc82c6b919a9cc505a9b833143771bfab1dee7e71407a8f4ed397012b3",
+      "git_blob_sha1": "c0028241c5acfdc2b340bac31e5c57a3492c2c03",
+      "size_bytes": 1526
+    },
+    {
+      "path": "scenes/ui/codex/ProductCodexKpiCard.tscn",
+      "sha256": "33e2507d97c9fa90357410fc8c9cb973860cb62e3456b66518f2f7f73ded50cc",
+      "git_blob_sha1": "17cd1f34b6049700cd14af85e815cb7b6cb16be0",
+      "size_bytes": 1502
+    },
+    {
+      "path": "scenes/ui/codex/ProductCodexMarketBadge.tscn",
+      "sha256": "4cf6bc50f9146c18a92e46d318b0ed98f3363086c03431104374b409cd948a64",
+      "git_blob_sha1": "687a433e5cdaadd436df60cde590f2ed3c6d6632",
+      "size_bytes": 3188
+    },
+    {
+      "path": "scenes/ui/codex/ProductCodexStrategyCard.tscn",
+      "sha256": "b0aae2d24916d414d9ebc2f6fc1340f14b669313190ae97af6769b0511a7f97d",
+      "git_blob_sha1": "34793583330f82c419f51de58729532ec4be8fcd",
+      "size_bytes": 1245
+    },
+    {
+      "path": "scenes/ui/codex/ProductCodexThumbnailCard.tscn",
+      "sha256": "d69035bedfd1b31a48896d19fbfc9041a7aae2cd7ace234898a8438e3ddb0cf9",
+      "git_blob_sha1": "f1713ed0cb3a7da0ccc0ad0517ea91dd658f1c2b",
+      "size_bytes": 703
+    },
+    {
+      "path": "scenes/ui/map/PlanetCityMarker.tscn",
+      "sha256": "56299a356b3539a02b3594f374beb8e6b09376a3bfde70cfacfe96811e1a316d",
+      "git_blob_sha1": "dd153abe4b9908696b7aa393bec324332abef938",
+      "size_bytes": 1344
+    },
+    {
+      "path": "scenes/ui/v073/V073PlaytestCoachMarks.tscn",
+      "sha256": "e398fa10919fa1197c246e6e2eed79861f85f76998cd154b4b3aa854d0c4c3c2",
+      "git_blob_sha1": "6fc628a1747f6b69a2252cd53c942e93b90e6cee",
+      "size_bytes": 2644
+    },
+    {
+      "path": "scenes/ui/v075/V075CombatPlayerSurface.tscn",
+      "sha256": "889feebe8619fdb4a8a65e691082378c87772df27fcadd9a6a19b4c556a39341",
+      "git_blob_sha1": "cfc2e2e117f43030450bba246284ff7154515267",
+      "size_bytes": 9892
+    },
+    {
+      "path": "scenes/ui/v075/V075InteractiveCardFace.tscn",
+      "sha256": "7702d4f20d207aa3d1880f3b2e123b51ed3db5dbbaa2cb504b0a18df56f7dc35",
+      "git_blob_sha1": "bf14985aaa9f3dcc516d0235d8bd1853d004d6c4",
+      "size_bytes": 622
+    },
+    {
+      "path": "scenes/ui/v075/V075NewGameLoadingOverlay.tscn",
+      "sha256": "e1b1b5109d2e082cac666dbd46c809388bdf1f9bdaf1d48aaaf337610ee3f095",
+      "git_blob_sha1": "8612a180ab2d858205bb1dd510301821c19db39a",
+      "size_bytes": 3472
+    },
+    {
+      "path": "scenes/ui/v075/V075PublicActionArrangement.tscn",
+      "sha256": "cf3cda326ee2533ba248e9c51f03b83877035fe26b8cc318856dcd25ac2a3fba",
+      "git_blob_sha1": "6ba2883082c4d00086093544031763274a554cda",
+      "size_bytes": 396
+    },
+    {
+      "path": "scenes/ui/v075/V075SampleGameScreen.tscn",
+      "sha256": "1e3461fe385f64e5ef830ce96f64a0e5ab8cf6faf1832fd8cbf3baa17acb3e19",
+      "git_blob_sha1": "35b7ba0b863e734b08a070cd3216209d1d5c6a97",
+      "size_bytes": 16730
+    },
+    {
+      "path": "scenes/ui/v076/V076DeckLifecyclePresentation.tscn",
+      "sha256": "ae51ed9c0a38e45d4ccd48c0acc0320efba3147b92293720b28219f7f51a1676",
+      "git_blob_sha1": "f9a3099758fa1940bc7ab22d074ef1633c0f5d37",
+      "size_bytes": 4593
+    },
+    {
+      "path": "scripts/CardUI.gd",
+      "sha256": "fb21f2d9cceb977f8d5df8ee6108fade15440bc3d479cc11acda691e2ced0fd1",
+      "git_blob_sha1": "db4bb74f20183932815db00052d66ce0ca6e8fdf",
+      "size_bytes": 40238
+    },
+    {
+      "path": "scripts/audio/commercial_audio_presentation_host.gd",
+      "sha256": "b1acddff2fa27c2db2900c544c99d8568f721f68e4082b1478398770678602c2",
+      "git_blob_sha1": "c08c79eefd52daf698f4da3028a6998cfaa04683",
+      "size_bytes": 21908
+    },
+    {
+      "path": "scripts/audio/commercial_audio_presentation_service.gd",
+      "sha256": "34a3ff0eb3fd5f5df05d8f9b21c0ef7ee69c2377266903d0f60dd252d79f6889",
+      "git_blob_sha1": "a2bcbd3949b2883890c53ed0ce92d834f5549b56",
+      "size_bytes": 10823
+    },
+    {
+      "path": "scripts/card_art_view.gd",
+      "sha256": "529ec78292eedb25ebe80745d48bc9fef338589435340e027e6fc02df60e24e4",
+      "git_blob_sha1": "59109a00b47bd0f4de5942ffdbecb5820530bfc0",
+      "size_bytes": 77359
+    },
+    {
+      "path": "scripts/cards/card_play_requirement_policy.gd",
+      "sha256": "081c5f7be818fc535629adfbe9b0c640202a53faffad2ce702761ec0b294a1d5",
+      "git_blob_sha1": "2933e4c05442e04f57c22d2273d4ab65288fd2c0",
+      "size_bytes": 4449
+    },
+    {
+      "path": "scripts/cards/card_runtime_catalog_resource.gd",
+      "sha256": "9cac33dc7befdae5d57b76d5e7f25a57ce7b62c7db7023a7962308ab35b166f3",
+      "git_blob_sha1": "148ac6cb085671b70fd89657bccb3b84bc78525e",
+      "size_bytes": 6778
+    },
+    {
+      "path": "scripts/cards/card_runtime_catalog_v06_resource.gd",
+      "sha256": "ef3db4858cad658268c2d63cf99a3727559f5b88b9115315ee604d57b7a68f8e",
+      "git_blob_sha1": "9de31a7c7906a4d3799116dc87af15cd95590bcf",
+      "size_bytes": 11258
+    },
+    {
+      "path": "scripts/cards/card_runtime_definition_resource.gd",
+      "sha256": "a8811d9ae5f351bf37aa7ad4ef8f23be6c3631df77a92207becd163c28dddf9b",
+      "git_blob_sha1": "2a2d922af28d6f9b04e1130019d06984d719a5c2",
+      "size_bytes": 2978
+    },
+    {
+      "path": "scripts/cards/card_runtime_family_resource.gd",
+      "sha256": "25011f87c78b05408516239c078192651023c1d365dc44b9aa5b990e73bed3a9",
+      "git_blob_sha1": "36997b8b9d41ba073ee57f9d2acd9e7788ebbf84",
+      "size_bytes": 7010
+    },
+    {
+      "path": "scripts/cards/card_runtime_kind_schema.gd",
+      "sha256": "c58039ca9ef82e564c62791cbc6f4ccbe4c70ba6c65ff7a5f6e63015c55d2aff",
+      "git_blob_sha1": "cb00a715a5191e6fae6bab749038b400cb939475",
+      "size_bytes": 2214
+    },
+    {
+      "path": "scripts/cards/card_runtime_pack_resource.gd",
+      "sha256": "6aa4ce5bc43d806cd9a51f8de8d78bcc6c081203764fb9488f7ecd3bb463a906",
+      "git_blob_sha1": "d116df5acb957dd807a023d8a84601e01502b007",
+      "size_bytes": 501
+    },
+    {
+      "path": "scripts/cards/card_runtime_rank_resource.gd",
+      "sha256": "4e267dce7f5b6392aaaed8907d2f7d836918b57e8086e557dd15fdba3529bbe6",
+      "git_blob_sha1": "d13d1147dc67e29e4144dd4403dace952ecc6be7",
+      "size_bytes": 148
+    },
+    {
+      "path": "scripts/cards/semantic/authorized_card_semantic_envelope_v1.gd",
+      "sha256": "347a83fb6f2694d2ec9888ed19d1330213c47104daca9825e59c34e7a9feebbb",
+      "git_blob_sha1": "85fca36b53ba29028bb20a8c14999f74d4d03e3d",
+      "size_bytes": 4405
+    },
+    {
+      "path": "scripts/cards/semantic/card_instance_decision_state_v1.gd",
+      "sha256": "1093263073bdeaa5a746a0c64f544ca2db6822aa10457281b8179ab4a268ef56",
+      "git_blob_sha1": "f0fc364475da9be42d44f3fff159f85a739bf1f9",
+      "size_bytes": 5814
+    },
+    {
+      "path": "scripts/cards/semantic/card_semantic_compiler_v1.gd",
+      "sha256": "3b70ee639390d7ee64e76f18510f77bca066b3f7b64ad1a897dc08bab9be5a63",
+      "git_blob_sha1": "6fbdfef771130cb0f5a0bd8ebaf99205caee1923",
+      "size_bytes": 47076
+    },
+    {
+      "path": "scripts/cards/semantic/card_semantic_schema_v1.gd",
+      "sha256": "fa0bf2580209e6efaa4280a4330298bb5ab5ae57f68c292d5afd7e30ed90b5fa",
+      "git_blob_sha1": "448a348c33c25e618a7a0bef9a55fff3a195a661",
+      "size_bytes": 29737
+    },
+    {
+      "path": "scripts/cards/semantic/card_v04_interaction_semantic_reference_adapter_v1.gd",
+      "sha256": "3ef24c6846802728988d68784d34d298b736dc4c22b630aa4092423010a71480",
+      "git_blob_sha1": "0025ff8a5ae5796a956a3756f82341ba3547be71",
+      "size_bytes": 12454
+    },
+    {
+      "path": "scripts/cards/shared_card_group_window.gd",
+      "sha256": "6991f3fd8313b3ac72bff86cc180f8bbe78ccc5701838e300994ac7fa485b0cf",
+      "git_blob_sha1": "0af7b1a3ff2ff1d458ac8ac4b42c6b1468e8e574",
+      "size_bytes": 7616
+    },
+    {
+      "path": "scripts/cards/v06/card_flow_policy_v06.gd",
+      "sha256": "3a9913aed6ca77adc1da8fe8b2fa9117e8c05fc898d15e675c0b0be583395baa",
+      "git_blob_sha1": "ce340e978c2ea75353cdc5136f67126066e28682",
+      "size_bytes": 28406
+    },
+    {
+      "path": "scripts/cards/v06/card_flow_transaction_service_v06.gd",
+      "sha256": "03f84f4a1045e87cf0b1df780fb42fa0d91fd6acc2fadba662e32136d09312e7",
+      "git_blob_sha1": "9c3d1c8d8f36aacb9b73aa6592945167cfcad44c",
+      "size_bytes": 85109
+    },
+    {
+      "path": "scripts/cards/v06/card_player_state_port_v06.gd",
+      "sha256": "0fa1b3f4cc16919408738237d4735838a122021563fe40b22b2d5d6eaef8e189",
+      "git_blob_sha1": "a19903535eebce2f79e056c60e5db9a9381f774a",
+      "size_bytes": 30204
+    },
+    {
+      "path": "scripts/cards/v06/effects/card_effect_adapter_support_v06.gd",
+      "sha256": "18e2166ccd8d0e3fd240aab275c84a943ba22629d19717bc295abb57bcfb8e40",
+      "git_blob_sha1": "b39d577fe34a672dab88c852b6f1abc053081411",
+      "size_bytes": 2483
+    },
+    {
+      "path": "scripts/cards/v06/effects/commodity_card_effect_adapter_v06.gd",
+      "sha256": "6e90af66931007cd60a85cfcba79fb46db9e80b288dede890b56273d6cdeafb9",
+      "git_blob_sha1": "84a9b701e686bea20cf3d1f2b17129338fb623a5",
+      "size_bytes": 8316
+    },
+    {
+      "path": "scripts/cards/v06/effects/facility_card_effect_adapter_v06.gd",
+      "sha256": "c8481290809b30e65215e62a5a246937181d3c635bcd7ed53c2a0c2faeda6961",
+      "git_blob_sha1": "b174c1f4016575f5afb6fe719c80db6df0433186",
+      "size_bytes": 28150
+    },
+    {
+      "path": "scripts/cards/v06/effects/global_supply_demand_card_effect_adapter_v06.gd",
+      "sha256": "00663505ebabb54b3701640b1d44a23c54fa782f807e2dd3c8136ff153331284",
+      "git_blob_sha1": "05a2eaf891e84540a5986febdc0393c61557df2a",
+      "size_bytes": 6793
+    },
+    {
+      "path": "scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd",
+      "sha256": "f74ceb708add3b956a46d2d69aae20bad740b4281d04bce275478e28c0d6d838",
+      "git_blob_sha1": "b4abc1d07232c27561c6b71fe8ac9d9b45e10c48",
+      "size_bytes": 38010
+    },
+    {
+      "path": "scripts/cards/v06/organization/organization_card_effect_adapter_v06.gd",
+      "sha256": "8e51d4ee773a251a1f4939d2d356939d29b5e2604b1cf72c5c5f97f6c8ec6924",
+      "git_blob_sha1": "3a296458d2fc45315157290c50142927bb39f54d",
+      "size_bytes": 3106
+    },
+    {
+      "path": "scripts/cards/v06/production/card_player_state_production_adapter_v06.gd",
+      "sha256": "e0e68e8ea74e3eccb00b9d9ed3515e88f738bf99a7579d4656d080d95c066714",
+      "git_blob_sha1": "bff9159fabaea5d340f1a54cff9789629a5c3746",
+      "size_bytes": 58524
+    },
+    {
+      "path": "scripts/cards/v06/production/commodity_flow_atomic_batch_sink_v06.gd",
+      "sha256": "1fdcd5ea485c435c2c8a6617964c8492df29763cde725b46d260363b98b175b5",
+      "git_blob_sha1": "a8f0577897547d383127b7d70bb18920487b98dd",
+      "size_bytes": 3442
+    },
+    {
+      "path": "scripts/cards/v06/production/commodity_flow_candidate_snapshot_port_v06.gd",
+      "sha256": "67d5d6c249b62326fa31c33e899a69e5ddc9dbfb9a66175668197831b7ba69a1",
+      "git_blob_sha1": "84e14dc5490065a7565de8802379f09f60eafdc7",
+      "size_bytes": 2632
+    },
+    {
+      "path": "scripts/cards/v06/production/core_economic_card_effect_router_v06.gd",
+      "sha256": "9da4bb99d1a4764bd3001f10ebe5f5ab2e4fb1ee3b1563eaaffc743b8aefe243",
+      "git_blob_sha1": "8e5e5aefa16caa92279fb0eff1bd521d6bef8612",
+      "size_bytes": 11454
+    },
+    {
+      "path": "scripts/cards/v06/production/core_economic_card_runtime_adapter_v06.gd",
+      "sha256": "0aca61852219b0a5a7f084214363750601300373fa630ea5e4255e7181afd750",
+      "git_blob_sha1": "5c6d3b1e07904ad99dfe3e3b16a944da2b44f397",
+      "size_bytes": 39234
+    },
+    {
+      "path": "scripts/cards/v06/production/organization_production_port_v06.gd",
+      "sha256": "6e634de2a44bf3e4a62acaa894851ab2da0189a15bac56529a4cf8911e2a2657",
+      "git_blob_sha1": "e9ade635d3c5166b1d0c68f9a9b3455a7f9715e7",
+      "size_bytes": 13184
+    },
+    {
+      "path": "scripts/cards/v06/units/monster_card_effect_adapter_v06.gd",
+      "sha256": "68271868c4c2297d76005e90a70a4f55aa6a6534c62e2302aa3ed02a52acb8d6",
+      "git_blob_sha1": "02c32561c48c0357306b4353bf22ee51497d70b1",
+      "size_bytes": 2532
+    },
+    {
+      "path": "scripts/cards/v06/units/monster_card_owner_port_v06.gd",
+      "sha256": "ac183c12c1cb7b88cc61943a248d87142fb635d048cad3f235cc4782f5934317",
+      "git_blob_sha1": "5639553f6d0662c5e7c593f48e8849d20189e768",
+      "size_bytes": 1382
+    },
+    {
+      "path": "scripts/cards/v06/units/unit_card_owner_forwarding_port_v06.gd",
+      "sha256": "a278839ba84eb6c401e8ffecfc7512c89397fc4556ef58341ba5e7a2538bcc50",
+      "git_blob_sha1": "93358d5636d71b1771fa71cc846c7046bfe0e70d",
+      "size_bytes": 9872
+    },
+    {
+      "path": "scripts/cards/v06/units/unit_card_runtime_schema_v06.gd",
+      "sha256": "5f77a919d2fbcd846f6a90757b630bd9b7c890bef962d9d19ca8959320d20fe1",
+      "git_blob_sha1": "ea6b1588c92e58afedad90aa76235dc82b3257ad",
+      "size_bytes": 13077
+    },
+    {
+      "path": "scripts/content/product_industry_catalog_resource.gd",
+      "sha256": "cd73931496d672359782b7ea9d30d35cdb23fdf6a5fea987406baf145d72cdd1",
+      "git_blob_sha1": "2409fa767302937336a512fd03a09240b50e0c93",
+      "size_bytes": 4417
+    },
+    {
+      "path": "scripts/content/product_industry_entry_resource.gd",
+      "sha256": "040bf6e9d8a58979940af16787edd96ad6f2717e037bbad7ec54cb6c0d1582fd",
+      "git_blob_sha1": "1a5aa916afd5c83aec6f4c4a90ec4541f1bfbcfb",
+      "size_bytes": 458
+    },
+    {
+      "path": "scripts/map_view.gd",
+      "sha256": "98419c35ec7a3f5b50ff306befc9ce6df8168ca7816443c0ce3f1950752b6969",
+      "git_blob_sha1": "b8ce076306f98b1cd36bbf0d8bd4c623f77dc1a4",
+      "size_bytes": 116854
+    },
+    {
+      "path": "scripts/monster_art_view.gd",
+      "sha256": "89515b0b4212d6c5bbc372749eb353dde20b03b835a79d1e3872eb16dce4be70",
+      "git_blob_sha1": "fa36b8d4fc39520488ee350f1e6d76147d569ed5",
+      "size_bytes": 24234
+    },
+    {
+      "path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+      "sha256": "8cdc2cd0c44edb87dc398753c118c64b600faac563080d53e7814e05ff5f5ec1",
+      "git_blob_sha1": "3da1aaadd4e407b99e8670e450d34e294b77c02e",
+      "size_bytes": 30203
+    },
+    {
+      "path": "scripts/playtest/v076_alpha07_human_golden_candidate_profile.gd",
+      "sha256": "82026c146bcb41d22b7c4051fb91a5390fbbf920c36fd1e78800c96eac4b67af",
+      "git_blob_sha1": "45a02248dbdff1c1cf7a36b6d30c38b73377631c",
+      "size_bytes": 2802
+    },
+    {
+      "path": "scripts/presentation/card_illustration_catalog.gd",
+      "sha256": "2b3b071b7449ac3e8a64bb00a71f331d16631b76bf68c8dd053209c8f565157b",
+      "git_blob_sha1": "56368c04f75099ad6c20900b9ea8eb428d17f687",
+      "size_bytes": 3557
+    },
+    {
+      "path": "scripts/presentation/game_theme_locale_resolver.gd",
+      "sha256": "c2ad01eea5596754e6de146da9b57b396e2eaf43f9294ac0b179ed40743993e6",
+      "git_blob_sha1": "17940b5490cedf6f72c2ea483dfb29cb95dd7f04",
+      "size_bytes": 1889
+    },
+    {
+      "path": "scripts/presentation/table_presentation_pure_data_policy.gd",
+      "sha256": "794fa6bc46070757638f656ccaa673faad3854e76c6f697949237501f327bc1f",
+      "git_blob_sha1": "c26d44ca47e46282222bde2adff5a49d2b03146e",
+      "size_bytes": 1257
+    },
+    {
+      "path": "scripts/presentation/v074/v074_planet_presentation_adapter_v1.gd",
+      "sha256": "976a12f8b373aee8ffd8c26bd2110ff8d9cc0586ee5bbf84a0668a404ec388bf",
+      "git_blob_sha1": "a1dcdae6693f26bec498c48b5544c02ec893f666",
+      "size_bytes": 35795
+    },
+    {
+      "path": "scripts/presentation/v076_deck_lifecycle_presentation.gd",
+      "sha256": "4cd3d747305fae37e8fbf5fa5d202a7d30e26ed34533edbba4ff9de1f74d1802",
+      "git_blob_sha1": "5f653241f91a550b44b6102ad3fa8da4ec18cdc5",
+      "size_bytes": 23111
+    },
+    {
+      "path": "scripts/presentation/v076_presentation_animation_director.gd",
+      "sha256": "12a70d31e5c65704393bc211c3aae2594caaac900c441102b1fd0d205637183d",
+      "git_blob_sha1": "f46e01f7898d98681e152c4f2702d5e3d1ba1232",
+      "size_bytes": 15142
+    },
+    {
+      "path": "scripts/runtime/card_codex_public_source_service.gd",
+      "sha256": "135f3676c7cba05b83e0a2b85956520819e8ffb4e2b608cb8a73332a4971a6a8",
+      "git_blob_sha1": "9dcac716e69345e0aa6bbfacbbdbbc98ec76055c",
+      "size_bytes": 27185
+    },
+    {
+      "path": "scripts/runtime/card_runtime_catalog_service.gd",
+      "sha256": "f3bf14f23425c4761c23a9dc80ca08d35d1cd5a29cf67c87c3818cd836db06a2",
+      "git_blob_sha1": "8c577a3d06cb8244cc174d6a82e5ba0e9c46c9f4",
+      "size_bytes": 2972
+    },
+    {
+      "path": "scripts/runtime/card_semantic_catalog_service.gd",
+      "sha256": "394df72343341739622fb2c7899d30b0c0f12cd8d2acd52b91e0fecae7d50323",
+      "git_blob_sha1": "6a445c6221c7e367fb6670b0b24ec93c12cc9007",
+      "size_bytes": 24805
+    },
+    {
+      "path": "scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+      "sha256": "cbdf60e251e3224afb333276603564b7d157993f4e7eb70493f44c055c20b1a1",
+      "git_blob_sha1": "1f1d926a98ac2366b79b478a0de037aa8869bb37",
+      "size_bytes": 28037
+    },
+    {
+      "path": "scripts/runtime/role_catalog_runtime_service.gd",
+      "sha256": "c7aef1aa6dce17466925ce0a7064cdb57c22b8c52833d1370cfd062e59dc2564",
+      "git_blob_sha1": "b55ce22ac19f1ae5c7cdea4ecee25eefe8323445",
+      "size_bytes": 15958
+    },
+    {
+      "path": "scripts/tools/v076/v076_monster_l1_directional_geodesic_move_bench.gd",
+      "sha256": "47bb23db78bff1956e8425374a06179f71d20574404272eddccca7c003c73d65",
+      "git_blob_sha1": "7d8c925ee7d936b90e88ae51ad6ef0292188fa29",
+      "size_bytes": 9131
+    },
+    {
+      "path": "scripts/tools/v076/v076_shared_half_edge_partition_bench.gd",
+      "sha256": "57d53f8cd2656821454528081e44f0172420d9b0491557925d00fc8401fea406",
+      "git_blob_sha1": "7a142c212e0e77460dfab860c61bc3f37dacd80d",
+      "size_bytes": 21760
+    },
+    {
+      "path": "scripts/ui/bestiary_codex_browser.gd",
+      "sha256": "eee76cf9f2b8e692617745226431fc86abbd3148347780e4e511b7033c81912a",
+      "git_blob_sha1": "f00eae54f440b1dde60c97449e4dd58a482e8458",
+      "size_bytes": 5731
+    },
+    {
+      "path": "scripts/ui/bestiary_detail.gd",
+      "sha256": "354dd744431a66c4db511b96afff6f380b7b64f653f0ccf9871a9071516740f3",
+      "git_blob_sha1": "0b6ec5840c7cedf00340b6abf2ea260a2e61ea8d",
+      "size_bytes": 7925
+    },
+    {
+      "path": "scripts/ui/bottom_countdown_bar.gd",
+      "sha256": "5d3bd505c2bd2690302f9f17149b7ce68f71d9aa0f6e3757c19e12f3c967cf57",
+      "git_blob_sha1": "84df6d5c74a20bf7f575d632c95a63f78a265fd3",
+      "size_bytes": 2020
+    },
+    {
+      "path": "scripts/ui/card_codex_browser.gd",
+      "sha256": "dec7a7d384b74448f764e60d9480db81040a2e934cab85df6fccbfc5eb65f3e7",
+      "git_blob_sha1": "f220b925d15b7f992eda9f1905fe1b1a6229f9ff",
+      "size_bytes": 9451
+    },
+    {
+      "path": "scripts/ui/card_codex_detail.gd",
+      "sha256": "68a01ea8e144adfea097736102b6ba6e3daa9ba86fa1ea7c6d7d3bae3914115b",
+      "git_blob_sha1": "44ef9301a1cacdddd2d2aa45d2d75ba2ede47127",
+      "size_bytes": 15606
+    },
+    {
+      "path": "scripts/ui/card_face.gd",
+      "sha256": "bb78a98b54b488dbdb6823def194cbe3a3f3c27902602044d76bd933bc7b526c",
+      "git_blob_sha1": "6347d49779254bfbb8b8edab1730984ee1a9e2aa",
+      "size_bytes": 1038
+    },
+    {
+      "path": "scripts/ui/card_resolution_track.gd",
+      "sha256": "a836a1224d7ea8dd41a174a052a1a672a02959b3f5abe5501b71faf1cb0a264b",
+      "git_blob_sha1": "2d537d8ceb59ae570b09b78bcd9ba4564d91449f",
+      "size_bytes": 24460
+    },
+    {
+      "path": "scripts/ui/card_resolution_track_slot.gd",
+      "sha256": "8390893ca877e718eb15fc6d768cec3782519fead88ee04d48f740a13128c96c",
+      "git_blob_sha1": "7f1267ae4c0877cfd707f0d8a862c14f4a66b20f",
+      "size_bytes": 163
+    },
+    {
+      "path": "scripts/ui/card_track_slot.gd",
+      "sha256": "c7e4e8e3c222f397b09fa3b5ab01bb2ee3cb6f29fae43284b12c782145cd4247",
+      "git_blob_sha1": "a405b7584468dbb41152e75c33ff094e5448535a",
+      "size_bytes": 9476
+    },
+    {
+      "path": "scripts/ui/codex/bestiary_codex_thumbnail_card.gd",
+      "sha256": "5db32003fe0a172225d77d189fe35686e21a1a9c567e93e7700210a1182a3083",
+      "git_blob_sha1": "72ca56dcaf0a51a8da88d3ebbc371c095b3d957f",
+      "size_bytes": 2818
+    },
+    {
+      "path": "scripts/ui/codex/bestiary_monster_action_card.gd",
+      "sha256": "5b3b5171338b30536dcb442678ba142312f7544bb68fc27779de4d8f5e496201",
+      "git_blob_sha1": "032f7570cec55c5216d7b20bbd1c5b74b593b776",
+      "size_bytes": 2746
+    },
+    {
+      "path": "scripts/ui/codex/bestiary_monster_kpi_card.gd",
+      "sha256": "66e0bba91028f1d8e2f96af36ca7422ebe7946db275f7d436ef9b6d843071b3b",
+      "git_blob_sha1": "79971d5413c8654b532ab356a1c4e701175df45c",
+      "size_bytes": 1801
+    },
+    {
+      "path": "scripts/ui/codex/card_codex_filter_chip.gd",
+      "sha256": "0f75a3677e3a57c63cf0f9c7e87092960cfc65f4b3c7fc0033385c9136f78793",
+      "git_blob_sha1": "5a67e8677bc1c66eae408eb0e21e60b82c2690b7",
+      "size_bytes": 1996
+    },
+    {
+      "path": "scripts/ui/codex/card_codex_info_card.gd",
+      "sha256": "3f184e4f964a7337539d1f2cec730d24c80ee72723051dd173bc03f836d3f358",
+      "git_blob_sha1": "9b2f05622e1b8349a79f02d408c304c7ad2827e9",
+      "size_bytes": 1871
+    },
+    {
+      "path": "scripts/ui/codex/card_codex_thumbnail_card.gd",
+      "sha256": "3dc71c3ee6186aa5af6097c3bed33a26ba7f0dcb51af976ecf6bf780c0902f48",
+      "git_blob_sha1": "06ae5ec5a5b55df273d2d6309a56a3416eb89f29",
+      "size_bytes": 6022
+    },
+    {
+      "path": "scripts/ui/codex/codex_browser_summary_card.gd",
+      "sha256": "633ef488009bd88a1344ce95d469001d04c8439fe424ca95df4f78137c2a6cb4",
+      "git_blob_sha1": "6aa9d6268ccbca03cfff5f2ab2cf1848b04336d7",
+      "size_bytes": 1331
+    },
+    {
+      "path": "scripts/ui/codex/product_codex_kpi_card.gd",
+      "sha256": "1a27a4a40b24dc41dcb828f81e618fe416f35c336ffe9cbd9598e25b5547f720",
+      "git_blob_sha1": "b3852d5411a92c4bb37cd64112409f856db9db8c",
+      "size_bytes": 1807
+    },
+    {
+      "path": "scripts/ui/codex/product_codex_market_badge.gd",
+      "sha256": "84b2d0092818731727d743c91a7836fd357f185aba16ad67d0c89766496b11f8",
+      "git_blob_sha1": "25686470d6cbd06d9d710966d08e39094d0b4602",
+      "size_bytes": 2668
+    },
+    {
+      "path": "scripts/ui/codex/product_codex_strategy_card.gd",
+      "sha256": "145e4cfb52a06169667896226df68cbaa207fd4623b772b80c9f9680fedc52ea",
+      "git_blob_sha1": "56d18a7091eb95081f55daecff5052c12f0d2524",
+      "size_bytes": 1558
+    },
+    {
+      "path": "scripts/ui/codex/product_codex_thumbnail_card.gd",
+      "sha256": "360af6a70885829ff04f98852466658d4cedc3ad5d2998451c2247542cfe1246",
+      "git_blob_sha1": "19ffbc4437ce308bbc5a6623a75e76fa5cabe2ae",
+      "size_bytes": 1271
+    },
+    {
+      "path": "scripts/ui/codex_compendium_surface.gd",
+      "sha256": "33c12b38c0a7277a6ecce47a5453148508a9ad1ce7aeb3c8a90e691b2262d33a",
+      "git_blob_sha1": "b898e7850f53a42a326519ba1fb2403e4e52579e",
+      "size_bytes": 11503
+    },
+    {
+      "path": "scripts/ui/commercial_settings_surface.gd",
+      "sha256": "eebececd6be566f3fb18d74e533eade866e5b568698dbbb4c48248212a76ec30",
+      "git_blob_sha1": "5fe0ff41aac257f75c3682a1bd8ca2e00f9b20c3",
+      "size_bytes": 8540
+    },
+    {
+      "path": "scripts/ui/compendium_hub_board.gd",
+      "sha256": "5ef9c8d5004b601b8f16f00e386fd557606436451ec25f5d9d9bdd0b33e4c58b",
+      "git_blob_sha1": "7d01eb8df4adc30a61918dd55be6586762e4cab0",
+      "size_bytes": 7607
+    },
+    {
+      "path": "scripts/ui/map/planet_city_marker.gd",
+      "sha256": "b16f4202a06bea8cccad4a6f56a3f61f2ff6f93780735284245e9f1597599055",
+      "git_blob_sha1": "2af369eae6d12bd81050401cf690105785f5ab18",
+      "size_bytes": 22182
+    },
+    {
+      "path": "scripts/ui/map/planet_map_event_effect.gd",
+      "sha256": "a514b975d58227a0e7edbfbfe766cf417676bc026bc6e73965db5eab7036bf76",
+      "git_blob_sha1": "449935c774bef2128bb59d23d387359698b4e181",
+      "size_bytes": 9642
+    },
+    {
+      "path": "scripts/ui/menu_quick_navigation.gd",
+      "sha256": "8e4d6f135a3ae848a7d05064c193fefc4c4aea5c7225ad57b2b0f70804547b69",
+      "git_blob_sha1": "2eb69bc16a24a0917e040f5750bbdedb423588aa",
+      "size_bytes": 5470
+    },
+    {
+      "path": "scripts/ui/planet_map_view.gd",
+      "sha256": "9743d0b2408be9a07538915ee7b404d494ed8dbe67b6111ccd304758c92a2265",
+      "git_blob_sha1": "003946cbf774d967ac59528f4187932f6ce04ceb",
+      "size_bytes": 97056
+    },
+    {
+      "path": "scripts/ui/product_codex_browser.gd",
+      "sha256": "5219bb5d6d023ef25da2f49fe08bad6fb2be038e0e8084f6d6ee9b9af3a98612",
+      "git_blob_sha1": "e49d60fd26b72ea546b9349a8bfffd3245b8d5cf",
+      "size_bytes": 3249
+    },
+    {
+      "path": "scripts/ui/product_codex_detail.gd",
+      "sha256": "88213ea2455f48318b5113f19fbaa82db3e6c63f10657646ed807efaae31c183",
+      "git_blob_sha1": "7d4f1efd4c967e93ed8ba1b46392df9d06ef147c",
+      "size_bytes": 6833
+    },
+    {
+      "path": "scripts/ui/region_codex_detail.gd",
+      "sha256": "59dffacb544647c3a1bab9a3e59391d94ba867d2c137afc88205e4d1da16f09e",
+      "git_blob_sha1": "ef666a368d4e7cdb07c3edcb581454da982c737c",
+      "size_bytes": 7995
+    },
+    {
+      "path": "scripts/ui/role_codex_identity_board.gd",
+      "sha256": "92f9fa3c6bdc5f4e2b99658afdc0035e9ea6791c92952345248c7a73c2ae4f90",
+      "git_blob_sha1": "7401f4a8689dbaaf9d97df2d7c9b8ac890ad1ca6",
+      "size_bytes": 8281
+    },
+    {
+      "path": "scripts/ui/rules_quick_reference_board.gd",
+      "sha256": "32bd9c94679dcccefe1b709be8e123d4cc003fed8f3e578e1980e8456a8b3758",
+      "git_blob_sha1": "3bc318db6405a46d570045724d73a6581ed220de",
+      "size_bytes": 10849
+    },
+    {
+      "path": "scripts/ui/showcase_director.gd",
+      "sha256": "38bbceba56f7fd1ed2ed37ba6021db52a996fe5e9a6e62ff09a1099955e379c9",
+      "git_blob_sha1": "acf69d4192c7a8307d351492435262f63e903b79",
+      "size_bytes": 5809
+    },
+    {
+      "path": "scripts/ui/table/top_commodity_sushi_track.gd",
+      "sha256": "155277a2dd325a97ff3807830de8ea878d77891bd133f5720c46e5ef5a49c708",
+      "git_blob_sha1": "f257912d8a592547f0820be037ecf894d49df53f",
+      "size_bytes": 22892
+    },
+    {
+      "path": "scripts/ui/v073/v073_playtest_coach_marks.gd",
+      "sha256": "3a9742dde271b53333eaa5e6ccbe171000f2a159c7d10448d479fe66c8984765",
+      "git_blob_sha1": "229e217a1e192efff7a43709a7ac12c2e123766d",
+      "size_bytes": 17820
+    },
+    {
+      "path": "scripts/ui/v073/v073_sample_game_screen.gd",
+      "sha256": "c275fcde40a5a8490cc51cf93f5db3ac827908298d8e91988615f0eae7ae3db3",
+      "git_blob_sha1": "887b5a2dd2f5ef08c38168f45aa5a1c019e73af5",
+      "size_bytes": 52806
+    },
+    {
+      "path": "scripts/ui/v074/v074_sample_game_screen.gd",
+      "sha256": "fae5397e83e0a5c71149e6e729f99332efd92a3c09fb27996e1721232d37f432",
+      "git_blob_sha1": "2931d32cbfdd45351389f4202881078f18b1c845",
+      "size_bytes": 82066
+    },
+    {
+      "path": "scripts/ui/v074/v074_track_card_button.gd",
+      "sha256": "fbec28f9187314be7a93abdd1f4c07a1a786d49af24014e91008a42d5172b241",
+      "git_blob_sha1": "4f11cc8f2377b1b098faf1556b6d70f34fed6a4f",
+      "size_bytes": 2777
+    },
+    {
+      "path": "scripts/ui/v075/v075_combat_player_surface.gd",
+      "sha256": "27c3c6920c1007c1db989280b8b90f5abf51f7caa4568570e149d4685fa272fa",
+      "git_blob_sha1": "fb6f3340d6f7756207e48151a0ec05a0e4489359",
+      "size_bytes": 69088
+    },
+    {
+      "path": "scripts/ui/v075/v075_interactive_card_face.gd",
+      "sha256": "1ef0288fddec38e1df3260382124e3d59207b989250a038638ae329e8d45ac28",
+      "git_blob_sha1": "d402567aa5f6d52a8eccf669aaf95fb661c87238",
+      "size_bytes": 11031
+    },
+    {
+      "path": "scripts/ui/v075/v075_new_game_loading_overlay.gd",
+      "sha256": "00b4816eb8a82447bdaa9e8dbebcd9b075412c43c97259926cf547cd29762e44",
+      "git_blob_sha1": "0dcdbe1dc0f461fef604be882c155bfd471d097c",
+      "size_bytes": 11355
+    },
+    {
+      "path": "scripts/ui/v075/v075_public_action_arrangement.gd",
+      "sha256": "76d114bbe26a382ed5f246151a3d3813242e7c66e7297f850d770df63f14828b",
+      "git_blob_sha1": "85cf55ae6c846b9a6c8d23899c4bd7c76d5e86f5",
+      "size_bytes": 73940
+    },
+    {
+      "path": "scripts/ui/v075/v075_responsive_acceptance_audit.gd",
+      "sha256": "417ca37b43cfeb34b5e70103bf2dd5ae0eeef424fe1dad1dd4ac0d9fba1628ad",
+      "git_blob_sha1": "5430e84000867b56bb99fbc1814414581c8cfd8a",
+      "size_bytes": 4318
+    },
+    {
+      "path": "scripts/ui/v075/v075_sample_game_screen.gd",
+      "sha256": "dd8346582b5825dbf95608aff3e467b8af53f675db5ca5117cb38434b8193e4c",
+      "git_blob_sha1": "8f792667dbe0eceba3870c2f72e756f513ef8173",
+      "size_bytes": 371476
+    },
+    {
+      "path": "scripts/ui/visual_event_layer.gd",
+      "sha256": "d95aa95735796c2d9588bd7f9c75ec87905610fa374e5181fa67fd08b6bfe204",
+      "git_blob_sha1": "57a79d328e0f6e82ee30f424dd8242ac4a3783f8",
+      "size_bytes": 6402
+    },
+    {
+      "path": "scripts/v073_runtime/v073_sample_runtime_owner.gd",
+      "sha256": "d66a26f7c0088ceedd73796c0e5f9b36993d4f40a4babd7b78605f7fccb628fe",
+      "git_blob_sha1": "245ae6d8f61fbd6e2dd958ca472f6c7f25d9bdf7",
+      "size_bytes": 93718
+    },
+    {
+      "path": "scripts/v074/track/v074_shared_sushi_track_core.gd",
+      "sha256": "9f96d2d6ccdee44508709f5117e1988220f31ee5281ab6a5414f6591be046cfb",
+      "git_blob_sha1": "827e6d29f1cf05faefbde082ee220553cc89ed94",
+      "size_bytes": 5118
+    },
+    {
+      "path": "scripts/v074_runtime/v074_runtime_owner.gd",
+      "sha256": "9b2dd1ee5931eda2ca6cbe0bd3a188df00230153b918343774b3899d86295734",
+      "git_blob_sha1": "7e4fa90c793baf9ba7a5586b39c22e2665c24ac3",
+      "size_bytes": 43499
+    },
+    {
+      "path": "scripts/v075/runtime/v075_combat_runtime_owner.gd",
+      "sha256": "0afa39f85e0e34485546b0f22158399aef41101007fe42edcbae09df0ec01de3",
+      "git_blob_sha1": "4f195cd9baf960a3ee72b67f2355d62cff7b0c67",
+      "size_bytes": 96138
+    },
+    {
+      "path": "scripts/v075_runtime/v075_application_bootstrap.gd",
+      "sha256": "20876238878ae34d6cc4c26060ae441a6c980f72102b12280fa76f9d36d9c958",
+      "git_blob_sha1": "922bff9ea3777de9b9a46e4a8249d5f6d3553cad",
+      "size_bytes": 3804
+    },
+    {
+      "path": "scripts/v075_runtime/v075_application_flow.gd",
+      "sha256": "6e3eeec891a59e15c28c819e6e4d6ee2a4664baf6769ce2c868d206e9e4fba63",
+      "git_blob_sha1": "dea5f178d613792a654a6531a134f4adf35f90d0",
+      "size_bytes": 50409
+    },
+    {
+      "path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "sha256": "f8b65c70a59b079933fad9b0ca9cf2f0782c49180d2038de58bdeeb8388d9e11",
+      "git_blob_sha1": "624ca774f49ee5aabdcc2eeaa00e574d7770fa3c",
+      "size_bytes": 343184
+    },
+    {
+      "path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "sha256": "8bc3960438b0c607290c56e146ea6fe6ac2f494a1fdc41665736b78422a3838d",
+      "git_blob_sha1": "217f0679701d03cddc6dd9f1430eb9eaec85b1d7",
+      "size_bytes": 48212
+    },
+    {
+      "path": "scripts/v076/direct_action/v076_private_direct_action_reducer_v1.gd",
+      "sha256": "175500a29a11553656c0d3ce79da398fc5c030acf565df445603c9a59873f84c",
+      "git_blob_sha1": "eba55561fd3fcd8e8ad4c2bdd0d366aa3c979563",
+      "size_bytes": 28141
+    },
+    {
+      "path": "scripts/v076/direct_action/v076_v075_production_adapter_v1.gd",
+      "sha256": "e5ec646d1c59fca44acb3bec062cee882159fa0de11d31a867331e6c8c657c35",
+      "git_blob_sha1": "26af8de4cbe3ca3bd7f25baea6cd7131ab4b7936",
+      "size_bytes": 28856
+    },
+    {
+      "path": "scripts/v076/map/v076_partition_authority_codec_v1.gd",
+      "sha256": "9d545cfb135c1f6389a89a38d698d3992ec1323e6a56611ccb1ca89839a423ea",
+      "git_blob_sha1": "130997fc5860c332aab7fb597d5787fb51d105bc",
+      "size_bytes": 7905
+    },
+    {
+      "path": "scripts/v076/map/v076_partition_reducer_v1.gd",
+      "sha256": "c207feeace9f8c9057c49017395a7d62a5cc922cdedf84406d67b9b6ed1f8a53",
+      "git_blob_sha1": "d054ae526afeb23b0b3668668cfb8ecbae7cbe12",
+      "size_bytes": 4808
+    },
+    {
+      "path": "scripts/v076/map/v076_partition_validator_v1.gd",
+      "sha256": "0ce12eba89c90bf9d947cbc7516d5dc09957dd8c45f1aefcb37db7eaadbd18fe",
+      "git_blob_sha1": "6544fab86b34fb358771e0c9df5495d318064381",
+      "size_bytes": 17055
+    },
+    {
+      "path": "scripts/v076/map/v076_shared_half_edge_partition_v1.gd",
+      "sha256": "e744ebe674dec3de873c1e4907333a9dfab579cffb4cbb24bb3689aa0fe531a8",
+      "git_blob_sha1": "a61e6dfd8a5b10dcb00fc3091ddaa6961be19e4b",
+      "size_bytes": 19130
+    },
+    {
+      "path": "scripts/v076/map/v076_spherical_microgrid_index_v1.gd",
+      "sha256": "91f1152e6ce36eb96e9c9cf57b8a029287a8fb5677bbc7956496151c2d680a8f",
+      "git_blob_sha1": "f597e503f223625a49e3813e2b1123879e1eb49f",
+      "size_bytes": 6394
+    },
+    {
+      "path": "scripts/v076/military/v076_military_card_crosswalk_v1.gd",
+      "sha256": "c38d217550f10a343e7900b60b14378358c541e56e6e417331ca3664eed2219b",
+      "git_blob_sha1": "1ac89baa50befe9e9590b32f918387e94f93eb51",
+      "size_bytes": 20789
+    },
+    {
+      "path": "scripts/v076/military/v076_military_physical_eta_owner_v1.gd",
+      "sha256": "8bb334009387cd30942d500dedb41191e65edae8ff2e8aab825e406e926751da",
+      "git_blob_sha1": "552934472512eee7bbd9151da947fff681d9d543",
+      "size_bytes": 10696
+    },
+    {
+      "path": "scripts/v076/military/v076_military_unit_profile_catalog_v1.gd",
+      "sha256": "d84ffd882e341bec700633f063c74d697b776a6012b87ba7ad3b344af5b68bf4",
+      "git_blob_sha1": "1a86b8d3fd45c7554bafc59170d4515828446bce",
+      "size_bytes": 20191
+    },
+    {
+      "path": "scripts/v076/monster/v076_integer_geodesic_metric_v1.gd",
+      "sha256": "72e3a0833ae274f23065b2992df65ce5662280d68e6f5e40f0257eedac89da79",
+      "git_blob_sha1": "ff7cdc1d6ef9fde3e8e09e2e8e6b4f85d0551356",
+      "size_bytes": 14930
+    },
+    {
+      "path": "scripts/v076/monster/v076_monster_l1_authority_codec_v1.gd",
+      "sha256": "d35c545d56f9f197941c3a018e25d2ef82871f7029406942db627b1424ecfade",
+      "git_blob_sha1": "577deeabfc64e44fc61cc898a0e4f56919f94315",
+      "size_bytes": 29895
+    },
+    {
+      "path": "scripts/v076/monster/v076_monster_l1_reducer_v1.gd",
+      "sha256": "259fa0ac5465dd782fa1e7cbb578a2ca65b1cf5798d2a9ad4832ffc61ff5418d",
+      "git_blob_sha1": "bf12d01540b5d5dbc52a592cd6c34c67f1c2fe87",
+      "size_bytes": 23833
+    },
+    {
+      "path": "scripts/v076/monster/v076_monster_l1_validator_v1.gd",
+      "sha256": "e537cbb0d88b81eeeec61d9702a0345874681b2af9e463adb8399ccb8472e2b4",
+      "git_blob_sha1": "22d847613268021a91e00383284e74f26f33c826",
+      "size_bytes": 9883
+    },
+    {
+      "path": "scripts/v076/simulation/v076_authority_command_v1.gd",
+      "sha256": "704b69e2550ccf36011b0dbee867ef7f22277d221b5680172c613496bfa108b2",
+      "git_blob_sha1": "71d968e603e0a92c363c6d18fd0c15398005d6bf",
+      "size_bytes": 4763
+    },
+    {
+      "path": "scripts/v076/simulation/v076_authority_state_codec.gd",
+      "sha256": "766a0c69bdaddc3dbcd8c8ee53b0c0acd81ad136583a66e00e25a1ee9e16c4d9",
+      "git_blob_sha1": "a529ca45b86071f348eb3403b9554056cefe2f39",
+      "size_bytes": 7713
+    },
+    {
+      "path": "scripts/v076/simulation/v076_deterministic_kernel.gd",
+      "sha256": "ef0f208927806440ffd22174453b76acbff0662d0b4d37deeecd39127d2d08b0",
+      "git_blob_sha1": "dd934ba733c1441e9c5a38964fb85bd037d2f7f5",
+      "size_bytes": 53265
+    },
+    {
+      "path": "scripts/v076/simulation/v076_domain_rng.gd",
+      "sha256": "d5e2786ced74b29b0aa0ee1ffa0698f3456d818e8549f1b40330d65d884c719e",
+      "git_blob_sha1": "a50d98e10c0dfea80aaf88f880d7399666068171",
+      "size_bytes": 2944
+    },
+    {
+      "path": "scripts/v076/simulation/v076_replay_runner.gd",
+      "sha256": "60a7b2851425307fe1125e4f390d18480299a452fa056a165bb6324ff4181257",
+      "git_blob_sha1": "8d3586bdca8ec04ba6776698d54d4e66a70d7eba",
+      "size_bytes": 9607
+    },
+    {
+      "path": "scripts/v07_adapters/v07_canonical_ai_observation_adapter.gd",
+      "sha256": "197090efc1468aa21bde38f997fad603c90af3dec119808812a6106db6cd8b28",
+      "git_blob_sha1": "309bac4e0ec845386cc030a7085396cce0bdc0de",
+      "size_bytes": 44755
+    },
+    {
+      "path": "scripts/v07_adapters/v07_canonical_player_projection_adapter.gd",
+      "sha256": "84c83fc5a800a6a477095baa471363c67d691c951762173c62493cb12d790393",
+      "git_blob_sha1": "913521adb6c04860e87ee45220ff54774d01ee12",
+      "size_bytes": 40813
+    },
+    {
+      "path": "scripts/v07_semantic/v07_asset_batch_core.gd",
+      "sha256": "d2729ede4379766e62df144603c95811fa89349c65f488f0b4ac0ab76976512a",
+      "git_blob_sha1": "b8443c06dcd439e547f410215e99f5c01873e644",
+      "size_bytes": 179226
+    },
+    {
+      "path": "scripts/v07_semantic/v07_dbg_deck_core.gd",
+      "sha256": "64f822d99f340db808024198d14b50f4862800e40afac1ac81e31cbc7c413c2b",
+      "git_blob_sha1": "646194b746b3f0ba7c74dfbf8255626eab73fc6b",
+      "size_bytes": 184187
+    },
+    {
+      "path": "scripts/v07_semantic/v07_unified_card_track_core.gd",
+      "sha256": "fa71e6c7bb27c4c9e62043e425f46bb6a7fa093256550fc7c9b1424b906315e3",
+      "git_blob_sha1": "15d2d7faf04a16cd7cab8c12c4aafade21278070",
+      "size_bytes": 145630
+    },
+    {
+      "path": "scripts/viewmodels/compendium_hub_snapshot.gd",
+      "sha256": "ba745825066f0df12d02bacc80a66e97c2887cbdcaf649adb89fa45356ad41cb",
+      "git_blob_sha1": "2a797196bd8d8ffe39b29acc4b41ce212d0e066e",
+      "size_bytes": 2660
+    },
+    {
+      "path": "scripts/viewmodels/rules_quick_reference_snapshot_v06.gd",
+      "sha256": "e1b35a1d71d2adf992ce9236ae69f89e2a76f7a3104056e50fe1aa57d3d08b90",
+      "git_blob_sha1": "63abdedd0ba1e205e452a0d32ec4462f21910402",
+      "size_bytes": 6734
+    },
+    {
+      "path": "scripts/viewmodels/visual_event_snapshot.gd",
+      "sha256": "e85a648dc1ad698af683e4f8b7d466df2177b17046956d53e18c5eb0d61fee8c",
+      "git_blob_sha1": "e322ef7e005a691004897d8a2f0ec84c2f6f15cd",
+      "size_bytes": 4240
+    }
+  ],
+  "required_current_subject_receipts": [
+    {
+      "path": "reports/reuse/full_convergence/current_subject/ac5efcc5/step09_receipt.json",
+      "status": "PENDING"
+    },
+    {
+      "path": "reports/reuse/full_convergence/current_subject/ac5efcc5/step11_receipt.json",
+      "status": "PENDING"
+    },
+    {
+      "path": "reports/reuse/full_convergence/current_subject/ac5efcc5/step12_receipt.json",
+      "status": "PENDING"
+    }
+  ],
+  "claims": {
+    "current_subject_production_revalidation_complete": false,
+    "production_cutover_authorized": false,
+    "production_green": false,
+    "human_green": false,
+    "human_retest_deferred": true,
+    "step09_status": "REGRESSED_WITH_EVIDENCE",
+    "step11_status": "REGRESSED_WITH_EVIDENCE",
+    "step12_status": "REGRESSED_WITH_EVIDENCE",
+    "step13_status": "PENDING",
+    "step14_status": "PENDING",
+    "step15_status": "PENDING"
+  },
+  "immutability": {
+    "historical_receipts_overwritten": false,
+    "historical_receipts_deleted": false,
+    "append_only": true,
+    "self_reference_count": 0
+  }
+}

@@ -4,8 +4,8 @@
   "recorded_on": "2026-08-24",
   "candidate": {
     "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
-    "head_sha": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
-    "tree_sha": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
+    "head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+    "tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
     "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
     "pull_request_state": "OPEN_DRAFT"
   },
@@ -1694,6 +1694,45 @@
         "full_alpha07_production_green",
         "full_repository_reproof"
       ]
+    },
+    {
+      "stage_id": "V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_AC5EFCC5",
+      "ledger_status": "SUBJECT_REGISTERED_PENDING_GATE",
+      "head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+      "tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Append-only registration of the exact ac5efcc5 product subject after 2ce2ce21. The product change adds current-subject STEP11/STEP12 witness plumbing through the existing V075 Runtime Owner and creates no new gameplay, asset, map, card-catalog, tick, RNG, or presentation Owner. STEP09, STEP11, and STEP12 remain pending exact-subject production revalidation; no production-green or human-green claim is made.",
+      "golden_step_ids": [],
+      "current_owner": "V075RuntimeOwner",
+      "reused_owners": [
+        "V075RuntimeOwner",
+        "V076Kernel",
+        "V076SharedHalfEdgePartition",
+        "V076PresentationAnimationDirector"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "v076-current-product-subject-manifest-ac5efcc5",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/full_convergence/candidate_subject_manifest_ac5efcc5.json",
+          "receipt_sha256": "446aa8d52b3936977e78776741e020d3cda0d10d310c20561dd47c243b0bef9f",
+          "subject_head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+          "subject_tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
+          "product_delta_path_count_to_evaluated_head": 0,
+          "product_path_coverage_percent": 100,
+          "unknown_product_path_count": 0
+        }
+      ],
+      "not_claimed": [
+        "step09_current_subject_production_green",
+        "step11_current_subject_production_green",
+        "step12_current_subject_production_green",
+        "production_cutover",
+        "human_playtest_pass",
+        "full_alpha07_production_green",
+        "full_repository_reproof"
+      ]
     }
   ],
   "docs_only_inheritance": {
@@ -1701,7 +1740,7 @@
     "test_bytes_changed_after_stage3": true,
     "evidence_reexecuted": true,
     "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
-    "current_claim": "STEP09, STEP11, and STEP12 were revalidated through real current-subject main.tscn MCP runs at 2ce2ce212e8252ddd554a03da8408a9cb11cba57 / 97cbe5aab1a5489d402b1a03ce02f307d00bbe1c and remain REGRESSED_WITH_EVIDENCE. The append-only receipts record the missing natural authority and persistence evidence and make no current production-green claim. Their prior receipts remain immutable historical evidence. Production cutover is not authorized or claimed. STEP13 remains PENDING because human execution, human confirmation, observer attestation, and successful current-subject production revalidation have not occurred. Full-product production green, STEP13-STEP15 human passes, per-card certification, and full-world reproof remain false or pending."
+    "current_claim": "The exact current product subject is ac5efcc5a5119b8022b573333f707b3a73bff590 / 9757eef0e73118f89356b0c09833a44c2c76f8ee. STEP09, STEP11, and STEP12 remain REGRESSED_WITH_EVIDENCE pending new exact-subject production revalidation. The 2ce2ce21 receipts remain immutable historical evidence and are not current production claims. Production cutover is not authorized or claimed. STEP13 remains PENDING; Human Green, STEP13-STEP15, and full-product production green remain false or pending."
   },
   "canonical_pr_status": {
     "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
@@ -1718,10 +1757,10 @@
     "golden_production_green_count": 0,
     "golden_human_green_count": 0,
     "production_cutover_status": false,
-    "latest_completed_stage": "V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_2CE2CE21",
-    "latest_completed_stage_head_sha": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
-    "latest_completed_stage_tree_sha": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
-    "next_stage": "V076_CURRENT_SUBJECT_PRODUCTION_REPAIR",
+    "latest_completed_stage": "V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_AC5EFCC5",
+    "latest_completed_stage_head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+    "latest_completed_stage_tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
+    "next_stage": "V076_CURRENT_SUBJECT_PRODUCTION_REVALIDATION",
     "v075_pr90_dependency_boundary": "CURRENT_V075_OWNER_REUSED_NO_OWNER_SUPERSESSION"
   },
   "canonical_change_scope": {
@@ -1883,7 +1922,7 @@
     ],
     "full_reproof_required": false,
     "full_reproof_trigger": "NONE",
-    "why_focused_tests_are_sufficient": "The current full-convergence delta changes Gate tooling plus append-only governance, Registry, and evidence metadata around the exact unchanged 2ce2ce21 product subject. The component inventory now classifies every production-closure path as an existing Owner-bound consumer, adapter, port, projection, presentation surface, or non-production test support; it creates no gameplay, presentation, tutorial, clock, tick, RNG, card-catalog, asset, map, hand, track, save, replay, or receipt Owner. The focused-test union covers every affected V075 production-composition and Card Codex/PlayerFace row together with the inherited Kernel, Half-Edge sphere, military, Monster, card lifecycle, AI/privacy, application, UI, commercial presentation, audio, map, deck, public-arrangement, and canonical-adapter sentinels. The exact prior 2,000-replay, 2,000-map, full 348-card, and full 79-Gate proofs remain inherited because no Godot product byte, rule, balance, topology, Kernel ordering, RNG algorithm, card definition, or full-world boundary changed. STEP09, STEP11, and STEP12 remain REGRESSED_WITH_EVIDENCE after exact-subject MCP revalidation; production cutover, Human Green, STEP13-STEP15, and full-world reproof remain false or pending."
+    "why_focused_tests_are_sufficient": "The current product delta advances only scripts/v075_runtime/v075_runtime_owner.gd through the existing V075 Runtime Owner to expose exact STEP11/STEP12 production witnesses. It creates no new gameplay, presentation, tutorial, clock, tick, RNG, card-catalog, asset, map, hand, track, save, replay, or receipt Owner. The scoped MCP landing receipt and focused current-subject tests cover the changed Owner byte; the inherited Kernel, Half-Edge sphere, military, Monster, card lifecycle, AI/privacy, application, UI, and presentation sentinels remain required. STEP09, STEP11, and STEP12 remain REGRESSED_WITH_EVIDENCE pending exact-subject production revalidation; production cutover, Human Green, STEP13-STEP15, and full-world reproof remain false or pending."
   },
   "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
   "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
