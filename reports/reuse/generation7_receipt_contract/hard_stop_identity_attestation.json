@@ -1,0 +1,26 @@
+{
+  "schema_version": "space_syndicate.v076.generation7_hard_stop_identity_attestation.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_RECEIPT_CONTRACT_AND_GENERATION7_RESUME_20260831",
+  "status": "PASS",
+  "attested_at_utc": "2026-08-31T05:03:38.735Z",
+  "authorized_hash_prefix": "3309a0cb",
+  "authorized_hash_suffix": "7c0c",
+  "matching_record_count": 1,
+  "record": {
+    "external_path": "outputs/V076_CURRENT_SUBJECT_CONVERGENCE_HARD_STOP_20260831T044438Z.json",
+    "byte_count": 6584,
+    "sha256": "3309a0cba6ff34d82f0575ecdfe50d22abeed5a0b7619bb0fe61cb44b1ff7c0c",
+    "schema_version": "space_syndicate.v076.current_subject_convergence_hard_stop.v1",
+    "hard_stop_condition": "INDEPENDENT_AUDIT_P1",
+    "first_failure_class": "CURRENT_SUBJECT_STEP_RECEIPTS_HAVE_NO_FAIL_CLOSED_SCHEMA_VALIDATOR_OR_REQUIRED_GATE_CONSUMER",
+    "generation_id": 7,
+    "last_consumed_evidence_id": 9630,
+    "resume_evidence_id": 9631,
+    "generation_7_started": false,
+    "receipt_schema_code_definition_count": 0,
+    "receipt_validator_authority_count": 0,
+    "required_workflow_consumer_count": 0
+  },
+  "identity_mismatch_count": 0,
+  "identity_ambiguous": false
+}
