@@ -220,10 +220,11 @@ def _build_repository_fixture(root: Path) -> tuple[str, str]:
         f"/{contract.CURRENT_SUBJECT_MANIFEST_PATH}",
         f"/{contract.TOOLING_SEAL_PATH}",
         f"/{contract.RESUME_AUTHORIZATION_MANIFEST_PATH}",
+        f"/{contract.SUCCESSOR_TOOLING_ROOT}/",
         "/reports/reuse/generation7_receipt_contract/",
         f"/{contract.RECEIPT_ROOT}/",
     )
-    _git(root, "checkout", "--detach", contract.AUTHORIZED_BASE_HEAD_SHA)
+    _git(root, "checkout", "--detach", contract.PREDECESSOR_RESUME_HEAD_SHA)
     _git(root, "checkout", "-b", "fixture-receipt-contract")
 
     (root / contract.SCHEMA_AUTHORITY_PATH).parent.mkdir(parents=True, exist_ok=True)
@@ -1837,6 +1838,76 @@ def main() -> int:
             lambda: not _repository_passes(post_seal_audit_drift),
         )
 
+        def predecessor_binding_rejected(repo: Path, expected_label: str) -> bool:
+            head = _git(repo, "rev-parse", "HEAD").decode().strip()
+            receipt_value = contract.load_json_strict_bytes(
+                (repo / contract.REQUIRED_RECEIPT_PATH_BY_STEP["STEP09"]).read_bytes()
+            )
+            assert isinstance(receipt_value, dict)
+            typed = contract.V076CurrentSubjectProductionRevalidationReceiptV1.from_mapping(
+                receipt_value
+            )
+            report = contract.ValidationReport()
+            contract._validate_seal_documents(
+                contract.GitCommittedProject(repo),
+                head,
+                typed,
+                report,
+            )
+            result = report.finish()
+            return (
+                "BOUND_FILE_SHA256_MISMATCH" in result["failure_codes"]
+                and any(
+                    expected_label in detail
+                    for detail in result["hash_mismatches"]
+                )
+            )
+
+        predecessor_seal_tamper = variant("predecessor-seal-tamper")
+        predecessor_seal_path = (
+            predecessor_seal_tamper / contract.PREDECESSOR_TOOLING_SEAL_PATH
+        )
+        predecessor_seal_path.write_bytes(
+            predecessor_seal_path.read_bytes() + b" "
+        )
+        _git(
+            predecessor_seal_tamper,
+            "add",
+            "--sparse",
+            "--",
+            contract.PREDECESSOR_TOOLING_SEAL_PATH,
+        )
+        _git(predecessor_seal_tamper, "commit", "--amend", "--no-edit")
+        negative(
+            "N107_PREDECESSOR_TOOLING_SEAL_TAMPER_REJECTED",
+            lambda: predecessor_binding_rejected(
+                predecessor_seal_tamper, "predecessor_tooling_seal"
+            ),
+        )
+
+        predecessor_resume_tamper = variant("predecessor-resume-tamper")
+        predecessor_resume_path = (
+            predecessor_resume_tamper
+            / contract.PREDECESSOR_RESUME_AUTHORIZATION_MANIFEST_PATH
+        )
+        predecessor_resume_path.write_bytes(
+            predecessor_resume_path.read_bytes() + b" "
+        )
+        _git(
+            predecessor_resume_tamper,
+            "add",
+            "--sparse",
+            "--",
+            contract.PREDECESSOR_RESUME_AUTHORIZATION_MANIFEST_PATH,
+        )
+        _git(predecessor_resume_tamper, "commit", "--amend", "--no-edit")
+        negative(
+            "N108_PREDECESSOR_RESUME_TAMPER_REJECTED",
+            lambda: predecessor_binding_rejected(
+                predecessor_resume_tamper, "predecessor_resume_authorization"
+            ),
+        )
+
     workflow_text = (REPO_ROOT / contract.WORKFLOW_PATH).read_text(encoding="utf-8")
     consumer_block = workflow_text.split(
         "      - name: Consume Generation 7 current-subject receipts (fail closed)", 1
@@ -1861,7 +1932,17 @@ def main() -> int:
         lambda: workflow_text.count(
             'current_subject_manifest = "reports/reuse/full_convergence/candidate_subject_manifest_ac5efcc5.json"'
         )
-        == 1,
+        == 1
+        and workflow_text.count(
+            '"current_subject_manifest_relative=$relative"'
+        )
+        == 1
+        and consumer_block.count(
+            "steps.full_convergence_inputs.outputs.current_subject_manifest_relative"
+        )
+        == 1
+        and "steps.full_convergence_inputs.outputs.current_subject_manifest }}"
+        not in consumer_block,
     )
     positive(
         "P17_VALIDATION_REPORT_ARTIFACT",

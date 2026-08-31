@@ -314,6 +314,10 @@ jobs:
             }
             "$($entry.Key)=$absolute" |
               Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            if ($entry.Key -ceq "current_subject_manifest") {
+              "current_subject_manifest_relative=$relative" |
+                Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            }
           }
           "Full-convergence explicit input set: COMPLETE ($($inputs.Count)/$($inputs.Count)); directory discovery: disabled." |
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
@@ -327,7 +331,7 @@ jobs:
           $global:LASTEXITCODE = 0
           & python tools/v076/v076_current_subject_revalidation_receipt.py validate `
             --project $env:GITHUB_WORKSPACE `
-            --subject-manifest "${{ steps.full_convergence_inputs.outputs.current_subject_manifest }}" `
+            --subject-manifest "${{ steps.full_convergence_inputs.outputs.current_subject_manifest_relative }}" `
             --expected-consumer-head "${{ steps.pr_context.outputs.head }}" `
             --report-json $reportPath
           $validatorExit = $LASTEXITCODE
