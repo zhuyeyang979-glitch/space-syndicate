@@ -65,6 +65,17 @@ except ImportError:
         _subject_projection_revalidation_successor_v5 = None
         _subject_projection_revalidation_successor_v5_independent = None
 
+try:
+    from . import v076_subject_projection_revalidation_successor_v6 as _subject_projection_revalidation_successor_v6
+    from . import v076_subject_projection_revalidation_successor_v6_independent_audit as _subject_projection_revalidation_successor_v6_independent
+except ImportError:
+    try:
+        import v076_subject_projection_revalidation_successor_v6 as _subject_projection_revalidation_successor_v6
+        import v076_subject_projection_revalidation_successor_v6_independent_audit as _subject_projection_revalidation_successor_v6_independent
+    except ImportError:
+        _subject_projection_revalidation_successor_v6 = None
+        _subject_projection_revalidation_successor_v6_independent = None
+
 
 EPOCH_ID = "FULL_CONVERGENCE_20260827"
 AUTHORIZATION_ID = "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827"
@@ -74,6 +85,16 @@ AUTHORIZED_BASELINE_FAILURE_SET_SHA256 = "dd3b9f88319ba008dafa0de8be14d4e7427a3c
 AUTHORIZED_BASELINE_FAILURE_COUNT = 566
 AUTHORIZED_BASELINE_HISTORICAL_COUNT = 510
 AUTHORIZED_BASELINE_CURRENT_COUNT = 56
+EXACT_NONPREFIX_HISTORICAL_RAW_FAILURES = frozenset(
+    {
+        "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED:9926d3955da7->6209465da4a9:component.v076.private_direct_action_input:reuse.current.military_runtime_owner",
+        "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED:ee716a80b6a3->32e0800c5b1d:component.v076.private_direct_action_input:reuse.current.military_runtime_owner",
+    }
+)
+
+
+def _is_historical_raw_failure(raw: str) -> bool:
+    return raw.startswith("HISTORY_") or raw in EXACT_NONPREFIX_HISTORICAL_RAW_FAILURES
 
 LEGACY_AUTHORIZATION_ID = "USER_AUTHORIZATION_V076_REUSE_CORRECTION_V2_20260826"
 LEGACY_AUTHORIZED_HEAD_SHA = "1e24cea73fc23e69e575fcea09df57238156af67"
@@ -1231,7 +1252,7 @@ def authorized_failure_fingerprint_sets(report: dict[str, Any]) -> dict[str, set
     for value in values:
         raw = str(value)
         rule_id = raw.split(":", 1)[0]
-        bucket = "HISTORICAL" if rule_id.startswith("HISTORY_") else "CURRENT_DELTA_FAILURE"
+        bucket = "HISTORICAL" if _is_historical_raw_failure(raw) else "CURRENT_DELTA_FAILURE"
         payload = f"V076_RAW_FAILURE_V2\n{bucket}\n{rule_id}\n{raw}\n".encode("utf-8")
         fingerprint = "V2F-" + sha256_bytes(payload)
         target = "historical" if bucket == "HISTORICAL" else "current"
@@ -1282,6 +1303,7 @@ def _raw_historical_identity(raw: str) -> dict[str, str]:
         "HISTORY_PRODUCT_AFFECTED_OWNER_MISSING",
         "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING",
         "HISTORY_PRODUCT_REUSE_SCAN_INVALID",
+        "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED",
     }
     result["subject_kind"] = "component_id" if rule_id in metadata_rules else "path"
     result["subject_value"] = normalize_path(parts[transition_index + 1])
@@ -1297,7 +1319,7 @@ def authorized_failure_identity_by_fingerprint(
     for value in report["failures"]:
         raw = str(value)
         rule_id = raw.split(":", 1)[0]
-        bucket = "HISTORICAL" if rule_id.startswith("HISTORY_") else "CURRENT_DELTA_FAILURE"
+        bucket = "HISTORICAL" if _is_historical_raw_failure(raw) else "CURRENT_DELTA_FAILURE"
         payload = f"V076_RAW_FAILURE_V2\n{bucket}\n{rule_id}\n{raw}\n".encode("utf-8")
         fingerprint = "V2F-" + sha256_bytes(payload)
         if fingerprint in result:
@@ -1337,8 +1359,8 @@ def validate_authorized_baseline(path: Path) -> dict[str, Any]:
         values = []
     if len(values) != AUTHORIZED_BASELINE_FAILURE_COUNT:
         failures.append("BASELINE_FAILURE_COUNT_MISMATCH")
-    historical = [value for value in values if str(value).startswith("HISTORY_")]
-    current = [value for value in values if not str(value).startswith("HISTORY_")]
+    historical = [value for value in values if _is_historical_raw_failure(str(value))]
+    current = [value for value in values if not _is_historical_raw_failure(str(value))]
     if len(historical) != AUTHORIZED_BASELINE_HISTORICAL_COUNT:
         failures.append("BASELINE_HISTORICAL_COUNT_MISMATCH")
     if len(current) != AUTHORIZED_BASELINE_CURRENT_COUNT:
@@ -7026,6 +7048,180 @@ def _subject_projection_terminal_replacement_composite(
     }
 
 
+def _subject_projection_successor_v6_composite(
+    root: Path,
+    sidecar_path: Path,
+    *,
+    artifact_head: str,
+) -> dict[str, Any]:
+    """Admit the two exact additive retired-source Raw identities by dual audit."""
+
+    failures: list[str] = []
+    manifest: dict[str, Any] = {}
+    artifact = ""
+    binding_head = ""
+    expected = set(
+        getattr(_subject_projection_revalidation_successor_v6, "RAW_SPECS", {})
+    )
+    if (
+        _subject_projection_revalidation_successor_v6 is None
+        or _subject_projection_revalidation_successor_v6_independent is None
+    ):
+        failures.append("SUBJECT_PROJECTION_SUCCESSOR_V6_MODULE_NOT_AVAILABLE")
+    else:
+        canonical = (
+            root
+            / _subject_projection_revalidation_successor_v6.SUCCESSOR_ROOT
+            / "manifest.json"
+        ).resolve()
+        if sidecar_path.resolve() != canonical:
+            failures.append(
+                "SUBJECT_PROJECTION_SUCCESSOR_V6_MANIFEST_PATH_NOT_CANONICAL"
+            )
+    try:
+        manifest, artifact, binding_head = _committed_successor_manifest(
+            root, sidecar_path, artifact_head=artifact_head
+        )
+    except Exception as error:
+        failures.append(
+            "SUBJECT_PROJECTION_SUCCESSOR_V6_MANIFEST_BINDING_INVALID:"
+            + type(error).__name__
+        )
+
+    primary: Any = {}
+    independent: Any = {}
+    if not failures:
+        try:
+            primary = _subject_projection_revalidation_successor_v6.validate(
+                root,
+                sidecar_path,
+                evaluated_head=binding_head,
+                stage_dir=None,
+                artifact_head=artifact,
+            )
+        except Exception as error:
+            primary = {
+                "status": "FAIL",
+                "failures": [
+                    "SUBJECT_PROJECTION_SUCCESSOR_V6_PRIMARY_EXCEPTION:"
+                    + type(error).__name__
+                ],
+            }
+        try:
+            independent = (
+                _subject_projection_revalidation_successor_v6_independent.audit(
+                    root,
+                    sidecar_path,
+                    evaluated_head=binding_head,
+                    stage_dir=None,
+                    artifact_head=artifact,
+                )
+            )
+        except Exception as error:
+            independent = {
+                "status": "FAIL",
+                "failures": [
+                    "SUBJECT_PROJECTION_SUCCESSOR_V6_INDEPENDENT_EXCEPTION:"
+                    + type(error).__name__
+                ],
+            }
+
+    def shape(result: Any, label: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        if not isinstance(result, dict):
+            failures.append(f"SUBJECT_PROJECTION_SUCCESSOR_V6_{label}_RESULT_INVALID")
+            return {}, {}
+        diagnostics = result.get("failures")
+        if not isinstance(diagnostics, list):
+            diagnostics = []
+            failures.append(
+                f"SUBJECT_PROJECTION_SUCCESSOR_V6_{label}_FAILURES_INVALID"
+            )
+        failures.extend(
+            f"SUBJECT_PROJECTION_SUCCESSOR_V6_{label}:{value}"
+            for value in diagnostics
+        )
+        trusted = result.get("trusted_by_fingerprint")
+        identities = result.get("authorized_identity_by_fingerprint")
+        if (
+            result.get("status") != "PASS"
+            or result.get("mode") != "COMMITTED"
+            or result.get("record_count") != 2
+            or result.get("artifact_head_sha") != artifact
+            or result.get("evaluated_head_sha") != binding_head
+            or result.get("wildcard_count") != 0
+            or result.get("future_failure_auto_correction_count") != 0
+            or not isinstance(trusted, dict)
+            or set(trusted) != expected
+            or not isinstance(identities, dict)
+            or set(identities) != expected
+        ):
+            failures.append(
+                f"SUBJECT_PROJECTION_SUCCESSOR_V6_{label}_RESULT_SHAPE_INVALID"
+            )
+            return {}, {}
+        return trusted, identities
+
+    primary_trusted, primary_identities = shape(primary, "PRIMARY") if primary else ({}, {})
+    independent_trusted, independent_identities = (
+        shape(independent, "INDEPENDENT") if independent else ({}, {})
+    )
+    if primary_trusted != independent_trusted:
+        failures.append("SUBJECT_PROJECTION_SUCCESSOR_V6_TRUST_SET_PARITY_INVALID")
+    if primary_identities != independent_identities:
+        failures.append("SUBJECT_PROJECTION_SUCCESSOR_V6_IDENTITY_PARITY_INVALID")
+    if (
+        manifest.get("failure_fingerprints") != sorted(expected)
+        or manifest.get("record_count") != 2
+        or manifest.get("wildcard_count") != 0
+        or manifest.get("future_failure_auto_correction") is not False
+    ):
+        failures.append("SUBJECT_PROJECTION_SUCCESSOR_V6_MANIFEST_POLICY_INVALID")
+    failures = sorted(set(failures))
+    trusted = primary_trusted if not failures else {}
+    identities = primary_identities if not failures else {}
+    record_summaries = [
+        {
+            "authority_origin": "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V6",
+            "correction_id": str(binding.get("correction_id", "")),
+            "path": str(binding.get("path", "")),
+            "record_sha256": str(binding.get("record_sha256", "")),
+            "failure_fingerprints": [
+                str(binding.get("failure_fingerprint", ""))
+            ],
+        }
+        for binding in manifest.get("record_bindings", [])
+        if isinstance(binding, dict)
+    ] if not failures else []
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "failures": failures,
+        "path": str(sidecar_path),
+        "artifact_head_sha": artifact,
+        "revalidation_binding_head_sha": binding_head,
+        "record_count": len(trusted),
+        "trusted_fingerprint_count": len(trusted),
+        "primary_status": (
+            primary.get("status", "FAIL")
+            if isinstance(primary, dict)
+            else "FAIL"
+        ),
+        "independent_status": (
+            independent.get("status", "FAIL")
+            if isinstance(independent, dict)
+            else "FAIL"
+        ),
+        "cross_authority_overlap_count": 0,
+        "wildcard_count": 0,
+        "future_failure_auto_correction_count": 0,
+        "trust_set_parity": primary_trusted == independent_trusted,
+        "identity_parity": primary_identities == independent_identities,
+        "effective_authority_exposed": not failures and len(trusted) == 2,
+        "trusted_by_fingerprint": trusted,
+        "authorized_identity_by_fingerprint": identities,
+        "record_summaries": record_summaries,
+    }
+
+
 def _validate_manifest_binding_against_repo(
     root: Path,
     manifest: dict[str, Any],
@@ -8324,6 +8520,7 @@ def validate_batch_manifest_against_repo(
     subject_projection_revalidation_successor_v3_path: Path | None = None,
     subject_projection_revalidation_successor_v4_path: Path | None = None,
     subject_projection_revalidation_successor_v5_path: Path | None = None,
+    subject_projection_revalidation_successor_v6_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
     historical_delta_metadata_successor_path: Path | None = None,
     historical_delta_metadata_successor_v2_path: Path | None = None,
@@ -8369,6 +8566,7 @@ def validate_batch_manifest_against_repo(
             "supplement_sha256": "",
             "authorized_historical_fingerprints": set(),
             "authorized_identity_by_fingerprint": {},
+            "record_summaries": [],
         }
     else:
         supplement = validate_descendant_history_supplement(
@@ -8466,6 +8664,24 @@ def validate_batch_manifest_against_repo(
         "successor_v3_trusted_by_fingerprint": {},
         "successor_v4_trusted_by_fingerprint": {},
         "successor_v5_trusted_by_fingerprint": {},
+    }
+    subject_projection_revalidation_successor_v6_result: dict[str, Any] = {
+        "status": "NOT_PROVIDED",
+        "failures": [],
+        "path": "",
+        "record_count": 0,
+        "trusted_fingerprint_count": 0,
+        "primary_status": "NOT_PROVIDED",
+        "independent_status": "NOT_PROVIDED",
+        "cross_authority_overlap_count": 0,
+        "wildcard_count": 0,
+        "future_failure_auto_correction_count": 0,
+        "trust_set_parity": False,
+        "identity_parity": False,
+        "effective_authority_exposed": False,
+        "trusted_by_fingerprint": {},
+        "authorized_identity_by_fingerprint": {},
+        "record_summaries": [],
     }
     all_manifests = list(reversed(previous_chain)) + [(manifest_path, manifest)]
     historical_delta_metadata_ledger = (
@@ -8869,6 +9085,24 @@ def validate_batch_manifest_against_repo(
             "successor_v5_trusted_by_fingerprint", {}
         )
     )
+    if subject_projection_revalidation_successor_v6_path is not None:
+        subject_projection_revalidation_successor_v6_result = (
+            _subject_projection_successor_v6_composite(
+                root,
+                subject_projection_revalidation_successor_v6_path,
+                artifact_head=evaluated_head,
+            )
+        )
+        failures.extend(
+            f"SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V6_INVALID:{value}"
+            for value in subject_projection_revalidation_successor_v6_result.get(
+                "failures", []
+            )
+        )
+        if subject_projection_revalidation_successor_v6_result.get("status") != "PASS":
+            failures.append(
+                "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V6_REQUIRED_VALID_DUAL_AUDIT_SIDECAR"
+            )
     legacy_fingerprints = set(legacy.get("legacy_corrected_fingerprints", []))
     global_fingerprints: set[str] = set()
     correction_ids: set[str] = set()
@@ -8940,6 +9174,69 @@ def validate_batch_manifest_against_repo(
         failures.extend(record_failures)
         if path == manifest_path:
             current_seen = seen
+    v6_fingerprints = set(
+        subject_projection_revalidation_successor_v6_result.get(
+            "trusted_by_fingerprint", {}
+        )
+    )
+    hdm_fingerprints = {
+        str(value)
+        for value in historical_delta_metadata_ledger.get(
+            "verified_historical_fingerprints", []
+        )
+    } | {
+        str(value)
+        for value in historical_delta_metadata_successor.get(
+            "verified_historical_fingerprints", []
+        )
+    }
+    v6_collision_count = 0
+    for label, collision in (
+        ("LEGACY", v6_fingerprints & legacy_fingerprints),
+        ("BATCH", v6_fingerprints & global_fingerprints),
+        ("HDM", v6_fingerprints & hdm_fingerprints),
+        (
+            "SUCCESSOR_V3",
+            v6_fingerprints
+            & set(subject_projection_revalidation_successor_v3_trusted),
+        ),
+        (
+            "SUCCESSOR_V4",
+            v6_fingerprints
+            & set(subject_projection_revalidation_successor_v4_trusted),
+        ),
+        (
+            "SUCCESSOR_V5",
+            v6_fingerprints
+            & set(subject_projection_revalidation_successor_v5_trusted),
+        ),
+    ):
+        if collision:
+            v6_collision_count += len(collision)
+            failures.append(
+                "SUBJECT_PROJECTION_SUCCESSOR_V6_"
+                f"{label}_FINGERPRINT_COLLISION:{len(collision)}"
+            )
+    if v6_collision_count:
+        subject_projection_revalidation_successor_v6_result = {
+            **subject_projection_revalidation_successor_v6_result,
+            "status": "FAIL",
+            "failures": sorted(
+                set(
+                    subject_projection_revalidation_successor_v6_result.get(
+                        "failures", []
+                    )
+                )
+                | {"SUBJECT_PROJECTION_SUCCESSOR_V6_CROSS_AUTHORITY_COLLISION"}
+            ),
+            "record_count": 0,
+            "trusted_fingerprint_count": 0,
+            "cross_authority_overlap_count": v6_collision_count,
+            "trusted_by_fingerprint": {},
+            "authorized_identity_by_fingerprint": {},
+            "record_summaries": [],
+            "effective_authority_exposed": False,
+        }
     failures = sorted(set(failures))
     return {
         "schema_version": f"{BATCH_MANIFEST_SCHEMA_VERSION}.verification",
@@ -8979,6 +9276,11 @@ def validate_batch_manifest_against_repo(
             key: value
             for key, value in subject_projection_revalidation_result.items()
             if not key.endswith("trusted_by_fingerprint")
+        },
+        "subject_projection_revalidation_successor_v6": {
+            key: value
+            for key, value in subject_projection_revalidation_successor_v6_result.items()
+            if key != "trusted_by_fingerprint"
         },
         "historical_delta_metadata_ledger": historical_delta_metadata_ledger,
         "historical_delta_metadata_successor": historical_delta_metadata_successor,

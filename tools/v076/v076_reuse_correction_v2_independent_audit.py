@@ -46,6 +46,14 @@ except ImportError:
     except ImportError:
         _subject_projection_revalidation_successor_v5 = None
 
+try:
+    from . import v076_subject_projection_revalidation_successor_v6_independent_audit as _subject_projection_revalidation_successor_v6
+except ImportError:
+    try:
+        import v076_subject_projection_revalidation_successor_v6_independent_audit as _subject_projection_revalidation_successor_v6
+    except ImportError:
+        _subject_projection_revalidation_successor_v6 = None
+
 
 AUTHORIZED_HEAD = "1e24cea73fc23e69e575fcea09df57238156af67"
 AUTHORIZED_BASELINE_SHA = "b1097750f23007ba75d83f646fefe70a3bb5012540d38475a536fc5eee81e435"
@@ -60,6 +68,16 @@ SCANNER_PATHS = {
     "tools/rules/check_v06_mechanic_authority.py",
 }
 HISTORY_PREFIX = "HISTORY_"
+EXACT_NONPREFIX_HISTORICAL_RAW_FAILURES = frozenset(
+    {
+        "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED:9926d3955da7->6209465da4a9:component.v076.private_direct_action_input:reuse.current.military_runtime_owner",
+        "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED:ee716a80b6a3->32e0800c5b1d:component.v076.private_direct_action_input:reuse.current.military_runtime_owner",
+    }
+)
+
+
+def _is_historical_raw_failure(raw: str) -> bool:
+    return raw.startswith(HISTORY_PREFIX) or raw in EXACT_NONPREFIX_HISTORICAL_RAW_FAILURES
 
 FULL_CONVERGENCE_AUTHORIZATION_ID = (
     "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827"
@@ -69,7 +87,7 @@ FULL_CONVERGENCE_BASELINE_SHA = "cfb84c08abacb294ea54ffc975f691869b33ac47a5d6a9f
 FULL_CONVERGENCE_FAILURE_SET_SHA = "dd3b9f88319ba008dafa0de8be14d4e7427a3cb02d7b3e11ed6d50e2c80893ef"
 FULL_CONVERGENCE_PRIMARY_HISTORICAL_COUNT = 501
 FULL_CONVERGENCE_HISTORICAL_DELTA_METADATA_COUNT = 86
-FULL_CONVERGENCE_COMBINED_HISTORICAL_COUNT = 587
+FULL_CONVERGENCE_COMBINED_HISTORICAL_COUNT = 589
 FULL_CONVERGENCE_LEGACY_CORRECTED_COUNT = 12
 FULL_CONVERGENCE_TERMINAL_CHAIN_COUNT = 489
 FULL_CONVERGENCE_TERMINAL_BATCH_ID = "batch-013"
@@ -1087,7 +1105,7 @@ def _authorized_failure_fingerprint_sets(report: dict[str, Any]) -> dict[str, se
     for value in values:
         raw = str(value)
         rule_id = raw.split(":", 1)[0]
-        historical = rule_id.startswith(HISTORY_PREFIX)
+        historical = _is_historical_raw_failure(raw)
         bucket = "HISTORICAL" if historical else "CURRENT_DELTA_FAILURE"
         payload = f"V076_RAW_FAILURE_V2\n{bucket}\n{rule_id}\n{raw}\n".encode("utf-8")
         result["historical" if historical else "current"].add(
@@ -1109,11 +1127,12 @@ def _authorized_failure_identity_by_fingerprint(
         "HISTORY_PRODUCT_AFFECTED_OWNER_MISSING",
         "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING",
         "HISTORY_PRODUCT_REUSE_SCAN_INVALID",
+        "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED",
     }
     for value in values:
         raw = str(value)
         rule_id = raw.split(":", 1)[0]
-        historical = rule_id.startswith(HISTORY_PREFIX)
+        historical = _is_historical_raw_failure(raw)
         bucket = "HISTORICAL" if historical else "CURRENT_DELTA_FAILURE"
         payload = f"V076_RAW_FAILURE_V2\n{bucket}\n{rule_id}\n{raw}\n".encode("utf-8")
         fingerprint = "V2F-" + _sha_bytes(payload)
@@ -6930,6 +6949,162 @@ def _subject_projection_terminal_replacement_findings(
     }
 
 
+def _subject_projection_successor_v6_findings(
+    root: Path,
+    sidecar_path: Path | None,
+    evaluated_head: str,
+) -> tuple[
+    list[dict[str, Any]],
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+    dict[str, Any],
+]:
+    """Independently admit exactly two additive non-prefix historical Raw rows."""
+
+    if sidecar_path is None:
+        return [], {}, {}, {
+            "status": "NOT_PROVIDED",
+            "record_count": 0,
+            "trusted_fingerprint_count": 0,
+            "wildcard_count": 0,
+            "future_failure_auto_correction_count": 0,
+            "cross_authority_overlap_count": 0,
+            "effective_authority_exposed": False,
+            "path": "",
+            "failures": [],
+        }
+    failures: list[str] = []
+    artifact = ""
+    binding_head = ""
+    manifest: dict[str, Any] = {}
+    result: Any = {}
+    expected = set(
+        getattr(_subject_projection_revalidation_successor_v6, "SPECS", {})
+    )
+    if _subject_projection_revalidation_successor_v6 is None:
+        failures.append("SUBJECT_PROJECTION_SUCCESSOR_V6_MODULE_NOT_AVAILABLE")
+    else:
+        canonical = (
+            root
+            / str(_subject_projection_revalidation_successor_v6.ROOT).rstrip("/")
+            / "manifest.json"
+        ).resolve()
+        if sidecar_path.resolve() != canonical:
+            failures.append(
+                "SUBJECT_PROJECTION_SUCCESSOR_V6_MANIFEST_PATH_NOT_CANONICAL"
+            )
+    try:
+        manifest, artifact, binding_head = _committed_successor_binding(
+            root, sidecar_path, artifact_head=evaluated_head
+        )
+    except Exception as error:
+        failures.append(
+            "SUBJECT_PROJECTION_SUCCESSOR_V6_MANIFEST_BINDING_INVALID:"
+            + type(error).__name__
+        )
+    if not failures:
+        try:
+            result = _subject_projection_revalidation_successor_v6.audit(
+                root,
+                sidecar_path,
+                evaluated_head=binding_head,
+                stage_dir=None,
+                artifact_head=artifact,
+            )
+        except Exception as error:
+            failures.append(
+                "SUBJECT_PROJECTION_SUCCESSOR_V6_INDEPENDENT_EXCEPTION:"
+                + type(error).__name__
+            )
+    trusted = (
+        result.get("trusted_by_fingerprint", {})
+        if isinstance(result, dict)
+        and isinstance(result.get("trusted_by_fingerprint"), dict)
+        else {}
+    )
+    identities = (
+        result.get("authorized_identity_by_fingerprint", {})
+        if isinstance(result, dict)
+        and isinstance(result.get("authorized_identity_by_fingerprint"), dict)
+        else {}
+    )
+    diagnostics = result.get("failures", []) if isinstance(result, dict) else []
+    if not isinstance(diagnostics, list):
+        diagnostics = []
+        failures.append("SUBJECT_PROJECTION_SUCCESSOR_V6_FAILURES_INVALID")
+    failures.extend(f"SUBJECT_PROJECTION_SUCCESSOR_V6:{value}" for value in diagnostics)
+    if (
+        not isinstance(result, dict)
+        or result.get("status") != "PASS"
+        or result.get("independent") is not True
+        or result.get("mode") != "COMMITTED"
+        or result.get("record_count") != 2
+        or result.get("artifact_head_sha") != artifact
+        or result.get("evaluated_head_sha") != binding_head
+        or result.get("wildcard_count") != 0
+        or result.get("future_failure_auto_correction_count") != 0
+        or set(trusted) != expected
+        or set(identities) != expected
+        or manifest.get("failure_fingerprints") != sorted(expected)
+        or manifest.get("record_count") != 2
+        or manifest.get("wildcard_count") != 0
+        or manifest.get("future_failure_auto_correction") is not False
+    ):
+        failures.append("SUBJECT_PROJECTION_SUCCESSOR_V6_RESULT_SHAPE_INVALID")
+    for fingerprint, identity in identities.items():
+        raw = (
+            str(identity.get("raw_failure", ""))
+            if isinstance(identity, dict)
+            else ""
+        )
+        expected_fingerprint = "V2F-" + _sha_bytes(
+            (
+                "V076_RAW_FAILURE_V2\nHISTORICAL\n"
+                "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED\n"
+                + raw
+                + "\n"
+            ).encode("utf-8")
+        )
+        if (
+            not isinstance(identity, dict)
+            or raw not in EXACT_NONPREFIX_HISTORICAL_RAW_FAILURES
+            or identity.get("bucket") != "HISTORICAL"
+            or fingerprint != expected_fingerprint
+        ):
+            failures.append(
+                "SUBJECT_PROJECTION_SUCCESSOR_V6_IDENTITY_INVALID:"
+                + str(fingerprint)
+            )
+    failures = sorted(set(failures))
+    if failures:
+        trusted = {}
+        identities = {}
+    findings = [
+        _finding(
+            "FULL_CONVERGENCE_SUBJECT_PROJECTION_SUCCESSOR_V6_INVALID",
+            "P0",
+            failure,
+            manifest_path=str(sidecar_path),
+        )
+        for failure in failures
+    ]
+    return findings, trusted, identities, {
+        "status": "PASS" if not failures else "FAIL",
+        "record_count": len(trusted),
+        "trusted_fingerprint_count": len(trusted),
+        "wildcard_count": 0,
+        "future_failure_auto_correction_count": 0,
+        "cross_authority_overlap_count": 0,
+        "path": str(sidecar_path),
+        "artifact_head_sha": artifact,
+        "revalidation_binding_head_sha": binding_head,
+        "authorized_identity_by_fingerprint": identities,
+        "failures": failures,
+        "committed_only": not failures,
+        "effective_authority_exposed": not failures and len(trusted) == 2,
+    }
+
+
 def _subject_projection_revalidation_epoch_pair_findings(
     root: Path,
     v1_sidecar_path: Path | None,
@@ -7524,8 +7699,9 @@ def _terminal_coverage_projection(
     historical_delta_metadata_authority: dict[str, Any],
     legacy_fingerprints: set[str],
     chain_fingerprints: set[str],
+    subject_projection_successor_v6_fingerprints: set[str] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Prove the closed 501 + 86 = 587 terminal partition exactly once."""
+    """Prove the closed 501 + 86 + 2 = 589 terminal partition exactly once."""
 
     hdm = (
         {
@@ -7537,13 +7713,18 @@ def _terminal_coverage_projection(
         if historical_delta_metadata_authority.get("status") == "PASS"
         else set()
     )
-    combined = primary_historical | hdm
+    v6 = subject_projection_successor_v6_fingerprints or set()
+    combined = primary_historical | hdm | v6
     primary_hdm_overlap = primary_historical & hdm
     legacy_hdm_overlap = legacy_fingerprints & hdm
     chain_hdm_overlap = chain_fingerprints & hdm
     chain_legacy_overlap = chain_fingerprints & legacy_fingerprints
+    v6_primary_overlap = v6 & primary_historical
+    v6_hdm_overlap = v6 & hdm
+    v6_legacy_overlap = v6 & legacy_fingerprints
+    v6_chain_overlap = v6 & chain_fingerprints
     legacy_outside_primary = legacy_fingerprints - primary_historical
-    expected_chain = combined - legacy_fingerprints - hdm
+    expected_chain = combined - legacy_fingerprints - hdm - v6
     missing = expected_chain - chain_fingerprints
     extra = chain_fingerprints - expected_chain
     terminal_candidate = bool(
@@ -7609,6 +7790,12 @@ def _terminal_coverage_projection(
                 "HDM authority",
             ),
             (
+                len(v6),
+                2,
+                "FULL_CONVERGENCE_TERMINAL_V6_COUNT_MISMATCH",
+                "successor-v6 authority",
+            ),
+            (
                 len(combined),
                 FULL_CONVERGENCE_COMBINED_HISTORICAL_COUNT,
                 "FULL_CONVERGENCE_TERMINAL_COMBINED_COUNT_MISMATCH",
@@ -7659,6 +7846,34 @@ def _terminal_coverage_projection(
                 "the full-convergence chain must exclude legacy-owned fingerprints",
                 overlap_count=len(chain_legacy_overlap),
             )
+        for code, label, overlap in (
+            (
+                "FULL_CONVERGENCE_TERMINAL_V6_PRIMARY_OVERLAP",
+                "primary",
+                v6_primary_overlap,
+            ),
+            (
+                "FULL_CONVERGENCE_TERMINAL_V6_HDM_OVERLAP",
+                "HDM",
+                v6_hdm_overlap,
+            ),
+            (
+                "FULL_CONVERGENCE_TERMINAL_V6_LEGACY_OVERLAP",
+                "legacy",
+                v6_legacy_overlap,
+            ),
+            (
+                "FULL_CONVERGENCE_TERMINAL_V6_CHAIN_OVERLAP",
+                "batch chain",
+                v6_chain_overlap,
+            ),
+        ):
+            if overlap:
+                reject(
+                    code,
+                    f"successor-v6 must be disjoint from {label} authority",
+                    overlap_count=len(overlap),
+                )
         if legacy_outside_primary:
             reject(
                 "FULL_CONVERGENCE_TERMINAL_LEGACY_OUTSIDE_PRIMARY",
@@ -7705,6 +7920,10 @@ def _terminal_coverage_projection(
         "combined_historical_count": len(combined),
         "combined_historical_set_sha256": _exact_fingerprint_set_sha(combined),
         "legacy_corrected_count": len(legacy_fingerprints),
+        "subject_projection_successor_v6_count": len(v6),
+        "subject_projection_successor_v6_set_sha256": (
+            _exact_fingerprint_set_sha(v6)
+        ),
         "legacy_corrected_set_sha256": (
             _exact_fingerprint_set_sha(legacy_fingerprints)
         ),
@@ -7762,6 +7981,7 @@ def audit_full_convergence_batch(
     subject_projection_revalidation_successor_v3_path: Path | None = None,
     subject_projection_revalidation_successor_v4_path: Path | None = None,
     subject_projection_revalidation_successor_v5_path: Path | None = None,
+    subject_projection_revalidation_successor_v6_path: Path | None = None,
     historical_delta_metadata_ledger_path: Path | None = None,
 ) -> dict[str, Any]:
     """Independently verify one explicit new-epoch batch and its legacy anchor.
@@ -8066,6 +8286,52 @@ def audit_full_convergence_batch(
         subject_revalidation_successor_v4_trusted = {}
         subject_revalidation_successor_v5_trusted = {}
     findings.extend(subject_revalidation_findings)
+    (
+        subject_revalidation_v6_findings,
+        subject_revalidation_v6_trusted,
+        subject_revalidation_v6_identities,
+        subject_revalidation_v6_summary,
+    ) = _subject_projection_successor_v6_findings(
+        root,
+        subject_projection_revalidation_successor_v6_path,
+        evaluated_head,
+    )
+    findings.extend(subject_revalidation_v6_findings)
+    v6_subject_projection_overlap_count = 0
+    for label, trusted in (
+        ("V3", subject_revalidation_successor_v3_trusted),
+        ("V4", subject_revalidation_successor_v4_trusted),
+        ("V5", subject_revalidation_successor_v5_trusted),
+    ):
+        overlap = set(subject_revalidation_v6_trusted) & set(trusted)
+        if overlap:
+            v6_subject_projection_overlap_count += len(overlap)
+            findings.append(
+                _finding(
+                    "FULL_CONVERGENCE_SUBJECT_PROJECTION_SUCCESSOR_V6_OVERLAP",
+                    "P0",
+                    f"successor-v6 overlaps subject-projection {label}",
+                    overlap_count=len(overlap),
+                )
+            )
+    if v6_subject_projection_overlap_count:
+        subject_revalidation_v6_trusted = {}
+        subject_revalidation_v6_identities = {}
+        subject_revalidation_v6_summary = {
+            **subject_revalidation_v6_summary,
+            "status": "FAIL",
+            "record_count": 0,
+            "trusted_fingerprint_count": 0,
+            "cross_authority_overlap_count": (
+                v6_subject_projection_overlap_count
+            ),
+            "authorized_identity_by_fingerprint": {},
+            "effective_authority_exposed": False,
+            "failures": sorted(
+                set(subject_revalidation_v6_summary.get("failures", []))
+                | {"SUBJECT_PROJECTION_SUCCESSOR_V6_CROSS_AUTHORITY_COLLISION"}
+            ),
+        }
     manifest_fingerprints = [
         str(value) for value in manifest.get("failure_fingerprints", [])
     ]
@@ -8577,6 +8843,49 @@ def audit_full_convergence_batch(
                 "a record fingerprint is absent from the frozen historical-failure set",
                 fingerprint=fingerprint,
             ))
+    v6_set = set(subject_revalidation_v6_trusted)
+    hdm_set = {
+        str(value)
+        for value in historical_delta_metadata_authority.get(
+            "verified_historical_fingerprints", []
+        )
+    }
+    chain_set = predecessor_fingerprints | set(all_fingerprints)
+    v6_cross_authority_overlap_count = 0
+    for label, overlap in (
+        ("PRIMARY", v6_set & set(baseline_fingerprints["historical"])),
+        ("LEGACY", v6_set & legacy_fingerprints),
+        ("BATCH", v6_set & chain_set),
+        ("HDM", v6_set & hdm_set),
+    ):
+        if overlap:
+            v6_cross_authority_overlap_count += len(overlap)
+            findings.append(
+                _finding(
+                    "FULL_CONVERGENCE_SUBJECT_PROJECTION_SUCCESSOR_V6_OVERLAP",
+                    "P0",
+                    f"successor-v6 overlaps {label} authority",
+                    overlap_count=len(overlap),
+                )
+            )
+    if v6_cross_authority_overlap_count:
+        subject_revalidation_v6_trusted = {}
+        subject_revalidation_v6_identities = {}
+        subject_revalidation_v6_summary = {
+            **subject_revalidation_v6_summary,
+            "status": "FAIL",
+            "record_count": 0,
+            "trusted_fingerprint_count": 0,
+            "cross_authority_overlap_count": (
+                v6_cross_authority_overlap_count
+            ),
+            "authorized_identity_by_fingerprint": {},
+            "effective_authority_exposed": False,
+            "failures": sorted(
+                set(subject_revalidation_v6_summary.get("failures", []))
+                | {"SUBJECT_PROJECTION_SUCCESSOR_V6_CROSS_AUTHORITY_COLLISION"}
+            ),
+        }
     terminal_findings, terminal_coverage = _terminal_coverage_projection(
         batch_id=str(manifest.get("batch_id", "")),
         terminal_remainder_batch=(
@@ -8590,6 +8899,9 @@ def audit_full_convergence_batch(
         ),
         legacy_fingerprints=legacy_fingerprints,
         chain_fingerprints=(predecessor_fingerprints | set(all_fingerprints)),
+        subject_projection_successor_v6_fingerprints=set(
+            subject_revalidation_v6_trusted
+        ),
     )
     findings.extend(terminal_findings)
     findings = _suppress_post_touch_findings(
@@ -8624,6 +8936,9 @@ def audit_full_convergence_batch(
         "descendant_history_authorized_fingerprint_count": len(descendant_fingerprints),
         "post_touch_revalidation": post_touch_summary,
         "subject_projection_revalidation": subject_revalidation_summary,
+        "subject_projection_revalidation_successor_v6": (
+            subject_revalidation_v6_summary
+        ),
         "historical_delta_metadata_ledger": (
             historical_delta_metadata_authority
         ),
@@ -8763,6 +9078,12 @@ def main(argv: list[str] | None = None) -> int:
         help="explicit terminal replacement for the v2 2-set",
     )
     parser.add_argument(
+        "--subject-projection-revalidation-successor-v6",
+        type=Path,
+        default=None,
+        help="explicit additive exact two-Raw successor-v6 authority",
+    )
+    parser.add_argument(
         "--historical-delta-metadata-ledger",
         type=Path,
         default=None,
@@ -8853,6 +9174,15 @@ def main(argv: list[str] | None = None) -> int:
             "full-convergence input set"
         )
     if (
+        args.subject_projection_revalidation_successor_v6 is not None
+        and args.full_convergence_batch_manifest is None
+    ):
+        parser.error(
+            "--subject-projection-revalidation-successor-v6 requires "
+            "--full-convergence-batch-manifest and its complete "
+            "full-convergence input set"
+        )
+    if (
         args.historical_delta_metadata_ledger is not None
         and args.full_convergence_batch_manifest is None
     ):
@@ -8928,6 +9258,11 @@ def main(argv: list[str] | None = None) -> int:
             subject_projection_revalidation_successor_v5_path=(
                 args.subject_projection_revalidation_successor_v5.resolve()
                 if args.subject_projection_revalidation_successor_v5 is not None
+                else None
+            ),
+            subject_projection_revalidation_successor_v6_path=(
+                args.subject_projection_revalidation_successor_v6.resolve()
+                if args.subject_projection_revalidation_successor_v6 is not None
                 else None
             ),
             historical_delta_metadata_ledger_path=(

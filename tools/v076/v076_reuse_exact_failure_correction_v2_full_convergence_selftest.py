@@ -23,6 +23,7 @@ import v076_reuse_exact_failure_correction_v2 as legacy_resolver
 import v076_reuse_full_convergence_descendant_supplement_builder as successor_builder
 import v076_historical_delta_metadata_successor_v2 as hdm_successor_v2
 import v076_historical_delta_metadata_successor_v2_independent_audit as hdm_successor_v2_independent
+import v076_subject_projection_revalidation_successor_v6 as successor_v6
 
 
 REAL_DESCENDANT_RAW_REL = (
@@ -2441,9 +2442,12 @@ def _historical_delta_metadata_set_algebra_and_raw_case() -> None:
     ledger_fingerprints = {
         _fingerprint(4000 + index) for index in range(86)
     }
-    authorized_historical = supplement_fingerprints | ledger_fingerprints
+    v6_fingerprints = {_fingerprint(4500 + index) for index in range(2)}
+    authorized_historical = (
+        supplement_fingerprints | ledger_fingerprints | v6_fingerprints
+    )
     batch_fingerprints = supplement_fingerprints - legacy_fingerprints
-    _expect(len(authorized_historical) == 587, str(len(authorized_historical)))
+    _expect(len(authorized_historical) == 589, str(len(authorized_historical)))
     _expect(len(batch_fingerprints) == 489, str(len(batch_fingerprints)))
     coverage = legacy_resolver._full_convergence_terminal_coverage_failures(
         authorized_historical=authorized_historical,
@@ -2451,6 +2455,7 @@ def _historical_delta_metadata_set_algebra_and_raw_case() -> None:
         full_fingerprints=batch_fingerprints,
         terminal=True,
         historical_delta_metadata_exact=ledger_fingerprints,
+        subject_projection_successor_v6_exact=v6_fingerprints,
     )
     _expect(not coverage, str(coverage))
 
@@ -2482,8 +2487,8 @@ def _historical_delta_metadata_set_algebra_and_raw_case() -> None:
             current_head=head,
             authorized_identity_by_fingerprint=identities,
         )
-        _expect(report["raw_failure_count"] == 590, str(report))
-        _expect(report["raw_historical_failure_count"] == 587, str(report))
+        _expect(report["raw_failure_count"] == 592, str(report))
+        _expect(report["raw_historical_failure_count"] == 589, str(report))
         _expect(report["raw_current_delta_failure_count"] == 3, str(report))
         _expect(
             set(report["active_raw_by_fingerprint"].values())
@@ -2512,8 +2517,9 @@ def _historical_delta_metadata_effective_report_case(root: Path) -> None:
     supplement = {_fingerprint(5000 + index) for index in range(501)}
     legacy = set(sorted(supplement)[:12])
     ledger = {_fingerprint(6000 + index) for index in range(86)}
+    v6 = {_fingerprint(6500 + index) for index in range(2)}
     batch = supplement - legacy
-    authorized = supplement | ledger
+    authorized = supplement | ledger | v6
     active_raw = {
         "active-1": "EVIDENCE_SUBJECT_PRODUCT_TREE_DRIFT",
         "active-2": "PR93_DESCRIPTION_STAGE3_STALE",
@@ -2547,7 +2553,9 @@ def _historical_delta_metadata_effective_report_case(root: Path) -> None:
             "dispositioned_historical_fingerprints": [],
             "exact_legacy_corrected_fingerprints": sorted(legacy),
             "verified_historical_fingerprints": sorted(batch),
+            "verified_full_convergence_chain_fingerprints": sorted(batch),
             "exact_historical_delta_metadata_corrected_fingerprints": sorted(ledger),
+            "exact_subject_projection_successor_v6_corrected_fingerprints": sorted(v6),
             "full_convergence_record_count": 20,
             "historical_delta_metadata_record_count": 3,
             "historical_delta_metadata_correction_record_count": 4,
@@ -2567,6 +2575,23 @@ def _historical_delta_metadata_effective_report_case(root: Path) -> None:
                 "record_count": 82,
                 "trusted_fingerprint_count": 82,
             },
+            "subject_projection_revalidation_successor_v6": {
+                "status": "PASS",
+                "primary_status": "PASS",
+                "independent_status": "PASS",
+                "record_count": 2,
+                "trusted_fingerprint_count": 2,
+                "cross_authority_overlap_count": 0,
+                "wildcard_count": 0,
+                "future_failure_auto_correction_count": 0,
+                "trust_set_parity": True,
+                "identity_parity": True,
+                "effective_authority_exposed": True,
+            },
+            "subject_projection_successor_v6_record_summaries": [
+                {"correction_id": f"spr6-{index}", "failure_fingerprints": [fingerprint]}
+                for index, fingerprint in enumerate(sorted(v6))
+            ],
         }
 
     def live_stub(*args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -2574,8 +2599,8 @@ def _historical_delta_metadata_effective_report_case(root: Path) -> None:
             "status": "PASS",
             "failures": [],
             "raw_report": {"head_sha": "c" * 40},
-            "raw_failure_count": 590,
-            "raw_historical_failure_count": 587,
+            "raw_failure_count": 592,
+            "raw_historical_failure_count": 589,
             "raw_current_delta_failure_count": 3,
             "historical_fingerprints": sorted(authorized),
             "active_fingerprints": sorted(active_raw),
@@ -2610,19 +2635,21 @@ def _historical_delta_metadata_effective_report_case(root: Path) -> None:
         legacy_resolver._classify_full_convergence_live_raw = original_live
         legacy_resolver._validate_full_convergence_live_raw_binding = original_binding
 
-    _expect(report["raw_failure_count"] == 590, str(report))
-    _expect(report["raw_historical_failure_count"] == 587, str(report))
+    _expect(report["raw_failure_count"] == 592, str(report))
+    _expect(report["raw_historical_failure_count"] == 589, str(report))
     _expect(report["raw_current_delta_failure_count"] == 3, str(report))
-    _expect(report["corrected_historical_failure_count"] == 587, str(report))
+    _expect(report["corrected_historical_failure_count"] == 589, str(report))
     _expect(report["unresolved_historical_failure_count"] == 0, str(report))
     _expect(report["true_active_violation_count"] == 3, str(report))
     _expect(report["effective_blocking_failure_count"] == 3, str(report))
     _expect(report["new_correction_record_count"] == 20, str(report))
-    _expect(report["total_new_correction_record_count"] == 24, str(report))
+    _expect(report["total_new_correction_record_count"] == 26, str(report))
     _expect(report["historical_delta_metadata_record_count"] == 3, str(report))
     _expect(report["historical_delta_metadata_correction_record_count"] == 4, str(report))
     _expect(report["historical_delta_metadata_component_count"] == 82, str(report))
     _expect(report["historical_delta_metadata_verified_failure_count"] == 86, str(report))
+    _expect(report["subject_projection_successor_v6_corrected_historical_failure_count"] == 2, str(report))
+    _expect(len(report["verified_subject_projection_successor_v6_fingerprints"]) == 2, str(report))
     _expect(report["post_touch_revalidation"]["status"] == "PASS", str(report))
     _expect(
         report["post_touch_revalidation"]["effective_trusted_fingerprint_count"] == 2,
@@ -2637,7 +2664,7 @@ def _historical_delta_metadata_effective_report_case(root: Path) -> None:
         str(report),
     )
     _expect(report["new_correction_record_count"] == 20, str(report))
-    _expect(report["total_new_correction_record_count"] == 24, str(report))
+    _expect(report["total_new_correction_record_count"] == 26, str(report))
     _expect(report["status"] == "FAIL", str(report))
     _expect(set(report["true_active_violation_raw_by_fingerprint"].values()) == set(active_raw.values()), str(report))
 
@@ -2663,21 +2690,22 @@ def _terminal_historical_delta_metadata_ledger_omission_case(root: Path) -> None
 
 
 def _independent_terminal_partition_fixture() -> tuple[
-    set[str], set[str], set[str], set[str], dict[str, Any]
+    set[str], set[str], set[str], set[str], set[str], dict[str, Any]
 ]:
     primary = {_fingerprint(10000 + index) for index in range(501)}
     hdm = {_fingerprint(20000 + index) for index in range(86)}
+    v6 = {_fingerprint(25000 + index) for index in range(2)}
     legacy = set(sorted(primary)[:12])
     chain = primary - legacy
     authority = {
         "status": "PASS",
         "authorized_historical_fingerprints": sorted(hdm),
     }
-    return primary, hdm, legacy, chain, authority
+    return primary, hdm, v6, legacy, chain, authority
 
 
 def _independent_terminal_exact_partition_case() -> None:
-    primary, hdm, legacy, chain, authority = (
+    primary, hdm, v6, legacy, chain, authority = (
         _independent_terminal_partition_fixture()
     )
     findings, receipt = independent_audit._terminal_coverage_projection(
@@ -2689,12 +2717,14 @@ def _independent_terminal_exact_partition_case() -> None:
         historical_delta_metadata_authority=authority,
         legacy_fingerprints=legacy,
         chain_fingerprints=chain,
+        subject_projection_successor_v6_fingerprints=v6,
     )
     _expect(findings == [], str(findings))
     _expect(receipt["status"] == "PASS", str(receipt))
     _expect(receipt["primary_historical_count"] == 501, str(receipt))
     _expect(receipt["historical_delta_metadata_count"] == 86, str(receipt))
-    _expect(receipt["combined_historical_count"] == 587, str(receipt))
+    _expect(receipt["subject_projection_successor_v6_count"] == 2, str(receipt))
+    _expect(receipt["combined_historical_count"] == 589, str(receipt))
     _expect(receipt["legacy_corrected_count"] == 12, str(receipt))
     _expect(receipt["expected_chain_count"] == 489, str(receipt))
     _expect(receipt["validated_chain_count"] == 489, str(receipt))
@@ -2706,13 +2736,13 @@ def _independent_terminal_exact_partition_case() -> None:
     _expect(receipt["legacy_hdm_overlap_set_sha256"] == empty_sha, str(receipt))
     _expect(
         receipt["combined_historical_set_sha256"]
-        == independent_audit._exact_fingerprint_set_sha(primary | hdm),
+        == independent_audit._exact_fingerprint_set_sha(primary | hdm | v6),
         str(receipt),
     )
 
 
 def _independent_terminal_ledger_omission_case() -> None:
-    primary, _, legacy, chain, _ = _independent_terminal_partition_fixture()
+    primary, _, v6, legacy, chain, _ = _independent_terminal_partition_fixture()
     findings, receipt = independent_audit._terminal_coverage_projection(
         batch_id="batch-013",
         terminal_remainder_batch=True,
@@ -2722,6 +2752,7 @@ def _independent_terminal_ledger_omission_case() -> None:
         historical_delta_metadata_authority={"status": "NOT_PROVIDED"},
         legacy_fingerprints=legacy,
         chain_fingerprints=chain,
+        subject_projection_successor_v6_fingerprints=v6,
     )
     codes = {finding["code"] for finding in findings}
     _expect(
@@ -2735,11 +2766,11 @@ def _independent_terminal_ledger_omission_case() -> None:
     )
     _expect(receipt["status"] == "FAIL", str(receipt))
     _expect(receipt["historical_delta_metadata_count"] == 0, str(receipt))
-    _expect(receipt["combined_historical_count"] == 501, str(receipt))
+    _expect(receipt["combined_historical_count"] == 503, str(receipt))
 
 
 def _independent_terminal_equal_cardinality_tamper_case() -> None:
-    primary, _, legacy, chain, authority = (
+    primary, _, v6, legacy, chain, authority = (
         _independent_terminal_partition_fixture()
     )
     missing = min(chain)
@@ -2754,6 +2785,7 @@ def _independent_terminal_equal_cardinality_tamper_case() -> None:
         historical_delta_metadata_authority=authority,
         legacy_fingerprints=legacy,
         chain_fingerprints=tampered,
+        subject_projection_successor_v6_fingerprints=v6,
     )
     codes = {finding["code"] for finding in findings}
     _expect(
@@ -2775,7 +2807,7 @@ def _independent_terminal_equal_cardinality_tamper_case() -> None:
 
 
 def _independent_terminal_partition_overlap_case() -> None:
-    primary, hdm, legacy, chain, _ = _independent_terminal_partition_fixture()
+    primary, hdm, v6, legacy, chain, _ = _independent_terminal_partition_fixture()
     shared = min(legacy)
     overlapping_hdm = (hdm - {min(hdm)}) | {shared}
     authority = {
@@ -2791,6 +2823,7 @@ def _independent_terminal_partition_overlap_case() -> None:
         historical_delta_metadata_authority=authority,
         legacy_fingerprints=legacy,
         chain_fingerprints=chain,
+        subject_projection_successor_v6_fingerprints=v6,
     )
     codes = {finding["code"] for finding in findings}
     _expect(
@@ -2807,7 +2840,7 @@ def _independent_terminal_partition_overlap_case() -> None:
     )
     _expect(receipt["primary_hdm_overlap_fingerprints"] == [shared], str(receipt))
     _expect(receipt["legacy_hdm_overlap_fingerprints"] == [shared], str(receipt))
-    _expect(receipt["combined_historical_count"] == 586, str(receipt))
+    _expect(receipt["combined_historical_count"] == 588, str(receipt))
 
 
 def _independent_hdm_cli_coupling_case(root: Path) -> None:
@@ -7557,6 +7590,202 @@ def _optional_v5_import_fails_only_on_replacement_case() -> None:
     )
 
 
+def _successor_v6_dual_audit_composite_case(root: Path) -> None:
+    expected = set(successor_v6.RAW_SPECS)
+    artifact = "a" * 40
+    binding = "b" * 40
+    identities = {
+        fingerprint: {
+            "authority_origin": "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V6",
+            "bucket": "HISTORICAL",
+            "failure_fingerprint": fingerprint,
+            "raw_failure": str(spec["raw_failure"]),
+            "rule_id": successor_v6.RULE_ID,
+            "transition_old_prefix": str(spec["parent_sha"])[:12],
+            "transition_new_prefix": str(spec["commit_sha"])[:12],
+            "subject_kind": "component_id",
+            "subject_value": successor_v6.COMPONENT_ID,
+            "source_commit_sha": str(spec["commit_sha"]),
+            "record_path": successor_v6.expected_record_path(fingerprint),
+            "correction_id": successor_v6.expected_id(fingerprint),
+        }
+        for fingerprint, spec in successor_v6.RAW_SPECS.items()
+    }
+    manifest = {
+        "failure_fingerprints": sorted(expected),
+        "record_count": 2,
+        "wildcard_count": 0,
+        "future_failure_auto_correction": False,
+        "record_bindings": [
+            {
+                "correction_id": identities[fingerprint]["correction_id"],
+                "path": identities[fingerprint]["record_path"],
+                "record_sha256": f"{index + 1:064x}",
+                "failure_fingerprint": fingerprint,
+            }
+            for index, fingerprint in enumerate(sorted(expected))
+        ],
+    }
+
+    def report(*, independent: bool) -> dict[str, Any]:
+        return {
+            "status": "PASS",
+            "mode": "COMMITTED",
+            "failures": [],
+            "trusted_by_fingerprint": copy.deepcopy(identities),
+            "authorized_identity_by_fingerprint": copy.deepcopy(identities),
+            "record_count": 2,
+            "wildcard_count": 0,
+            "future_failure_auto_correction_count": 0,
+            "artifact_head_sha": artifact,
+            "evaluated_head_sha": binding,
+            "independent": independent,
+        }
+
+    primary_report = report(independent=False)
+    independent_report = report(independent=True)
+    original_manifest = convergence._committed_successor_manifest
+    original_primary = convergence._subject_projection_revalidation_successor_v6.validate
+    original_independent = convergence._subject_projection_revalidation_successor_v6_independent.audit
+    convergence._committed_successor_manifest = lambda *args, **kwargs: (
+        copy.deepcopy(manifest), artifact, binding
+    )
+    convergence._subject_projection_revalidation_successor_v6.validate = (
+        lambda *args, **kwargs: copy.deepcopy(primary_report)
+    )
+    convergence._subject_projection_revalidation_successor_v6_independent.audit = (
+        lambda *args, **kwargs: copy.deepcopy(independent_report)
+    )
+    try:
+        canonical = root / successor_v6.SUCCESSOR_ROOT / "manifest.json"
+        accepted = convergence._subject_projection_successor_v6_composite(
+            root, canonical, artifact_head=artifact
+        )
+        _expect(accepted["status"] == "PASS", str(accepted))
+        _expect(set(accepted["trusted_by_fingerprint"]) == expected, str(accepted))
+        _expect(accepted["primary_status"] == "PASS", str(accepted))
+        _expect(accepted["independent_status"] == "PASS", str(accepted))
+        _expect(accepted["trust_set_parity"] is True, str(accepted))
+        _expect(accepted["identity_parity"] is True, str(accepted))
+        _expect(accepted["effective_authority_exposed"] is True, str(accepted))
+        _expect(len(accepted["record_summaries"]) == 2, str(accepted))
+
+        changed = min(expected)
+        independent_report["authorized_identity_by_fingerprint"][changed][
+            "record_path"
+        ] += ".tampered"
+        rejected = convergence._subject_projection_successor_v6_composite(
+            root, canonical, artifact_head=artifact
+        )
+        _expect(rejected["status"] == "FAIL", str(rejected))
+        _expect(rejected["trusted_by_fingerprint"] == {}, str(rejected))
+        _expect(rejected["authorized_identity_by_fingerprint"] == {}, str(rejected))
+        _expect(rejected["effective_authority_exposed"] is False, str(rejected))
+        _expect_failure(
+            rejected["failures"],
+            "SUBJECT_PROJECTION_SUCCESSOR_V6_IDENTITY_PARITY_INVALID",
+        )
+    finally:
+        convergence._committed_successor_manifest = original_manifest
+        convergence._subject_projection_revalidation_successor_v6.validate = original_primary
+        convergence._subject_projection_revalidation_successor_v6_independent.audit = original_independent
+
+
+def _successor_v6_scanner_visibility_case() -> None:
+    head = "c" * 40
+    identities = {
+        fingerprint: {
+            "raw_failure": str(spec["raw_failure"]),
+            "bucket": "HISTORICAL",
+        }
+        for fingerprint, spec in successor_v6.RAW_SPECS.items()
+    }
+    exact_raws = sorted(
+        str(spec["raw_failure"]) for spec in successor_v6.RAW_SPECS.values()
+    )
+    future_raw = (
+        successor_v6.RULE_ID
+        + ":111111111111->222222222222:"
+        + successor_v6.COMPONENT_ID
+        + ":"
+        + successor_v6.REUSE_ID
+    )
+
+    def classify(raws: list[str]) -> dict[str, Any]:
+        return legacy_resolver._classify_full_convergence_live_raw(
+            Path("unused-live-report.json"),
+            current_head=head,
+            authorized_identity_by_fingerprint=identities,
+            snapshot_report={
+                "status": "FAIL" if raws else "PASS",
+                "head_sha": head,
+                "include_worktree": False,
+                "evaluated_source": "COMMITTED_HEAD",
+                "failures": raws,
+            },
+        )
+
+    visible = classify([*exact_raws, future_raw])
+    _expect(visible["status"] == "PASS", str(visible))
+    _expect(visible["raw_historical_failure_count"] == 2, str(visible))
+    _expect(visible["raw_current_delta_failure_count"] == 1, str(visible))
+    _expect(future_raw in visible["active_raw_by_fingerprint"].values(), str(visible))
+
+    missing_one = classify([exact_raws[0], future_raw])
+    _expect(missing_one["status"] == "FAIL", str(missing_one))
+    _expect(len(missing_one["missing_authorized_historical_raw_failures"]) == 1, str(missing_one))
+    _expect_failure(missing_one["failures"], "RAW_AUTHORIZED_HISTORICAL_FAILURE_MISSING:1")
+
+    missing_both = classify([future_raw])
+    _expect(missing_both["status"] == "FAIL", str(missing_both))
+    _expect(len(missing_both["missing_authorized_historical_raw_failures"]) == 2, str(missing_both))
+    _expect_failure(missing_both["failures"], "RAW_AUTHORIZED_HISTORICAL_FAILURE_MISSING:2")
+
+
+def _successor_v6_terminal_overlap_case() -> None:
+    primary, hdm, _, legacy, chain, authority = (
+        _independent_terminal_partition_fixture()
+    )
+    v6 = {min(primary), _fingerprint(26000)}
+    findings, receipt = independent_audit._terminal_coverage_projection(
+        batch_id="batch-013",
+        terminal_remainder_batch=True,
+        terminal_batch_failure_count=11,
+        validated_batch_count=13,
+        primary_historical=primary,
+        historical_delta_metadata_authority=authority,
+        legacy_fingerprints=legacy,
+        chain_fingerprints=chain,
+        subject_projection_successor_v6_fingerprints=v6,
+    )
+    codes = {finding["code"] for finding in findings}
+    _expect("FULL_CONVERGENCE_TERMINAL_V6_PRIMARY_OVERLAP" in codes, str(findings))
+    _expect(receipt["status"] == "FAIL", str(receipt))
+    _expect(receipt["combined_historical_count"] == 588, str(receipt))
+
+
+def _successor_v6_independent_cli_coupling_case(root: Path) -> None:
+    stderr = io.StringIO()
+    with contextlib.redirect_stderr(stderr):
+        try:
+            independent_audit.main([
+                "--project",
+                str(root),
+                "--subject-projection-revalidation-successor-v6",
+                "explicit-spr6.json",
+            ])
+        except SystemExit as exc:
+            _expect(exc.code == 2, str(exc))
+        else:
+            raise AssertionError(
+                "standalone successor-v6 was accepted without full-convergence inputs"
+            )
+    _expect(
+        "--subject-projection-revalidation-successor-v6 requires" in stderr.getvalue(),
+        stderr.getvalue(),
+    )
+
+
 def build_cases(root: Path) -> list[Case]:
     cases: list[Case] = []
     cases.append(Case("01", "new schema is exact and authorized", lambda: _expect(not convergence.validate_schema(root), str(convergence.validate_schema(root)))))
@@ -7651,8 +7880,8 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("90", "the explicit historical Delta metadata ledger is CLI-routed only with a complete full-convergence set", lambda: _historical_delta_metadata_input_coupling_case(root)))
     cases.append(Case("91", "historical Delta metadata authority requires primary PASS independent GO and exact projection parity", lambda: _historical_delta_metadata_dual_gate_case(root)))
     cases.append(Case("92", "ledger fingerprints correction IDs and record paths cannot collide with legacy or batch authority", _historical_delta_metadata_collision_case))
-    cases.append(Case("93", "terminal coverage is 587 minus legacy 12 minus ledger 86 while Raw 590 preserves three exact current blockers", _historical_delta_metadata_set_algebra_and_raw_case))
-    cases.append(Case("94", "effective reporting keeps batch record count separate and remains FAIL on the exact three current blockers", lambda: _historical_delta_metadata_effective_report_case(root)))
+    cases.append(Case("93", "terminal coverage is 589 minus legacy 12 ledger 86 and additive v6 2 while Raw 592 preserves three exact current blockers", _historical_delta_metadata_set_algebra_and_raw_case))
+    cases.append(Case("94", "effective reporting corrects all 589 historical rows and remains FAIL on the exact three current blockers", lambda: _historical_delta_metadata_effective_report_case(root)))
     cases.append(Case("95", "a terminal batch requires an explicit PASS historical Delta metadata ledger", lambda: _terminal_historical_delta_metadata_ledger_omission_case(root)))
     cases.append(Case("96", "BROKEN_BATCH clears every ledger projection and downstream refuses failed composite corrections", lambda: _broken_composite_clears_ledger_authority_case(root)))
     cases.append(Case("97", "primary-only authorized raw identity mutation cannot survive independent canonical projection parity", lambda: _authority_projection_tamper_case(mutate_summary=False)))
@@ -7666,7 +7895,7 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("105", "frozen subject-projection v1 trust still requires primary PASS independent GO exact 82-map parity and PASS HDM", _subject_projection_dual_gate_and_parity_case))
     cases.append(Case("106", "broken nonexplicit aliased and outside-root subject-projection routes never reach trust validators", _subject_projection_routing_fail_closed_case))
     cases.append(Case("107", "subject-projection suppresses only projection drift while Post-Touch V1 keeps its exact scope", _subject_projection_suppression_scope_and_v1_compatibility_case))
-    cases.append(Case("108", "standalone terminal receipt proves exact 501 plus 86 equals 587 and thirteen-batch 489 coverage", _independent_terminal_exact_partition_case))
+    cases.append(Case("108", "standalone terminal receipt proves exact 501 plus 86 plus 2 equals 589 and thirteen-batch 489 coverage", _independent_terminal_exact_partition_case))
     cases.append(Case("109", "standalone terminal receipt fails closed when the explicit HDM ledger is omitted", _independent_terminal_ledger_omission_case))
     cases.append(Case("110", "equal-cardinality terminal substitution exposes one exact missing and extra fingerprint", _independent_terminal_equal_cardinality_tamper_case))
     cases.append(Case("111", "primary HDM and legacy HDM overlaps invalidate the terminal partition", _independent_terminal_partition_overlap_case))
@@ -7685,6 +7914,10 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("124", "terminal subject-projection replacement activates only disjoint v4 v5 v3 union 109", _terminal_subject_projection_replacement_case))
     cases.append(Case("125", "post-touch successor-v2 replaces the old owner at an effective exact count of two", _post_touch_successor_v2_effective_owner_case))
     cases.append(Case("126", "optional successor-v5 import fails closed only when its replacement path is requested", _optional_v5_import_fails_only_on_replacement_case))
+    cases.append(Case("127", "successor-v6 requires committed primary and independent exact-map parity", lambda: _successor_v6_dual_audit_composite_case(root)))
+    cases.append(Case("128", "successor-v6 Raw visibility fails closed on one or two missing rows and keeps future rows active", _successor_v6_scanner_visibility_case))
+    cases.append(Case("129", "successor-v6 remains disjoint from every terminal correction authority", _successor_v6_terminal_overlap_case))
+    cases.append(Case("130", "independent successor-v6 CLI is coupled to the complete full-convergence input set", lambda: _successor_v6_independent_cli_coupling_case(root)))
     return cases
 
 

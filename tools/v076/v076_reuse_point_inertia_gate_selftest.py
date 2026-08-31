@@ -1788,12 +1788,23 @@ print('not-json'); raise SystemExit(2)
         and "--post-touch-revalidation-successor-v2" in v076_workflow
         and "--subject-projection-revalidation-successor-v4" in v076_workflow
         and "--subject-projection-revalidation-successor-v5" in v076_workflow
+        and "--subject-projection-revalidation-successor-v6" in v076_workflow
+        and "subject_projection_revalidation_successor_v6/manifest.json" in v076_workflow
         and "$postTouch.replacement_complete -ne $true" in v076_workflow
         and "$postTouch.effective_trusted_fingerprint_count -ne 2" in v076_workflow
         and "$spr.terminal_replacement_complete -ne $true" in v076_workflow
         and "$spr.successor_v4.trusted_fingerprint_count -ne 82" in v076_workflow
         and "$spr.successor_v5.trusted_fingerprint_count -ne 2" in v076_workflow
         and "$spr.successor_v3.trusted_fingerprint_count -ne 25" in v076_workflow
+        and "$sprV6.primary_status -cne \"PASS\"" in v076_workflow
+        and "$sprV6.independent_status -cne \"PASS\"" in v076_workflow
+        and "$sprV6.trusted_fingerprint_count -ne 2" in v076_workflow
+        and "$sprV6.effective_authority_exposed -ne $true" in v076_workflow
+        and "$sprV6.cross_authority_overlap_count -ne 0" in v076_workflow
+        and "$sprV6.wildcard_count -ne 0" in v076_workflow
+        and "$sprV6.future_failure_auto_correction_count -ne 0" in v076_workflow
+        and "$v2.corrected_historical_failure_count -ne 589" in v076_workflow
+        and "$v2.subject_projection_successor_v6_corrected_historical_failure_count -ne 2" in v076_workflow
         and batch_009_sha256
         == "cba70568c60395bc65916ec22e33239a9d103d66315b5f58781ce16f2625ef04"
         and batch_010.get("previous_batch_append_sha256") == batch_009_sha256

@@ -2070,10 +2070,13 @@ def run_selftest() -> dict[str, Any]:
             "spr4.json",
             "--subject-projection-revalidation-successor-v5",
             "spr5.json",
+            "--subject-projection-revalidation-successor-v6",
+            "spr6.json",
         ])
         _assert(parsed.post_touch_revalidation_successor_v2.name == "pts2.json", str(parsed))
         _assert(parsed.subject_projection_revalidation_successor_v4.name == "spr4.json", str(parsed))
         _assert(parsed.subject_projection_revalidation_successor_v5.name == "spr5.json", str(parsed))
+        _assert(parsed.subject_projection_revalidation_successor_v6.name == "spr6.json", str(parsed))
 
         def expect_value_error(expected: str, **kwargs: Any) -> None:
             try:
@@ -2100,10 +2103,14 @@ def run_selftest() -> dict[str, Any]:
             "SUBJECT_PROJECTION_TERMINAL_REPLACEMENT_REQUIRES_V1_V2_V3_V4_V5",
             subject_projection_revalidation_successor_v5_path=Path("spr5.json"),
         )
+        expect_value_error(
+            "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V6_REQUIRES_FULL_CONVERGENCE_INPUT_SET",
+            subject_projection_revalidation_successor_v6_path=Path("spr6.json"),
+        )
 
     cases.append(Case(
         "118",
-        "successor CLI flags are explicit and replacement inputs are all-or-none",
+        "successor CLI flags are explicit while additive v6 stays outside replacement coupling",
         "PASS",
         successor_cli_and_input_coupling,
     ))

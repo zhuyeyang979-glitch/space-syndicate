@@ -1,0 +1,56 @@
+{
+  "schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_successor_v6_schema.v1",
+  "manifest_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_successor_v6_manifest.v1",
+  "record_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.subject_projection_revalidation_successor_v6_record.v1",
+  "manifest_kind": "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V6_MANIFEST",
+  "record_kind": "SUBJECT_PROJECTION_REVALIDATION_SUCCESSOR_V6_RECORD",
+  "authorization_id": "USER_AUTHORIZATION_V076_CURRENT_SUBJECT_CONVERGENCE_AND_COMMERCIAL_RESUME_20260830",
+  "authorization_base_head_sha": "7b2bd08a9916a3a517f2d418765c544cce0261cc",
+  "predecessor_manifest_path": "docs/architecture/reuse_corrections/v2/batches/full_convergence_20260827/batch-010/batch-010-manifest.json",
+  "predecessor_record_chain_terminal_sha256": "eaa4865ef43e08c30170ce751c4d2387fe236b5be4bc7c312a72f5f04c4dbc1c",
+  "target_rule_id": "RETIRED_REUSE_SOURCE_STILL_PRODUCTION_REFERENCED",
+  "target_record_count": 2,
+  "target_component_id": "component.v076.private_direct_action_input",
+  "target_retired_reuse_id": "reuse.current.military_runtime_owner",
+  "required_active_successor_reuse_id": "reuse.v075.production_military_direct_action.current",
+  "selector_policy": {
+    "match_mode": "EXACT_RAW_FAILURE_AND_FINGERPRINT_ONLY",
+    "wildcard_allowed": false,
+    "regex_allowed": false,
+    "path_prefix_allowed": false,
+    "rule_only_match_allowed": false,
+    "future_failure_auto_match": false
+  },
+  "future_failure_policy": {
+    "FUTURE_FAILURE_AUTO_CORRECTION_COUNT": 0,
+    "NEW_FAILURE_REQUIRES_NEW_RECORD": true
+  },
+  "required_transition_proof": [
+    "direct_parent",
+    "old_registry_blob",
+    "new_registry_blob",
+    "registry_diff",
+    "old_source_active_and_referenced",
+    "new_source_retired_and_still_referenced"
+  ],
+  "required_current_resolution": [
+    "retired_source_stays_retired",
+    "production_component_detaches_retired_source",
+    "production_component_retains_active_successor",
+    "component_blob_binding",
+    "detachment_receipt_binding"
+  ],
+  "negative_policy": [
+    "NO_SCANNER_RULE_REMOVAL",
+    "NO_SCANNER_SCOPE_REDUCTION",
+    "NO_OLD_BATCH_MUTATION",
+    "NO_WILDCARD",
+    "NO_REGEX",
+    "NO_PATH_PREFIX",
+    "NO_RULE_ONLY_MATCH",
+    "NO_FUTURE_FAILURE_AUTO_CORRECTION",
+    "NO_CURRENT_FAILURE_CORRECTION",
+    "NO_PRODUCT_PATH_TOUCH",
+    "PRIMARY_AND_INDEPENDENT_TRUST_SET_PARITY"
+  ]
+}
