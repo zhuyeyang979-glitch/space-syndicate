@@ -257,15 +257,15 @@ jobs:
           if (
             $selftestExit -ne 0 -or
             [string]$receipt.RECEIPT_CONTRACT_SELFTEST_STATUS -cne "PASS" -or
-            $caseCount -ne 126 -or
+            $caseCount -ne 130 -or
             $passCount -ne $caseCount -or
             $null -eq $negativeCaseCountProperty -or
             $negativeCaseCountProperty.Value -isnot [long] -or
-            [long]$negativeCaseCountProperty.Value -ne 106 -or
+            [long]$negativeCaseCountProperty.Value -ne 110 -or
             $null -eq $executedNegativeSetMatchProperty -or
             $executedNegativeSetMatchProperty.Value -isnot [bool] -or
             $executedNegativeSetMatchProperty.Value -ne $true -or
-            [string]$receipt.NEGATIVE_FIXTURE_CATALOG_SHA256 -cne "ec298665df931f0c91ca06f45b48b041692270a4f8b51ca9bafbd96434a0ff86" -or
+            [string]$receipt.NEGATIVE_FIXTURE_CATALOG_SHA256 -cne "865befb2a3f6b5138a208a5bb7d03073fe24e933a629fe86d4f354a87e3cf9b4" -or
             [long]$receipt.FALSE_GREEN_COUNT -ne 0 -or
             [long]$receipt.VALID_RECEIPT_FALSE_REJECT_COUNT -ne 0 -or
             $invalidClassifiedFalseGreenFields.Count -ne 0

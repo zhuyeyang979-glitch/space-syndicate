@@ -125,8 +125,33 @@ PREDECESSOR_RESUME_AUTHORIZATION_MANIFEST_SHA256 = (
 )
 PREDECESSOR_RESUME_HEAD_SHA = "9f6d8339c3f212cb6de87fed7e0fe62e4fcf70c8"
 PREDECESSOR_RESUME_TREE_SHA = "5c7b0346bca664a5af0bb25b62bdd77239d81e52"
+PREDECESSOR_SUCCESSOR_V2_TOOLING_HEAD_SHA = (
+    "f2a69c15f3f2e932217c80456b264f48303d9b61"
+)
+PREDECESSOR_SUCCESSOR_V2_TOOLING_TREE_SHA = (
+    "93d09ffeb3a4d6231a374bbd125ae4aba9a98486"
+)
+PREDECESSOR_SUCCESSOR_V2_TOOLING_SEAL_PATH = (
+    "reports/reuse/generation7_receipt_contract_successor_v2/tooling_seal.json"
+)
+PREDECESSOR_SUCCESSOR_V2_TOOLING_SEAL_SHA256 = (
+    "622207d99f0ec82b5dee0c655a27c29527863acdb641b95d59aa1f4dcb942fcc"
+)
+PREDECESSOR_SUCCESSOR_V2_RESUME_AUTHORIZATION_MANIFEST_PATH = (
+    "reports/reuse/generation7_receipt_contract_successor_v2/"
+    "generation7_resume_authorization_manifest.json"
+)
+PREDECESSOR_SUCCESSOR_V2_RESUME_AUTHORIZATION_MANIFEST_SHA256 = (
+    "5eed4ea6d9c87feb74902cfd873446cca0ec6fd64756ab405f6ab86485e9cb27"
+)
+PREDECESSOR_SUCCESSOR_V2_RESUME_HEAD_SHA = (
+    "235cbb1fc143d11a269c21ceeff4c2e7efc884de"
+)
+PREDECESSOR_SUCCESSOR_V2_RESUME_TREE_SHA = (
+    "bd1c342de57a5bd2c0dc0cbde7a564e75436d359"
+)
 SUCCESSOR_TOOLING_ROOT = (
-    "reports/reuse/generation7_receipt_contract_successor_v2"
+    "reports/reuse/generation7_receipt_contract_successor_v3"
 )
 TOOLING_SEAL_PATH = f"{SUCCESSOR_TOOLING_ROOT}/tooling_seal.json"
 NEGATIVE_FIXTURE_CATALOG_PATH = (
@@ -170,11 +195,11 @@ FAILURE_CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
 NEGATIVE_CASE_ID_RE = re.compile(
     rb'\bnegative\(\s*"([A-Z][A-Z0-9_]{2,127})"'
 )
-REQUIRED_NEGATIVE_CASE_COUNT = 108
+REQUIRED_NEGATIVE_CASE_COUNT = 110
 REQUIRED_NEGATIVE_CASE_ID_SET_SHA256 = (
-    "fd944c8dbdd64eeca01285f6bc1592d32986a9d8530b72ac392bf34061444ab5"
+    "865befb2a3f6b5138a208a5bb7d03073fe24e933a629fe86d4f354a87e3cf9b4"
 )
-REQUIRED_SELFTEST_CASE_COUNT = 128
+REQUIRED_SELFTEST_CASE_COUNT = 130
 
 
 class StrictJsonError(ValueError):
@@ -2751,6 +2776,16 @@ def _validate_seal_documents(
             PREDECESSOR_RESUME_AUTHORIZATION_MANIFEST_SHA256,
             "predecessor_resume_authorization",
         ),
+        (
+            PREDECESSOR_SUCCESSOR_V2_TOOLING_SEAL_PATH,
+            PREDECESSOR_SUCCESSOR_V2_TOOLING_SEAL_SHA256,
+            "predecessor_successor_v2_tooling_seal",
+        ),
+        (
+            PREDECESSOR_SUCCESSOR_V2_RESUME_AUTHORIZATION_MANIFEST_PATH,
+            PREDECESSOR_SUCCESSOR_V2_RESUME_AUTHORIZATION_MANIFEST_SHA256,
+            "predecessor_successor_v2_resume_authorization",
+        ),
     )
     for predecessor_path, predecessor_sha256, predecessor_kind in predecessor_bindings:
         _validate_supporting_binding(
@@ -2807,6 +2842,68 @@ def _validate_seal_documents(
             report.add(
                 "identity_mismatches",
                 "PREDECESSOR_RESUME_NOT_ANCESTOR",
+                receipt.producer_tooling_head_sha,
+            )
+    try:
+        predecessor_successor_v2_tooling_tree = project.tree(
+            PREDECESSOR_SUCCESSOR_V2_TOOLING_HEAD_SHA
+        )
+    except ValueError as exc:
+        report.add(
+            "identity_mismatches",
+            "PREDECESSOR_SUCCESSOR_V2_TOOLING_IDENTITY_INVALID",
+            str(exc),
+        )
+    else:
+        if (
+            predecessor_successor_v2_tooling_tree
+            != PREDECESSOR_SUCCESSOR_V2_TOOLING_TREE_SHA
+        ):
+            report.add(
+                "identity_mismatches",
+                "PREDECESSOR_SUCCESSOR_V2_TOOLING_TREE_MISMATCH",
+                "expected="
+                f"{PREDECESSOR_SUCCESSOR_V2_TOOLING_TREE_SHA}:"
+                f"actual={predecessor_successor_v2_tooling_tree}",
+            )
+        if not project.is_ancestor(
+            PREDECESSOR_SUCCESSOR_V2_TOOLING_HEAD_SHA,
+            receipt.producer_tooling_head_sha,
+        ):
+            report.add(
+                "identity_mismatches",
+                "PREDECESSOR_SUCCESSOR_V2_TOOLING_NOT_ANCESTOR",
+                receipt.producer_tooling_head_sha,
+            )
+    try:
+        predecessor_successor_v2_resume_tree = project.tree(
+            PREDECESSOR_SUCCESSOR_V2_RESUME_HEAD_SHA
+        )
+    except ValueError as exc:
+        report.add(
+            "identity_mismatches",
+            "PREDECESSOR_SUCCESSOR_V2_RESUME_IDENTITY_INVALID",
+            str(exc),
+        )
+    else:
+        if (
+            predecessor_successor_v2_resume_tree
+            != PREDECESSOR_SUCCESSOR_V2_RESUME_TREE_SHA
+        ):
+            report.add(
+                "identity_mismatches",
+                "PREDECESSOR_SUCCESSOR_V2_RESUME_TREE_MISMATCH",
+                "expected="
+                f"{PREDECESSOR_SUCCESSOR_V2_RESUME_TREE_SHA}:"
+                f"actual={predecessor_successor_v2_resume_tree}",
+            )
+        if not project.is_ancestor(
+            PREDECESSOR_SUCCESSOR_V2_RESUME_HEAD_SHA,
+            receipt.producer_tooling_head_sha,
+        ):
+            report.add(
+                "identity_mismatches",
+                "PREDECESSOR_SUCCESSOR_V2_RESUME_NOT_ANCESTOR",
                 receipt.producer_tooling_head_sha,
             )
 

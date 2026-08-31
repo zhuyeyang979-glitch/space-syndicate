@@ -222,9 +222,15 @@ def _build_repository_fixture(root: Path) -> tuple[str, str]:
         f"/{contract.RESUME_AUTHORIZATION_MANIFEST_PATH}",
         f"/{contract.SUCCESSOR_TOOLING_ROOT}/",
         "/reports/reuse/generation7_receipt_contract/",
+        "/reports/reuse/generation7_receipt_contract_successor_v2/",
         f"/{contract.RECEIPT_ROOT}/",
     )
-    _git(root, "checkout", "--detach", contract.PREDECESSOR_RESUME_HEAD_SHA)
+    _git(
+        root,
+        "checkout",
+        "--detach",
+        contract.PREDECESSOR_SUCCESSOR_V2_RESUME_HEAD_SHA,
+    )
     _git(root, "checkout", "-b", "fixture-receipt-contract")
 
     (root / contract.SCHEMA_AUTHORITY_PATH).parent.mkdir(parents=True, exist_ok=True)
@@ -1908,6 +1914,54 @@ def main() -> int:
             ),
         )
 
+        successor_v2_seal_tamper = variant("successor-v2-seal-tamper")
+        successor_v2_seal_path = (
+            successor_v2_seal_tamper
+            / contract.PREDECESSOR_SUCCESSOR_V2_TOOLING_SEAL_PATH
+        )
+        successor_v2_seal_path.write_bytes(
+            successor_v2_seal_path.read_bytes() + b" "
+        )
+        _git(
+            successor_v2_seal_tamper,
+            "add",
+            "--sparse",
+            "--",
+            contract.PREDECESSOR_SUCCESSOR_V2_TOOLING_SEAL_PATH,
+        )
+        _git(successor_v2_seal_tamper, "commit", "--amend", "--no-edit")
+        negative(
+            "N109_SUCCESSOR_V2_TOOLING_SEAL_TAMPER_REJECTED",
+            lambda: predecessor_binding_rejected(
+                successor_v2_seal_tamper,
+                "predecessor_successor_v2_tooling_seal",
+            ),
+        )
+
+        successor_v2_resume_tamper = variant("successor-v2-resume-tamper")
+        successor_v2_resume_path = (
+            successor_v2_resume_tamper
+            / contract.PREDECESSOR_SUCCESSOR_V2_RESUME_AUTHORIZATION_MANIFEST_PATH
+        )
+        successor_v2_resume_path.write_bytes(
+            successor_v2_resume_path.read_bytes() + b" "
+        )
+        _git(
+            successor_v2_resume_tamper,
+            "add",
+            "--sparse",
+            "--",
+            contract.PREDECESSOR_SUCCESSOR_V2_RESUME_AUTHORIZATION_MANIFEST_PATH,
+        )
+        _git(successor_v2_resume_tamper, "commit", "--amend", "--no-edit")
+        negative(
+            "N110_SUCCESSOR_V2_RESUME_TAMPER_REJECTED",
+            lambda: predecessor_binding_rejected(
+                successor_v2_resume_tamper,
+                "predecessor_successor_v2_resume_authorization",
+            ),
+        )
+
     workflow_text = (REPO_ROOT / contract.WORKFLOW_PATH).read_text(encoding="utf-8")
     consumer_block = workflow_text.split(
         "      - name: Consume Generation 7 current-subject receipts (fail closed)", 1
@@ -1942,7 +1996,14 @@ def main() -> int:
         )
         == 1
         and "steps.full_convergence_inputs.outputs.current_subject_manifest }}"
-        not in consumer_block,
+        not in consumer_block
+        and "$caseCount -ne 130" in workflow_text
+        and "[long]$negativeCaseCountProperty.Value -ne 110" in workflow_text
+        and (
+            '[string]$receipt.NEGATIVE_FIXTURE_CATALOG_SHA256 -cne '
+            '"865befb2a3f6b5138a208a5bb7d03073fe24e933a629fe86d4f354a87e3cf9b4"'
+            in workflow_text
+        ),
     )
     positive(
         "P17_VALIDATION_REPORT_ARTIFACT",
