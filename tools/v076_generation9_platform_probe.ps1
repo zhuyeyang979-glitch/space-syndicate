@@ -19,6 +19,7 @@ param(
     [uint64]$TargetStartAvailableCommitBytes = 8589934592,
     [uint64]$CapacityGuardBytes = 1073741824,
     [int]$RuntimeReadyTimeoutSeconds = 120,
+    [int]$CommercialMenuReadyTimeoutSeconds = 30,
     [int]$NewGameReadyTimeoutSeconds = 180,
     [int]$ExternalSeedFocusTimeoutSeconds = 120
 )
@@ -41,6 +42,8 @@ $preflightPath = Join-Path $probeRoot 'preflight.json'
 $cleanupPath = Join-Path $probeRoot 'm10-m11-cleanup.json'
 $externalSeedFocusRequestPath = Join-Path $probeRoot 'external-seed-focus-request.json'
 $externalSeedFocusCompletePath = Join-Path $probeRoot 'external-seed-focus-complete.json'
+$startOverlayPath = '/root/Main/V075GameScreen/OverlayLayer/StartOverlay'
+$commercialMenuOverlayPath = '/root/Main/V075GameScreen/OverlayLayer/CommercialShellSurfaceLayer/MenuModalOverlay'
 $seedControlPath = '/root/Main/V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/SeedRow/SeedInput'
 $startButtonPath = '/root/Main/V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/StartConfiguredButton'
 $compositionPath = '/root/Main/V075RuntimeComposition'
@@ -134,16 +137,23 @@ function Query-RuntimeNode {
     param(
         [string]$EvidenceName,
         [string]$NodePath,
-        [string[]]$Properties
+        [string[]]$Properties,
+        [switch]$IncludeChildren,
+        [ValidateRange(0, 8)][int]$MaxDepth = 2,
+        [ValidateRange(1, 500)][int]$MaxNodes = 80
     )
+    $queryArguments = @{
+        node_path = $NodePath
+        properties = $Properties
+        include_children = [bool]$IncludeChildren
+        max_depth = $MaxDepth
+        max_nodes = $MaxNodes
+        timeout_msec = 10000
+    }
     $outer = Invoke-RoleTool `
         -ToolName 'query_runtime_node' `
         -EvidenceName $EvidenceName `
-        -Arguments @{
-            node_path = $NodePath
-            properties = $Properties
-            timeout_msec = 10000
-        }
+        -Arguments $queryArguments
     $inner = Get-ContentTextJson $outer
     if (-not [bool]$inner.success) {
         throw "Runtime query failed: $NodePath"
@@ -179,6 +189,131 @@ function Get-Center {
         x = [double]$props.global_position.x + ([double]$props.size.x / 2.0)
         y = [double]$props.global_position.y + ([double]$props.size.y / 2.0)
     }
+}
+
+function Get-FlattenedRuntimeTree {
+    param([object]$Tree)
+    $nodes = [Collections.Generic.List[object]]::new()
+    $queue = [Collections.Generic.Queue[object]]::new()
+    if ($null -ne $Tree) {
+        $queue.Enqueue($Tree)
+    }
+    while ($queue.Count -gt 0) {
+        $node = $queue.Dequeue()
+        $nodes.Add($node)
+        foreach ($child in @($node.children)) {
+            if ($null -ne $child) {
+                $queue.Enqueue($child)
+            }
+        }
+    }
+    return @($nodes)
+}
+
+function Find-LiveRuntimeButtonByText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$EvidencePrefix
+    )
+    $buttonProperties = @('text', 'global_position', 'size', 'visible', 'disabled')
+    $rootQuery = Query-RuntimeNode `
+        -EvidenceName "$EvidencePrefix-root.jsonrpc.json" `
+        -NodePath '/root/Main' `
+        -Properties $buttonProperties `
+        -IncludeChildren `
+        -MaxDepth 8 `
+        -MaxNodes 500
+    $rootNodes = @(Get-FlattenedRuntimeTree $rootQuery.tree)
+    $commercialRoots = @($rootNodes | Where-Object {
+        [string]$_.name -ceq 'CommercialShellSurfaceLayer'
+    })
+    if ($commercialRoots.Count -eq 0 -and $rootNodes.Count -eq 500) {
+        $overlayQuery = Query-RuntimeNode `
+            -EvidenceName "$EvidencePrefix-overlay-fallback.jsonrpc.json" `
+            -NodePath '/root/Main/V075GameScreen/OverlayLayer' `
+            -Properties $buttonProperties `
+            -IncludeChildren `
+            -MaxDepth 8 `
+            -MaxNodes 500
+        $overlayNodes = @(Get-FlattenedRuntimeTree $overlayQuery.tree)
+        $candidateSummaries = @($overlayNodes | Where-Object {
+            [string]$_.type -ceq 'Button' -and
+            [string]$_.properties.text -ceq $Text
+        })
+        $commercialRoots = @($overlayNodes | Where-Object {
+            [string]$_.name -ceq 'CommercialShellSurfaceLayer'
+        })
+    } else {
+        $candidateSummaries = @($rootNodes | Where-Object {
+            [string]$_.type -ceq 'Button' -and
+            [string]$_.properties.text -ceq $Text
+        })
+    }
+    if ($commercialRoots.Count -ne 1) {
+        throw "Expected one live CommercialShellSurfaceLayer, found $($commercialRoots.Count)."
+    }
+    $frontier = [Collections.Generic.Queue[string]]::new()
+    $visited = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $frontier.Enqueue([string]$commercialRoots[0].path)
+    $branchIndex = 0
+    while ($candidateSummaries.Count -eq 0 -and $frontier.Count -gt 0) {
+        if ($branchIndex -ge 24) {
+            throw "Runtime menu discovery exceeded its bounded branch-query budget for button text: $Text"
+        }
+        $branchPath = $frontier.Dequeue()
+        if (-not $visited.Add($branchPath)) {
+            continue
+        }
+        $branchIndex += 1
+        $branchQuery = Query-RuntimeNode `
+            -EvidenceName ("{0}-branch-{1:d3}.jsonrpc.json" -f $EvidencePrefix, $branchIndex) `
+            -NodePath $branchPath `
+            -Properties $buttonProperties `
+            -IncludeChildren `
+            -MaxDepth 8 `
+            -MaxNodes 500
+        $branchNodes = @(Get-FlattenedRuntimeTree $branchQuery.tree)
+        $candidateSummaries = @($branchNodes | Where-Object {
+            [string]$_.type -ceq 'Button' -and
+            [string]$_.properties.text -ceq $Text
+        })
+        foreach ($truncatedNode in @($branchNodes | Where-Object {
+            [bool]$_.children_truncated
+        })) {
+            $truncatedPath = [string]$truncatedNode.path
+            if (-not [string]::IsNullOrWhiteSpace($truncatedPath) -and -not $visited.Contains($truncatedPath)) {
+                $frontier.Enqueue($truncatedPath)
+            }
+        }
+    }
+    if ($candidateSummaries.Count -eq 0) {
+        throw "Live runtime Button was not found by exact text: $Text"
+    }
+
+    $liveCandidates = @()
+    $candidateIndex = 0
+    foreach ($candidate in $candidateSummaries) {
+        $candidateIndex += 1
+        $exact = Query-RuntimeNode `
+            -EvidenceName ("{0}-candidate-{1:d3}.jsonrpc.json" -f $EvidencePrefix, $candidateIndex) `
+            -NodePath ([string]$candidate.path) `
+            -Properties $buttonProperties
+        $props = Get-RequestedProperties $exact
+        if (
+            [string]$exact.type -ceq 'Button' -and
+            [string]$props.text -ceq $Text -and
+            [bool]$props.visible -and
+            -not [bool]$props.disabled -and
+            [double]$props.size.x -gt 0 -and
+            [double]$props.size.y -gt 0
+        ) {
+            $liveCandidates += $exact
+        }
+    }
+    if ($liveCandidates.Count -ne 1) {
+        throw "Expected one enabled visible runtime Button with text '$Text', found $($liveCandidates.Count)."
+    }
+    return $liveCandidates[0]
 }
 
 function Stop-RoleNormally {
@@ -416,20 +551,83 @@ try {
     }
     $milestones.M8 = 'PASS'
 
+    $commercialNewGameButton = Find-LiveRuntimeButtonByText `
+        -Text '开始新局' `
+        -EvidencePrefix 'commercial-new-game-button-discovery'
+    Send-RuntimeInput `
+        -EvidenceName 'commercial-new-game-button-click.jsonrpc.json' `
+        -Arguments @{
+            type = 'mouse_button'
+            button = 1
+            mode = 'tap'
+            position = (Get-Center $commercialNewGameButton)
+        } | Out-Null
+
+    $commercialMenuDeadline = [DateTime]::UtcNow.AddSeconds($CommercialMenuReadyTimeoutSeconds)
+    $startOverlay = $null
+    $startOverlayProps = $null
+    $commercialMenuOverlay = $null
+    $commercialMenuOverlayProps = $null
+    $startOverlayPoll = 0
+    do {
+        Assert-NoCapacityGuard
+        $startOverlayPoll += 1
+        $startOverlay = Query-RuntimeNode `
+            -EvidenceName ("start-overlay-visible-poll-{0:d3}.jsonrpc.json" -f $startOverlayPoll) `
+            -NodePath $startOverlayPath `
+            -Properties @('global_position', 'size', 'visible')
+        $startOverlayProps = Get-RequestedProperties $startOverlay
+        $commercialMenuOverlay = Query-RuntimeNode `
+            -EvidenceName ("commercial-menu-closed-poll-{0:d3}.jsonrpc.json" -f $startOverlayPoll) `
+            -NodePath $commercialMenuOverlayPath `
+            -Properties @('global_position', 'size', 'visible')
+        $commercialMenuOverlayProps = Get-RequestedProperties $commercialMenuOverlay
+        if (
+            [bool]$startOverlayProps.visible -and
+            [double]$startOverlayProps.size.x -gt 0 -and
+            [double]$startOverlayProps.size.y -gt 0 -and
+            -not [bool]$commercialMenuOverlayProps.visible
+        ) {
+            break
+        }
+        Start-Sleep -Milliseconds 250
+    } while ([DateTime]::UtcNow -lt $commercialMenuDeadline)
+    if (
+        $null -eq $startOverlayProps -or
+        $null -eq $commercialMenuOverlayProps -or
+        -not [bool]$startOverlayProps.visible -or
+        [bool]$commercialMenuOverlayProps.visible
+    ) {
+        throw 'Commercial New Game navigation did not reveal an unoccluded StartOverlay before timeout.'
+    }
+
     $seedNode = Query-RuntimeNode `
         -EvidenceName 'seed-input-before-entry.jsonrpc.json' `
         -NodePath $seedControlPath `
         -Properties @('text', 'visible', 'editable', 'global_position', 'size')
+    $seedProps = Get-RequestedProperties $seedNode
+    if (
+        -not [bool]$seedProps.visible -or
+        -not [bool]$seedProps.editable -or
+        [double]$seedProps.size.x -le 0 -or
+        [double]$seedProps.size.y -le 0
+    ) {
+        throw 'Seed input is not visible and editable after StartOverlay became visible.'
+    }
     $seedCenter = Get-Center $seedNode
     Write-Utf8Json -Path $externalSeedFocusRequestPath -Value ([ordered]@{
-        schema_version = 'space_syndicate.v076.external_seed_focus_request.v1'
+        schema_version = 'space_syndicate.v076.external_seed_focus_request.v2'
         authorization_id = $authorizationId
         probe_id = $ProbeId
         requested_at_utc = [DateTime]::UtcNow.ToString('o')
         editor_pid = [int]$connection.pid
+        exact_window_title = '太空辛迪加 (DEBUG)'
+        required_window_match_count = 1
         node_path = $seedControlPath
         runtime_viewport_center = $seedCenter
-        required_action = 'ACTIVATE_EXACT_GODOT_WINDOW_AND_CLICK_VISIBLE_SEED_INPUT'
+        start_overlay_visible = $true
+        commercial_menu_overlay_visible = $false
+        required_action = 'ACTIVATE_UNIQUE_EXACT_GODOT_WINDOW_AND_CLICK_VISIBLE_SEED_INPUT_ONCE'
         forbidden_action = 'DIRECT_RUNTIME_SEED_INJECTION'
     })
     $focusDeadline = [DateTime]::UtcNow.AddSeconds($ExternalSeedFocusTimeoutSeconds)
@@ -447,18 +645,14 @@ try {
     if (
         [string]$externalFocus.status -cne 'PASS' -or
         [int]$externalFocus.editor_pid -ne [int]$connection.pid -or
-        [int]$externalFocus.window_click_count -ne 1
+        [string]$externalFocus.exact_window_title -cne '太空辛迪加 (DEBUG)' -or
+        [int]$externalFocus.window_match_count -ne 1 -or
+        [int]$externalFocus.window_activation_count -ne 1 -or
+        [int]$externalFocus.seed_field_click_count -ne 1 -or
+        [int]$externalFocus.direct_runtime_seed_injection_count -ne 0
     ) {
         throw 'External Windows focus witness is invalid.'
     }
-    Send-RuntimeInput `
-        -EvidenceName 'seed-focus-click.jsonrpc.json' `
-        -Arguments @{
-            type = 'mouse_button'
-            button = 1
-            mode = 'tap'
-            position = $seedCenter
-        } | Out-Null
     $clearEvents = @()
     1..12 | ForEach-Object {
         $clearEvents += @{type='key'; key='backspace'; mode='tap'}
