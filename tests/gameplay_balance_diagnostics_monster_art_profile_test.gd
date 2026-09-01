@@ -1,9 +1,58 @@
 extends SceneTree
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
-const QA_SAVE_PATH := "user://test_runs/gameplay_balance_diagnostics_monster_art_profile.save"
 const MonsterCatalogV06 := preload("res://scripts/runtime/monster_catalog_v06.gd")
-
+const MonsterArtViewScript := preload("res://scripts/monster_art_view.gd")
+const DYNAMIC_REFERENCE_MANIFEST_PATH := "res://docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json"
+const MONSTER_DYNAMIC_REFERENCE_IDS := [
+	"dynamic.current.monster_art.optional_texture.exists",
+	"dynamic.current.monster_art.optional_texture.load",
+]
+const EXPECTED_MONSTER_DYNAMIC_TARGET_SET_SHA256 := "06fcadb6e363cc49da61463a1b42da4138d4050fb48a8ee1ec9b9a050c65a43a"
+const EXPECTED_MONSTER_DYNAMIC_TARGETS := [
+	"res://assets/third_party/kenney_cc0/hexagon/alienBlue.png",
+	"res://assets/third_party/kenney_cc0/platformer/enemies/fishSwim1.png",
+	"res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png",
+	"res://assets/third_party/kenney_cc0/space/enemyUFO.png",
+	"res://assets/third_party/monster_battler/monsters/dino.png",
+	"res://assets/third_party/monster_battler/monsters/rock.png",
+	"res://assets/third_party/monster_battler/monsters/rodent.png",
+	"res://assets/third_party/monster_battler/monsters/salamander.png",
+	"res://assets/third_party/monster_battler/monsters/turtle.png",
+	"res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png",
+	"res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_atfield.png",
+	"res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_laser.png",
+	"res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_mech.png",
+	"res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png",
+	"res://assets/third_party/pixelmob_cc0/sprites/SlimeA.png",
+	"res://assets/third_party/pixelmob_cc0/sprites/SlimeSquareA.png",
+	"res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png",
+	"res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png",
+	"res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/slim.png",
+	"res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png",
+]
+const EXPECTED_MONSTER_ART_VIEW_TARGET_BY_KEY := {
+	"moth_kaijuice_kaiju": "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png",
+	"moth_kaijuice_atfield": "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_atfield.png",
+	"moth_kaijuice_laser": "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_laser.png",
+	"moth_kaijuice_mech": "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_mech.png",
+	"moth_kaijuice_tank": "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png",
+	"monster_battler_dino": "res://assets/third_party/monster_battler/monsters/dino.png",
+	"monster_battler_rock": "res://assets/third_party/monster_battler/monsters/rock.png",
+	"monster_battler_rodent": "res://assets/third_party/monster_battler/monsters/rodent.png",
+	"monster_battler_salamander": "res://assets/third_party/monster_battler/monsters/salamander.png",
+	"monster_battler_turtle": "res://assets/third_party/monster_battler/monsters/turtle.png",
+	"kenney_fish": "res://assets/third_party/kenney_cc0/platformer/enemies/fishSwim1.png",
+	"kenney_slime": "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png",
+	"kenney_alien_blue": "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png",
+	"kenney_enemy_ufo": "res://assets/third_party/kenney_cc0/space/enemyUFO.png",
+	"pixelmob_slime": "res://assets/third_party/pixelmob_cc0/sprites/SlimeA.png",
+	"pixelmob_slime_square": "res://assets/third_party/pixelmob_cc0/sprites/SlimeSquareA.png",
+	"superpowers_dragon": "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png",
+	"superpowers_cyclop": "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png",
+	"superpowers_snake": "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png",
+	"superpowers_slim": "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/slim.png",
+}
 var _failures: Array[String] = []
 
 
@@ -13,29 +62,10 @@ func _init() -> void:
 
 func _run() -> void:
 	_verify_product_related_card_count_semantics()
-	_delete_qa_save_file()
-	var main := _instantiate_main()
-	if main == null:
-		_finish()
-		return
-	root.add_child(main)
-	await process_frame
-	await process_frame
-	if main.has_method("_new_game"):
-		main.call("_new_game")
-	await process_frame
-	await process_frame
-	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	var diagnostics: GameplayBalanceDiagnosticsRuntimeService = coordinator.gameplay_balance_diagnostics_service() if coordinator is GameRuntimeCoordinator else null
-	_expect(diagnostics != null, "GameRuntimeCoordinator exposes GameplayBalanceDiagnosticsRuntimeService")
-	var snapshot: Dictionary = diagnostics.refresh_world_snapshot(false) if diagnostics != null else {}
-	_expect(_monster_art_profiles_present(snapshot), "diagnostics monster facts use catalog-backed art profiles for every catalog entry")
-	_verify_production_product_related_card_counts(snapshot, coordinator)
+	await _verify_monster_dynamic_reference_contract()
+	await _verify_current_production_monster_art_contract()
 	_expect(_production_symbol_absent("_monster_art_profile"), "production scripts have zero executable _monster_art_profile references")
 	_expect(_production_symbol_absent("_product_related_card_count"), "production scripts have zero dynamic dependencies on the retired Main product-card helper")
-	main.queue_free()
-	await process_frame
-	_delete_qa_save_file()
 	_finish()
 
 
@@ -88,60 +118,70 @@ func _card_rank(card_id: String, family_id: String, fields: Dictionary) -> CardR
 	return definition
 
 
-func _verify_production_product_related_card_counts(snapshot: Dictionary, coordinator: Node) -> void:
-	var expected_by_product := {}
-	for card_id_variant in coordinator.card_catalog_ordered_ids():
-		var definition: Dictionary = coordinator.card_authored_catalog_definition(str(card_id_variant))
-		for field_name in ["play_product", "supply_product"]:
-			var product_name := str(definition.get(field_name, ""))
-			if not product_name.is_empty():
-				expected_by_product[product_name] = true
-	var found_positive := false
-	for product_variant in snapshot.get("products", []):
-		if not (product_variant is Dictionary):
-			continue
-		var product := product_variant as Dictionary
-		var product_name := str(product.get("name", ""))
-		var expected := 0
-		for card_id_variant in coordinator.card_catalog_ordered_ids():
-			var definition: Dictionary = coordinator.card_authored_catalog_definition(str(card_id_variant))
-			if str(definition.get("play_product", "")) == product_name \
-					or str(definition.get("supply_product", "")) == product_name:
-				expected += 1
-		_expect(int(product.get("related_card_count", -1)) == expected, "diagnostics product %s uses the typed card catalog count" % product_name)
-		found_positive = found_positive or expected > 0
-	_expect(found_positive and not expected_by_product.is_empty(), "production diagnostics expose at least one catalog-backed product-card relationship")
-
-
-func _instantiate_main() -> Control:
+func _verify_current_production_monster_art_contract() -> void:
+	var main_source := FileAccess.get_file_as_string(MAIN_SCENE_PATH)
+	_expect(
+		main_source.contains("res://scenes/runtime/V075RuntimeComposition.tscn")
+			and main_source.contains("V075RuntimeComposition"),
+		"production main binds the current V075RuntimeComposition"
+	)
+	_expect(
+		not main_source.contains("RuntimeServices/RuntimeControllerHost"),
+		"production main no longer exposes the retired V0.6 runtime fixture path"
+	)
 	var packed := load(MAIN_SCENE_PATH) as PackedScene
-	_expect(packed != null, "main scene loads")
+	_expect(packed != null, "current production main scene loads")
 	if packed == null:
-		return null
-	var main := packed.instantiate() as Control
-	_expect(main != null, "main scene instantiates")
-	if main == null:
-		return null
-	main.visible = false
-	var save := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator")
-	_expect(save != null and save.has_method("set_qa_default_save_path_override"), "QA save-path override exists before main enters the tree")
-	if save == null or not save.has_method("set_qa_default_save_path_override"):
-		main.queue_free()
-		return null
-	_expect(bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "focused gate uses only the isolated QA save path")
-	return main
+		return
+	var application := packed.instantiate() as Control
+	_expect(application != null, "current production main scene instantiates")
+	if application == null:
+		return
+	application.visible = false
+	root.add_child(application)
+	await process_frame
+	await process_frame
+	var composition := application.get_node_or_null("V075RuntimeComposition")
+	var screen := application.get_node_or_null("V075GameScreen")
+	_expect(composition != null, "current production main exposes V075RuntimeComposition")
+	_expect(screen != null, "current production main exposes V075GameScreen")
+	application.queue_free()
+	await process_frame
 
-
-func _monster_art_profiles_present(snapshot: Dictionary) -> bool:
-	var monsters: Array = snapshot.get("monsters", []) if snapshot.get("monsters", []) is Array else []
-	if monsters.size() != MonsterCatalogV06.catalog_size():
-		return false
-	for monster_variant in monsters:
+	var roster: Array = MonsterCatalogV06.roster()
+	_expect(
+		roster.size() == MonsterCatalogV06.catalog_size()
+			and not roster.is_empty(),
+		"MonsterCatalogV06 exposes its complete non-empty roster"
+	)
+	var profile_count := 0
+	var sprite_key_count := 0
+	for monster_variant in roster:
+		_expect(monster_variant is Dictionary, "every MonsterCatalogV06 roster row is a dictionary")
 		if not (monster_variant is Dictionary):
-			return false
-		if not bool((monster_variant as Dictionary).get("has_art_profile", false)):
-			return false
-	return true
+			continue
+		var monster := monster_variant as Dictionary
+		var monster_name := str(monster.get("name", ""))
+		var profile := MonsterCatalogV06.art_profile(monster_name)
+		_expect(not monster_name.is_empty(), "every MonsterCatalogV06 roster row has an identity")
+		_expect(not profile.is_empty(), "%s has a catalog-backed art profile" % monster_name)
+		if profile.is_empty():
+			continue
+		profile_count += 1
+		var sprite_key := str(profile.get("sprite_key", ""))
+		_expect(
+			EXPECTED_MONSTER_ART_VIEW_TARGET_BY_KEY.has(sprite_key),
+			"%s art profile binds a known MonsterArtView sprite key" % monster_name
+		)
+		if EXPECTED_MONSTER_ART_VIEW_TARGET_BY_KEY.has(sprite_key):
+			sprite_key_count += 1
+	_expect(profile_count == roster.size(), "all production monster roster rows have art profiles")
+	_expect(sprite_key_count == roster.size(), "all production monster art profiles bind loaded sprite keys")
+	print("MONSTER_CURRENT_CUTOVER_ORACLE|composition=V075RuntimeComposition|roster=%d|art_profiles=%d|sprite_keys=%d" % [
+		roster.size(),
+		profile_count,
+		sprite_key_count,
+	])
 
 
 func _production_symbol_absent(symbol: String) -> bool:
@@ -175,10 +215,6 @@ func _production_script_files(root_path: String) -> Array:
 	return result
 
 
-func _delete_qa_save_file() -> void:
-	if FileAccess.file_exists(QA_SAVE_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(QA_SAVE_PATH))
-
 
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
@@ -193,3 +229,121 @@ func _finish() -> void:
 	else:
 		print("GAMEPLAY BALANCE DIAGNOSTICS MONSTER ART PROFILE FAIL: %s" % ", ".join(_failures))
 		quit(1)
+
+
+func _verify_monster_dynamic_reference_contract() -> void:
+	var manifest_text := FileAccess.get_file_as_string(DYNAMIC_REFERENCE_MANIFEST_PATH)
+	var manifest_variant: Variant = JSON.parse_string(manifest_text)
+	_expect(manifest_variant is Dictionary, "dynamic reference manifest parses")
+	if not (manifest_variant is Dictionary):
+		return
+	var manifest := manifest_variant as Dictionary
+	var entries_variant: Variant = manifest.get("entries", [])
+	_expect(entries_variant is Array, "dynamic reference manifest exposes entries")
+	if not (entries_variant is Array):
+		return
+	var entries_by_id: Dictionary = {}
+	for entry_variant in entries_variant as Array:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		entries_by_id[str(entry.get("dynamic_reference_id", ""))] = entry
+	for dynamic_reference_id in MONSTER_DYNAMIC_REFERENCE_IDS:
+		_expect(
+			entries_by_id.has(dynamic_reference_id),
+			"manifest contains %s" % dynamic_reference_id
+		)
+		if not entries_by_id.has(dynamic_reference_id):
+			continue
+		var entry := entries_by_id[dynamic_reference_id] as Dictionary
+		var targets_variant: Variant = entry.get("resolved_targets", [])
+		_expect(targets_variant is Array, "%s exposes a target array" % dynamic_reference_id)
+		if not (targets_variant is Array):
+			continue
+		var targets := targets_variant as Array
+		_expect(
+			targets == EXPECTED_MONSTER_DYNAMIC_TARGETS,
+			"%s binds the exact sorted 20-target set" % dynamic_reference_id
+		)
+		var normalized_targets := PackedStringArray()
+		for target_variant in targets:
+			normalized_targets.append(str(target_variant))
+		var computed_target_set_sha256 := _sha256_text("\n".join(normalized_targets))
+		_expect(
+			computed_target_set_sha256 == EXPECTED_MONSTER_DYNAMIC_TARGET_SET_SHA256,
+			"%s target-set SHA-256 matches the exact paths" % dynamic_reference_id
+		)
+		_expect(
+			str(entry.get("target_set_sha256", "")) == computed_target_set_sha256,
+			"%s manifest hash matches the runtime target set" % dynamic_reference_id
+		)
+		var runtime_probe := entry.get("runtime_probe", {}) as Dictionary
+		_expect(
+			str(runtime_probe.get("test_path", "")) == "tests/gameplay_balance_diagnostics_monster_art_profile_test.gd"
+				and int(runtime_probe.get("expected_target_count", -1)) == 20
+				and bool(runtime_probe.get("required_before_production_claim", false)),
+			"%s binds this required 20-target runtime probe" % dynamic_reference_id
+		)
+	var exists_count := 0
+	var load_count := 0
+	var texture2d_count := 0
+	for target_variant in EXPECTED_MONSTER_DYNAMIC_TARGETS:
+		var target_path := str(target_variant)
+		if ResourceLoader.exists(target_path):
+			exists_count += 1
+		var resource := ResourceLoader.load(target_path)
+		if resource != null:
+			load_count += 1
+		if resource is Texture2D:
+			texture2d_count += 1
+		_expect(resource != null, "%s loads as a non-null resource" % target_path)
+		_expect(resource is Texture2D, "%s loads as Texture2D" % target_path)
+	_expect(exists_count == 20, "all 20 monster-art targets exist through ResourceLoader")
+	_expect(load_count == 20, "all 20 monster-art targets load as non-null resources")
+	_expect(texture2d_count == 20, "all 20 monster-art targets load as Texture2D")
+	var monster_art := MonsterArtViewScript.new() as Control
+	_expect(monster_art != null, "real MonsterArtView instantiates")
+	if monster_art == null:
+		return
+	root.add_child(monster_art)
+	await process_frame
+	var texture_map_variant: Variant = monster_art.get("moth_kaijuice_textures")
+	_expect(texture_map_variant is Dictionary, "MonsterArtView exposes its loaded texture map")
+	var texture_map: Dictionary = texture_map_variant if texture_map_variant is Dictionary else {}
+	_expect(texture_map.size() == 20, "MonsterArtView _ready creates exactly 20 texture entries")
+	var view_map_exact_count := 0
+	for key_variant in EXPECTED_MONSTER_ART_VIEW_TARGET_BY_KEY:
+		var sprite_key := str(key_variant)
+		var expected_resource_path := str(EXPECTED_MONSTER_ART_VIEW_TARGET_BY_KEY[key_variant])
+		_expect(texture_map.has(sprite_key), "MonsterArtView map contains %s" % sprite_key)
+		if not texture_map.has(sprite_key):
+			continue
+		var texture_variant: Variant = texture_map[sprite_key]
+		_expect(texture_variant is Texture2D, "MonsterArtView %s maps to Texture2D" % sprite_key)
+		if not (texture_variant is Texture2D):
+			continue
+		var actual_resource_path := (texture_variant as Texture2D).resource_path
+		_expect(
+			actual_resource_path == expected_resource_path,
+			"MonsterArtView %s binds exact resource path %s" % [sprite_key, expected_resource_path]
+		)
+		if actual_resource_path == expected_resource_path:
+			view_map_exact_count += 1
+	_expect(view_map_exact_count == 20, "MonsterArtView binds all 20 exact key-to-resource paths")
+	print("MONSTER_DYNAMIC_REFERENCE_RUNTIME|target_count=20|exists=%d/20|load=%d/20|texture2d=%d/20|view_map_exact=%d/20" % [
+		exists_count,
+		load_count,
+		texture2d_count,
+		view_map_exact_count,
+	])
+	monster_art.queue_free()
+	await process_frame
+
+
+func _sha256_text(value: String) -> String:
+	var context := HashingContext.new()
+	if context.start(HashingContext.HASH_SHA256) != OK:
+		return ""
+	if context.update(value.to_utf8_buffer()) != OK:
+		return ""
+	return context.finish().hex_encode()

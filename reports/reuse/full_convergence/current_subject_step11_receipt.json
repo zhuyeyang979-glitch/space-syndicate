@@ -1,0 +1,79 @@
+{
+  "schema_version": "space_syndicate.v076.current_subject_step_receipt.v1",
+  "receipt_id": "v076-current-subject-step11-c6a849be-20260830T200836Z",
+  "master_task_id": "V076_CURRENT_SUBJECT_MCP_REVALIDATION_REUSE_FULL_CONVERGENCE_AND_DECK_PRESENTATION_RESUME_V2",
+  "authorization_id": "USER_AUTHORIZATION_V076_CURRENT_SUBJECT_CONVERGENCE_AND_COMMERCIAL_RESUME_20260830",
+  "step_id": "STEP11",
+  "status": "REGRESSED_WITH_EVIDENCE",
+  "production_green_claimed": false,
+  "human_green_claimed": false,
+  "product_subject_head": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
+  "product_subject_tree": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
+  "live_pr_head": "c6a849be7346dcf9c0d9655a5769afa32c9e86b7",
+  "live_pr_tree": "5f161cdd18c68394968f62d03948214ef914de09",
+  "runtime_boundary": {
+    "scene_path": "res://scenes/main.tscn",
+    "project_godot_sha256": "849e8c9458b1f6f4431a00073a8d50119937e64a995303874354fb34da4fb06b",
+    "main_tscn_sha256": "aabe4e7f5dce63af558d22c2b77b0cffcfad03a763a7c6d11c4003e90e8e79f3",
+    "runtime_composition_sha256": "d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9",
+    "godot_binary_sha256": "b2ca888d5115a6cedee564764a2ee494a625f2ec2edbabd010fe33c9a88a6bf8"
+  },
+  "mcp": {
+    "tool_identity": "Funplay MCP 0.9.6",
+    "session_identity": "D:/t/v076cs/2ce2ce21/session-c6a849be-20260830T200836Z",
+    "runtime_bridge_stream_id": "1788120596-58870292-34678506968",
+    "editor_pid": 16048,
+    "game_pid": 7080,
+    "endpoint": "http://127.0.0.1:8795/",
+    "session_start_utc": "2026-08-30T20:08:36Z",
+    "session_end_utc": "2026-08-30T20:38:51Z"
+  },
+  "observed_authority_and_projection": {
+    "lock_receipt": {
+      "accepted": true,
+      "intent_kind": "submission.lock",
+      "reason_code": "submission_locked_with_full_asset_reservation"
+    },
+    "facility_resolution": {
+      "resolved_receipts_observed": 12,
+      "presentation_envelopes": 12,
+      "presentation_director_queued": 12,
+      "presentation_finished": 12,
+      "map_request_count": 12,
+      "map_finish_count": 12,
+      "presentation_rejection_count": 0,
+      "legacy_fallback_count": 0,
+      "exact_once": true,
+      "gameplay_mutation_count": 0,
+      "target_region": "region.012"
+    },
+    "asset_projection": {
+      "production_asset_value_change_count": 0,
+      "asset_value_parity": true,
+      "projected_refresh_parity": true,
+      "reserved_parity": true,
+      "ui_gameplay_mutation_count": 0,
+      "opponent_private_asset_disclosure_count": 0,
+      "before_after_authority_quantity_receipt_present": false,
+      "asset_consequence_projection_count": 0,
+      "asset_consequence_projection_failure_count": 0,
+      "asset_consequence_duplicate_suppression_count": 0
+    }
+  },
+  "missing_required_evidence": [
+    "asset Authority Receipt with before/after quantities and committed revision",
+    "asset delta or deduction sequence bound to the player projection",
+    "one asset deduction bound to facility/combat consequence"
+  ],
+  "blocker": "NO_ASSET_CONSEQUENCE_RECEIPT_IN_NATURAL_CURRENT_SUBJECT_RUN",
+  "process_cleanup": {
+    "exit_play_mode": "PASS",
+    "stop_role_godot_mcp": "PASS",
+    "editor_pid_after": 0,
+    "game_pid_after": 0,
+    "listener_8795_after": 0
+  },
+  "result_fingerprint": "step11-regressed-asset-value-change-zero-c6a849be-session-c6a849be-20260830T200836Z",
+  "append_only": true,
+  "historical_receipts_overwritten": false
+}

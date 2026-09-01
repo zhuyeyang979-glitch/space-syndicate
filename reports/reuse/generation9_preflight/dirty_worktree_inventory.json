@@ -1,0 +1,3398 @@
+{
+  "entries": [
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/materials/ambientcg/NightSkyHDRI001/NightSkyHDRI001_2K_HDR.exr.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d8bfe0e2744ec4f3144ba0b3e1bca43b721dea0feac539eb61faffd9037d10b2",
+      "size_bytes": 1035
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "be62142542af4ddccf896c5e7ecc260b076c62a234068466d198c1986c74ff93",
+      "size_bytes": 883
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "bdf744d7560293e5dd28b854bd0d4d291401e71861292a3fff4f0677bd61d689",
+      "size_bytes": 881
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "5322c1fe8bf1eacf59e9faaa849a60cb4fb3959a282ea9a103251072ea9ea897",
+      "size_bytes": 879
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "37a3c410c86f9fe4b4fe074fafb6e55df41db6d9026e5a6caf6f4ac52cfd7ff7",
+      "size_bytes": 879
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "3e5ae8a3007c04ff0b715b867a9ebfea1b34d28465270e3c1dbe2f8c8acf50ee",
+      "size_bytes": 810
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d0ed096700710ffc477daafc5a2ce2e532a5de2e60484046e29b53b9b81714c5",
+      "size_bytes": 825
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "8b18144fd5ff1ea55d873165331711a1c07b46c905b6064c7144fdb89fb93a45",
+      "size_bytes": 926
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "5ba43fa24d6d88b6ee614b34621a7381f7769e5cadf129795068f2cea8fcc63c",
+      "size_bytes": 819
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "67beb5a9e9d0e643c7bf75ab67840ccc115e589c717c96ea1a03db39dd0762b3",
+      "size_bytes": 826
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "586782a79ac1d62adca061181f23fa2c30f42935663273dd06b470284a894ba6",
+      "size_bytes": 919
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d91639564b0d60a1a536f60d6fc6de976e990a3f7393078e4701a32b1ff330fc",
+      "size_bytes": 816
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d9cc7886c74ee0bf25394c7318a98e2bc1db970fe0a9a1c9580986b898ffd8f7",
+      "size_bytes": 1047
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "3e607d0bd0a197228ed5a7fe45e0271a6eb6c34141735ad71d9b597a981296dc",
+      "size_bytes": 920
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "72a5e1588840419a9e42f43400dd0fed2c5cb9d1c6677ba8ef041f7a0c3a930f",
+      "size_bytes": 815
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "8161565943afa57083dd8864bc67c63e9c789972c0619c0dbb4db2c9f084d0c1",
+      "size_bytes": 822
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "942237deba625884d3257dea9bda42491f996fbae73e30cb6cff638f6fd72979",
+      "size_bytes": 920
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "51c73137c870450d6b67bca0a69437915021e0dc9033969ac811deee599182bd",
+      "size_bytes": 816
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "59f2ca60eece92eb1a3c72a3705443180ca052d66d486d6403068586eb3908e7",
+      "size_bytes": 821
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "adf5ef41b31b3fdec90a394f0d75feca7d5ef84ea053c006c77d4bae4e51b70a",
+      "size_bytes": 1117
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b79ce91314c5771b18e4f27d757d0e6811cbf8ec04d7c03f7adc038f4da89134",
+      "size_bytes": 810
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "de952b7649d8ac1a46d2ba2d186ba901428fc3cdd2a00324d55b2b0cfc8aabd0",
+      "size_bytes": 822
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "6c703544a726aba7fa1d136d9c40d5dc1e9bf2479f068257553fa13d7be9d992",
+      "size_bytes": 919
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "50acec5ca6efc11cb6caaa2a5cb854ca0e2e151946ccff73455ffc013faca6bc",
+      "size_bytes": 816
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2a25c067298104f1db3c7e2c2dbff18a98ce99f90cf944e147aea643111d43ed",
+      "size_bytes": 821
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "dc3a4900726659b851a8f2d1a82b0b2e8a9bff6b794647f2f5950a2f897078b5",
+      "size_bytes": 909
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "383b8bf85883eaca4ea8db395cf52a4e2a735519fa5fe89efeb83a36ef16bc1e",
+      "size_bytes": 811
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "85063c568ddce4c8cc0e11d737e238004e9eb6cbe186b2d60cde24cef4a42c5f",
+      "size_bytes": 821
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b86666095dbd87b6d718071404ce8ec89529689a1e525c0b0cb7a234e21a393c",
+      "size_bytes": 909
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a01feb6512e97c62039eccc7b584abd8264c4741fed68ef3e2cbf282856120ff",
+      "size_bytes": 810
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "973adc67e35d7e327283fd8fb631645161a8eda285d7baebfcb8189432068500",
+      "size_bytes": 816
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e4a08bcc04e5f05300eddd03a16ca33ffc5cd0512490f83b3a79d6fe8efb7def",
+      "size_bytes": 814
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "12ede27a0dd7a76127bdedb5f45555ab8f032c8a026262b09f683462027b2bde",
+      "size_bytes": 910
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "670922632795d3605adbab55ea611112bc36eebbc6704908f797aae52dcb7a39",
+      "size_bytes": 811
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "5095073679387537b659f827e7cfff960df3c08fd9adf8d1c423f0156a36ba3f",
+      "size_bytes": 1180
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "dd040690debfe6564b5b656f38b6fc9f5df2fcca9e71a012d0b966002c32dc58",
+      "size_bytes": 1177
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "4cf874f7f97a33da640cee933c8d5b030bf5382b0ef1535c4e6d2a3f1c23b008",
+      "size_bytes": 1168
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "14c9f73c9a263a5960e069f5f9004048dc165ebf4542d9a1a746f1162da93c0d",
+      "size_bytes": 889
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "14393303c2fb88052b24bdc143444328fcb39c25fb7b18052f355a32e18d9c0b",
+      "size_bytes": 890
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "ccbc0a572fe1bf0fd455233e8eec63658efec67cda83e01240eb287450d9b1eb",
+      "size_bytes": 1155
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "431d74ca13698d239241d2a47c2bda15e405e590d891ad4013f98af8ff04e30c",
+      "size_bytes": 884
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e4f270cae4aedb57001ff6ca4e79214e5904c9f2d0f05c8e8f80feeae7b48c14",
+      "size_bytes": 890
+    },
+    {
+      "classification": "GENERATION8_TRACKED_IMPORT_DIRTY",
+      "generated_or_authored": "GENERATED",
+      "git_status": " M",
+      "known_owner": "GODOT_IMPORTER",
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png.import",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1a16d5c1206da119c6642da33b5d84d1af2ffe93e1e1642d8dbe1b88144da71d",
+      "size_bytes": 890
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/architecture/v074/v074_legacy_main_retirement_audit.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e63e21b94dae890afc65cd7043828ae73511983a07fb03e78ec7df6a23ac89aa",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/playtest/v073_human_baseline_profile.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c8f47402a5e897a756a46fba4eef7be167d22421f266aad958827cb6da8167ef",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/playtest/v073_playtest_event_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c3a21688b67848d58be7a532ef45ef626a8d174fc534cf25f5c92e03691ddf14",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/playtest/v076_alpha07_human_golden_candidate_profile.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "f7530cc79451f5910c0e102aab07035de33cf4784279395075a21db73cdd3f29",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/presentation/v073/v073_planet_presentation_adapter_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "6fe140413a63859cc147b85c6ed962e16a6af7a8e237ae600ea8c16b067fddc8",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/presentation/v073/v073_procedural_region_geometry_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "88c6e62d1d7d1e86910467607f31ac8fc196da5f571251fe4c2d5b63bd25192a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/presentation/v074/v074_planet_presentation_adapter_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "7fe9c1e803bea0f48181e213b9d41079478635d53ad731595bdec88eeb18e5e6",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/presentation/v076_deck_lifecycle_presentation.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "8d91e018bf58560f651d94942cbfe9583d50aaa8665a3cdf5c6b5beca60a914c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/presentation/v076_presentation_animation_director.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1e860e0c53af490e8dac1a2ad2a2bc7be7d6a6a0a8c7703019790a97208d5cee",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/tools/ai_business_action_transaction_boundary_bench.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "fb90ec8f17fecdc0c38e2c0ca65432d0ecb624aa8a550daa3bcd1a0b42534063",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/tools/ai_business_action_transaction_fake_weather.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "393018a524b0ea36549142ff6ab29c39e7f5f98c2945827764688473a5d9ab71",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/tools/ai_business_cost_fail_once_public_log_port.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "7cdb4245f824721ab1b5540cc8442a77f8a0a8c1fe8ff82851659027f16c9a87",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/tools/alpha01_manifest_runtime_activation_bench.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "48bc9516fef09b3164f225e3ab339b9cf4941f05f55c5f7463c9c8e56a300f6e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/tools/v075/v075_combat_player_surface_bench.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "56c8cee778bed04105626b91627d064ff46d5e9779a638742c1bf156cc8fa572",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/tools/v076/v076_deterministic_kernel_bench.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "33705021ca5346d81a1ff942e900b558ece778e1724188ec772ca90b471fb955",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/tools/v076/v076_monster_l1_directional_geodesic_move_bench.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "ddc699f7de34a5a16c5e61a65eced44b1048691b649f563591a7a01457be4ad0",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/tools/v076/v076_private_military_direct_action_bench.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "568e7717b3a87a10435b96a8c1d0f8011b9d97f7df7a7f62b67658a5d3c684f3",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/tools/v076/v076_shared_half_edge_partition_bench.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c8bf32de166871132d5a5eb3f929e2bc7e26a5f09db951baecf204f7f17d2f5e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/commercial_settings_surface.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c4497a47cfe514d40225ff63037b076036261c5814de4e7df8d9f5ac3169f51c",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/commercial_showcase_visual_layer.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "37ae6a4aa378aee393b51def27b885222278b2ad81214916714c9ab236ba2160",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v073/v073_responsive_table_layout_v2.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b3a9dac74299d26feaf630eac824bbc33a3e7bd8347dfb417e7b176499980389",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v073/v073_sample_card_button.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "758cb2187d35a5d2766860ef6f580dc52c9484db4446b19dfb56559eb1639300",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v073/v073_ui_layout_collision_audit_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2d2b58887d0e959d80652ed76777b9309522359331f79eb0c0514e53a2eb1c69",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v074/v074_responsive_table_layout.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "cc516d710d65afad309cf3ccf213b7778e3acc7713d49df4b2bd1c44bc70d509",
+      "size_bytes": 18
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v074/v074_ui_layout_collision_audit_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "7051ab1119a4f9cc1cef190e51afdd2caa66e9b765b1a71f92501a63051d4548",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v075/v075_combat_player_surface.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a5043e9dc60b632e89e8325bd80fa3cbc65fe50d6a283e0d1cd48cb88bafe525",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v075/v075_interactive_card_face.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "4765981bfc6c8372d9e88a0061febb8e5fc0d0fc0c577dc82a4f436c53960bff",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v075/v075_military_mission_panel.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "23eff0d3a3c6ad9a46a9e7910efefca231aa37ff9bc70b82e423d9ceeb241809",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v075/v075_monster_private_skill_dock.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "f02582b0ffcc2dfb6754acf6cb61aa9598ab48b5f8124e8c03bea4d55cde8781",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v075/v075_new_game_loading_overlay.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c17bf4aaf0589c9d5d81ff06e8f6b3a289ceb1c704592a62e5b78b3ca420baca",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v075/v075_public_action_arrangement.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a228d531c23d4a20e7c4a90ab17b65bf0f1d26a9ed989642e1a5b4c9051dc9f9",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v075/v075_responsive_acceptance_audit.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "ecb5b6a3bae3b06778e6f575c81193cda947f4d1c4d7206872904fa6452e961c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/ui/v075/v075_sample_game_screen.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "49f445e3df52afbc32baa969a8a76ab0de11ce9d309f75fe69e58dba1f19bfb3",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v072_simulation/v072_deterministic_simulator.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d2e989cb0aa13f296fa34d0bdd44c7d556d511605b452a62e28bcac966e8aa71",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v072_simulation/v072_starter_bootstrap_review.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e50cad3c90c6eccecdfa6c42952aeaaa3eaef67e3a4114551856b173c69252c5",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v073_runtime/v073_sample_application_bootstrap.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "bf2eec2ac4ad0141e43994ca49a805a17f0bc62931cb735a5e675fc6c37ca8e1",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v073_simulation/v073_deterministic_contention_simulator.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "36461a59b89ee428a631dc350a77f343cca676c06774e059c1ea46b997437097",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v073_simulation/v073_fixed_order_facility_contention_review.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "dc9d428f84d4b85742e70fc3237b008624b1dc1522f87315298d50b215dd5a8d",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/facility/v074_card_definition_registry.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "cf023c5e6a127364a81e03707cb941567833811e982d81aa7ed50ca902ebfe02",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/facility/v074_facility_runtime_core.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "5adf656c318943f5f58e274885e81ff53d1d945782398e3e1c2a9a07c3308852",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/facility/v074_facility_slot_registry.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "0cc7c32214385f83c183becb98f42551af61b89a180ce5f96130511f46aa5da0",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/facility/v074_facility_type_registry.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "04c6559fe8f024032dc18dd510849648f5b2b9e0781f1d814be0bf0448eb2f0a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/player/v074_map_target_binding_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "4c1b63d61c1a3f7a06a656c7f7c36e1f31a6d50b8cae6c15158383a930c8c69c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/player/v074_player_map_projection_adapter.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "92b9c07b05156657db9c3a80af7f5cd8a83ef1ae5cfd86a368e08d09189da793",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/player/v074_player_map_projection_bench.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "ed0b15f360f39d08441a59054d591a49b729d9828cf6f0a34d05bfc29c167fab",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/player/v074_region_popup_dto_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a3c6dcbcaa179dadf6a187f600fe646b3607f78f0aa491bdb4c61208398ebaa3",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/warehouse/v074_warehouse_card_catalog.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "74e0c47debd670e318c339095de080993a271fbc67097cb483442e6cea0ed75c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/warehouse/v074_warehouse_runtime_bench.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "654c3aca0c376d3704278e1d0300401f8250912194d05465e7478f92329ae378",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074/warehouse/v074_warehouse_runtime_policy.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "6f4d5be0b62a7b6cdd4d15c3aa3120650bd2ce644c09a0c4f31f0c8908691546",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074_runtime/v074_application_bootstrap.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "30be5db6708e5ddcfa18fb5226eaabc17d3fba1aa73bcf841de08652d84e5317",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074_runtime/v074_application_flow.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1d65485439e7045390f8fc09869cddc07ee417079216abdb8602d78b7aa79100",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v074_runtime/v074_ruleset_runtime_owner.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "47620e07a0ee74e50aaf659f7b5271f72bdcd6694b9a4123b27ae10a263b9635",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075/ai/v075_combat_ai_adapter.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "104ca8274b8461d2175c45637bf17a448a7c38795de7d91b2604c65aed727845",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075/cards/v075_card_definition_registry.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "27a136b74e9ac68822a8cb016d029937ef247c1302b65dda63196c22219dde9f",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075/combat/v075_combat_catalog.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b6a2c33ea9a3c7ca82cc59590ee63f6752e337cfc7a689999d7e23627209bf25",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075/player/v075_combat_projection_adapter.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "83c5114b35206e79444f6ec8c30fee800c064575c8f4e5433979320ddbf84d5c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075/presentation/v075_combat_presentation_consumer.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "8c4af920658657932db065a529223dafe859dc6669dd154bc5448d685bd29b01",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "17cb0b9886bd8df16f3d099e4769d7358a1843b2d5a180f5e77df2af29abd75c",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075/runtime/v075_public_action_batch_core.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b7e3de3c1e8c68ab2588a19755d30f05107638e8a36a98394714182fc15fd39a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075/telemetry/v075_combat_telemetry_contract.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "08140ab235e93ad28346c0c4788ba097dd32f2b99bdee932eec25f5152dd5d6b",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075/telemetry/v075_combat_telemetry_service.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "391fad6abe9c46132dfa5102d0a07b5c6cc7a51366997d997d0cc9288ceedc28",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075_runtime/game_runtime_context_query.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1462346e1545a2c3cddbe9c7e2d326fd2afe861a3bfab2d9f11e728d300c291a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075_runtime/v075_application_bootstrap.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "814333e3fb3cf460cccff31944269d5f8f51648b5df90879722ab0d2566e5929",
+      "size_bytes": 18
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075_runtime/v075_application_flow.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "4f59dda16a830e39ebbc7462bcb4e8873c9225ca04a7576267b5ed62c44c7815",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075_runtime/v075_runtime_owner.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "7c19b827c8e091a49b3afd2b370bc3b5ab8fb73e02c54b9d479e616ca193aebe",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075_simulation/v075_combat_deterministic_simulator.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "36b6b45e7283eabc1831265772eff4dca1b1d666bd70b7603149da0bdb4948d9",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v075_simulation/v075_combat_simulation_runtime_driver.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2e183781e91a8eed7f0b8b967890fc25fbbe78b15450a22330383d8ef0e06e31",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "f2e76b6917860052264e9df4cab3fc97f69da06ac099e50c361746547377ffe6",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/direct_action/v076_private_direct_action_reducer_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "06d3881588b3d0c3dd5cdba0425c412008fe59b1c0dbda82ab4ca4a579c08f3a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/direct_action/v076_v075_production_adapter_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "42a30f4e6e37b7b239fa405c7ac59948e610d216708faf677d8b0320320f52ad",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/map/v076_partition_audit.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "3fca63389a713dbaba541ba921fc344b6667d6797761ac6a79d3ce5613194f64",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/map/v076_partition_authority_codec_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "13dc570455b4b64b4840d7df7214bcba3c4ac1c54c4c857e2605fe9d63f0dbca",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/map/v076_partition_reducer_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "293501138b82ce6fad20a3b2dfeb81819b83345e704761a3e0e7ee580f0e4703",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/map/v076_partition_validator_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "25031d1c3d9cf4c6254faf3d4b06433cb4f8ffe878db5fc819e59f75c9ee3b49",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/map/v076_shared_half_edge_partition_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "18823381e0ae7ab0b2f1152aa8af460b4e4a0bfaef7bf595b1e0332d8b7ade16",
+      "size_bytes": 18
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/map/v076_spherical_microgrid_index_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "95f77da6804a13a35705466679540a5157b03c517ff5461a5d09f7d004d41c72",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/military/v076_military_card_crosswalk_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c729cb892f4d35aecc0880c895c12adaa67fbcd8f2e1836436a6dfbf88d6398e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/military/v076_military_physical_eta_owner_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e83b0a0524918a7056512e5a28516282b6edea0e863e887603d9a56c14486a81",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/military/v076_military_unit_profile_catalog_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "de5214b9998c7a656650a3b6f22ca70d981a7c3b4abff0b4e5fa235ea30f26b1",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/monster/v076_integer_geodesic_metric_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "10afba967e362f6ee30f77d0f13547326437a428b56671e8e2b87c5524069a3b",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/monster/v076_monster_l1_audit.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "898a8d8c847f16766975ba39b35d87108ecbc4ce3f64f41fd78840f288f39c07",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/monster/v076_monster_l1_authority_codec_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "9d16792b48755c3c8d223d3691869fd3a963379219b0d8df6ee6b7401c9ca79f",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/monster/v076_monster_l1_reducer_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "85c7b6192439d76164e914b1f0792687da61b3daf4cc81ca7eb7808d1aca2d2b",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/monster/v076_monster_l1_validator_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "29a435d81c5f64a17b56bf23c8ebb24344cef8d6e148a0effe702294710e5ab6",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/simulation/v076_authority_command_v1.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "aee8ac02cdc886d5d560bb0c3a5dc545c6a126a75c05686300b6ddf394a800ba",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/simulation/v076_authority_state_codec.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "77c53b70a60a364f3e875331806e67404e4e90e5f9ac00e7da971f8cff6a698e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/simulation/v076_deterministic_kernel.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "bd928837d8799623a6ad62c6c39929788a5099797724448ad665f37b766c8bad",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/simulation/v076_domain_rng.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "49d9818d24f9e22e919b4d2ed3ed0099d5782916e007421bdc610851005b0ad8",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v076/simulation/v076_replay_runner.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e50395a836ce79e602ef5280f9b69865a1f1f9aaf4a15f05a81fa297f4ccc9cd",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_adapters/v07_canonical_ai_observation_adapter.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d769fdfe3b7159530388b3dc363e44655c6652140f247dbb1ff63e7318d4f857",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_adapters/v07_canonical_data_codec.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a337789f9a144e5b0ca6cdbc209bde746d98f0cd526ea57847de1badc614d48b",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_adapters/v07_canonical_player_projection_adapter.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "ca8223ce832580b34f4df07a2e31fb5601625a1ce55a3fb59493970fb514a1af",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_adapters/v07_canonical_rng_adapter.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a2daa27ad4e88432c7185671140bd94b9a03c358e8dce0754271f9a533558f23",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_adapters/v07_canonical_save_adapter.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "03ec123f2f4e2a4bf99ebeba23442e96d2cc64339487d1cc80e3c693f7bda643",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_semantic/v072_card_definition_registry.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "7c63752dd9773c322d672aa26834e0b31b5dd7fb2ab1c1ff8f90008001bb510c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_semantic/v073_fixed_order_facility_contention_core.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1363e20fa7a5527be73e60e590ad341cd77d44bbe6b2328eb791b5284b6b0575",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_semantic/v07_asset_batch_core.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "f4a7abf5237518887d2936ff3ae4cb5a47596ff74354a288d42c5fdba4f501fa",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_semantic/v07_dbg_deck_core.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "f46e8497a5ecdbadfe06545be8941a7236e593244f8a9da36cabdbb6a1956178",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_semantic/v07_solar_victory_core.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "7aa232d92896315c55e0ee6692c6173974b1d0f337a977da10b90ba9e250a757",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_semantic/v07_track_acquisition_authority_port.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "5b43a0d782e801e46e056ec40c5ee8f9282b641e56d05f0030eb001c092b3338",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "scripts/v07_semantic/v07_unified_card_track_core.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e931aaf6a649b43af100725c0dd638e200b6c90b44a33f1a835a5c08f44926ef",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "shaders/v073_planet_surface.gdshader.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c8a749e1a18251cfc4b66fec584545b9be2bf045353bf3f1c5a4a4b09b2694ec",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "shaders/v074_planet_surface.gdshader.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d29cbab5c2bc06df163a3eb1f3326d239533a5ff2bca8e495d03c01ed77e5408",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/ai_business_action_transaction_boundary_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "de7e61ba1ea95d7d9e577189edfaa43bb782df67c579803325a0b3140731c728",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/ai_business_cost_formal_four_player_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "99bf28a07cc2f1b2d7433e3794ac47f6a0926453927c0b79553b8afe09877af8",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/ai_card_play_context_reuse_performance_parity_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "45ac1038e3c28cf5322d7ddebb092d33634b9a2c0eb44878fc157f3f166d14ec",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/ai_city_guess_candidate_performance_parity_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "5ac58f947262d863883d6ea2bcf5c49e80d6fc2e5fa57bacdbb5b7c3ac9948e3",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/ai_saturated_route_plan_learning_cache_parity_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "cf8a488d19599852064cd1ad74cf9f17e2bdb9c4253b4b1cd8b95d3747d30932",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/alpha01_content_manifest_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "07e07aa2e717bacf22cf514d875a930ca7ffdbaed73d23cf8d74b067d8a4f8ac",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/alpha01_manifest_runtime_activation_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "34c12027483cedab69e2e1276047241036c1c092cacc3863fdc3af0d5688192e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/alpha01_product_art_manifest_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b8e336545e4abf640759ae8d667a3e9ce21b82bf3b9c8b6713946fef07026f0e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/alpha01_selected_role_consumer_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "486eb42432a396abb479bc7a29a17d1f989099b36e70fd6ca007133c802e5b8c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/alpha04_claim_to_sale_integration_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "70c6db241f811d948d093e5ecad66ae770e593a79f0624fd5d9175c90c3fdd21",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/alpha04_dock_legacy_planner_parity_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b476b25571d48577e2969c0c6694e9828be0bc96a72e90bcc614e1b67a052cc0",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/alpha04_player_card_dock_production_capture.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "4a6391eb9e478c27af53ec101621b077b0a2022c3f326f411b2de6d38dc78425",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/card_inventory_receive_plan_batch_parity_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "908f239c82f110ce46338d4e98881212bcf8cfb99062ac4128dc6c90619811e0",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/commodity_flow_postcommit_registry_preflight_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "0a5ba3d6e2ce5d6254dd776c05c2a46dc12e2a5919d7043b9babde710e585e67",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/district_supply_purchase_projection_receipt_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d77cafdf8e46de1b376e865beefbaf61c1c96aca4821305011dba62326db2f6c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/fixtures/ai_v06_economy_action_port.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "244febf3d6bcb39b099a85dbbdf5c45e898defde0fadc5bdab4e46dfdb9ce75c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/fixtures/godot_test_runner/generic_error.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "df71f002723e8f88e46905bb10afa734547e8131b07122972febbec57e5bbaf8",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/fixtures/godot_test_runner/invalid_uid_warning.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d98c39682a0a2c3900cbb593b375c94fde3c2ed7a6a6aff5dd3ce7c654cd1f87",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/fixtures/godot_test_runner/mirrored_warning.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "9665ea854f5d5f389952046159f305303532565c1b5567cf4235469646463708",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/fixtures/godot_test_runner/raw_nul.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "acdd53b1fd310111927925e65db3a6eb6151e9baeff475777b7ea6a10fb2065d",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/fixtures/godot_test_runner/unclassified_warning.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "53c6f86750ba9b0589361609a1f5968ca296488c7b91626f3476ac6a7d1b62d3",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/fixtures/godot_test_runner/unicode_raw.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1cc57769ef99e8f7693bb35ca0e87553c61c3ec85a4072ae1e55d8b870f63f7b",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/full_run_facility_acquisition_policy_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "69d843ceeebc01a2302dc5d159d5015ace5b3fd8d4671b76cb4c034e6092d273",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/full_run_observation_window_policy_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "00c854bd2dd32846ec8278abbbd8e9262abebad2d0de7ded949da7a554b393be",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/full_run_progress_budget_policy_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "9ab19b9012f6450d0613731a4ec30d80bbead27488b6554f1e37d0d905a724dd",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/full_run_progress_checkpoint_privacy_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b2d164c30bba2d633499cf55b4152142e1d373132e9ed2869361a0211944f019",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/funplay_mcp_runtime_event_cursor_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "5b038cdcf5be6502e726db6fbe41b80401ca643b88f218ff853ff78c5eba95ff",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/game_runtime_context_query_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "8c9a73e5073421c30c2326e9e6fed264828598bdbfbd0d8754b44a75c14a4528",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/gameplay_balance_diagnostics_card_route_index_session_start_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b2cf488164cba19bee276537e3e82a6c64153d6c5036192dc6d9df33ee54c7db",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/support/v073_ui_globe_test_support.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "55edd7d4b28a6b6dce64cc7f55184cb1a44bbada143d474792d9fa4b379c3e56",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/support/v075_atomic_runtime_test_suite.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "7ad191999b1cc34d0f7005c89dcf42308891c615803a481e983777e0a1ebd5f6",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v071_balance_defaults_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b1950e95f1fc2aa4b8aa3802a99c81d1a770939fe55d9848e19e88aac6451747",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v071_constitution_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "cdf30c83a50da4c482d86c70c58e9426ca8ba18f2fc9feb3f302d19291d1fb52",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v071_to_v072_amendment_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "6f4f381578591e6c497a98dca03d897329a350661bc59b01657143a053280368",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v072_balance_defaults_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "803b253bdb4300a2bea077cd617120143c03bb25708a6361d439f9bc0789afcc",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v072_constitution_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c61ade385185df08ff9012b096aecbb67f0882d296f8d6b971ed5feb0b66795f",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v072_simulation/v072_deterministic_simulator_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "656e500f344b3fca22ede04f84e731498d78f62e48a975caba73a2b5cd99231b",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v072_simulation/v072_starter_bootstrap_review_scene_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "42599cda3185a96f31b2dcf46c8a4d0b900be052867593a904e6af0cd5067b21",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v072_to_v073_amendment_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "df695e9fb98d6ef6281e79458b887a73351fe0fc21fb2120c4b66b3ce3115579",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_balance_defaults_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "ef550602c1980fed5d50feb02598760c0c937853e3068235341cd0b779327c4e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_card_hover_containment_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "0988ad46a24ebf1dd359b490267346353f829e4d9fb1a590cbe95d925426dc13",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_coach_safe_placement_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "3cf0a456e8fc9498f8977c91f10f622448ce0b4b48a7d1df1ed29e2f9191ed7a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_constitution_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "fd73e3185a6644ab512be15c4d29ba933163353a36534955356180e027046bd8",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_header_overflow_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d0a5f8e378c0639299a7ce49dd08ce63ecf36c55263648d11c29605812723e61",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_human_baseline_profile_regression_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "0ecd8b04159f4f4cc83e0bfc42aab789cca482276ee58af2a26fc506ef4c31d2",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_map_no_gameplay_mutation_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "10f08a1bf6cea2ff740bb316fbb1dfef7015021b1f9f05e2662beb7a28dce4be",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_map_region_popup_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "4c3df2a9cd88ab42309a4ded5288a5ebf2c58cf74ad48c8b61073afeeb69f263",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_map_target_binding_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b607c905641ddd8e6c3a35e83364e6100a85cb388cfcfe2026de672bdb832b39",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_marker_safe_placement_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "5431053a6f7b35f525e10bd04459f0f0838e3613ee7c1293c1a6775b9995a3c1",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_planet_backside_occlusion_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2215ded1f165b067e641bc1678b4e58d997e0ce4f7b7d152cfb9065c6978c9c5",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_planet_double_click_focus_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1fb112cb14224c4bf00150aa12ff13edbe70813151e882ee6d860fd0608b6594",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_planet_drag_rotation_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a83c3df46a401e14906ec1e70b06f0828876465d552a2619c7af13dd0f410bf4",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_planet_map_snapshot_connection_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d272f6b911ad81476c1b79b801e13af4161897273b2986791391871c532b1e31",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_planet_presentation_adapter_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "40bdaa0e30ad057f3dcded75f380259b0878a8e969b815c2fe9b5ee185f13e93",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_planet_region_hit_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2a77765d638e0b9b4c51dcb26fe7ad4225f22847f657f9b64804b38e835faf6a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_planet_zoom_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a2132c479829ee586c7bf425f8fedb8105bedb6ea6eb0e3cb27e96dc9b2e5e52",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_playtest_instrumentation_acceptance_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c8883372333a99022be3a1943405db507fd2f439c685f639475014578d3e134c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_playtest_questionnaire_visual_capture.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c89519ad0e595ec9f7a437b33c8c4fe38d796c2869713a2d5f9980c5fc4b70ba",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_playtest_telemetry_regression_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "8e26cfb8cfd3eeb28527ba28b566299dfe8234985deea0d282dee8cd934ec808",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_procedural_region_geometry_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "daee9b6c3a7620d3b4015ce9248fa2d98bd50c276eb8bfd091e4aed86eca20b0",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_production_core_aggregate_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "9edee3ff921d08d7401c9f8bd77d73e3603dc996559ae9a3c968c6e8288e5471",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_production_sample_acceptance_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "eeafd5236bbee4bd21e05f69105c65fb68952a4e8e1295d94e6aff74cc043d14",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_production_visual_capture.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2a76effa9cbad68c0386a827965c8ed40865bce1c39f40a39a3bdd4fa96e2bc6",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_region_geometry_seed_determinism_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "27b388c4010b1033fcc9d13e1fd652ff1c55f9bd8905c0fbcce4ad76fef0b70c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_responsive_table_layout_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "9093ba140e6adb9f207c00d46b344950c30c53a48e0f82a890c63dfa5ed149e5",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_simulation/v073_deterministic_contention_simulator_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a35f957dcb266299238102da98d3293580a601f1d7db982cf6cb11975fde874e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_simulation/v073_fixed_order_facility_contention_review_scene_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "f43db87fefa79de1a648470ad4ab0dd1ee801ac2becbbfca9e1cf57cf78e6ea0",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_ui_globe_visual_capture.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "948d9fcc617d649a23aab58a5633c325b368cc15a11bcc5a614acc813c4ed0d6",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v073_ui_rect_collision_audit_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d29220e89912af5ffd14335d0d975059372cd81c1390d9acfaa7ee0d5a22a92b",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_bootstrap_architecture_ratchet_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "dd2e4c83085867fae0e026c704fd443870f029b30e195a10b8ca799c40a6f0d6",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_facility_registry_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e1d3f5f1e0d5750cff02e4650ae89111aecc709929807bd069963c2959a24e00",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_legacy_main_retirement_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "5e22c1ce73d58cafa4d5a86dfb626d7a5afd860b6b387aede9834ddfe975d5ac",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_map_target_binding_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "3464ee4a408ad8f178e1c4c3308e1b24d7c0f7314d9cd4bfa02d1abc33590575",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_planet_map_view_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d0952af989c4b9a5a1da022e531037c7da58c7ba0ce20d0902844f1c672c51ee",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_planet_presentation_adapter_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d72e216aa20882c3e9a6955a8d62e45f6b6e7d7f72137770d28cf7ebb897968a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_planet_shader_surface_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "538b6d80bb24eec8a96a29a34d3164c4363249f1ee4e5ab96be872f56e87e106",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_planet_test_support.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "38855a25ec57f6e0c37993809a004d909a713460976c3357fb9f3d1790971716",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_planet_visual_bench.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e263d1d301829924bb5b508979853b9451ec85f6f4d0623dfcc7013cb792b119",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_player_map_projection_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "6cdb969f685da4e1c28fa52f94155ff34fcd1222cca9be7451d899ae435c3d78",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_player_region_popup_privacy_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2c55234dd37911f22de855769be3d2fb478fcea3a8ca9063d1e404417fad4c6e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_responsive_table_layout_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2297da3fc1c6d59338a24af1e4b1deda376456252042aa8e137789a2fc349c32",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_sushi_track_authoritative_presentation_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "f553e911dc11649272579f94058340db3bdc53585c62b0e9d2938840890998ba",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_target_rail_virtualization_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "90e3fd4293ddf2b83960753ed8d920d057e14e397791e7ae2860ea08e29e2a69",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_track_dbg_warehouse_integration_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "086045caa901a8491af9fb6acfe59276faf4078e8762fac99cbca5318f4cf63a",
+      "size_bytes": 18
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_ui_collision_audit_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "fec04d5c423c19c11eaef9a7fefbedd515ce664886fbf4ac1f9c646a1f64ee51",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v074_warehouse_runtime_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "78c5bad1301a5a2257e23b7e96727c92987cfd1f4bf0d36763cc291cbe67b21f",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_application_flow_activation_failure_rollback_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "97eb0e0d6f037281242e08955f3d35098a4e8dd8aa09afbc08821d6bd11b6187",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_application_flow_atomic_activation_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "16599b236741afc01b6d897b2510c6cc795af61f0075390e9d4fff8182a9fb72",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_application_flow_signal_after_commit_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "ff68dd9dd8b0302b8d507fca684d1730e6b6f9a961735f6e94a435111f4ff97e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_application_flow_sync_reentry_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "7a164663aa6d0792c923e6364a1718e90153254f2d1245e774f5599074fb8eaa",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_application_private_skill_receipt_privacy_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "73dd7473377c634f9190f1b3175e56c352eb7176a2c16f5b6e569218c5fcbd01",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_authoritative_card_identity_lifecycle_binding_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "70a3212e51435ba40d863ccf3db3fa0cc20923c1e2bec80b08270a22cc004e5a",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_card_definition_registry_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "aaf6b2061e5e182eb021c29bd44b738e86c072be013f26d3fd33bd10dee9db5c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_combat_ai_runtime_policy_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c520693d9d6a185d6daca257b622cc5b6539135f690990b1f869d7deeaca9e31",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_combat_ai_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "90ffa95fdb32f22e19cca58bd0bac449d456dbe8b1bcbf4d28386965c5450181",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_combat_card_dbg_lifecycle_integration_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "583528752842a2f039ce305694fdb5168e00c22b2e312fc44f9d8514dc636eec",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_combat_dbg_personal_lifecycle_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a25634632f53cc31c118190b5909187d58d44a8a607d5803057aff4f05540c3b",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_combat_presentation_exact_once_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e814c898e84981470a4a55efcebe30c0e528fda49c27468dd5d3cdef66134aab",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_combat_public_private_projection_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "99867907b25f79f0beeb842b0bcc2c703ef8193bb433906944d427f63931375e",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_combat_resolution_fail_once_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1640d7ab3451de951b96121d6488ade9cbd8158114a220ce6504d1425e4f00a0",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_combat_simulation_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "f3c305506f3d1439dc9addf4655a8d116336a44bf29eb49a0cbf7570bcdf01c8",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_constitution_authority_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "177b5831ce5cdd35030568e2396e3e0917a5a4ad25a1b4e0ac6cb4edb5df3a49",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_final_settlement_presentation_exact_once_regression_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "887ac748768d4435403b67177d7c6c3894f6e0534c6c5d1c0b20d05a7c2714df",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_geometry_asset_false_green_negative_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "95ea7f488622eb0dc663e8956eb413299de787906a8078bec297ccf81a11cbb8",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_monster_autonomy_dynamic_map_integration_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "06aaf4fd0a5980365c03f7160870e3a838e0c88c648c0c2368be021965efef27",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_monster_card_reuse_exact_once_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "69d4deee1ce8dcfd3053feb490b36d48a4502058e8e106d322f86c6344306a6c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_monster_catalog_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "823e2fe6bb7b1ed64dd053c3871b371058bb8cd2540dde4dfa15408429f25632",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_monster_private_skill_source_lifecycle_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "6480645685133f56ddf469eec023bc4b8a9b9fe8704b6aeb549bd2b853ab9ad2",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_monster_skill_asset_port_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c6385ab0895e75343a1cc59c523f375256a82fed48471be193b79cb4e1dbf2af",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_natural_runtime_error_zero_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "3f5785a500c3186ac4491f324b6ead725a21f50efd21116b77f3d81af9ae8d96",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_presentation_receipt_collision_reproduction_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "3758a340724dee6ac316ce0d2f4e8e804637580abb38a0303a5552dc5411e2ad",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_presentation_receipt_identity_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1de9cdc176446ce6ab9868113bfaa2b3c971f1068fd252be44cb3caa9263402d",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_private_skill_failure_privacy_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "09f076931f46b5d6bea3c7646404e47d424ed213050f8a3d7cb8fd2ff7531003",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_private_skill_request_telemetry_integration_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "513ec147d3aaa9791c9b55496dbc6dfb5e9dabcc4f92ef9a8556516353aaa633",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_public_action_batch_core_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c251f57b01c14a2c38a2024db7463036c1997f57f8c1443ea0f224a2a2b22b2e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_responsive_viewport_headed_capture.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "0bac73d8c8f6180c8652755c37435b0be28d00a2fa4a073e1f7bc764506108c5",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_responsive_viewport_matrix_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "9b600422d1fbce18716189078375fe2ff4374e6b76c927cb39562893df746616",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_runtime_acquisition_trace_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e389be2f50d407f3ace24b17aab7c7f2ed28a717f8db986a8f49d8f642e76f54",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_runtime_owner_cleanup_failure_propagation_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "58a327f469fcb261a3dafa2112cb0d58f757c3d5bbf6b8251ff4be5b56672d4d",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_runtime_owner_cleanup_idempotence_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "0cf7be6d86dbef4ec779d8566b8a402c2a6041124b299b43edbafd19c9cfa08e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_runtime_owner_cleanup_result_required_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1125cf3b7f8a0a4ae390388481348387fb2e2477840101be696228dfa1d1f47b",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_runtime_owner_failed_init_cleanup_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "ae132dbadd67b31062e750db6a705416defb341e0f877e5da49474c92b44eeac",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_runtime_owner_integration_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e1bf4b387b59d0494f72e3904a388c20772eee0cb341629eb0c5406267f2da89",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_runtime_owner_no_residual_bindings_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "01ed5a1c282aa3d050552e65ab445ff7d82f192ab9891d3e224235b4316a65a5",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_runtime_owner_no_residual_private_skill_state_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "0460cad97bbd6d20d21694d4389227677d2e16d2b32137ae9d8ac75f02b939db",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_runtime_track_supply_probe_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "823b3883b2d44350e256a6edf243658683055f4213793e05e9a5fd3ab4c7532d",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_sample_game_screen_wrapper_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "40f85a4742536b955fba0554e303ee150f72db5c871379cca5f5c9c5e70161bc",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_simulation_resume_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "a8220cc9b2248de0125c92bb2db78c99a5ab4b185dd2d841ff3efca693ef18ea",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_simulation_step_trace_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "64aa868bb0dadc3b242bfee4b181c73f89af5102c14fcb49da6fba377f5bf358",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v075_terminal_combat_quiescence_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "edaa28bc84b095d0d7cb138c07b5ebc380d7b17780ae2b1d967e9d9624330c57",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_alpha07_card_table_flow_readiness_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "fdbba7ddad2f9319c46cc824f5b7583f91de543dffb1c1900fac252968ab7075",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_alpha07_coachmark_close_performance_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b693ca1e34c9eb371092b576c2f069b1d4c54c7e26df67fa5ac642b36bdcad77",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_alpha07_human_playability_readiness_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c02b603ca4608dcefbe86396667a6f094de5cf9d8acdf02fcb7eac24d35ea27b",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_alpha07_pacing_determinism_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "cd97221fd5079030c8396b0f57c67c681b836190dc05b7f162fefdac245825e2",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_alpha07_seed_tail_probe.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2ce0155466b16069f566a5987c4d8ba15f717ce4420e7776c2cfda6d1ddea01f",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_alpha07_terminal_classification_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "859036e213648ccfe26753c880c3dc718ea6d16597ea3f8131a953e89c581d06",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_bottom_countdown_production_binding_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "7764d474f4755aea204598c442195fef7b3ddf101f87c0517dbdc8540d273774",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_card_submission_requeue_identity_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d0c16350eef6e5fd398e67c2e9e748b43aa2da373f317a10ec4d7b6ae48ea059",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_commercial_shell_reachability_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "bf4f824160c4e06da73ce7e3b909d4dcb80d300298351b083a9bd0d0b95e917e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_deck_lifecycle_presentation_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b35b1d89dd8c5f3228cd3289448297877b01674bcca900b397f04ed54607c389",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_deterministic_kernel_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "367f13c36e251a4cb7e2d96fe028fdbb2380fe39d78bad8fe1a3962f80212da1",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_facility_commit_map_marker_e2e_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2253d835123116e037b88820f0b3f94fad7f15057919710430ca28f8c7ad6c42",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_facility_visual_model_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e4f9653aa42458a433c66cbde0b8e1c7933b4cf7b659b2024d16da096144865f",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_human_golden_observation_readiness_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "f1ce770516fcbc3f2381bc399fc4053dbe331aa3475929da4ed27b240e462bd1",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_military_card_crosswalk_v1_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1ac8a2d828cedd1f3ad73fbebfd3d3886fef734d83c7cd24cc2b2fbc9f3644b4",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_military_mission_lifecycle_reducer_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2a0a457d715abb732f4eba965678cb04f8ccf7c7cd78c68e12e1df6eaf1280c4",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_military_physical_eta_owner_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "070ae67ea6365f38889ce6f0edb4db6d7f91b6ff817807ec457118b4d4c3ad77",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_military_unit_profile_authoring_v1_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "0ae15007952005c365eb1f5fbda694e9d51b62d686cc0b8d3bd55c237942fe90",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_monster_l1_directional_geodesic_move_1000_seed_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "2f180562a19b2be186bc429afd8bb9e01f6a230f2d0c37aa4eb8f5c0f0e790a7",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_monster_l1_directional_geodesic_move_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "05dc697270e749dae60d20d0aa0ba7e3399688ce8fa288209917430013982a87",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_new_game_loading_feedback_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "666faaa9c00b96de520f907c322cddde5d2954526600ed08bd51c34ae01f6d81",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_phase5_combat_observatory_gate.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "c691364eefca5dafe4254feb7da02ca531d653e9e0325cc0d4d117f963079fb1",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_phase6_facility_map_track_presentation_gate.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "61e1fad0c600f8d38a8e688084aad018cd94df27959048af0d7b226ef9eff037",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_phase7_sound_motion_performance_gate.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "66a78e694f00b6b397c20b784a82ce1b0bcf719fc564b37f8f9feafaa1fbb05a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_presentation_animation_director_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "8cdf64c39ea4af9f0b240d4b589c977be9705ec6c81be1e3040a0ae797c87bc9",
+      "size_bytes": 18
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_private_direct_action_input_owner_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "87fa6d251c16285c2ea33c10aef03bc2bf362a5be4a5b68e022d0425faba85e1",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_private_military_direct_action_integration_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "e8a46661d2fcffda1bfbf3e564d6bec6a426da8fa66ff8aebaf835dbcfedc68c",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_private_monster_skill_bundle_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "bb33a0dfc96e0b98578d511139975bc8eeee1360fe2a3d3fdfde7084dca49b52",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_production_ai_privacy_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "572583fc5ebd61961f15cb590aff886b21492cd66367735db31d53a6bc66b418",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_production_clock_liveness_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "8f1985a9f1f04be18a010fbbfbe9ccf092549a3fab9d8f1f18a36162950de12e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_production_composition_precheck_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "52cae8ba5b249e723de2a5a8733455afe0f308c93ca3b5e88dfcb016e2810db4",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_production_military_composition_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "06ab0c2ef7d3075a9b0868a56b1b5e1141ce56896efc2ead9c659548be5c617a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_production_natural_card_table_headed_capture.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "b280967a817a9b50b749b315dea946f15863141adaca50c3a5074b4b1410862a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_production_natural_final_settlement_headed_capture.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "ce86162959e85e5b5d41df3ed0b0a53b33a513c11c69077cd3153629161a2097",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_production_victory_audit_readiness_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "4ada5d16080b2499671f00a3ad28c437a1bff33178370d1efce41b1d074ccfab",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_public_action_arrangement_privacy_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "bc6db0e3b6177e7e5911bc47d059e8d5dd5e958882aef055f4f4c4f38c74f149",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_public_action_arrangement_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "cc3469df5903b12689c190c9f2e76280bd431ae28b305950d24b1e6cc7eb59d3",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_shared_half_edge_partition_2000_seed_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "434e81d1ca604d520a6fbd7b9d3bd78c2764d65485f779dae8c614b4910afde6",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_shared_half_edge_partition_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "ba41566ff1e0eb66ac82c3ecbbd834911d8ab470712114ad2efbc79fcd81960c",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v076_simultaneous_private_action_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "bd925ccb8b56daf02e0823e16b87264182011c75484da4deffe5c3914ca50d65",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_adapters/v071_save_rng_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "37f12780f77bfa24c743a07f1cbe9c9b110203cd898f90001ca6f99e67a47b6d",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_adapters/v07_adapter_architecture_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "7bab881c1f761264bd664d500db333243be4b63cefbe524fd5c35a60c2da5bd6",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_adapters/v07_atomic_cutover_manifest_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "33d8367a7459b07873e5409751862a71a4e539007259bea1c473fbbca9575245",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_adapters/v07_canonical_adapter_aggregate_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "78c87e531c72d310bf1b807d4ca2371b374996f78771630e42ee923d3c0731c2",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_adapters/v07_canonical_ai_observation_adapter_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d5cf5de26b4f36b1d6a4e9162754373972816e659e49459d88c1b604b8806256",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_adapters/v07_canonical_player_projection_adapter_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "8a17ec96993376fcff9dfa2f43a30abf86bed1c181b3a8230f869589b74489d5",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_adapters/v07_canonical_rng_adapter_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "1f9a717d5c079a0def6394ce919d2ce63eb5200c4e5a71734064e517c3aa1d94",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_adapters/v07_canonical_save_adapter_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "6a7600ecc1b1c70198914e4bd3af9ac00baa194b44870c1bf272bf6d03d5e0fb",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_adapters/v07_commercial_art_asset_key_compatibility_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "5704f3cd50f629f9622ed6435ffc12a3ae4792c1be76efbb6ec4cbeee26252ee",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_adapters/v07_latest_main_resync_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "95ead485c3b15327fd96ec2d54cff5b9feeb4d2f2856c8f12d01cdd22a42e0c3",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_constitution_contract_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d4931ab6a48299b5e2053a849004160005c27a460781b8bfbb6a3b4a3d1d2b2a",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_semantic/v071_three_wing_contract_aggregate_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "bea4051b57b81ce71baff095354c24b8a8d0e3328c00fe83080474b39c26090e",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_semantic/v072_card_definition_registry_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "438892fdc4cbb31c15fd55fd4b91db1681a73584bc8d4c759657a4d998496b66",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_semantic/v072_three_wing_contract_aggregate_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d36eb2dd2e8121afc15ed3895b2adee4e057daf160ef3263bda08a327a29d60d",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_semantic/v073_fixed_order_facility_contention_core_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "d17d142c2d10bf104617d5b720c244e1c8ceef659679e2c55b152d31c12583f8",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_semantic/v07_asset_batch_core_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "92a4365cc5ac593bccba6392cfad4760c0209c0429a95b6a16106f56e9e31ce2",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_semantic/v07_dbg_deck_core_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "3ba0e480d6f8595dab6870576b94d308ef17209188f7bc83d143f280536823ad",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_semantic/v07_solar_victory_core_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "6a03f4280b889c8e0cd2299a27896446ad0e3a2c18d22fe09e0c1edc92f932ac",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_semantic/v07_three_wing_contract_aggregate_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "6e333e4e1581534bab6918fdf3771939ba058a8738c42153430b77fe3d61cfc5",
+      "size_bytes": 20
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_semantic/v07_track_acquisition_authority_port_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "25860b02323f130878e741096093b37cc1862d33a933c4f745d04e763989653f",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_semantic/v07_unified_card_track_core_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "090a58fe7cc7695929717da9447ab849fdeecb80e72e582a64b4820fa155efbd",
+      "size_bytes": 19
+    },
+    {
+      "classification": "GENERATION8_UNTRACKED_GODOT_UID",
+      "generated_or_authored": "GENERATED",
+      "git_status": "??",
+      "known_owner": "GODOT_UID_IMPORT_AUTHORITY",
+      "path": "tests/v07_to_v071_amendment_test.gd.uid",
+      "safe_to_ignore_for_candidate": true,
+      "sha256": "6e9ab31d0cc110ba2377199c1bf53f1619733a391984200cb79409296c3f5302",
+      "size_bytes": 20
+    }
+  ],
+  "entry_count": 338,
+  "index_change_count": 0,
+  "schema_version": "space_syndicate.v076.generation9_dirty_worktree_inventory.v1",
+  "source_head_sha": "7a2e10c7b7d700dc749bf515895b9c74694ec002",
+  "source_tree_sha": "62f1912a5e4fe9f14a691b774b9be5c24bdd806b",
+  "source_worktree": "D:/ss-v076-step11-generation8-execution-aecb487d-006",
+  "tracked_change_count": 43,
+  "tracked_import_count": 43,
+  "unknown_entry_count": 0,
+  "untracked_count": 295,
+  "untracked_uid_count": 295,
+  "user_dirty_file_delete_count": 0,
+  "user_dirty_file_mutation_count": 0,
+  "user_dirty_file_stage_count": 0
+}

@@ -1,0 +1,58 @@
+{
+  "schema_version": "space_syndicate.v076.golden_production_execution_receipt.v1",
+  "evidence_type": "V076_GOLDEN_PRODUCTION_EXECUTION",
+  "receipt_id": "v076-alpha07-step11-step13-candidate-revalidation-20260824",
+  "recorded_on": "2026-08-24",
+  "candidate_head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
+  "candidate_tree_sha": "868bddedd7a3f85b4c3594ef3d8579b6ea379523",
+  "step_id": "STEP11",
+  "status": "PASS",
+  "execution_mode": "PRODUCTION_COMPOSITION",
+  "diagnostic_only": false,
+  "fixture_only": false,
+  "production_scene_path": "scenes/main.tscn",
+  "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+  "pass_count": 1,
+  "historical_step11_receipt": {
+    "path": "reports/reuse/v076_step11_golden_production_execution_receipt.json",
+    "sha256": "32f9f12201ae7c4367c7c16a08d3c368f832452beb4b065a87d997a0102e0aa2",
+    "candidate_head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
+    "status": "PASS"
+  },
+  "previous_revalidation_receipt": {
+    "path": "reports/reuse/v076_step11_step12_candidate_production_revalidation_receipt.json",
+    "sha256": "29d55a57b4a8a903c9c00a74f43c89e2d3f97be7db6a74feccecef78ccfb0f33",
+    "candidate_head_sha": "e458525fe579b7d552daeb64129b3d002ed3fa35",
+    "status": "PASS"
+  },
+  "focused_execution": {
+    "test": "tests/v076_production_military_composition_test.gd",
+    "runner": "tools/invoke_godot_test.ps1",
+    "runner_run_id": "20260823-162814-928-v076_production_military_composition_test-db2c0cdd",
+    "status": "PASS",
+    "checks": "86/86",
+    "stdout_sha256": "a5b296257fb9d53c76eddda93506246fc39a2273bfa8fd9eb15ec9fc1061f7c4",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "asset_debit_exact_once": true,
+    "asset_projection_count_per_mission": 1,
+    "asset_rail_post_action_parity": true,
+    "assault_presentation_count_per_mission": 1,
+    "withdrawal_presentation_count_per_mission": 1,
+    "canonical_route_distance_eta_visible": true,
+    "private_card_instance_field_count": 0,
+    "duplicate_asset_projection_count": 0,
+    "duplicate_presentation_count": 0,
+    "presentation_gameplay_mutation_count": 0,
+    "script_error_count": 0,
+    "diagnostic_count": 0,
+    "remaining_project_runtime_process_count": 0
+  },
+  "claim_limits": {
+    "golden_step_11_status": "PRODUCTION_GREEN",
+    "human_executed": false,
+    "human_confirmed": false,
+    "human_green": false,
+    "full_product_production_green": false,
+    "full_world_reproof_performed": false
+  }
+}

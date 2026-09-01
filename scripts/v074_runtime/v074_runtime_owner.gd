@@ -251,8 +251,18 @@ func resolve_map_target(
 	var adapter := _player_map_adapter(_local_player_id)
 	if adapter == null:
 		return {"accepted": false, "reason_code": "player_map_adapter_missing"}
-	if (adapter.call("projection") as Dictionary).is_empty():
-		player_snapshot(_local_player_id)
+	# Target selection may follow a queue removal that returned the same card to
+	# the authoritative hand.  The adapter can still hold a non-empty projection
+	# from the queued state, where that card had no legal options.  Refresh the
+	# existing viewer-authorized adapter on every resolve boundary so a restored
+	# card is checked against current authority rather than stale projection data.
+	# This remains a read-only authorization refresh; the adapter does not own or
+	# mutate card, map, asset, or queue state.
+	if player_snapshot(_local_player_id).is_empty():
+		return {
+			"accepted": false,
+			"reason_code": "player_map_projection_refresh_failed",
+		}
 	return adapter.call(
 		"resolve_target",
 		card_instance_id,

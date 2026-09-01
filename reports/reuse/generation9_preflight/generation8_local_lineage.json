@@ -1,0 +1,1188 @@
+{
+  "commits": {
+    "authorization": {
+      "changed_path_count": 2,
+      "changed_paths": [
+        "reports/reuse/full_convergence/generation8/generation8_authorization_manifest.json",
+        "reports/reuse/full_convergence/generation8/generation8_authorization_manifest.sha256"
+      ],
+      "head_sha": "dd768bad754bd905db89fa0dbdd1067ff7d4e4ae",
+      "parent_shas": [
+        "2a8933c88124b2ea0b6d21aa2df0e75f56c28189"
+      ],
+      "subject": "V076 Generation 8: authorize one formal execution",
+      "tree_sha": "ac18a27ba39a079b4db13f86172b492b8fef5d1c"
+    },
+    "generation8_artifact": {
+      "changed_path_count": 15,
+      "changed_paths": [
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/mcp_runtime_evidence.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/editor-godot-20260901-205825.log",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-9800000-play-main.jsonrpc.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-9800001-click-start-new-game.jsonrpc.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-9800002-query-seed-input.jsonrpc.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-9800003-focus-seed-input.jsonrpc.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-9800004-enter-seed-real-ui.jsonrpc.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-9800005-readback-seed.jsonrpc.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-platform-failure-diagnostic.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/source_evidence_index.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/step11_evidence_manifest.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/execution-start.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/progress.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/receipts/step11_receipt.json",
+        "reports/reuse/full_convergence/generation-008/formal-attempt-001/summary.json"
+      ],
+      "head_sha": "7a2e10c7b7d700dc749bf515895b9c74694ec002",
+      "parent_shas": [
+        "dd768bad754bd905db89fa0dbdd1067ff7d4e4ae"
+      ],
+      "subject": "evidence(v076): record generation 8 platform checkpoint",
+      "tree_sha": "62f1912a5e4fe9f14a691b774b9be5c24bdd806b"
+    },
+    "preformal": {
+      "changed_path_count": 13,
+      "changed_paths": [
+        ".github/workflows/v076-reuse-point-inertia-gate.yml",
+        "reports/development/mcp_landing/step11_reachability_repair.json",
+        "reports/reuse/full_convergence/generation8/complete_major_round_settlement_contract_audit.json",
+        "reports/reuse/full_convergence/generation8/generation8_focused_test_report.json",
+        "reports/reuse/full_convergence/generation8/generation8_negative_fixture_catalog.json",
+        "reports/reuse/full_convergence/generation8/generation8_product_path_manifest.json",
+        "reports/reuse/full_convergence/generation8/generation8_tooling_seal.json",
+        "reports/reuse/full_convergence/generation8/major_round_contract.json",
+        "reports/reuse/full_convergence/generation8/step11_main_tscn_ui_probe_characterization.json",
+        "reports/reuse/full_convergence/generation8/step11_natural_assault_region_characterization.json",
+        "reports/reuse/full_convergence/generation8/step11_natural_assault_region_characterization_rows.json",
+        "tools/v076/v076_current_subject_revalidation_receipt.py",
+        "tools/v076/v076_current_subject_revalidation_receipt_selftest.py"
+      ],
+      "head_sha": "2a8933c88124b2ea0b6d21aa2df0e75f56c28189",
+      "parent_shas": [
+        "32b1a4d0e4b47735c98a09d5f5cd034a160d870d"
+      ],
+      "subject": "V076 Generation 8: seal tooling and preformal evidence",
+      "tree_sha": "2ac1c4023659e53e60da6a95ce19760eb1fd2f4f"
+    },
+    "product_candidate": {
+      "changed_path_count": 7,
+      "changed_paths": [
+        "scripts/ui/v075/v075_sample_game_screen.gd",
+        "scripts/v073_runtime/v073_sample_runtime_owner.gd",
+        "scripts/v075_runtime/v075_application_flow.gd",
+        "scripts/v075_runtime/v075_runtime_owner.gd",
+        "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+        "tests/v076_alpha07_terminal_classification_test.gd",
+        "tests/v076_production_military_composition_test.gd"
+      ],
+      "head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+      "parent_shas": [
+        "aecb487d34e34c8a9580e27771c70ecd261d413e"
+      ],
+      "subject": "V076 Generation 8: repair complete-major-round terminal drain contract",
+      "tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d"
+    },
+    "remote_base": {
+      "changed_path_count": 12,
+      "changed_paths": [
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/evidence/step09/mcp_runtime_evidence.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/evidence/step09/source_evidence_index.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/evidence/step11/mcp_runtime_evidence.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/evidence/step11/source_evidence_index.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/evidence/step12/mcp_runtime_evidence.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/evidence/step12/source_evidence_index.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/step09_evidence_manifest.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/step09_receipt.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/step11_evidence_manifest.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/step11_receipt.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/step12_evidence_manifest.json",
+        "reports/reuse/full_convergence/current_subject/ac5efcc5/step12_receipt.json"
+      ],
+      "head_sha": "aecb487d34e34c8a9580e27771c70ecd261d413e",
+      "parent_shas": [
+        "b635abf0729c3b3f95de9a5b3e25ed6ff91b1b41"
+      ],
+      "subject": "test(reuse): record generation7 checkpoint receipts",
+      "tree_sha": "3c10bc5b26e1426d85ddc52176a61e8a536f5f79"
+    }
+  },
+  "direct_filesystem_product_edit_count": 0,
+  "evidence_sha256s": {
+    "generation8_blocked_receipt": {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/receipts/step11_receipt.json",
+      "sha256": "2ec7f2180558b9ab5402d9bb6b244d14089757fb6a968360500fa17d36272444",
+      "size_bytes": 4508
+    },
+    "generation8_focused_report": {
+      "path": "reports/reuse/full_convergence/generation8/generation8_focused_test_report.json",
+      "sha256": "d92d4680639041dddf97b01004e9b917f6c0f22b0b8bde89d9a0300732dd5380",
+      "size_bytes": 3341
+    },
+    "generation8_mcp_landing": {
+      "path": "reports/development/mcp_landing/step11_reachability_repair.json",
+      "sha256": "1b978f60cde639312ac6ce75b1f4513d39f69c16ff3ee3027c15c83a59d23129",
+      "size_bytes": 3444
+    },
+    "generation8_platform_diagnostic": {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-platform-failure-diagnostic.json",
+      "sha256": "74bc4876882b0899f9f4cd1e3de16ef451dd6bcea047311a3ecaeeb43553f628",
+      "size_bytes": 2027
+    },
+    "generation8_summary": {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/summary.json",
+      "sha256": "8ec0f24315481198e296cd1676d32c7cf83da595a62f963a3a3c6fa73cb51421",
+      "size_bytes": 1074
+    }
+  },
+  "focused_test_count": 26,
+  "focused_test_failure_count": 0,
+  "focused_test_pass_count": 26,
+  "generation8_product_candidate_file_count": 7,
+  "generation8_product_candidate_head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+  "generation8_product_candidate_tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d",
+  "generation8_product_changed_paths": [
+    "scripts/ui/v075/v075_sample_game_screen.gd",
+    "scripts/v073_runtime/v073_sample_runtime_owner.gd",
+    "scripts/v075_runtime/v075_application_flow.gd",
+    "scripts/v075_runtime/v075_runtime_owner.gd",
+    "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+    "tests/v076_alpha07_terminal_classification_test.gd",
+    "tests/v076_production_military_composition_test.gd"
+  ],
+  "local_generation8_artifact_commit": "7a2e10c7b7d700dc749bf515895b9c74694ec002",
+  "local_generation8_artifact_parent": "dd768bad754bd905db89fa0dbdd1067ff7d4e4ae",
+  "mcp_landing_receipt_set_sha256": "1b978f60cde639312ac6ce75b1f4513d39f69c16ff3ee3027c15c83a59d23129",
+  "mcp_product_file_mutation_count": 7,
+  "mcp_product_file_mutation_coverage_percent": 100,
+  "mutation_audit_pass": true,
+  "mutation_audits": [
+    {
+      "after_blob_match": true,
+      "after_blob_sha256": "4eef65f02098f1e4b831a226c88aeaca5f43bbc4820e8f570a183fc8d559d255",
+      "artifact_candidate_blob_match": true,
+      "artifact_candidate_blob_sha256": "4eef65f02098f1e4b831a226c88aeaca5f43bbc4820e8f570a183fc8d559d255",
+      "base_blob_match": true,
+      "base_blob_sha256": "dd8346582b5825dbf95608aff3e467b8af53f675db5ca5117cb38434b8193e4c",
+      "commit_containing_after_blob": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+      "expected_after_blob_sha256": "4eef65f02098f1e4b831a226c88aeaca5f43bbc4820e8f570a183fc8d559d255",
+      "expected_base_blob_sha256": "dd8346582b5825dbf95608aff3e467b8af53f675db5ca5117cb38434b8193e4c",
+      "focused_test_binding": [
+        {
+          "case_id": "F14",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F17",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F18",
+          "status": "PASS"
+        }
+      ],
+      "mcp_operation": "funplay-mcp:project-87c6f31bd8a15778:replay53-final-ui-projection-lineage-and-cleanup",
+      "mcp_protocol_version": "2025-11-25",
+      "mcp_session_id": "funplay-project-87c6f31bd8a15778-probe-924085720",
+      "mcp_tool": "Funplay MCP 0.9.6",
+      "mcp_validation_result": "PASS",
+      "product_path": "scripts/ui/v075/v075_sample_game_screen.gd",
+      "raw_mcp_evidence": [
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-validate-scripts-ui-v075-v075-sample-game-screen-gd.jsonrpc.json",
+          "sha256": "ce011340ed8e463688bec845b8eb477e24804c2d6c6e0ff9508577e7c3abb87e",
+          "size_bytes": 1079,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1559-repair-ui-consumer-patch-preload.jsonrpc.json",
+          "sha256": "c6340285ca92df80cfaaa5d988d0829b74567bd5536a9db2bde0bbb1704e1a8c",
+          "size_bytes": 869,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1560-repair-ui-consumer-patch-history-revalidation.jsonrpc.json",
+          "sha256": "1495fce89cb1774ccf024896671e4665d6b2ff20c57102d10b67f0c55e582d0a",
+          "size_bytes": 869,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1562-repair-ui-consumer-validate-screen.jsonrpc.json",
+          "sha256": "1278d6f8530a3b0ab3695e69a976dc0e19d45e3f557f991de189ac0c7214ae15",
+          "size_bytes": 1082,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1566-repair-ui-consumer-canonicalize-projection-options.jsonrpc.json",
+          "sha256": "67df55f62c15f87d41a5a65c609e901ae419d403adceb33b3d78f43834725e68",
+          "size_bytes": 869,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1567-repair-ui-consumer-validate-canonicalization.jsonrpc.json",
+          "sha256": "e82ced730625f21ac8b580cf16892643488e0b9351e382f6314ff0b7c794b6f2",
+          "size_bytes": 1082,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-520-repair-mcp-patch-screen-synchronous-pending-order.jsonrpc.json",
+          "sha256": "1f2f42da774494c13975e1114ec261b74775851fcc72b904cb823eb06d39421c",
+          "size_bytes": 870,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-524-repair-mcp-validate-sample-game-screen.jsonrpc.json",
+          "sha256": "a4663447a66da0ee812fd4d67141ac0a7cc24d93db5f20c8e07d9a403e179c30",
+          "size_bytes": 1083,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-955204-repair-mcp-patch-military-choice-button-down.jsonrpc.json",
+          "sha256": "6eab190f062089fd0b9e81852ed4405025f46debd9fe2535c00c94978f479c4e",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-955205-repair-mcp-narrow-monster-choice-unchanged.jsonrpc.json",
+          "sha256": "40d08ee40500711a02a4157b742f5642e71e2cb6c8c7831b02e2f423708ad5ec",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-955206-repair-mcp-validate-military-choice-button-down.jsonrpc.json",
+          "sha256": "080f748f01a041b2de93d09eecf5a054935db0dd123ba90832d4b2b75409a92a",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-955401-repair-mcp-restore-standard-pressed.jsonrpc.json",
+          "sha256": "3a1afe3871e506533abbbb925b972773774fdb042ebc67992f63a6a82a564336",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-955402-repair-mcp-focus-assault-region-choice.jsonrpc.json",
+          "sha256": "12ce073d1ad2dbfceb9c64970c20121abb0d03d4b4e6ef863f72fa22a809ce41",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-955403-repair-mcp-validate-assault-region-focus.jsonrpc.json",
+          "sha256": "a734a8ece60e15bf9d0928818daa762f7908d3da9bf0374adb969094531da761",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956302-repair-replay43-mcp-remove-ineffective-focus-fix.jsonrpc.json",
+          "sha256": "993b0c5fd3284fa1b023dc31527bfc45a936c9ec6b31677a1ab3ddd37b489508",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956303-repair-replay43-mcp-validate-after-focus-revert.jsonrpc.json",
+          "sha256": "b4a0ca62df9ae6367e4b971e3682f6c9679238910120f50b60c4057a88b2afe5",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956305-repair-explicit-military-target-choice-binding.jsonrpc.json",
+          "sha256": "4df0a79c7e09d147fbc3027f2c0aca6cc1f0262c7cce643b08a5096647ba0b86",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956306-repair-validate-explicit-military-target-choice-binding.jsonrpc.json",
+          "sha256": "993e22dc896ef00960fd24a5803790712bb362be12465c0d15cc6272c053381c",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956522-repair-mcp-military-target-gui-input-route.jsonrpc.json",
+          "sha256": "67151a03521ea1bbac7d0bf2458352b2967381fb5355bcbad4dceb4a63974a0c",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956523-repair-mcp-validate-military-target-gui-input-route.jsonrpc.json",
+          "sha256": "b4f5b662ab80c80530902888a2deeb04d2a10108923b071d6a97f4971f277388",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956722-repair-mcp-register-military-target-choice-bindings-field.jsonrpc.json",
+          "sha256": "157e9addf797694e62323f2149cc60483042a28e149bdc7969d662979790b48b",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956723-repair-mcp-route-military-popup-pointer-before-hand-drag.jsonrpc.json",
+          "sha256": "bc0f06070fcd77ebc26b5974f04e14078a0aae790ada6f125235b325cc292634",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956724-repair-mcp-register-live-military-target-choice-control.jsonrpc.json",
+          "sha256": "71bd3f4968809a0f70cb10e5a238d4e865f7a3d2939e2bdb660274443bb6462d",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956725-repair-mcp-append-live-military-target-choice-binding.jsonrpc.json",
+          "sha256": "39c8f3a150979930bbf00f750acfcbbeb4d84820d1a43e89a34a7e41af0a616e",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956726-repair-mcp-add-military-target-choice-pointer-router.jsonrpc.json",
+          "sha256": "f8d7578fd5e26cfe79f87dcc46b876211f76393104757062ba2a3fd814c9c86d",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956727-repair-mcp-guard-military-target-choice-exact-once.jsonrpc.json",
+          "sha256": "c4a3a5bd5ef28461fc7acb3cb52d71d1c5aab02268ee70d91a9a8887e56cfd29",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956728-repair-mcp-validate-military-target-pointer-route.jsonrpc.json",
+          "sha256": "9b69fd434bef75951be44267a4ab9cbeb654f49febe96a740b6ff66bb7212c53",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956919-repair-mcp-localize-military-target-pointer-hit-test.jsonrpc.json",
+          "sha256": "af7ec91c35c2055c7649dd8deb7c975dc44778167aac805f0292d50c3cee4753",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-956920-repair-mcp-validate-localized-military-target-pointer.jsonrpc.json",
+          "sha256": "11c121b2e2f987c4682bc8d83c07fda56b2f5d3f28c0dace8ff6b2d92f119a4f",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957045-repair-mcp-revert-invalid-local-pointer-hit-test.jsonrpc.json",
+          "sha256": "964b6f57f224183d42f5f1dca5c722e1bae275b9cdec44a5c98570642dd09a65",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957046-repair-mcp-add-bounded-military-input-characterization-fields.jsonrpc.json",
+          "sha256": "423194e1bd98bc5dea341c68074d408aac7d65475e449f3aed9abb31ff501eb1",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957047-repair-mcp-count-military-pointer-router-entry.jsonrpc.json",
+          "sha256": "dc42f943ef72b585532e5e1e104cd05eb76378a4262031a72138dd531ee4c411",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957048-repair-mcp-count-screen-mouse-button-input.jsonrpc.json",
+          "sha256": "ac5aacb5d0ed29c36870aa942f974744f4b2f23304b1871bdac76a0dac46eb13",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957049-repair-mcp-validate-military-input-characterization.jsonrpc.json",
+          "sha256": "22e9a9231d2d0b442e799bd97a95e79044ed7cc09fc6599df5ba85cea9ac7b76",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957176-repair-mcp-add-bounded-military-target-branch-counters.jsonrpc.json",
+          "sha256": "1bfbb8a8e5af072efca30f67717f163f2f1f0417baec09a84148ec8add45ce03",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957177-repair-mcp-count-military-target-pointer-hit.jsonrpc.json",
+          "sha256": "078c6ce4ebb8cbc600fb13c0ef59632084d80cb4564986752147ba951a5cda25",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957178-repair-mcp-count-military-target-activation-branches.jsonrpc.json",
+          "sha256": "6383b08d4263667682b5e64eb89698c401d2ea0ec073159afd76c2b404613f4d",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957179-repair-mcp-count-military-target-canonical-rejection.jsonrpc.json",
+          "sha256": "9ea89fc74cd963c89e6727ef5c73a71925c8d15b1c3bb8b24866d8734e2af26c",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957180-repair-mcp-validate-military-target-branch-counters.jsonrpc.json",
+          "sha256": "0c34c2e466f608a1fec32f408c79eed1e311269ab879e75fa4225ac3cd2126b1",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957309-repair-replay51-rejection-stage-patch-probe-fields.jsonrpc.json",
+          "sha256": "596df0201f2cdddd93b99ea45a8050f73d81d38807e87b0431eee799bd0d604b",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957310-repair-replay51-rejection-stage-patch-current-option.jsonrpc.json",
+          "sha256": "007841c7a3baaff86880ba83e0f25293daeec85dffe337a398b1a7232b67b21a",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957311-repair-replay51-rejection-stage-patch-identity.jsonrpc.json",
+          "sha256": "2f61f08a0964e3d23da76082d473004f27fa813f338b9cb81096d0234481843e",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957312-repair-replay51-rejection-stage-validate-screen.jsonrpc.json",
+          "sha256": "1fb19c462b32658bd67028bda336c2b3f839efc2c93ef6709aa8186f6b8e2fd2",
+          "size_bytes": 2305,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957314-repair-replay51-rejection-stage-validate-after-reload.jsonrpc.json",
+          "sha256": "a2528da4c9b34b7c3ad18e9982ae2a20f42764a35688d0fed354d5d3ec6a5cee",
+          "size_bytes": 2305,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957315-repair-replay51-rejection-stage-fix-terminal-match-type.jsonrpc.json",
+          "sha256": "caf9cf0f6991f01f006b9a2b92f84673fafbda55f1cd736a887326ce7648f2d4",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957316-repair-replay51-rejection-stage-validate-type-fixed.jsonrpc.json",
+          "sha256": "c3a87770c4a7a071a4cf1e0f42488ee93b9734c8c917ca88500f89c14ec594d1",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957318-repair-replay51-rejection-stage-validate-final.jsonrpc.json",
+          "sha256": "04c58eb66f12a50af1a2757788d5c50bc0a9a7aed307d4d08baf05e35d2a5804",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957446-repair-replay53-minimal-repair-remove-probe-fields.jsonrpc.json",
+          "sha256": "53d9fe186243d31f3435851a2a92690f52cd5d7eba978b16bd3d369a27b40594",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957447-repair-replay53-minimal-repair-restore-current-option-clean.jsonrpc.json",
+          "sha256": "e2c979af6bbbe374478145f0d2668f32b9dd3b8f997a47818ded27cd7681a1cc",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957448-repair-replay53-minimal-repair-restore-identity-clean.jsonrpc.json",
+          "sha256": "58b52d3653fd5481e8fe1b1067099e86cce57e4372a7765ead84c765082bab45",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957449-repair-replay53-minimal-repair-bidirectional-projection-lineage.jsonrpc.json",
+          "sha256": "43d35d4a36b5057a624bc704edfd0a80567405b1f75e94eba2ca4d4d75aac561",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957450-repair-replay53-minimal-repair-remove-input-probes.jsonrpc.json",
+          "sha256": "c270a79f30603893b1f12cf1fa774314a6154cba19c028505091f9cf832cf300",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957451-repair-replay53-minimal-repair-remove-activation-probes.jsonrpc.json",
+          "sha256": "577addf01cf3fa95f7d4c7be60e5457fee7be728f05be769f5768abca475a05e",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957452-repair-replay53-minimal-repair-remove-queue-probes.jsonrpc.json",
+          "sha256": "120aeda5ac634d0a841c14eaaf851f004a1b5fe39c055274c83e6fc403ec6229",
+          "size_bytes": 871,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957454-repair-replay53-minimal-repair-validate-screen-before-reload.jsonrpc.json",
+          "sha256": "85654a8cadddd786dce378401d9bfad23a2480cbbbd311bacf7edeb1ddbb767f",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957458-repair-replay53-minimal-repair-validate-screen-after-reload.jsonrpc.json",
+          "sha256": "fd7b291779d64d1d1f5334d51bea09a809fd4bfe92327d2edb4cd485217dd662",
+          "size_bytes": 1084,
+          "validation_attempted": true
+        }
+      ],
+      "raw_mcp_evidence_count": 56,
+      "real_main_tscn_observation": "PASS_RUNTIME_OBSERVED"
+    },
+    {
+      "after_blob_match": true,
+      "after_blob_sha256": "733a50f4cde1e3d5986542869072a4b5690c0a456cbd8290c6da092066d5f477",
+      "artifact_candidate_blob_match": true,
+      "artifact_candidate_blob_sha256": "733a50f4cde1e3d5986542869072a4b5690c0a456cbd8290c6da092066d5f477",
+      "base_blob_match": true,
+      "base_blob_sha256": "d66a26f7c0088ceedd73796c0e5f9b36993d4f40a4babd7b78605f7fccb628fe",
+      "commit_containing_after_blob": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+      "expected_after_blob_sha256": "733a50f4cde1e3d5986542869072a4b5690c0a456cbd8290c6da092066d5f477",
+      "expected_base_blob_sha256": "d66a26f7c0088ceedd73796c0e5f9b36993d4f40a4babd7b78605f7fccb628fe",
+      "focused_test_binding": [
+        {
+          "case_id": "F01",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F02",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F03",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F07",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F09",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F24",
+          "status": "PASS"
+        }
+      ],
+      "mcp_operation": "generation8-terminal-contract-patch-v073-reset.jsonrpc.json",
+      "mcp_protocol_version": "2025-11-25",
+      "mcp_session_id": "funplay-project-87c6f31bd8a15778-probe-924085720",
+      "mcp_tool": "Funplay MCP 0.9.6",
+      "mcp_validation_result": "PASS",
+      "product_path": "scripts/v073_runtime/v073_sample_runtime_owner.gd",
+      "raw_mcp_evidence": [
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-v073-constants.jsonrpc.json",
+          "sha256": "13318a91d3d35becc4959e4b7c5a319aec4ea945d415397c0d8ccc10d52116ba",
+          "size_bytes": 878,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-v073-debug.jsonrpc.json",
+          "sha256": "c86e5f34bc8613684ed27cdd11ce2c8401dfd37f7179e599fb10d414855218b2",
+          "size_bytes": 878,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-v073-fields.jsonrpc.json",
+          "sha256": "934dd9fd3e314d60a0f39d14ca22a2bbd95582cad3e68b01222917c5e8c64021",
+          "size_bytes": 878,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-v073-latch-drain.jsonrpc.json",
+          "sha256": "20982d1c82672c99092de463ce3c776f75432b3f6b8715a271dd576e5f7d2edd",
+          "size_bytes": 878,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-v073-process-bind.jsonrpc.json",
+          "sha256": "631c04d0fb250a40f78230ea984d0e1c6f55d533c1005731bedc9eb899cc68da",
+          "size_bytes": 878,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-v073-reset.jsonrpc.json",
+          "sha256": "cdfd6ccd7e2202ae35fc53f824ef91b728804eddb516d862bf25d050102db51e",
+          "size_bytes": 878,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-validate-scripts-v073-runtime-v073-sample-runtime-owner-gd.jsonrpc.json",
+          "sha256": "a9fd2b47fea4e64d450c3a1a574e793e12e2e84d47b0e97f99c7df609a62a05a",
+          "size_bytes": 1107,
+          "validation_attempted": true
+        }
+      ],
+      "raw_mcp_evidence_count": 7,
+      "real_main_tscn_observation": "PASS_RUNTIME_OBSERVED"
+    },
+    {
+      "after_blob_match": true,
+      "after_blob_sha256": "232286c0a3c501a8d93a6966c4a5ab068faced0c7b1d61beceb40beb82e27589",
+      "artifact_candidate_blob_match": true,
+      "artifact_candidate_blob_sha256": "232286c0a3c501a8d93a6966c4a5ab068faced0c7b1d61beceb40beb82e27589",
+      "base_blob_match": true,
+      "base_blob_sha256": "6e3eeec891a59e15c28c819e6e4d6ee2a4664baf6769ce2c868d206e9e4fba63",
+      "commit_containing_after_blob": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+      "expected_after_blob_sha256": "232286c0a3c501a8d93a6966c4a5ab068faced0c7b1d61beceb40beb82e27589",
+      "expected_base_blob_sha256": "6e3eeec891a59e15c28c819e6e4d6ee2a4664baf6769ce2c868d206e9e4fba63",
+      "focused_test_binding": [
+        {
+          "case_id": "F04",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F05",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F06",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F07",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F09",
+          "status": "PASS"
+        }
+      ],
+      "mcp_operation": "generation8-terminal-contract-patch-flow-kernel-valid.jsonrpc.json",
+      "mcp_protocol_version": "2025-11-25",
+      "mcp_session_id": "funplay-project-87c6f31bd8a15778-probe-924085720",
+      "mcp_tool": "Funplay MCP 0.9.6",
+      "mcp_validation_result": "PASS",
+      "product_path": "scripts/v075_runtime/v075_application_flow.gd",
+      "raw_mcp_evidence": [
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-flow-bind.jsonrpc.json",
+          "sha256": "70d6717eeb271757e704f36166b23e03a74da132d9b33031917be371ed154305",
+          "size_bytes": 870,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-flow-kernel-valid.jsonrpc.json",
+          "sha256": "39295d395ee509042980a5c539052102f07cbf71987e8c6e151669837f1ce3a3",
+          "size_bytes": 870,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-flow-snapshot.jsonrpc.json",
+          "sha256": "929f5ef8f7579964f3a213200ab2043985b961d84a54508828b749d23dc62369",
+          "size_bytes": 870,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-validate-scripts-v075-runtime-v075-application-flow-gd.jsonrpc.json",
+          "sha256": "d3e269ad6e8d08e013eb562d3f3a01b4bbba782686afa74053eed3753740a7ee",
+          "size_bytes": 1091,
+          "validation_attempted": true
+        }
+      ],
+      "raw_mcp_evidence_count": 4,
+      "real_main_tscn_observation": "PASS_RUNTIME_OBSERVED"
+    },
+    {
+      "after_blob_match": true,
+      "after_blob_sha256": "5f7bf08970b84bab49c20a7f1c68ec3d42228ae922a3877c3f34a1315acfc96c",
+      "artifact_candidate_blob_match": true,
+      "artifact_candidate_blob_sha256": "5f7bf08970b84bab49c20a7f1c68ec3d42228ae922a3877c3f34a1315acfc96c",
+      "base_blob_match": true,
+      "base_blob_sha256": "f8b65c70a59b079933fad9b0ca9cf2f0782c49180d2038de58bdeeb8388d9e11",
+      "commit_containing_after_blob": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+      "expected_after_blob_sha256": "5f7bf08970b84bab49c20a7f1c68ec3d42228ae922a3877c3f34a1315acfc96c",
+      "expected_base_blob_sha256": "f8b65c70a59b079933fad9b0ca9cf2f0782c49180d2038de58bdeeb8388d9e11",
+      "focused_test_binding": [
+        {
+          "case_id": "F01",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F02",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F03",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F04",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F05",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F06",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F07",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F24",
+          "status": "PASS"
+        }
+      ],
+      "mcp_operation": "generation8-terminal-contract-patch-v075-process.jsonrpc.json",
+      "mcp_protocol_version": "2025-11-25",
+      "mcp_session_id": "funplay-project-87c6f31bd8a15778-probe-924085720",
+      "mcp_tool": "Funplay MCP 0.9.6",
+      "mcp_validation_result": "PASS",
+      "product_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "raw_mcp_evidence": [
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-v075-process.jsonrpc.json",
+          "sha256": "bac3f34a091acde9f84b69e5e5ba5e8f667862b60c9ba45b911e5419d97f75b9",
+          "size_bytes": 866,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-validate-scripts-v075-runtime-v075-runtime-owner-gd.jsonrpc.json",
+          "sha256": "9e56e48948107b3c6e2d00ee5d498bfae3e04aab2045098a4fa0ee6b2b32eb09",
+          "size_bytes": 1079,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1196-repair-replay14-runtime-revalidate-historical-fingerprint.jsonrpc.json",
+          "sha256": "610f3c7be9c67b150ffc07f0276dfbcdea420e84ac6f02579d881502000e0ff3",
+          "size_bytes": 869,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1197-repair-replay14-close-expected-world-revision.jsonrpc.json",
+          "sha256": "c42fb76295eef6e3a9578d6aad7ee72c4bc4d0b729433de82cef18577f851de3",
+          "size_bytes": 869,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1199-repair-replay14-validate-runtime-stale-repair.jsonrpc.json",
+          "sha256": "29af04269f85443cbae09595c14183bf096d022cb82f358f636986555e0201f8",
+          "size_bytes": 1082,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-516-repair-mcp-patch-runtime-snapshot-legal-actions.jsonrpc.json",
+          "sha256": "b6b54d326bd1336663b81d0f532ddecc9249316cf508c0668c23ebb2ccc4c4ac",
+          "size_bytes": 870,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-517-repair-mcp-patch-runtime-private-facts-signature.jsonrpc.json",
+          "sha256": "95bf93fcfeee1bed005ea3333eaf01eccdbcad488a9b4955f0da26d6b921f7f4",
+          "size_bytes": 870,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-518-repair-mcp-patch-runtime-private-facts-reuse-published.jsonrpc.json",
+          "sha256": "db5a400ede682ee54b5259fc7a1e08e00988e2675003e4c0492177cd5cf3f592",
+          "size_bytes": 870,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-519-repair-mcp-patch-runtime-preserve-canonical-candidate.jsonrpc.json",
+          "sha256": "3f00ea892f550ca3a35c11887a3cb55010afd7021761c143855cf7766ca43f7a",
+          "size_bytes": 870,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-523-repair-mcp-validate-runtime-owner.jsonrpc.json",
+          "sha256": "7d823a97b754ddfe2587e9f65c17c6f0f1a3b6732e5c19a487df37fef94e8619",
+          "size_bytes": 1083,
+          "validation_attempted": true
+        }
+      ],
+      "raw_mcp_evidence_count": 10,
+      "real_main_tscn_observation": "PASS_RUNTIME_OBSERVED"
+    },
+    {
+      "after_blob_match": true,
+      "after_blob_sha256": "eea62940116ec40c95e13f43069ef24a96cf06f957f850bc112c59700741d0ca",
+      "artifact_candidate_blob_match": true,
+      "artifact_candidate_blob_sha256": "eea62940116ec40c95e13f43069ef24a96cf06f957f850bc112c59700741d0ca",
+      "base_blob_match": true,
+      "base_blob_sha256": "8bc3960438b0c607290c56e146ea6fe6ac2f494a1fdc41665736b78422a3838d",
+      "commit_containing_after_blob": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+      "expected_after_blob_sha256": "eea62940116ec40c95e13f43069ef24a96cf06f957f850bc112c59700741d0ca",
+      "expected_base_blob_sha256": "8bc3960438b0c607290c56e146ea6fe6ac2f494a1fdc41665736b78422a3838d",
+      "focused_test_binding": [
+        {
+          "case_id": "F05",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F06",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F14",
+          "status": "PASS"
+        }
+      ],
+      "mcp_operation": "generation8-terminal-contract-patch-direct-owner-drain.jsonrpc.json",
+      "mcp_protocol_version": "2025-11-25",
+      "mcp_session_id": "funplay-project-87c6f31bd8a15778-probe-924085720",
+      "mcp_tool": "Funplay MCP 0.9.6",
+      "mcp_validation_result": "PASS",
+      "product_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "raw_mcp_evidence": [
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-direct-owner-drain.jsonrpc.json",
+          "sha256": "dc93c89649e3fc905d466a8fbd957d58b8ef3ee075f015cfa07a677be8923200",
+          "size_bytes": 922,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-validate-scripts-v076-direct-action-v076-private-direct-action-input-owner-v1-gd.jsonrpc.json",
+          "sha256": "8d3d2e9585c9d50bd4c8d78e44cc36b3bfea552135fe08e5cf0cfe1db1f57787",
+          "size_bytes": 1195,
+          "validation_attempted": true
+        }
+      ],
+      "raw_mcp_evidence_count": 2,
+      "real_main_tscn_observation": "PASS_RUNTIME_OBSERVED"
+    },
+    {
+      "after_blob_match": true,
+      "after_blob_sha256": "768c82bf233ec7941068b2eca2e5ef41e10d48245547862686016a99ac1b28c0",
+      "artifact_candidate_blob_match": true,
+      "artifact_candidate_blob_sha256": "768c82bf233ec7941068b2eca2e5ef41e10d48245547862686016a99ac1b28c0",
+      "base_blob_match": true,
+      "base_blob_sha256": "f2d04a483afadbb1a4ef55560f921d3ebf30f7c47ca0a64627d188ed50a6e6e8",
+      "commit_containing_after_blob": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+      "expected_after_blob_sha256": "768c82bf233ec7941068b2eca2e5ef41e10d48245547862686016a99ac1b28c0",
+      "expected_base_blob_sha256": "f2d04a483afadbb1a4ef55560f921d3ebf30f7c47ca0a64627d188ed50a6e6e8",
+      "focused_test_binding": [
+        {
+          "case_id": "F01",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F02",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F03",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F07",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F08",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F09",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F24",
+          "status": "PASS"
+        }
+      ],
+      "mcp_operation": "generation8-terminal-contract-patch-terminal-test.jsonrpc.json",
+      "mcp_protocol_version": "2025-11-25",
+      "mcp_session_id": "funplay-project-87c6f31bd8a15778-probe-924085720",
+      "mcp_tool": "Funplay MCP 0.9.6",
+      "mcp_validation_result": "PASS",
+      "product_path": "tests/v076_alpha07_terminal_classification_test.gd",
+      "raw_mcp_evidence": [
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-terminal-contract-patch-terminal-test.jsonrpc.json",
+          "sha256": "05d135c8caefd7c94bd2879fa98cf32c65c673fdeab073fd6983a781442f5e6c",
+          "size_bytes": 878,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-validate-terminal-classification-test.jsonrpc.json",
+          "sha256": "c843d72e0515c35922cac35141be42db09316dca8c7ad6e8d3d6914b42cfbfcc",
+          "size_bytes": 1111,
+          "validation_attempted": true
+        }
+      ],
+      "raw_mcp_evidence_count": 2,
+      "real_main_tscn_observation": "PASS_RUNTIME_OBSERVED"
+    },
+    {
+      "after_blob_match": true,
+      "after_blob_sha256": "a078c01bc851df21e5f292c8702dcfa7d24a42bb85a3569282d173787dd72209",
+      "artifact_candidate_blob_match": true,
+      "artifact_candidate_blob_sha256": "a078c01bc851df21e5f292c8702dcfa7d24a42bb85a3569282d173787dd72209",
+      "base_blob_match": true,
+      "base_blob_sha256": "d209bf598cf7c2dc61a3ac726fc50bf38afd370d7322466e75d6705883b29c7a",
+      "commit_containing_after_blob": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+      "expected_after_blob_sha256": "a078c01bc851df21e5f292c8702dcfa7d24a42bb85a3569282d173787dd72209",
+      "expected_base_blob_sha256": "d209bf598cf7c2dc61a3ac726fc50bf38afd370d7322466e75d6705883b29c7a",
+      "focused_test_binding": [
+        {
+          "case_id": "F10",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F11",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F12",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F13",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F14",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F15",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F16",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F17",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F18",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F19",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F20",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F21",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F22",
+          "status": "PASS"
+        },
+        {
+          "case_id": "F23",
+          "status": "PASS"
+        }
+      ],
+      "mcp_operation": "funplay-mcp:project-87c6f31bd8a15778:replay14-and-replay15-focused-regression",
+      "mcp_protocol_version": "2025-11-25",
+      "mcp_session_id": "funplay-project-87c6f31bd8a15778-probe-924085720",
+      "mcp_tool": "Funplay MCP 0.9.6",
+      "mcp_validation_result": "PASS",
+      "product_path": "tests/v076_production_military_composition_test.gd",
+      "raw_mcp_evidence": [
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/generation8-validate-tests-v076-production-military-composition-test-gd.jsonrpc.json",
+          "sha256": "263c6788caba007e4f43da204f71f9b543afb06bbb196f6b9e1d515d8bf309ac",
+          "size_bytes": 1111,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1190-repair-replay14-regression-add-combat-owner.jsonrpc.json",
+          "sha256": "0d026a01ef8b263b1aee417c79e964402a4066e76b0eb9288432ff46af08ae42",
+          "size_bytes": 883,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1191-repair-replay14-regression-assert-combat-owner.jsonrpc.json",
+          "sha256": "2eb1793abb4f034d6c704dfcc74c2dd0f014b92d075bc6479c51d62afa983782",
+          "size_bytes": 883,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1192-repair-replay14-regression-guard-combat-owner.jsonrpc.json",
+          "sha256": "46fc5bda0f9bcc1a151a2b4998224f5451b76948602bd464231038019f189122",
+          "size_bytes": 883,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1193-repair-replay14-regression-stale-revision-case.jsonrpc.json",
+          "sha256": "d62e23bc5dae700ad4482b18b8a9fe070320e3cac0b764385cc95344259b32a3",
+          "size_bytes": 883,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1194-repair-replay14-regression-validate-test.jsonrpc.json",
+          "sha256": "6eb83f61f8a44af5349106edb19527af594a10941ecdc42c59d014fed08621ba",
+          "size_bytes": 1114,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1198-repair-replay14-regression-tampered-fingerprint-fails-closed.jsonrpc.json",
+          "sha256": "f68437df3f3a3a429e1cf5f95e60f7c2ce045638f9d405651d60a37f834715a2",
+          "size_bytes": 883,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1200-repair-replay14-validate-regression-test.jsonrpc.json",
+          "sha256": "6ff97e215e4d0897444b6ae0ed2961edaf0c55ff8fcbe5869fb0d23e3414c493",
+          "size_bytes": 1114,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1561-repair-ui-consumer-patch-focused-regression.jsonrpc.json",
+          "sha256": "e45e1456f29ce6c005cd2efa3a580fd9ab3395761e85a09b7b2a9bc2c717ada9",
+          "size_bytes": 883,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-1563-repair-ui-consumer-validate-focused-test.jsonrpc.json",
+          "sha256": "f9a374ca3f441fa631402bbeea71e81f012241491dfa1323dc979fb013e0e1ef",
+          "size_bytes": 1114,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-521-repair-mcp-patch-focused-test-candidate-identity.jsonrpc.json",
+          "sha256": "4ada938729d903e96048d09d5bf70de14f027d2ed2f6c67040d23d714ffb6ba4",
+          "size_bytes": 884,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-522-repair-mcp-patch-focused-test-synchronous-rejection.jsonrpc.json",
+          "sha256": "165ae9f4d8c7997c095c5e98b3f7f978c43547c928d2d23100bc9ee5cba49619",
+          "size_bytes": 884,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-525-repair-mcp-validate-focused-test.jsonrpc.json",
+          "sha256": "09b717a2e6f8cdbb74becdd05ba5413df31b7efa26c2b75cdda6a58ada95ecfb",
+          "size_bytes": 1115,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": true,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957453-repair-replay53-minimal-repair-add-lagging-projection-test.jsonrpc.json",
+          "sha256": "cef13e95e1e6dd0855171cb454f8dddb13e8ed86030c2804a3a74b4f66e63115",
+          "size_bytes": 885,
+          "validation_attempted": false
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957455-repair-replay53-minimal-repair-validate-focused-test-before-reload.jsonrpc.json",
+          "sha256": "e9e3a2f18fca984a2f207123cdb29a2172e490c3a033d4f0d4fa81ec3ea960c2",
+          "size_bytes": 1116,
+          "validation_attempted": true
+        },
+        {
+          "mutation_observed": false,
+          "path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation8-characterization-live/probe-924085720-957459-repair-replay53-minimal-repair-validate-focused-test-after-reload.jsonrpc.json",
+          "sha256": "7640bf776fd5860e710836cb3ca17988a3f57a4db4c8424fe4f36af968054085",
+          "size_bytes": 1116,
+          "validation_attempted": true
+        }
+      ],
+      "raw_mcp_evidence_count": 16,
+      "real_main_tscn_observation": "PASS_RUNTIME_OBSERVED"
+    }
+  ],
+  "remote_base_head_sha": "aecb487d34e34c8a9580e27771c70ecd261d413e",
+  "schema_version": "space_syndicate.v076.generation9_local_lineage.v1",
+  "single_linear_chain_valid": true,
+  "tracked_import_noise_stage_count": 0,
+  "untracked_uid_stage_count": 0
+}

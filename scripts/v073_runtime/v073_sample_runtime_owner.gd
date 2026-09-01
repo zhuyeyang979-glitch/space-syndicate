@@ -29,6 +29,9 @@ const SUBMISSION_WINDOW_MSEC := 30000
 const MAX_ACTIONS_PER_PLAYER := 5
 const DEFAULT_MATCH_SEED := 730045
 const PUBLIC_PROGRESS_PER_PLAYER_TARGET := 2
+# Fail-closed safety window only. It does not change Victory qualification,
+# winner facts, or gameplay timing; it bounds already-accepted terminal work.
+const MAX_TERMINAL_DRAIN_TICKS := 1200
 
 signal match_started(snapshot: Dictionary)
 signal state_changed(snapshot: Dictionary)
@@ -691,6 +694,10 @@ var _match_id := ""
 var _seed := DEFAULT_MATCH_SEED
 var _phase := "idle"
 var _batch_number := 0
+## Monotonic identity for every accepted/rejected card-submission attempt.
+## Queue indexes are presentation/order data and may be reused after a remove;
+## they must never be used as exact-once authority request identities.
+var _submission_identity_sequence := 0
 var _clock_msec := 0
 var _opened_at_msec := 0
 var _submission_deadline_msec := 0
@@ -724,6 +731,16 @@ var _adapter_failure_count := 0
 var _projection_emit_coalesced := false
 var _projection_emit_pending := false
 var _match_sequence := 0
+var _victory_qualification_latched := false
+var _victory_settlement_pending := false
+var _victory_qualification_source_revision := -1
+var _victory_qualification_batch_number := 0
+var _terminal_drain_port: Node
+var _terminal_drain_started_tick := -1
+var _terminal_drain_deadline_tick := -1
+var _terminal_drain_deadlock_count := 0
+var _accepted_action_loss_at_terminal_count := 0
+var _new_major_round_after_qualification_count := 0
 
 
 func _ready() -> void:
@@ -742,6 +759,20 @@ func _process(delta: float) -> void:
 			resolve_next_action()
 		"maintenance":
 			_process_maintenance()
+		"terminal_draining":
+			_process_terminal_drain()
+
+
+func bind_terminal_drain_port(port: Node) -> Dictionary:
+	if not is_instance_valid(port) or not port.has_method(
+		"terminal_drain_snapshot"
+	):
+		return _reject("terminal_drain_port_invalid")
+	_terminal_drain_port = port
+	return {
+		"accepted": true,
+		"reason_code": "terminal_drain_port_bound",
+	}
 
 
 func start_new_game(
@@ -910,6 +941,44 @@ func legal_card_actions(actor_id: String) -> Array:
 				"fizzle_policy_id": "FIZZLE_FULL_ASSET_REFUND",
 				"source_revision": _batch_number,
 			})
+	return _append_queued_action_options(actor_id, result)
+
+
+func _append_queued_action_options(actor_id: String, result: Array) -> Array:
+	## A queued card lives in DBG committed escrow, so it is absent from the
+	## projected hand. Keep its already-authorized source/target binding visible
+	## to actor-scoped legal queries while preserving the single zone owner.
+	var seen: Dictionary = {}
+	for option_variant in result:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		var key := "%s|%s" % [
+			str(option.get("card_instance_id", "")),
+			str(option.get("target_slot_id", "")),
+		]
+		if not key.begins_with("|"):
+			seen[key] = true
+	for binding_variant in _queued_by_player.get(actor_id, []) as Array:
+		if not (binding_variant is Dictionary):
+			continue
+		var binding := binding_variant as Dictionary
+		var card_id := str(binding.get("card_instance_id", ""))
+		var slot_id := str(binding.get("target_slot_id", ""))
+		if card_id.is_empty() or slot_id.is_empty():
+			continue
+		var key := "%s|%s" % [card_id, slot_id]
+		if seen.has(key):
+			continue
+		var option := binding.duplicate(true)
+		option["option_id"] = "queued.%s" % str(
+			binding.get("action_id", key)
+		)
+		option["queued"] = true
+		option["authority_zone"] = "committed_escrow"
+		option["source_revision"] = _batch_number
+		result.append(option)
+		seen[key] = true
 	return result
 
 
@@ -936,11 +1005,7 @@ func queue_card_action(
 		return _reject_action("target_not_legal_for_card")
 	var binding := {
 		"actor_id": actor_id,
-		"action_id": "action.%s.%s.%02d" % [
-			_batch_id(),
-			actor_id,
-			queue.size(),
-		],
+		"action_id": _next_submission_action_id(actor_id),
 		"card_instance_id": card_instance_id,
 		"card_definition_id": str(card.get("definition_id", "")),
 		"target_slot_id": target_slot_id,
@@ -955,6 +1020,16 @@ func queue_card_action(
 		"expected_damage_revision": slot.get("damage_revision"),
 		"target_bound": true,
 	}
+	var reservation := _reserve_card_submission(actor_id, binding)
+	if not bool(reservation.get("accepted", false)):
+		return _reject_action(str(reservation.get(
+			"reason_code",
+			"card_submission_reservation_failed"
+		)))
+	binding["authority_zone"] = "committed_escrow"
+	binding["card_reservation_request_id"] = str(
+		reservation.get("request_id", "")
+	)
 	queue.append(binding)
 	_queued_by_player[actor_id] = queue
 	var receipt := {
@@ -992,12 +1067,75 @@ func remove_queued_action(actor_id: String, action_id: String) -> Dictionary:
 		return _reject_action("queue_binding_locked")
 	var queue := _queued_by_player.get(actor_id, []) as Array
 	for index in range(queue.size()):
-		if str((queue[index] as Dictionary).get("action_id", "")) == action_id:
+		var binding := queue[index] as Dictionary
+		if str(binding.get("action_id", "")) == action_id:
+			var released := _release_card_submission(actor_id, binding)
+			if not bool(released.get("accepted", false)):
+				return _reject_action(str(released.get(
+					"reason_code",
+					"card_submission_release_failed"
+				)))
 			queue.remove_at(index)
 			_queued_by_player[actor_id] = queue
 			_emit_local_state()
 			return {"accepted": true, "reason_code": "queued_action_removed"}
 	return _reject_action("queued_action_missing")
+
+
+func _reserve_card_submission(
+	actor_id: String,
+	binding: Dictionary
+) -> Dictionary:
+	var dbg := _dbg_by_player.get(actor_id) as RefCounted
+	if dbg == null:
+		return {"accepted": false, "reason_code": "dbg_authority_missing"}
+	var action_id := str(binding.get("action_id", ""))
+	var card_instance_id := str(binding.get("card_instance_id", ""))
+	var request_id := "intent.reserve.%s" % action_id
+	var intent := dbg.call(
+		"create_authority_intent",
+		request_id,
+		DBG_CORE.ACTION_RESERVE_CARD_SUBMISSION,
+		{"instance_id": card_instance_id}
+	) as Dictionary
+	var receipt := dbg.call("apply_intent", intent) as Dictionary
+	return {
+		"accepted": bool(receipt.get("success", false)),
+		"reason_code": str(receipt.get(
+			"reason_code",
+			"card_submission_reservation_failed"
+		)),
+		"request_id": request_id,
+		"receipt": receipt.duplicate(true),
+	}
+
+
+func _release_card_submission(
+	actor_id: String,
+	binding: Dictionary
+) -> Dictionary:
+	var dbg := _dbg_by_player.get(actor_id) as RefCounted
+	if dbg == null:
+		return {"accepted": false, "reason_code": "dbg_authority_missing"}
+	var action_id := str(binding.get("action_id", ""))
+	var card_instance_id := str(binding.get("card_instance_id", ""))
+	var request_id := "intent.release.%s" % action_id
+	var intent := dbg.call(
+		"create_authority_intent",
+		request_id,
+		DBG_CORE.ACTION_RELEASE_CARD_SUBMISSION,
+		{"instance_id": card_instance_id}
+	) as Dictionary
+	var receipt := dbg.call("apply_intent", intent) as Dictionary
+	return {
+		"accepted": bool(receipt.get("success", false)),
+		"reason_code": str(receipt.get(
+			"reason_code",
+			"card_submission_release_failed"
+		)),
+		"request_id": request_id,
+		"receipt": receipt.duplicate(true),
+	}
 
 
 func lock_player_submission(actor_id: String) -> Dictionary:
@@ -1604,6 +1742,24 @@ func debug_snapshot() -> Dictionary:
 			0,
 			_final_settlement_presentation_count - 1
 		),
+		"victory_qualification_latched": _victory_qualification_latched,
+		"victory_settlement_pending": _victory_settlement_pending,
+		"victory_qualification_batch_number": (
+			_victory_qualification_batch_number
+		),
+		"complete_major_round_before_settlement": (
+			not _victory_qualification_latched
+			or _batch_number >= _player_ids.size()
+		),
+		"terminal_drain_started_tick": _terminal_drain_started_tick,
+		"terminal_drain_deadline_tick": _terminal_drain_deadline_tick,
+		"terminal_drain_deadlock_count": _terminal_drain_deadlock_count,
+		"accepted_action_loss_at_terminal_count": (
+			_accepted_action_loss_at_terminal_count
+		),
+		"new_major_round_after_qualification_count": (
+			_new_major_round_after_qualification_count
+		),
 		"track_validation": _track_core.call("validation_report_v1") \
 			if _track_core != null else {},
 		"asset_validation": ASSET_BATCH_CORE.validation_report(_asset_state) \
@@ -1910,10 +2066,12 @@ func _emit_local_asset_refresh_observation(before_assets: Dictionary) -> void:
 
 
 func _finish_macro_boundary() -> void:
-	var qualifies := _public_progress_points >= _victory_target()
-	var macro_round_complete := _batch_number >= _player_ids.size()
-	if qualifies and macro_round_complete:
-		_commit_victory()
+	if _public_progress_points >= _victory_target():
+		if not _latch_victory_qualification():
+			return
+	var major_round_complete := _batch_number >= _player_ids.size()
+	if _victory_qualification_latched and major_round_complete:
+		_begin_terminal_settlement_boundary()
 		return
 	var advance_intent := _track_core.call(
 		"build_intent_v1",
@@ -1926,10 +2084,21 @@ func _finish_macro_boundary() -> void:
 	if not bool(advanced.get("accepted", false)):
 		_fail("track_advance_failed", advanced)
 		return
+	_on_authoritative_track_advanced(advanced)
 	_begin_batch()
 
 
-func _commit_victory() -> void:
+func _on_authoritative_track_advanced(_receipt: Dictionary) -> void:
+	# Extension hook for production pacing observers.  The base runtime keeps
+	# this no-op so it does not introduce another state owner.
+	return
+
+
+func _latch_victory_qualification() -> bool:
+	if _victory_qualification_latched:
+		return true
+	if _public_progress_points < _victory_target():
+		return false
 	var condition_id := _runtime_victory_condition_id()
 	var source_revision := _public_progress_points
 	var qualification_proof := _victory_authority.issue_qualification(
@@ -1956,10 +2125,117 @@ func _commit_victory() -> void:
 		_victory_authority,
 		_victory_authority.capability()
 	)
-	if not bool((pending.get("receipt", {}) as Dictionary).get("committed", false)):
+	if not bool((pending.get("receipt", {}) as Dictionary).get(
+		"committed",
+		false
+	)):
 		_fail("victory_qualification_failed", pending)
-		return
+		return false
 	_solar_state = (pending.get("state", {}) as Dictionary).duplicate(true)
+	_victory_qualification_latched = true
+	_victory_settlement_pending = true
+	_victory_qualification_source_revision = source_revision
+	_victory_qualification_batch_number = _batch_number
+	_public_history.append({
+		"accepted": true,
+		"outcome_id": "victory_qualification_latched",
+		"reason_code": "complete_major_round_before_final_settlement",
+		"batch_number": _batch_number,
+	})
+	return true
+
+
+func _terminal_drain_snapshot() -> Dictionary:
+	if not is_instance_valid(_terminal_drain_port):
+		return {
+			"valid": true,
+			"drained": true,
+			"current_tick": _clock_msec,
+			"pending_command_count": 0,
+			"unresolved_action_count": 0,
+			"unresolved_action_ids": [],
+		}
+	var snapshot := _terminal_drain_port.call(
+		"terminal_drain_snapshot"
+	) as Dictionary
+	var action_ids := snapshot.get("unresolved_action_ids", []) as Array
+	if (
+		not bool(snapshot.get("valid", false))
+		or not (snapshot.get("drained") is bool)
+		or not (snapshot.get("current_tick") is int)
+		or not (snapshot.get("pending_command_count") is int)
+		or not (snapshot.get("unresolved_action_count") is int)
+		or int(snapshot.get("pending_command_count", -1)) < 0
+		or int(snapshot.get("unresolved_action_count", -1)) < 0
+		or int(snapshot.get("unresolved_action_count", -1)) != action_ids.size()
+	):
+		return {
+			"valid": false,
+			"reason_code": "terminal_drain_snapshot_invalid",
+		}
+	return snapshot.duplicate(true)
+
+
+func _begin_terminal_settlement_boundary() -> void:
+	if _phase in ["settled", "failed"]:
+		return
+	if not _victory_qualification_latched or _batch_number < _player_ids.size():
+		_fail("victory_complete_major_round_boundary_missing", {})
+		return
+	var drain := _terminal_drain_snapshot()
+	if not bool(drain.get("valid", false)):
+		_fail("terminal_drain_observer_invalid", drain)
+		return
+	if bool(drain.get("drained", false)):
+		_commit_victory()
+		return
+	_phase = "terminal_draining"
+	_terminal_drain_started_tick = int(drain.get("current_tick", 0))
+	_terminal_drain_deadline_tick = (
+		_terminal_drain_started_tick + MAX_TERMINAL_DRAIN_TICKS
+	)
+	_emit_local_state()
+
+
+func _process_terminal_drain() -> void:
+	var drain := _terminal_drain_snapshot()
+	if not bool(drain.get("valid", false)):
+		_fail("terminal_drain_observer_invalid", drain)
+		return
+	if bool(drain.get("drained", false)):
+		_commit_victory()
+		return
+	if int(drain.get("current_tick", -1)) >= _terminal_drain_deadline_tick:
+		_terminal_drain_deadlock_count += 1
+		var action_ids := drain.get("unresolved_action_ids", []) as Array
+		_fail("terminal_drain_deadlock", {
+			"action_id": str(action_ids[0]) if not action_ids.is_empty() else "unknown",
+			"unresolved_action_ids": action_ids.duplicate(),
+			"pending_command_count": int(drain.get(
+				"pending_command_count",
+				0
+			)),
+			"deadline_tick": _terminal_drain_deadline_tick,
+		})
+
+
+func _commit_victory() -> void:
+	if _phase == "settled":
+		return
+	if not _victory_qualification_latched and not _latch_victory_qualification():
+		return
+	if _batch_number < _player_ids.size():
+		_fail("victory_complete_major_round_boundary_missing", {})
+		return
+	var drain := _terminal_drain_snapshot()
+	if not bool(drain.get("valid", false)):
+		_fail("terminal_drain_observer_invalid", drain)
+		return
+	if not bool(drain.get("drained", false)):
+		_begin_terminal_settlement_boundary()
+		return
+	var condition_id := _runtime_victory_condition_id()
+	var source_revision := _victory_qualification_source_revision
 	var settlement_id := "settlement.%s" % _match_id
 	var boundary := {
 		"submission_window_locked": true,
@@ -1969,9 +2245,6 @@ func _commit_victory() -> void:
 		"macro_round_complete": true,
 		"every_player_led_once": _batch_number >= _player_ids.size(),
 	}
-	if not bool(boundary.get("every_player_led_once", false)):
-		_begin_batch()
-		return
 	var boundary_proof := _victory_authority.issue_boundary(
 		_solar_state,
 		"proof.boundary.%s" % _match_id,
@@ -1986,7 +2259,7 @@ func _commit_victory() -> void:
 		"intent_id": "intent.victory.boundary.%s" % _match_id,
 		"intent_kind_id": SOLAR_VICTORY_CORE.INTENT_KIND_REVALIDATION,
 		"expected_revision": int(_solar_state.get("revision", 0)),
-		"condition_id": str(gate.get("pending_condition_id", "")),
+		"condition_id": str(gate.get("pending_condition_id", condition_id)),
 		"macro_round_index": int(gate.get("macro_round_index", 1)),
 		"proof_id": str(boundary_proof.get("proof_id", "")),
 		"proof_fingerprint": str(boundary_proof.get("proof_fingerprint", "")),
@@ -2004,6 +2277,7 @@ func _commit_victory() -> void:
 	_solar_state = (settled.get("state", {}) as Dictionary).duplicate(true)
 	_final_settlement = _build_final_settlement(settlement_id)
 	_phase = "settled"
+	_victory_settlement_pending = false
 	_final_settlement_presentation_count += 1
 	_final_settlement_public_log_count += 1
 	_public_history.append({
@@ -2015,13 +2289,15 @@ func _commit_victory() -> void:
 	final_settlement_committed.emit(_final_settlement.duplicate(true))
 	_emit_local_state()
 
-
 func _build_bound_actions(
 	actor_id: String,
 	binding: Dictionary,
 	local_index: int
 ) -> Dictionary:
-	var card := _card_in_hand(actor_id, str(binding.get("card_instance_id", "")))
+	var card := _card_for_queued_action(
+		actor_id,
+		str(binding.get("card_instance_id", ""))
+	)
 	var slot := _slot_by_id(str(binding.get("target_slot_id", "")))
 	if card.is_empty() or slot.is_empty() 			or not _legal_slot_for_card(actor_id, card, slot) 			or not _binding_matches_slot(binding, slot):
 		return {}
@@ -2213,6 +2489,19 @@ func _card_in_hand(actor_id: String, card_instance_id: String) -> Dictionary:
 	return {}
 
 
+func _card_for_queued_action(
+	actor_id: String,
+	card_instance_id: String
+) -> Dictionary:
+	var facts := (_dbg_projection(actor_id).get("facts", {}) as Dictionary)
+	for zone_name in ["committed_escrow", "hand"]:
+		for card_variant in facts.get(zone_name, []) as Array:
+			var card := card_variant as Dictionary
+			if str(card.get("instance_id", "")) == card_instance_id:
+				return card.duplicate(true)
+	return {}
+
+
 func _dbg_projection(actor_id: String) -> Dictionary:
 	var dbg := _dbg_by_player.get(actor_id) as RefCounted
 	return dbg.call("player_projection", actor_id) as Dictionary if dbg != null else {}
@@ -2382,6 +2671,15 @@ func _batch_id() -> String:
 	return "batch.%s.%04d" % [_match_id, _batch_number]
 
 
+func _next_submission_action_id(actor_id: String) -> String:
+	_submission_identity_sequence += 1
+	return "action.%s.%s.%06d" % [
+		_batch_id(),
+		actor_id,
+		_submission_identity_sequence,
+	]
+
+
 func _zero_colors() -> Dictionary:
 	return {
 		"life": 0,
@@ -2406,6 +2704,7 @@ func _reset_runtime() -> void:
 	_match_id = ""
 	_phase = "idle"
 	_batch_number = 0
+	_submission_identity_sequence = 0
 	_clock_msec = 0
 	_opened_at_msec = 0
 	_submission_deadline_msec = 0
@@ -2434,6 +2733,15 @@ func _reset_runtime() -> void:
 	_canonical_player_projection_count = 0
 	_canonical_ai_observation_count = 0
 	_adapter_failure_count = 0
+	_victory_qualification_latched = false
+	_victory_settlement_pending = false
+	_victory_qualification_source_revision = -1
+	_victory_qualification_batch_number = 0
+	_terminal_drain_started_tick = -1
+	_terminal_drain_deadline_tick = -1
+	_terminal_drain_deadlock_count = 0
+	_accepted_action_loss_at_terminal_count = 0
+	_new_major_round_after_qualification_count = 0
 	_projection_emit_coalesced = false
 	_projection_emit_pending = false
 

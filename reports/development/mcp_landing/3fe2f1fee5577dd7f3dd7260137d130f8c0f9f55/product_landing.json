@@ -1,0 +1,151 @@
+{
+  "schema_version": "space_syndicate.mcp_product_landing_receipt.v1",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "authorized_base_head": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "product_delta_base_head": "bffc5c4674728230e0346d00084f417e62ad98ec",
+  "product_delta_base_tree": "03fbf2645a7d56f183468ef6c623ad10d5cdd1ab",
+  "landing_commit": "3fe2f1fee5577dd7f3dd7260137d130f8c0f9f55",
+  "landing_tree": "1905bc00e72ccc1095bf67cd14c8438ddb5341fe",
+  "receipt_binding_mode": "append_only_descendant_evidence_commit_in_landing_commit_directory",
+  "change_class": "CURRENT_ACTIVE_VIOLATION_REPAIR",
+  "files": [
+    {
+      "file_path": "res://scripts/presentation/v076_presentation_animation_director.gd",
+      "file_type": "gdscript",
+      "mcp_tool": "patch_script",
+      "mcp_operation": "pass the canonical CUE_CATALOG_PATH constant into load_cue_catalog",
+      "before_sha256": "cb78e456122288392f16606bfa259bda682f094eb3d1a13c468393a351aaa300",
+      "after_sha256": "12a70d31e5c65704393bc211c3aae2594caaac900c441102b1fd0d205637183d",
+      "after_git_blob": "f46e01f7898d98681e152c4f2702d5e3d1ba1232",
+      "mcp_mutation_responses": [
+        "0011-patch_director_named_constant.jsonrpc.json"
+      ],
+      "mcp_validate_operation": "validate_script",
+      "mcp_validate_result": "PASS: isolated GDScript validator returned zero diagnostics",
+      "mcp_validate_diagnostic_count": 0,
+      "mcp_validate_response": "0026-validate_director_final.jsonrpc.json"
+    },
+    {
+      "file_path": "res://tests/gameplay_balance_diagnostics_monster_art_profile_test.gd",
+      "file_type": "gdscript",
+      "mcp_tool": "patch_script",
+      "mcp_operation": "bind exact Monster dynamic targets and migrate the production oracle to the current V075 composition",
+      "before_sha256": "de8752c98acb14461fd529c6fc12ad8a7229d2dfa6aa1f66ec5703475f85e1ac",
+      "after_sha256": "28ad24355237d650a461cd3ce8279dc6d746b009ed034c72ef008797c2056ec6",
+      "after_git_blob": "6fa82d58901d15f6ab56ff95a36324b9b772f536",
+      "mcp_mutation_responses": [
+        "0012-patch_monster_test_constants.jsonrpc.json",
+        "0013-patch_monster_test_run.jsonrpc.json",
+        "0014-patch_monster_test_contract.jsonrpc.json",
+        "0021-patch_monster_test_exact_key_map.jsonrpc.json",
+        "0022-patch_monster_test_four_runtime_counts.jsonrpc.json",
+        "0023-patch_monster_test_trailing_lf.jsonrpc.json",
+        "0029-patch_monster_remove_retired_fixture.jsonrpc.json",
+        "0030-patch_monster_current_run_oracle.jsonrpc.json",
+        "0031-patch_monster_current_cutover_helpers.jsonrpc.json",
+        "0032-patch_monster_remove_retired_save_helper.jsonrpc.json"
+      ],
+      "mcp_validate_operation": "validate_script",
+      "mcp_validate_result": "PASS: isolated GDScript validator returned zero diagnostics",
+      "mcp_validate_diagnostic_count": 0,
+      "mcp_validate_response": "0034-validate_monster_current_oracle.jsonrpc.json"
+    }
+  ],
+  "dynamic_reference_resolution": {
+    "manifest_path": "docs/architecture/V076_DYNAMIC_REFERENCE_MANIFEST.json",
+    "manifest_parent_git_blob": "b3e8ff4373376ec89b2051eaae10b205f9210983",
+    "manifest_landing_git_blob": "b3e8ff4373376ec89b2051eaae10b205f9210983",
+    "manifest_sha256": "52472d87729ab167ab31b785a12b2be246ede798a03c9d3bee22bb740062ecd7",
+    "manifest_changed_by_delta": false,
+    "manifest_entry_count": 2,
+    "manifest_ids": [
+      "dynamic.current.monster_art.optional_texture.exists",
+      "dynamic.current.monster_art.optional_texture.load"
+    ],
+    "monster_target_count": 20,
+    "monster_target_set_sha256": "06fcadb6e363cc49da61463a1b42da4138d4050fb48a8ee1ec9b9a050c65a43a",
+    "monster_runtime_counts": {
+      "exists": "20/20",
+      "load": "20/20",
+      "texture2d": "20/20",
+      "view_map_exact": "20/20"
+    },
+    "presentation_cue_catalog_resolution": {
+      "resolved_by": "static_constant_call",
+      "current_manifest_entry_required": false,
+      "unused_reachable_entry_count": 0
+    },
+    "closure_head": "3fe2f1fee5577dd7f3dd7260137d130f8c0f9f55",
+    "closure_tree": "1905bc00e72ccc1095bf67cd14c8438ddb5341fe",
+    "dynamic_manifest_failures": [],
+    "source_dynamic_sites": [],
+    "current_dynamic_reference_unresolved_count": 0,
+    "dynamic_reference_wildcard_count": 0,
+    "dynamic_reference_false_target_count": 0
+  },
+  "current_cutover_oracle": {
+    "main_scene": "res://scenes/main.tscn",
+    "composition": "V075RuntimeComposition",
+    "game_screen": "V075GameScreen",
+    "monster_roster_count": 8,
+    "monster_art_profile_count": 8,
+    "monster_sprite_key_count": 8,
+    "retired_v06_runtime_fixture_path_absent": true,
+    "legacy_product_symbols_absent": true
+  },
+  "focused_tests": [
+    {
+      "run_id": "20260828-012031-368-v076_presentation_animation_director_test-990790ee",
+      "status": "PASS",
+      "marker": "V076_PRESENTATION_ANIMATION_DIRECTOR|status=PASS|cue_count=31|queued_once=true|mutation_count=0",
+      "result_sha256": "b0feeadc6195e935ba2a2b34acb4dba20eeecfc7b3973a5456be8867d235136f",
+      "process_exit_code": 0,
+      "script_error_count": 0
+    },
+    {
+      "run_id": "20260828-012039-643-gameplay_balance_diagnostics_monster_art_profile_test-51f37c21",
+      "status": "PASS",
+      "markers": [
+        "MONSTER_DYNAMIC_REFERENCE_RUNTIME|target_count=20|exists=20/20|load=20/20|texture2d=20/20|view_map_exact=20/20",
+        "MONSTER_CURRENT_CUTOVER_ORACLE|composition=V075RuntimeComposition|roster=8|art_profiles=8|sprite_keys=8",
+        "GAMEPLAY BALANCE DIAGNOSTICS MONSTER ART PROFILE PASS"
+      ],
+      "result_sha256": "ee47fe2ebb05c21945b037643b26f2421c39b250aaee1c3f6bc3b3721fdd439f",
+      "process_exit_code": 0,
+      "script_error_count": 0
+    }
+  ],
+  "reuse_point_inertia_selftest": {
+    "status": "PASS",
+    "passed": 143,
+    "total": 143,
+    "exit_code": 0,
+    "repository_mutation_count": 0
+  },
+  "transient_development_diagnostics": {
+    "classification": "RECOVERED_INCOMPLETE_MULTI_PATCH_EDITOR_RELOAD",
+    "qa_save_path_parse_error_observed": true,
+    "qa_save_path_parse_error_count": 8,
+    "missing_current_oracle_helper_parse_error_count": 1,
+    "cause": "the editor hot-reloaded intermediate source between MCP patch_script operations before the complete replacement was present",
+    "production_or_focused_test_execution_reached": false,
+    "resolved_before_final_validation": true,
+    "final_monster_validate_diagnostic_count": 0,
+    "final_monster_focused_script_error_count": 0,
+    "final_main_runtime_console_error_count": 0
+  },
+  "real_scene_validation_required": true,
+  "real_scene_paths": [
+    "res://scenes/main.tscn"
+  ],
+  "real_scene_validation_result": "PASS",
+  "mcp_product_file_mutation_coverage": "100_PERCENT",
+  "mcp_post_edit_validation_coverage": "100_PERCENT",
+  "direct_filesystem_product_edit_count": 0,
+  "unattested_godot_product_change_count": 0,
+  "readme_mutated_by_this_delta": false,
+  "user_dirty_file_mutation_count": 0,
+  "user_dirty_file_stage_count": 0,
+  "unknown_file_delete_count": 0
+}

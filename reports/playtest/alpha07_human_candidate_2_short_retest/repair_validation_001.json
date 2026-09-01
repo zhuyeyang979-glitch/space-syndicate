@@ -1,0 +1,85 @@
+{
+  "schema": "space_syndicate.v076.alpha07.human_candidate_2.repair_validation.v1",
+  "append_only": true,
+  "recorded_at_utc": "2026-08-24T05:07:15Z",
+  "candidate": "Alpha 0.7 Living Planet - Human Candidate 2 repair validation",
+  "candidate_head_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+  "candidate_base_tree_sha": "60099c99bd15aca044958038c55bff7b74592544",
+  "working_tree_has_uncommitted_candidate_delta": true,
+  "production_scene": "res://scenes/main.tscn",
+  "player_configuration": {
+    "human_count": 1,
+    "ai_count": 3,
+    "fixture_state_injection_count": 0,
+    "agent_input_event_count": 0
+  },
+  "status": "GREEN_AFTER_REPAIR_AUTOMATED_ONLY",
+  "ready_for_real_human_retest": true,
+  "human_executed": false,
+  "human_confirmed": false,
+  "human_green": false,
+  "production_green": false,
+  "step13_status": "PENDING",
+  "repair_scope": [
+    "presentation-only new-game loading overlay with staged progress and first-playable timing",
+    "Coach lifecycle pacing gate through the existing ApplicationFlow owner",
+    "full-hand normal-card acquisition affordance and UI-only shared-track motion cue",
+    "central public action arrangement scene with privacy-safe hover presentation",
+    "staggered central entry formation animation on public arrangement updates",
+    "native plus manual hand-card drag bridge reusing the existing card.queue authority"
+  ],
+  "automated_validation": {
+    "v076_new_game_loading_feedback_test": {"status": "PASS", "checks": "19/19"},
+    "v076_public_action_arrangement_test": {"status": "PASS", "checks": "8/8"},
+    "v076_alpha07_human_playability_readiness_test": {
+      "status": "PASS",
+      "checks": "182/182",
+      "production_main_scene_used": true,
+      "fixture_state_injection_count": 0
+    },
+    "v076_alpha07_pacing_determinism_test": {"status": "PASS", "checks": "11/11"},
+    "v076_human_golden_observation_readiness_test": {"status": "PASS", "checks": "35/35", "human_green": false},
+    "ui_text_smoke_test": {"status": "PASS"},
+    "visual_snapshot": {"status": "PASS"},
+    "git_diff_check": {"status": "PASS"}
+  },
+  "real_production_drag_audit": {
+    "scene": "res://scenes/main.tscn",
+    "status": "PASS",
+    "checks": "19",
+    "drag_started": 1,
+    "central_drop": 1,
+    "card_queue_submission": 1,
+    "rejection": 0,
+    "manual_drag_drop": 1,
+    "source_revalidated_against_current_private_hand": true
+  },
+  "loading_feedback_observation": {
+    "latest_automated_first_playable_latency_ms": 3209,
+    "overlay_stage_count": 3,
+    "authority_initialization_async_split_count": 0,
+    "gameplay_owner_count": 0,
+    "tick_owner_count": 0,
+    "note": "The authoritative synchronous start remains intact; the overlay now makes the wait visible and records a presentation-only latency marker. Human judgment is still required for whether the remaining latency is comfortable."
+  },
+  "godot_mcp_runtime": {
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "production_scene_started": true,
+    "headed_window_observed": true,
+    "hard_product_runtime_error_count": 0,
+    "environment_runtime_error_count": 1,
+    "environment_runtime_error_class": "WASAPI audio device invalidation after headed run; unrelated to UI/gameplay authority",
+    "existing_script_warning_count": "nonzero, pre-existing warnings only",
+    "clean_stop_completed_for_headless_validation": true,
+    "headed_window_left_open_for_human_retest": true
+  },
+  "not_claimed": [
+    "human_golden_run_pass",
+    "human_green",
+    "full_alpha07_production_green",
+    "step13_victory_qualification_pass",
+    "step14_final_settlement_human_pass",
+    "step15_feedback_clean_stop_human_pass",
+    "full_world_reproof"
+  ]
+}

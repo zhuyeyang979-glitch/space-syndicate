@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/v076/v076_deterministic_kernel_bench.gd" id="1_bench"]
+
+[node name="V076DeterministicKernelBench" type="Node"]
+script = ExtResource("1_bench")

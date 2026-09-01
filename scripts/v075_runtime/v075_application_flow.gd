@@ -4,21 +4,50 @@ class_name V075ApplicationFlow
 signal projection_changed(snapshot: Dictionary)
 signal receipt_ready(receipt: Dictionary)
 signal owner_private_receipt_ready(receipt: Dictionary)
+signal deck_lifecycle_presentation_receipt_ready(receipt: Dictionary)
+signal track_presentation_receipt_ready(receipt: Dictionary)
 signal final_settlement_presented(settlement: Dictionary)
 signal runtime_fault_presented(receipt: Dictionary)
 signal public_resolution_ready(receipt: Dictionary)
 signal playtest_observation_ready(receipt: Dictionary)
+signal pacing_state_changed(state: Dictionary)
 
 const RULESET_ID := "v0.7.5"
 const SAMPLE_MODE_ID := "NEW_V075_GAME"
 const DEFAULT_SEED := 900626424
 const CUTOVER_DOMAIN_COUNT := 29
 const PRIVATE_SKILL_INTENT_KIND := "combat.monster_private_skill.request"
+const V076_PRODUCTION_MILITARY_INTENT_KIND := "combat.military_mission.select"
+const V076_PRODUCTION_MILITARY_RECEIPT_SCHEMA := (
+	"V076OwnerPrivateMilitaryApplicationReceiptV1"
+)
+const PLAYTEST_PACE_MULTIPLIERS := [0, 1, 2, 4]
+# Human Candidate 5 runs every production action window at wall-clock 1x.
+# The other multipliers remain callable by explicit test/CI intents only; no
+# production Control exposes them to human input.
+const DEFAULT_PLAYTEST_PACE_MULTIPLIER := 1
+const FAST_FORWARD_PLAYTEST_PACE_MULTIPLIER := 4
+const ProfileCatalog := preload(
+	"res://scripts/v076/military/v076_military_unit_profile_catalog_v1.gd"
+)
+const PresentationReceiptIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
+)
 
 @onready var _ruleset_owner: Node = %V075RulesetRuntimeOwner
 @onready var _runtime_owner: Node = %V075RuntimeOwner
 @onready var _combat_owner: Node = %V075CombatRuntimeOwner
 @onready var _combat_telemetry: Node = %V075CombatTelemetryService
+@onready var _v076_kernel: Node = get_node_or_null("V076DeterministicKernel")
+@onready var _v076_eta_owner: Node = get_node_or_null(
+	"V076MilitaryPhysicalEtaOwnerV1"
+)
+@onready var _v076_production_adapter: Node = get_node_or_null(
+	"V076V075ProductionAdapterV1"
+)
+@onready var _v076_private_direct_action_owner: Node = get_node_or_null(
+	"V076PrivateDirectActionInputOwnerV1"
+)
 
 var _intent_sequence := 0
 var _session_sequence := 0
@@ -34,9 +63,31 @@ var _new_game_reentry_rejection_count := 0
 var _new_game_publication_count := 0
 var _new_game_rollback_count := 0
 var _last_published_session_id := ""
+var _v076_production_required := false
+var _v076_production_ready := false
+var _v076_production_seed := 0
+var _v076_production_configuration_failure_count := 0
+var _v076_private_military_receipt_count := 0
+var _v076_monster_production_ready := false
+var _v076_monster_production_drain_failure_count := 0
+var _playtest_pace_multiplier := DEFAULT_PLAYTEST_PACE_MULTIPLIER
+var _effective_playtest_pace_multiplier := DEFAULT_PLAYTEST_PACE_MULTIPLIER
+var _playtest_pace_change_count := 0
+var _fast_forward_active := false
+var _fast_forward_request_count := 0
+var _fast_forward_decision_stop_count := 0
+var _last_human_decision_signature := ""
+var _track_presentation_receipt_forward_count := 0
+var _last_track_presentation_receipt_id := ""
 
 
 func _ready() -> void:
+	_v076_production_required = (
+		_v076_kernel != null
+		or _v076_eta_owner != null
+		or _v076_production_adapter != null
+		or _v076_private_direct_action_owner != null
+	)
 	var telemetry_binding := _runtime_owner.call(
 		"bind_combat_telemetry_service",
 		_combat_telemetry
@@ -51,6 +102,36 @@ func _ready() -> void:
 	):
 		push_error("V075 runtime composition binding failed")
 		return
+	if _v076_production_required:
+		if _v076_production_adapter == null \
+				or not _v076_production_adapter.has_method("bind_runtime_owner"):
+			_v076_production_configuration_failure_count += 1
+			push_error("V076 production adapter binding surface missing")
+			return
+		var adapter_binding := _v076_production_adapter.call(
+			"bind_runtime_owner",
+			_runtime_owner
+		) as Dictionary
+		if not bool(adapter_binding.get("accepted", false)):
+			_v076_production_configuration_failure_count += 1
+			push_error("V076 production adapter binding failed")
+			return
+		var monster_binding := _runtime_owner.call(
+			"bind_v076_monster_production_adapter",
+			_v076_production_adapter
+		) as Dictionary
+		if not bool(monster_binding.get("accepted", false)):
+			_v076_production_configuration_failure_count += 1
+			push_error("V076 Monster production adapter binding failed")
+			return
+		var terminal_drain_binding := _runtime_owner.call(
+			"bind_terminal_drain_port",
+			self
+		) as Dictionary
+		if not bool(terminal_drain_binding.get("accepted", false)):
+			_v076_production_configuration_failure_count += 1
+			push_error("V076 terminal drain observation binding failed")
+			return
 	_runtime_owner.state_changed.connect(_on_runtime_state_changed)
 	_runtime_owner.final_settlement_committed.connect(
 		_on_final_settlement_committed
@@ -62,6 +143,25 @@ func _ready() -> void:
 	_runtime_owner.playtest_observation_ready.connect(
 		_on_playtest_observation_ready
 	)
+	if _runtime_owner.has_signal(
+		"deck_lifecycle_presentation_receipt_ready"
+	):
+		_runtime_owner.connect(
+			"deck_lifecycle_presentation_receipt_ready",
+			_on_deck_lifecycle_presentation_receipt_ready
+		)
+	if _runtime_owner.has_signal("track_presentation_receipt_ready"):
+		_runtime_owner.connect(
+			"track_presentation_receipt_ready",
+			_on_track_presentation_receipt_ready
+		)
+	var pacing_binding := _runtime_owner.call(
+		"set_playtest_pace_multiplier",
+		_effective_playtest_pace_multiplier
+	) as Dictionary
+	if not bool(pacing_binding.get("accepted", false)):
+		push_error("V075 runtime pacing binding failed")
+		return
 	_composition_ready = true
 
 
@@ -141,6 +241,12 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 				"finish_maintenance",
 				actor_id
 			) as Dictionary
+		"ui.pacing.set":
+			result = _set_playtest_pacing(
+				int(parameters.get("multiplier", -1))
+			)
+		"ui.pacing.fast_forward_next_decision":
+			result = _start_fast_forward_to_next_decision(parameters)
 		"sample.accelerate":
 			result = _runtime_owner.call(
 				"run_accelerated_until_settled",
@@ -154,12 +260,11 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 				parameters
 			) as Dictionary
 		"combat.military_mission.select":
-			result = _runtime_owner.call(
-				"queue_selected_military_mission",
+			result = _submit_v076_production_military_action(
+				intent_id,
 				actor_id,
-				str(parameters.get("task_kind", "")),
 				parameters
-			) as Dictionary
+			)
 		"persistence.save":
 			result = _ruleset_owner.call(
 				"request_save",
@@ -186,7 +291,66 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 				result
 			)
 		)
+	if intent_kind == V076_PRODUCTION_MILITARY_INTENT_KIND:
+		return _publish_owner_private_military_receipt(
+			intent_id,
+			actor_id,
+			result
+		)
 	return _publish_receipt(_bind_receipt(intent_id, intent_kind, result))
+
+
+func _submit_v076_production_military_action(
+	intent_id: String,
+	actor_id: String,
+	parameters: Dictionary
+) -> Dictionary:
+	if not _v076_production_required or not _v076_production_ready:
+		return _reject_action_result(
+			"v076_production_military_direct_action_not_ready"
+		)
+	var bundle_result := _runtime_owner.call(
+		"authorize_v076_production_military_bundle",
+		actor_id,
+		parameters
+	) as Dictionary
+	if not bool(bundle_result.get("accepted", false)):
+		return _reject_action_result(str(bundle_result.get(
+			"reason_code",
+			"v076_production_military_authorization_rejected"
+		)))
+	var bundle := bundle_result.get("bundle", {}) as Dictionary
+	var submission_id := "v076.production.military.%s" % intent_id
+	var request_result := _runtime_owner.call(
+		"build_v076_production_military_request",
+		actor_id,
+		submission_id,
+		parameters,
+		bundle
+	) as Dictionary
+	if not bool(request_result.get("accepted", false)):
+		return _reject_action_result(str(request_result.get(
+			"reason",
+			"v076_production_military_request_rejected"
+		)))
+	var submitted := _v076_private_direct_action_owner.call(
+		"submit_private_military_direct_action",
+		bundle,
+		request_result.get("request", {}) as Dictionary
+	) as Dictionary
+	if not bool(submitted.get("accepted", false)):
+		return _reject_action_result(str(submitted.get(
+			"reason",
+			"v076_production_military_submission_rejected"
+		)))
+	var result := submitted.duplicate(true)
+	result["reason_code"] = "v076_production_military_direct_action_submitted"
+	result["submission_id"] = submission_id
+	return result
+
+
+func _reject_action_result(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason_code": reason_code}
 
 
 func issue_intent(intent_kind: String, parameters: Dictionary = {}) -> Dictionary:
@@ -202,6 +366,348 @@ func issue_intent(intent_kind: String, parameters: Dictionary = {}) -> Dictionar
 	}
 
 
+func pacing_snapshot() -> Dictionary:
+	var human_decision := _human_decision_snapshot()
+	return {
+		"schema": "V076PlaytestPaceStateV1",
+		"multiplier": _playtest_pace_multiplier,
+		"effective_multiplier": _effective_playtest_pace_multiplier,
+		"fast_forward_active": _fast_forward_active,
+		"fast_forward_available": (
+			_composition_ready
+			and bool(human_decision.get("match_started", false))
+			and not bool(human_decision.get("decision_required", false))
+			and not bool(human_decision.get("terminal", false))
+		),
+		"human_decision_required": bool(
+			human_decision.get("decision_required", false)
+		),
+		"human_decision_reason_code": str(
+			human_decision.get("reason_code", "no_human_decision")
+		),
+		"mode_count": PLAYTEST_PACE_MULTIPLIERS.size(),
+		"logical_kernel_tick_hz": 20,
+		"changes_authority_tick_order": false,
+		"changes_rng_order": false,
+		"changes_rule_duration_ticks": false,
+		"injects_authority_state": false,
+		"simulation_clock_owner_count_delta": 0,
+	}
+
+
+func _set_playtest_pacing(multiplier: int) -> Dictionary:
+	if multiplier not in PLAYTEST_PACE_MULTIPLIERS:
+		return _reject_action_result("playtest_pace_multiplier_invalid")
+	_fast_forward_active = false
+	var runtime_result := _runtime_owner.call(
+		"set_playtest_pace_multiplier",
+		multiplier
+	) as Dictionary
+	if not bool(runtime_result.get("accepted", false)):
+		return _reject_action_result(str(runtime_result.get(
+			"reason_code",
+			"runtime_playtest_pace_rejected"
+		)))
+	_playtest_pace_multiplier = multiplier
+	_effective_playtest_pace_multiplier = multiplier
+	_playtest_pace_change_count += 1
+	var state := pacing_snapshot()
+	pacing_state_changed.emit(state.duplicate(true))
+	return {
+		"accepted": true,
+		"reason_code": "playtest_pace_applied",
+		"pacing": state,
+	}
+
+
+func _start_fast_forward_to_next_decision(
+	parameters: Dictionary
+) -> Dictionary:
+	for field_name in [
+		"human_confirmation_open",
+		"purchase_confirmation_open",
+		"target_selection_open",
+		"coach_open",
+		"combat_intervention_open",
+	]:
+		if (
+			not bool(parameters.get("ui_gate_attested", false))
+			or bool(parameters.get(field_name, true))
+		):
+			return _reject_action_result(
+				"fast_forward_human_surface_open"
+			)
+	var human_decision := _human_decision_snapshot()
+	if not bool(human_decision.get("match_started", false)):
+		return _reject_action_result("fast_forward_match_not_started")
+	if bool(human_decision.get("terminal", false)):
+		return _reject_action_result("fast_forward_match_terminal")
+	if bool(human_decision.get("decision_required", false)):
+		return _reject_action_result("fast_forward_human_decision_required")
+	if _fast_forward_active:
+		return {
+			"accepted": true,
+			"reason_code": "fast_forward_already_active",
+			"pacing": pacing_snapshot(),
+		}
+	var runtime_result := _runtime_owner.call(
+		"set_playtest_pace_multiplier",
+		FAST_FORWARD_PLAYTEST_PACE_MULTIPLIER
+	) as Dictionary
+	if not bool(runtime_result.get("accepted", false)):
+		return _reject_action_result(str(runtime_result.get(
+			"reason_code",
+			"runtime_fast_forward_rejected"
+		)))
+	_fast_forward_active = true
+	_effective_playtest_pace_multiplier = FAST_FORWARD_PLAYTEST_PACE_MULTIPLIER
+	_fast_forward_request_count += 1
+	var state := pacing_snapshot()
+	pacing_state_changed.emit(state.duplicate(true))
+	return {
+		"accepted": true,
+		"reason_code": "fast_forward_to_next_decision_started",
+		"pacing": state,
+	}
+
+
+func _human_decision_snapshot() -> Dictionary:
+	if (
+		_runtime_owner == null
+		or not is_instance_valid(_runtime_owner)
+		or not _runtime_owner.has_method("human_decision_snapshot")
+	):
+		return {
+			"match_started": false,
+			"decision_required": false,
+			"terminal": false,
+			"reason_code": "human_decision_source_unavailable",
+		}
+	return _runtime_owner.call("human_decision_snapshot") as Dictionary
+
+
+func _human_decision_signature(snapshot: Dictionary) -> String:
+	return "%s|%s|%s|%s" % [
+		str(snapshot.get("match_started", false)),
+		str(snapshot.get("phase", "idle")),
+		str(snapshot.get("decision_required", false)),
+		str(snapshot.get("terminal", false)),
+	]
+
+
+func _publish_pacing_state_if_decision_changed() -> void:
+	var decision := _human_decision_snapshot()
+	var signature := _human_decision_signature(decision)
+	if signature == _last_human_decision_signature:
+		return
+	_last_human_decision_signature = signature
+	if _fast_forward_active and bool(decision.get("decision_required", false)):
+		_stop_fast_forward_for_human_decision()
+		return
+	pacing_state_changed.emit(pacing_snapshot())
+
+
+func _stop_fast_forward_for_human_decision() -> void:
+	if not _fast_forward_active:
+		return
+	_fast_forward_active = false
+	_effective_playtest_pace_multiplier = _playtest_pace_multiplier
+	var restored := _runtime_owner.call(
+		"set_playtest_pace_multiplier",
+		_playtest_pace_multiplier
+	) as Dictionary
+	if not bool(restored.get("accepted", false)):
+		push_error("V075 runtime pacing restore failed")
+		return
+	_fast_forward_decision_stop_count += 1
+	pacing_state_changed.emit(pacing_snapshot())
+
+
+func _ensure_v076_production_configuration(seed_value: int) -> Dictionary:
+	if not _v076_production_required:
+		return {"accepted": true, "reason_code": "v076_production_not_present"}
+	if _v076_production_ready:
+		if seed_value != _v076_production_seed:
+			return _reject_action_result(
+				"v076_production_kernel_seed_reconfiguration_forbidden"
+			)
+		return {"accepted": true, "reason_code": "v076_production_ready"}
+	if (
+		_v076_kernel == null
+		or _v076_eta_owner == null
+		or _v076_private_direct_action_owner == null
+		or _v076_production_adapter == null
+	):
+		_v076_production_configuration_failure_count += 1
+		return _reject_action_result("v076_production_dependency_missing")
+	var kernel_config := _v076_kernel.call("configure", seed_value) as Dictionary
+	if not bool(kernel_config.get("accepted", false)):
+		_v076_production_configuration_failure_count += 1
+		return _reject_action_result(str(kernel_config.get(
+			"reason",
+			"v076_production_kernel_configuration_rejected"
+		)))
+	var profile_authority := ProfileCatalog.new()
+	var eta_config := _v076_eta_owner.call(
+		"configure",
+		profile_authority
+	) as Dictionary
+	if not bool(eta_config.get("accepted", false)):
+		_v076_production_configuration_failure_count += 1
+		return _reject_action_result(str(eta_config.get(
+			"reason",
+			"v076_production_eta_configuration_rejected"
+		)))
+	var direct_config := _v076_private_direct_action_owner.call(
+		"configure_dependencies",
+		_v076_kernel,
+		_v076_production_adapter,
+		_v076_production_adapter,
+		_v076_production_adapter,
+		_v076_production_adapter,
+		profile_authority,
+		_v076_eta_owner,
+		_runtime_owner,
+		_v076_production_adapter
+	) as Dictionary
+	if not bool(direct_config.get("accepted", false)):
+		_v076_production_configuration_failure_count += 1
+		return _reject_action_result(str(direct_config.get(
+			"reason",
+			"v076_production_direct_action_configuration_rejected"
+		)))
+	_v076_production_seed = seed_value
+	_v076_production_ready = true
+	return {
+		"accepted": true,
+		"reason_code": "v076_production_configuration_ready",
+		"seed": seed_value,
+		"kernel_owner": "V076DeterministicKernel",
+		"direct_action_owner": "V076PrivateDirectActionInputOwnerV1",
+	}
+
+
+func terminal_drain_snapshot() -> Dictionary:
+	if (
+		not _v076_production_ready
+		or not is_instance_valid(_v076_kernel)
+		or not is_instance_valid(_v076_private_direct_action_owner)
+	):
+		return {
+			"valid": false,
+			"reason_code": "terminal_drain_dependencies_not_ready",
+		}
+	var kernel_debug := _v076_kernel.call("debug_snapshot") as Dictionary
+	var direct_debug := _v076_private_direct_action_owner.call(
+		"debug_snapshot"
+	) as Dictionary
+	var direct_drain := _v076_private_direct_action_owner.call(
+		"terminal_drain_snapshot"
+	) as Dictionary
+	var captured := _v076_kernel.call("capture_snapshot") as Dictionary
+	var kernel_snapshot := captured.get("snapshot", {}) as Dictionary
+	var direct_domain_id := str(direct_debug.get("domain_id", ""))
+	var pending_direct_command_count := 0
+	for command_variant in kernel_snapshot.get("pending_commands", []) as Array:
+		var command := command_variant as Dictionary
+		if str(command.get("domain_id", "")) == direct_domain_id:
+			pending_direct_command_count += 1
+	var unresolved_action_ids := direct_drain.get(
+		"unresolved_action_ids",
+		[]
+	) as Array
+	var valid := (
+		int(kernel_debug.get("domain_count", 0)) > 0
+		and bool(direct_debug.get("configured", false))
+		and bool(direct_drain.get("valid", false))
+		and bool(captured.get("accepted", false))
+		and not direct_domain_id.is_empty()
+	)
+	return {
+		"schema": "V076CompleteMajorRoundTerminalDrainSnapshotV1",
+		"valid": valid,
+		"drained": (
+			valid
+			and pending_direct_command_count == 0
+			and unresolved_action_ids.is_empty()
+		),
+		"current_tick": int(kernel_debug.get("current_tick", -1)),
+		"pending_command_count": pending_direct_command_count,
+		"unresolved_action_count": unresolved_action_ids.size(),
+		"unresolved_action_ids": unresolved_action_ids.duplicate(),
+		"public_batch_complete": str(_runtime_owner.call("phase")) in [
+			"terminal_draining",
+			"settled",
+		],
+		"writes_gameplay_authority": false,
+	}
+
+
+func _process(delta: float) -> void:
+	if (
+		_fast_forward_active
+		and bool(_human_decision_snapshot().get("decision_required", false))
+	):
+		_stop_fast_forward_for_human_decision()
+	if not _v076_production_ready or not _v076_monster_production_ready:
+		return
+	var elapsed_us := maxi(
+		0,
+		int(round(
+			delta * float(_effective_playtest_pace_multiplier) * 1_000_000.0
+		))
+	)
+	if elapsed_us <= 0:
+		return
+	var advanced := _v076_kernel.call(
+		"advance_elapsed_us",
+		elapsed_us
+	) as Dictionary
+	if not bool(advanced.get("accepted", false)):
+		push_error("V076 production kernel advance failed")
+		return
+	if int(advanced.get("advanced_tick_count", 0)) <= 0:
+		return
+	var monster_drain := _v076_production_adapter.call(
+		"drain_monster_production_receipts"
+	) as Dictionary
+	if not bool(monster_drain.get("accepted", false)):
+		_v076_monster_production_drain_failure_count += 1
+		push_error(
+			"V076 Monster production receipt settlement failed: %s" % str(
+				monster_drain.get("reason", "unknown")
+			)
+		)
+		return
+	var intake := _v076_private_direct_action_owner.call(
+		"settle_ready_private_actions"
+	) as Dictionary
+	if not bool(intake.get("accepted", false)):
+		push_error("V076 private intake settlement failed")
+		return
+	for receipt_variant in intake.get("receipts", []) as Array:
+		_publish_owner_private_military_receipt(
+			str((receipt_variant as Dictionary).get("submission_id", "")),
+			str(_runtime_owner.call("local_player_id")),
+			receipt_variant as Dictionary
+		)
+	for submission_id in _v076_private_direct_action_owner.call(
+		"withdrawal_ready_submission_ids"
+	) as Array:
+		var settled := _v076_private_direct_action_owner.call(
+			"settle_completed_submission",
+			str(submission_id)
+		) as Dictionary
+		if not bool(settled.get("accepted", false)):
+			push_error("V076 private military completion settlement failed")
+			continue
+		_publish_owner_private_military_receipt(
+			str(submission_id),
+			str(_runtime_owner.call("local_player_id")),
+			settled
+		)
+
+
 func local_snapshot() -> Dictionary:
 	var actor_id := str(_runtime_owner.call("local_player_id"))
 	return (
@@ -209,6 +715,196 @@ func local_snapshot() -> Dictionary:
 		if not actor_id.is_empty()
 		else {}
 	)
+
+
+## Unique production aggregation point for presentation mutation evidence.
+## Every private owner returns a hash-only witness.  Missing owners, missing
+## APIs, or malformed hashes fail closed instead of falling back to an empty
+## local Projection.
+func presentation_authority_guard_snapshot() -> Dictionary:
+	var component_ids := [
+		"V075RulesetRuntimeOwner",
+		"V075RuntimeOwner",
+		"V075CombatRuntimeOwner",
+		"V076DeterministicKernel",
+		"V076PrivateDirectActionInputOwnerV1",
+		"V076MilitaryPhysicalEtaOwnerV1",
+		"V076V075ProductionAdapterV1",
+	]
+	var component_hashes: Dictionary = {}
+	var missing_components: Array[String] = []
+
+	var ruleset_debug: Dictionary = {}
+	if _ruleset_owner != null and _ruleset_owner.has_method("debug_snapshot"):
+		ruleset_debug = _ruleset_owner.call("debug_snapshot") as Dictionary
+	if ruleset_debug.is_empty():
+		missing_components.append("V075RulesetRuntimeOwner")
+	else:
+		component_hashes["V075RulesetRuntimeOwner"] = (
+			PresentationReceiptIdentity.canonical_sha256(ruleset_debug)
+		)
+
+	var runtime_guard: Dictionary = {}
+	if (
+		_runtime_owner != null
+		and _runtime_owner.has_method("presentation_authority_guard_snapshot")
+	):
+		runtime_guard = _runtime_owner.call(
+			"presentation_authority_guard_snapshot"
+		) as Dictionary
+	_register_guard_component(
+		component_hashes,
+		missing_components,
+		"V075RuntimeOwner",
+		runtime_guard
+	)
+
+	var combat_guard: Dictionary = {}
+	if (
+		_combat_owner != null
+		and _combat_owner.has_method("presentation_authority_guard_snapshot")
+	):
+		combat_guard = _combat_owner.call(
+			"presentation_authority_guard_snapshot"
+		) as Dictionary
+	_register_guard_component(
+		component_hashes,
+		missing_components,
+		"V075CombatRuntimeOwner",
+		combat_guard
+	)
+
+	var kernel_guard: Dictionary = {}
+	if (
+		_v076_kernel != null
+		and _v076_kernel.has_method("presentation_authority_guard_snapshot")
+	):
+		kernel_guard = _v076_kernel.call(
+			"presentation_authority_guard_snapshot"
+		) as Dictionary
+	_register_guard_component(
+		component_hashes,
+		missing_components,
+		"V076DeterministicKernel",
+		kernel_guard
+	)
+
+	var direct_guard: Dictionary = {}
+	if (
+		_v076_private_direct_action_owner != null
+		and _v076_private_direct_action_owner.has_method(
+			"presentation_authority_guard_snapshot"
+		)
+	):
+		direct_guard = _v076_private_direct_action_owner.call(
+			"presentation_authority_guard_snapshot"
+		) as Dictionary
+	_register_guard_component(
+		component_hashes,
+		missing_components,
+		"V076PrivateDirectActionInputOwnerV1",
+		direct_guard
+	)
+
+	for component_row in [
+		{
+			"id": "V076MilitaryPhysicalEtaOwnerV1",
+			"node": _v076_eta_owner,
+		},
+		{
+			"id": "V076V075ProductionAdapterV1",
+			"node": _v076_production_adapter,
+		},
+	]:
+		var component_id := str(component_row.get("id", ""))
+		var component: Variant = component_row.get("node")
+		var debug: Dictionary = {}
+		if component != null and component.has_method("debug_snapshot"):
+			debug = component.call("debug_snapshot") as Dictionary
+		if debug.is_empty():
+			missing_components.append(component_id)
+		else:
+			component_hashes[component_id] = (
+				PresentationReceiptIdentity.canonical_sha256(debug)
+			)
+
+	var flow_state := {
+		"intent_sequence": _intent_sequence,
+		"session_sequence": _session_sequence,
+		"composition_ready": _composition_ready,
+		"new_game_transaction_in_progress": _new_game_transaction_in_progress,
+		"new_game_transaction_stage": _new_game_transaction_stage,
+		"last_new_game_transaction_stage": _last_new_game_transaction_stage,
+		"new_game_publication_count": _new_game_publication_count,
+		"new_game_rollback_count": _new_game_rollback_count,
+		"last_published_session_id": _last_published_session_id,
+		"pacing": pacing_snapshot(),
+	}
+	var boundary := {
+		"schema": "V076PresentationAuthorityGuardV1",
+		"component_ids": component_ids,
+		"component_hashes": component_hashes,
+		"flow_state": flow_state,
+	}
+	var snapshot_sha256 := PresentationReceiptIdentity.canonical_sha256(
+		boundary
+	)
+	return {
+		"schema": "V076PresentationAuthorityGuardV1",
+		"valid": (
+			missing_components.is_empty()
+			and component_hashes.size() == component_ids.size()
+			and _all_guard_hashes_valid(component_hashes)
+			and snapshot_sha256.length() == 64
+		),
+		"component_ids": component_ids,
+		"component_hashes": component_hashes,
+		"component_count": component_hashes.size(),
+		"missing_components": missing_components,
+		"missing_component_count": missing_components.size(),
+		"kernel_current_tick": int(kernel_guard.get("current_tick", -1)),
+		"kernel_next_authority_sequence": int(kernel_guard.get(
+			"next_authority_sequence", -1
+		)),
+		"kernel_rng_state_sha256": str(kernel_guard.get(
+			"rng_state_sha256", ""
+		)),
+		"runtime_card_zone_state_sha256": str(runtime_guard.get(
+			"card_zone_state_sha256", ""
+		)),
+		"runtime_track_state_sha256": str(runtime_guard.get(
+			"track_state_sha256", ""
+		)),
+		"runtime_facility_state_sha256": str(runtime_guard.get(
+			"facility_state_sha256", ""
+		)),
+		"runtime_settlement_state_sha256": str(runtime_guard.get(
+			"settlement_state_sha256", ""
+		)),
+		"snapshot_sha256": snapshot_sha256,
+		"contains_private_values": false,
+		"writes_authority": false,
+	}
+
+
+func _register_guard_component(
+	component_hashes: Dictionary,
+	missing_components: Array[String],
+	component_id: String,
+	guard: Dictionary
+) -> void:
+	var state_sha256 := str(guard.get("state_sha256", ""))
+	if not bool(guard.get("valid", false)) or state_sha256.length() != 64:
+		missing_components.append(component_id)
+		return
+	component_hashes[component_id] = state_sha256
+
+
+func _all_guard_hashes_valid(component_hashes: Dictionary) -> bool:
+	for hash_variant in component_hashes.values():
+		if str(hash_variant).length() != 64:
+			return false
+	return true
 
 
 func planet_map_view_payload(
@@ -285,6 +981,36 @@ func debug_snapshot() -> Dictionary:
 		"combat_dual_write_count": 0,
 		"combat_legacy_fallback_count": 0,
 		"mixed_ruleset_state_count": 0,
+		"v076_production_required": _v076_production_required,
+		"v076_production_ready": _v076_production_ready,
+		"v076_kernel_owner_count": 1 if _v076_kernel != null else 0,
+		"v076_private_direct_action_owner_count": (
+			1 if _v076_private_direct_action_owner != null else 0
+		),
+		"v076_production_adapter_count": (
+			1 if _v076_production_adapter != null else 0
+		),
+		"v076_military_eta_owner_count": 1 if _v076_eta_owner != null else 0,
+		"v076_production_configuration_failure_count": (
+			_v076_production_configuration_failure_count
+		),
+		"v076_private_military_receipt_count": (
+			_v076_private_military_receipt_count
+		),
+		"v076_monster_production_ready": _v076_monster_production_ready,
+		"v076_monster_production_drain_failure_count": (
+			_v076_monster_production_drain_failure_count
+		),
+		"v076_public_batch_entry_count": 0,
+		"v076_shared_sushi_track_resolution_count": 0,
+		"track_presentation_receipt_forward_count": (
+			_track_presentation_receipt_forward_count
+		),
+		"last_track_presentation_receipt_id": _last_track_presentation_receipt_id,
+		"playtest_pacing": pacing_snapshot(),
+		"playtest_pace_change_count": _playtest_pace_change_count,
+		"fast_forward_request_count": _fast_forward_request_count,
+		"fast_forward_decision_stop_count": _fast_forward_decision_stop_count,
 		"save_adapter_connected": false,
 		"save_resume_enabled": false,
 		"cutover_domain_count": CUTOVER_DOMAIN_COUNT,
@@ -391,6 +1117,10 @@ func _new_game_publication_stage_authorized(required_stage: String) -> bool:
 func _execute_new_game_transaction(parameters: Dictionary) -> Dictionary:
 	var player_count := int(parameters.get("player_count", 4))
 	var seed_value := int(parameters.get("seed", DEFAULT_SEED))
+	var v076_configuration := _ensure_v076_production_configuration(seed_value)
+	if not bool(v076_configuration.get("accepted", false)):
+		_new_game_transaction_stage = "v076_configuration_failed"
+		return v076_configuration
 	var publication_stage_authority := Callable(
 		self,
 		"_new_game_publication_stage_authorized"
@@ -474,6 +1204,29 @@ func _execute_new_game_transaction(parameters: Dictionary) -> Dictionary:
 			previous_session_sequence,
 			runtime_activated
 		)
+	if _v076_production_required:
+		var monster_production := _v076_production_adapter.call(
+			"configure_monster_production",
+			_v076_kernel,
+			seed_value,
+			int(map_request.get("region_count", 0)),
+			str(map_request.get("geography_complexity", ""))
+		) as Dictionary
+		if not bool(monster_production.get("accepted", false)):
+			_v076_production_configuration_failure_count += 1
+			return _rollback_prepared_new_game(
+				runtime_transaction_id,
+				ruleset_transaction_id,
+				previous_session_sequence,
+				{
+					"accepted": false,
+					"reason_code": str(monster_production.get(
+						"reason",
+						"v076_monster_production_configuration_failed"
+					)),
+				}
+			)
+		_v076_monster_production_ready = true
 	_new_game_transaction_stage = "pre_publication"
 	var runtime_sealed := _runtime_owner.call(
 		"seal_prepared_new_game_publication",
@@ -841,6 +1594,47 @@ func _publish_owner_private_receipt(receipt: Dictionary) -> Dictionary:
 	return receipt
 
 
+func _publish_owner_private_military_receipt(
+	receipt_id: String,
+	actor_id: String,
+	result: Dictionary
+) -> Dictionary:
+	## Military acknowledgements share the established owner-private signal but
+	## expose no card, target, route, asset, damage, or mission-lock payload on
+	## the generic/public receipt projection.
+	_v076_private_military_receipt_count += 1
+	var accepted := bool(result.get("accepted", false))
+	var private_receipt := {
+		"schema": V076_PRODUCTION_MILITARY_RECEIPT_SCHEMA,
+		"accepted": accepted,
+		"reason_code": str(result.get(
+			"reason_code",
+			result.get(
+				"reason",
+				"v076_production_military_action_rejected"
+			)
+		)),
+		"event_kind": (
+			"military_direct_action_acknowledged"
+			if accepted
+			else "military_direct_action_rejected"
+		),
+		"receipt_scope": "owner_private",
+		"request_status": "accepted" if accepted else "rejected",
+		"owner_player_id": actor_id,
+		"receipt_id": receipt_id,
+		"ruleset_id": RULESET_ID,
+	}
+	_last_receipt = {
+		"schema": "V075ApplicationReceiptRedactionV1",
+		"accepted": accepted,
+		"receipt_scope": "owner_private_redacted",
+		"ruleset_id": RULESET_ID,
+	}
+	owner_private_receipt_ready.emit(private_receipt.duplicate(true))
+	return private_receipt
+
+
 func _reject(
 	intent_id: String,
 	intent_kind: String,
@@ -857,7 +1651,8 @@ func _reject(
 
 
 func _on_runtime_state_changed(snapshot: Dictionary) -> void:
-	projection_changed.emit(snapshot.duplicate(true))
+	projection_changed.emit(snapshot)
+	_publish_pacing_state_if_decision_changed()
 
 
 func _on_final_settlement_committed(settlement: Dictionary) -> void:
@@ -874,3 +1669,27 @@ func _on_public_resolution_presented(receipt: Dictionary) -> void:
 
 func _on_playtest_observation_ready(receipt: Dictionary) -> void:
 	playtest_observation_ready.emit(receipt.duplicate(true))
+
+
+func _on_deck_lifecycle_presentation_receipt_ready(
+	receipt: Dictionary
+) -> void:
+	# This is an owner-private presentation bridge.  It forwards the immutable
+	# authority receipt and never submits a gameplay intent.
+	deck_lifecycle_presentation_receipt_ready.emit(receipt.duplicate(true))
+
+
+func _on_track_presentation_receipt_ready(receipt: Dictionary) -> void:
+	# The RuntimeOwner remains the sole authority.  This flow signal is only an
+	# immutable transport bridge to the already-bound GameScreen Director.
+	_track_presentation_receipt_forward_count += 1
+	_last_track_presentation_receipt_id = str(receipt.get(
+		"receipt_id",
+		receipt.get("request_id", "")
+	))
+	track_presentation_receipt_ready.emit(receipt.duplicate(true))
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(_runtime_owner):
+		_runtime_owner.call("set_playtest_pace_multiplier", 1)

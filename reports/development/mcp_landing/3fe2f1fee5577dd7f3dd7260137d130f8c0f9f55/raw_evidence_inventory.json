@@ -1,0 +1,41 @@
+{
+  "schema_version": "space_syndicate.mcp_raw_evidence_inventory.v1",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "landing_commit": "3fe2f1fee5577dd7f3dd7260137d130f8c0f9f55",
+  "landing_tree": "1905bc00e72ccc1095bf67cd14c8438ddb5341fe",
+  "evidence_root": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076_dynamic_bffc5c46_mcp_20260828T0102Z",
+  "source_session_rollout_id": "01a045b1-3bf0-7ff1-bda7-038e7db54e35",
+  "responses": {
+    "0001-get_project_info.jsonrpc.json": "254bd4e1bb6841997aa0813e3de4b04e45f8d875e20d7dbe6deb9e55c525b6a8",
+    "0011-patch_director_named_constant.jsonrpc.json": "91f48c408879cf0f4ff9347dea951212f712dfd75ef0daf1524b9ddf5a4919a7",
+    "0012-patch_monster_test_constants.jsonrpc.json": "54d1661e12e6312818c35f88577a4350740ee377b0e84c5c076c5a9c62314ec2",
+    "0013-patch_monster_test_run.jsonrpc.json": "fa945a6ac70b39652b1b9715adea60119bb63c9b929a5e0f2f58e76799254413",
+    "0014-patch_monster_test_contract.jsonrpc.json": "c8a236f8b7095d468a4604598808274479f2291fbd249b2935cbf4bd44410813",
+    "0021-patch_monster_test_exact_key_map.jsonrpc.json": "bce4267d0b7d07038dc3ba946cf59d3711de63d8d362e525ce071a9446c649cb",
+    "0022-patch_monster_test_four_runtime_counts.jsonrpc.json": "405be39c590a55657155662f164a4794ae9934f9f8a06330ac08b1b96bb30c04",
+    "0023-patch_monster_test_trailing_lf.jsonrpc.json": "0bcf4a9272303d06202a4e846fdf4708a9f6c5a3ac6f09c797532bce313f4b8d",
+    "0024-reload_director_final.jsonrpc.json": "589a0ceea3a546e851554f19693185a865e670acfc298ef58fc580f751232092",
+    "0025-reload_monster_test_final.jsonrpc.json": "afcfb67b4a1d766362edd94cb0335acb4d05791022c7cc442f1250ffe46b3213",
+    "0026-validate_director_final.jsonrpc.json": "8fec90bd678377d3b1d460795c4adf2feb99087d9a48c5c00a5155eb76e00c84",
+    "0027-validate_monster_test_final.jsonrpc.json": "79ef96d9e83ee185ab3c8c4a9209ce60b1445b97e908a4517f065adca9c5449a",
+    "0029-patch_monster_remove_retired_fixture.jsonrpc.json": "c8e0ddbdc154c2f0aef9fc0eb0dd92c5878c6bf01eeac149cc91f307a88d4ab3",
+    "0030-patch_monster_current_run_oracle.jsonrpc.json": "f636cdb14208408a1c530cbdc10a304f0c2ae709d10a35f9702283069a675e25",
+    "0031-patch_monster_current_cutover_helpers.jsonrpc.json": "58318813c4f32a605d5936324700f20997eb9b088bc8b910809c2d70d3220bf8",
+    "0032-patch_monster_remove_retired_save_helper.jsonrpc.json": "a61876884821a233d1f729611259f577678a45d5cd8b3a4bf9e7adb8458fb6fc",
+    "0033-reload_monster_current_oracle.jsonrpc.json": "e30cf56be0f71612ac8ea75d70d95b8d42a6749a77e1b507cb30329fbe4abe54",
+    "0034-validate_monster_current_oracle.jsonrpc.json": "1ca835135e193e7a670356aff1eb73e6a496d75964886fd9fb7200d6dad14b0f",
+    "0040-get_play_state_running.jsonrpc.json": "f664aa2819fa20a4a6acc94f9c61c566b44ec827a59350e31490a7a40e9fbc52",
+    "0043-capture_runtime_view_external_path_rejected.jsonrpc.json": "b89b6f2aaf6f464041830fb7f71e46c1078688480fcbff0c6ad9b3b833f7f6b9",
+    "0044-get_console_logs_error_zero.jsonrpc.json": "82677a5a9f61318ee02f9d4eea42964d4292c535176d3dd56c3aedb02b37843d",
+    "0046-get_runtime_events_success.jsonrpc.json": "4266c927081c0c8acb87986dd0c73765588da5b9243732566a188f80f785ef4d",
+    "0047-capture_runtime_view_success.jsonrpc.json": "997e8dee9f15e66b7f1143aa9a58f151817fc2e77d76aa9815d75740d75ecff2",
+    "0048-exit_play_mode_final.jsonrpc.json": "2e7a614beec760a27bfec5ecea74c6f71b8b621a0baf09ff763812bda8f4cfc1",
+    "0049-get_play_state_after_exit.jsonrpc.json": "d69ddea060ab4be833adad89af4a3c84af660e4f227f8b31cb70d7bc30b2f82e",
+    "0050-runtime_bridge_after_exit.jsonrpc.json": "9dfddd452d8a1fb6e8b574a3e43efddf981fa0e197ffa98b22a54f7274774e00"
+  },
+  "focused_result_sha256": {
+    "20260828-012031-368-v076_presentation_animation_director_test-990790ee": "b0feeadc6195e935ba2a2b34acb4dba20eeecfc7b3973a5456be8867d235136f",
+    "20260828-012039-643-gameplay_balance_diagnostics_monster_art_profile_test-51f37c21": "ee47fe2ebb05c21945b037643b26f2421c39b250aaee1c3f6bc3b3721fdd439f"
+  },
+  "runtime_capture_sha256": "3e66463cb523eb8eb7651cb1d2ddcf2327eca347ba218ee8ce09dd8e27cbbf7d"
+}

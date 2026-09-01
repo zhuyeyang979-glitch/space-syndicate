@@ -1,0 +1,14 @@
+{
+	"capture_path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\showcase_headed_client_final.png",
+	"episode_count": 0,
+	"expected_client_size": "1600x960",
+	"fixture_class": "PRESENTATION_FIXTURE",
+	"frame_count": 39,
+	"human_green": false,
+	"native_hwnd_decimal": 46860556,
+	"natural_gameplay": false,
+	"probe_nonce": "001ab42b81f04bfa8491aeedc0c61853",
+	"process_id": 21604,
+	"schema": "space_syndicate.v076.commercial_showcase_ready.v1",
+	"status": "PASS"
+}

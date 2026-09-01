@@ -1,0 +1,150 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/v076_deck_lifecycle_presentation.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/draw_deck.png" id="2_draw"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/discard_pile.png" id="3_discard"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/shuffle.png" id="4_shuffle"]
+
+[sub_resource type="StyleBoxFlat" id="StylePile"]
+bg_color = Color(0.035, 0.075, 0.12, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.34, 0.72, 0.82, 0.82)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleDiscard"]
+bg_color = Color(0.09, 0.05, 0.075, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.91, 0.52, 0.55, 0.82)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="V076DeckLifecyclePresentation" type="Control"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(330, 38)
+layout_mode = 3
+anchors_preset = 0
+mouse_filter = 2
+clip_contents = false
+script = ExtResource("1_script")
+
+[node name="DeckHudRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+
+[node name="DrawPilePanel" type="PanelContainer" parent="DeckHudRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 36)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StylePile")
+
+[node name="Row" type="HBoxContainer" parent="DeckHudRow/DrawPilePanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Icon" type="TextureRect" parent="DeckHudRow/DrawPilePanel/Row"]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("2_draw")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DrawPileCount" type="Label" parent="DeckHudRow/DrawPilePanel/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 11
+text = "抽牌堆 0"
+vertical_alignment = 1
+
+[node name="DiscardPilePanel" type="PanelContainer" parent="DeckHudRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 36)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleDiscard")
+
+[node name="Row" type="HBoxContainer" parent="DeckHudRow/DiscardPilePanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Icon" type="TextureRect" parent="DeckHudRow/DiscardPilePanel/Row"]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("3_discard")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DiscardPileCount" type="Label" parent="DeckHudRow/DiscardPilePanel/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 11
+text = "弃牌堆 0"
+vertical_alignment = 1
+
+[node name="StatusIcon" type="TextureRect" parent="DeckHudRow"]
+custom_minimum_size = Vector2(22, 22)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("4_shuffle")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StatusRows" type="VBoxContainer" parent="DeckHudRow"]
+custom_minimum_size = Vector2(105, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="ShuffleStatus" type="Label" parent="DeckHudRow/StatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.49, 0.91, 0.78, 1)
+theme_override_font_sizes/font_size = 10
+text = "牌库就绪"
+text_overrun_behavior = 3
+
+[node name="RecentDeckEvent" type="Label" parent="DeckHudRow/StatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.68, 0.77, 0.88, 1)
+theme_override_font_sizes/font_size = 9
+text = "等待取得卡牌"
+text_overrun_behavior = 3
+
+[node name="DeckAnimationLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+clip_contents = false
+z_index = 200

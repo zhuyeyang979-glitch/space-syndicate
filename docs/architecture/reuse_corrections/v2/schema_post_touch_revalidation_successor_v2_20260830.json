@@ -1,0 +1,83 @@
+{
+  "schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.post_touch_revalidation_successor_v2_schema.v1",
+  "manifest_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.post_touch_revalidation_successor_v2_manifest.v1",
+  "record_schema_version": "space_syndicate.v076.reuse_exact_failure_correction.v2.post_touch_revalidation_successor_v2_record.v1",
+  "manifest_kind": "POST_TOUCH_REVALIDATION_SUCCESSOR_V2_MANIFEST",
+  "record_kind": "POST_TOUCH_REVALIDATION_SUCCESSOR_V2_RECORD",
+  "authorization_id": "USER_AUTHORIZATION_V076_CURRENT_SUBJECT_CONVERGENCE_AND_COMMERCIAL_RESUME_20260830",
+  "authorization_base_head_sha": "7b2bd08a9916a3a517f2d418765c544cce0261cc",
+  "predecessor_authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "predecessor_authorization_base_head_sha": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "revalidation_binding_head_sha": "7e87c564fc2c092a0fb00519c15711d19f99305f",
+  "revalidation_binding_tree_sha": "ab8d71ef783710b348eb299dc7c9d5ba58172a1b",
+  "predecessor_manifest_path": "docs/architecture/reuse_corrections/v2/post_touch_revalidation/full_convergence_batch004_20260828_manifest.json",
+  "predecessor_manifest_sha256": "95b8f25cda3f42fd2b7cff4a611f1b860d58d5c5187a0b1f34bbd27cedd09ee2",
+  "predecessor_record_count": 2,
+  "predecessor_failure_fingerprint_set_sha256": "10d0cec35ae238a13bdaf6e761583012e8105fbbc4606f6f361f9dfca3834f0c",
+  "predecessor_record_chain_terminal_sha256": "6aa50705a471a94dc0af71484564a777a0ec6fc325ce68eb6592d1ba3d8427dc",
+  "target_fingerprints": [
+    "V2F-2a1119496ba5fe9ab1d523118e7f325946ad8c01fbd9d9e3c575c7d7dd4dac2b",
+    "V2F-6a4c0788f95300f0ef3c63df2b8f838824d5f4a4aa552c032b908cab9090d618"
+  ],
+  "target_fingerprint_set_sha256": "10d0cec35ae238a13bdaf6e761583012e8105fbbc4606f6f361f9dfca3834f0c",
+  "wildcard_count": 0,
+  "future_failure_auto_revalidation_count": 0,
+  "committed_only_bytes": true,
+  "one_exact_fingerprint_per_record": true,
+  "manifest_required_fields": [
+    "schema_version", "manifest_kind", "manifest_id", "authorization_id",
+    "authorization_base_head_sha", "predecessor_authorization_id",
+    "predecessor_authorization_base_head_sha", "schema_path", "schema_sha256",
+    "predecessor_manifest_path", "predecessor_manifest_sha256",
+    "predecessor_record_count", "predecessor_failure_fingerprint_set_sha256",
+    "predecessor_record_chain_terminal_sha256", "revalidation_binding_head_sha",
+    "revalidation_binding_tree_sha", "record_count", "failure_fingerprints",
+    "failure_fingerprint_set_sha256", "record_chain_start_sha256",
+    "record_chain_terminal_sha256", "record_bindings", "product_paths",
+    "authority_source_paths", "current_projection_sha256_by_failure",
+    "wildcard_count", "future_failure_auto_revalidation_count",
+    "committed_only_bytes", "created_at", "creator"
+  ],
+  "record_required_fields": [
+    "schema_version", "record_kind", "revalidation_id", "authorization_id",
+    "authorization_base_head_sha", "predecessor_authorization_id",
+    "predecessor_authorization_base_head_sha", "failure_fingerprints",
+    "failure_fingerprint_set_sha256", "predecessor_manifest_path",
+    "predecessor_manifest_sha256", "predecessor_record_chain_terminal_sha256",
+    "predecessor_record_path", "predecessor_record_sha256",
+    "predecessor_record_payload_sha256", "predecessor_revalidation_id",
+    "original_correction_record_path", "original_correction_record_sha256",
+    "original_correction_record_payload_sha256", "original_correction_id",
+    "predecessor_binding_head_sha", "predecessor_binding_tree_sha",
+    "revalidation_binding_head_sha", "revalidation_binding_tree_sha",
+    "authority_selectors", "authority_selector_sha256", "predecessor_touch_proof",
+    "predecessor_touch_proof_sha256", "prior_invalidations",
+    "predecessor_subject_projection", "predecessor_subject_projection_sha256",
+    "current_subject_projection", "current_subject_projection_sha256",
+    "changed_projection_sections", "product_path_transitions",
+    "authority_path_transitions", "current_product_blob_sha256_by_path",
+    "future_failure_policy", "wildcard_count", "new_effective_status",
+    "previous_revalidation_chain_sha256", "created_at", "creator",
+    "revalidation_reason", "record_payload_sha256"
+  ],
+  "record_binding_fields": [
+    "path", "record_sha256", "record_payload_sha256", "revalidation_id",
+    "failure_fingerprints", "previous_revalidation_chain_sha256",
+    "predecessor_record_path", "predecessor_record_sha256",
+    "predecessor_record_payload_sha256", "predecessor_revalidation_id"
+  ],
+  "path_transition_fields": [
+    "path", "before_blob_sha256", "after_blob_sha256", "touch_count", "touch_commits"
+  ],
+  "touch_commit_fields": [
+    "commit_sha", "parent_sha", "before_blob_sha256", "after_blob_sha256", "diff_sha256"
+  ],
+  "projection_fields": [
+    "dynamic_reference_rows", "owner_map_lines", "registry_rows", "supersession_rows"
+  ],
+  "negative_policy": [
+    "NO_WILDCARD", "NO_FUTURE_FAILURE_AUTO_TRUST", "NO_PREDECESSOR_MUTATION",
+    "NO_UNCOMMITTED_BYTES", "NO_TARGET_SET_EXPANSION", "NO_POST_BINDING_PRODUCT_TOUCH",
+    "NO_POST_BINDING_AUTHORITY_TOUCH", "NO_UNVERIFIED_TOUCH_PROOF"
+  ]
+}

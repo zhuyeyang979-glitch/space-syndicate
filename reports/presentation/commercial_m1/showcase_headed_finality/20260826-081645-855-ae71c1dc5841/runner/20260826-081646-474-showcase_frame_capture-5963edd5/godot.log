@@ -1,0 +1,467 @@
+Godot Engine v4.7.stable.official.5b4e0cb0f - https://godotengine.org
+Vulkan 1.4.329 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce RTX 4080 SUPER
+
+PASS: commercial showcase episode plan loads
+PASS: episode plan schema is exact
+PASS: episode plan contains exactly 13 episodes
+PASS: canonical Showcase scene exists
+PASS: canonical Showcase scene loads
+PASS: Showcase contract is explicitly a presentation fixture
+PASS: fixture banner is permanently visible
+PASS: Showcase contract exposes 13 episodes and 39 evidence frames
+PASS: Showcase exposes one canonical fixture bridge
+PASS: episode id is non-empty
+PASS: main_menu has an output directory
+PASS: main_menu prepares against the production main
+PASS: main_menu applies start frame
+PASS: main_menu start PNG saves
+PASS: main_menu start PNG is exact 1600x960
+PASS: main_menu start keeps the fixture banner visible
+PASS: main_menu start leaves authority unchanged
+PASS: main_menu start uses two exact production anchors without fallback
+PASS: main_menu start has zero presentation mutation deltas
+PASS: main_menu start uses one read-only fixture bridge
+PASS: main_menu applies mid frame
+PASS: main_menu mid PNG saves
+PASS: main_menu mid PNG is exact 1600x960
+PASS: main_menu mid keeps the fixture banner visible
+PASS: main_menu mid leaves authority unchanged
+PASS: main_menu mid uses two exact production anchors without fallback
+PASS: main_menu mid has zero presentation mutation deltas
+PASS: main_menu mid uses one read-only fixture bridge
+PASS: main_menu applies end frame
+PASS: main_menu end PNG saves
+PASS: main_menu end PNG is exact 1600x960
+PASS: main_menu end keeps the fixture banner visible
+PASS: main_menu end leaves authority unchanged
+PASS: main_menu end uses two exact production anchors without fallback
+PASS: main_menu end has zero presentation mutation deltas
+PASS: main_menu end uses one read-only fixture bridge
+PASS: main_menu expected cue equals actual queued/surface cue
+PASS: main_menu byte-equivalent receipt replay is suppressed
+PASS: main_menu finishes exactly once
+PASS: main_menu has one enqueue and one finish
+PASS: main_menu drains the Director without collision or rejection
+PASS: main_menu end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: loading has an output directory
+PASS: loading prepares against the production main
+PASS: loading applies start frame
+PASS: loading start PNG saves
+PASS: loading start PNG is exact 1600x960
+PASS: loading start keeps the fixture banner visible
+PASS: loading start leaves authority unchanged
+PASS: loading start uses two exact production anchors without fallback
+PASS: loading start has zero presentation mutation deltas
+PASS: loading start uses one read-only fixture bridge
+PASS: loading applies mid frame
+PASS: loading mid PNG saves
+PASS: loading mid PNG is exact 1600x960
+PASS: loading mid keeps the fixture banner visible
+PASS: loading mid leaves authority unchanged
+PASS: loading mid uses two exact production anchors without fallback
+PASS: loading mid has zero presentation mutation deltas
+PASS: loading mid uses one read-only fixture bridge
+PASS: loading applies end frame
+PASS: loading end PNG saves
+PASS: loading end PNG is exact 1600x960
+PASS: loading end keeps the fixture banner visible
+PASS: loading end leaves authority unchanged
+PASS: loading end uses two exact production anchors without fallback
+PASS: loading end has zero presentation mutation deltas
+PASS: loading end uses one read-only fixture bridge
+PASS: loading expected cue equals actual queued/surface cue
+PASS: loading byte-equivalent receipt replay is suppressed
+PASS: loading finishes exactly once
+PASS: loading has one enqueue and one finish
+PASS: loading drains the Director without collision or rejection
+PASS: loading end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: acquire_to_deck has an output directory
+PASS: acquire_to_deck prepares against the production main
+PASS: acquire_to_deck applies start frame
+PASS: acquire_to_deck start PNG saves
+PASS: acquire_to_deck start PNG is exact 1600x960
+PASS: acquire_to_deck start keeps the fixture banner visible
+PASS: acquire_to_deck start leaves authority unchanged
+PASS: acquire_to_deck start uses two exact production anchors without fallback
+PASS: acquire_to_deck start has zero presentation mutation deltas
+PASS: acquire_to_deck start uses one read-only fixture bridge
+PASS: acquire_to_deck applies mid frame
+PASS: acquire_to_deck mid PNG saves
+PASS: acquire_to_deck mid PNG is exact 1600x960
+PASS: acquire_to_deck mid keeps the fixture banner visible
+PASS: acquire_to_deck mid leaves authority unchanged
+PASS: acquire_to_deck mid uses two exact production anchors without fallback
+PASS: acquire_to_deck mid has zero presentation mutation deltas
+PASS: acquire_to_deck mid uses one read-only fixture bridge
+PASS: acquire_to_deck applies end frame
+PASS: acquire_to_deck end PNG saves
+PASS: acquire_to_deck end PNG is exact 1600x960
+PASS: acquire_to_deck end keeps the fixture banner visible
+PASS: acquire_to_deck end leaves authority unchanged
+PASS: acquire_to_deck end uses two exact production anchors without fallback
+PASS: acquire_to_deck end has zero presentation mutation deltas
+PASS: acquire_to_deck end uses one read-only fixture bridge
+PASS: acquire_to_deck expected cue equals actual queued/surface cue
+PASS: acquire_to_deck byte-equivalent receipt replay is suppressed
+PASS: acquire_to_deck finishes exactly once
+PASS: acquire_to_deck has one enqueue and one finish
+PASS: acquire_to_deck drains the Director without collision or rejection
+PASS: acquire_to_deck end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: shuffle has an output directory
+PASS: shuffle prepares against the production main
+PASS: shuffle applies start frame
+PASS: shuffle start PNG saves
+PASS: shuffle start PNG is exact 1600x960
+PASS: shuffle start keeps the fixture banner visible
+PASS: shuffle start leaves authority unchanged
+PASS: shuffle start uses two exact production anchors without fallback
+PASS: shuffle start has zero presentation mutation deltas
+PASS: shuffle start uses one read-only fixture bridge
+PASS: shuffle applies mid frame
+PASS: shuffle mid PNG saves
+PASS: shuffle mid PNG is exact 1600x960
+PASS: shuffle mid keeps the fixture banner visible
+PASS: shuffle mid leaves authority unchanged
+PASS: shuffle mid uses two exact production anchors without fallback
+PASS: shuffle mid has zero presentation mutation deltas
+PASS: shuffle mid uses one read-only fixture bridge
+PASS: shuffle applies end frame
+PASS: shuffle end PNG saves
+PASS: shuffle end PNG is exact 1600x960
+PASS: shuffle end keeps the fixture banner visible
+PASS: shuffle end leaves authority unchanged
+PASS: shuffle end uses two exact production anchors without fallback
+PASS: shuffle end has zero presentation mutation deltas
+PASS: shuffle end uses one read-only fixture bridge
+PASS: shuffle expected cue equals actual queued/surface cue
+PASS: shuffle byte-equivalent receipt replay is suppressed
+PASS: shuffle finishes exactly once
+PASS: shuffle has one enqueue and one finish
+PASS: shuffle drains the Director without collision or rejection
+PASS: shuffle end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: draw has an output directory
+PASS: draw prepares against the production main
+PASS: draw applies start frame
+PASS: draw start PNG saves
+PASS: draw start PNG is exact 1600x960
+PASS: draw start keeps the fixture banner visible
+PASS: draw start leaves authority unchanged
+PASS: draw start uses two exact production anchors without fallback
+PASS: draw start has zero presentation mutation deltas
+PASS: draw start uses one read-only fixture bridge
+PASS: draw applies mid frame
+PASS: draw mid PNG saves
+PASS: draw mid PNG is exact 1600x960
+PASS: draw mid keeps the fixture banner visible
+PASS: draw mid leaves authority unchanged
+PASS: draw mid uses two exact production anchors without fallback
+PASS: draw mid has zero presentation mutation deltas
+PASS: draw mid uses one read-only fixture bridge
+PASS: draw applies end frame
+PASS: draw end PNG saves
+PASS: draw end PNG is exact 1600x960
+PASS: draw end keeps the fixture banner visible
+PASS: draw end leaves authority unchanged
+PASS: draw end uses two exact production anchors without fallback
+PASS: draw end has zero presentation mutation deltas
+PASS: draw end uses one read-only fixture bridge
+PASS: draw expected cue equals actual queued/surface cue
+PASS: draw byte-equivalent receipt replay is suppressed
+PASS: draw finishes exactly once
+PASS: draw has one enqueue and one finish
+PASS: draw drains the Director without collision or rejection
+PASS: draw end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: hand_hover has an output directory
+PASS: hand_hover prepares against the production main
+PASS: hand_hover applies start frame
+PASS: hand_hover start PNG saves
+PASS: hand_hover start PNG is exact 1600x960
+PASS: hand_hover start keeps the fixture banner visible
+PASS: hand_hover start leaves authority unchanged
+PASS: hand_hover start uses two exact production anchors without fallback
+PASS: hand_hover start has zero presentation mutation deltas
+PASS: hand_hover start uses one read-only fixture bridge
+PASS: hand_hover applies mid frame
+PASS: hand_hover mid PNG saves
+PASS: hand_hover mid PNG is exact 1600x960
+PASS: hand_hover mid keeps the fixture banner visible
+PASS: hand_hover mid leaves authority unchanged
+PASS: hand_hover mid uses two exact production anchors without fallback
+PASS: hand_hover mid has zero presentation mutation deltas
+PASS: hand_hover mid uses one read-only fixture bridge
+PASS: hand_hover applies end frame
+PASS: hand_hover end PNG saves
+PASS: hand_hover end PNG is exact 1600x960
+PASS: hand_hover end keeps the fixture banner visible
+PASS: hand_hover end leaves authority unchanged
+PASS: hand_hover end uses two exact production anchors without fallback
+PASS: hand_hover end has zero presentation mutation deltas
+PASS: hand_hover end uses one read-only fixture bridge
+PASS: hand_hover expected cue equals actual queued/surface cue
+PASS: hand_hover byte-equivalent receipt replay is suppressed
+PASS: hand_hover finishes exactly once
+PASS: hand_hover has one enqueue and one finish
+PASS: hand_hover drains the Director without collision or rejection
+PASS: hand_hover end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: public_play has an output directory
+PASS: public_play prepares against the production main
+PASS: public_play applies start frame
+PASS: public_play start PNG saves
+PASS: public_play start PNG is exact 1600x960
+PASS: public_play start keeps the fixture banner visible
+PASS: public_play start leaves authority unchanged
+PASS: public_play start uses two exact production anchors without fallback
+PASS: public_play start has zero presentation mutation deltas
+PASS: public_play start uses one read-only fixture bridge
+PASS: public_play applies mid frame
+PASS: public_play mid PNG saves
+PASS: public_play mid PNG is exact 1600x960
+PASS: public_play mid keeps the fixture banner visible
+PASS: public_play mid leaves authority unchanged
+PASS: public_play mid uses two exact production anchors without fallback
+PASS: public_play mid has zero presentation mutation deltas
+PASS: public_play mid uses one read-only fixture bridge
+PASS: public_play applies end frame
+PASS: public_play end PNG saves
+PASS: public_play end PNG is exact 1600x960
+PASS: public_play end keeps the fixture banner visible
+PASS: public_play end leaves authority unchanged
+PASS: public_play end uses two exact production anchors without fallback
+PASS: public_play end has zero presentation mutation deltas
+PASS: public_play end uses one read-only fixture bridge
+PASS: public_play expected cue equals actual queued/surface cue
+PASS: public_play byte-equivalent receipt replay is suppressed
+PASS: public_play finishes exactly once
+PASS: public_play has one enqueue and one finish
+PASS: public_play drains the Director without collision or rejection
+PASS: public_play end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: public_resolution has an output directory
+PASS: public_resolution prepares against the production main
+PASS: public_resolution applies start frame
+PASS: public_resolution start PNG saves
+PASS: public_resolution start PNG is exact 1600x960
+PASS: public_resolution start keeps the fixture banner visible
+PASS: public_resolution start leaves authority unchanged
+PASS: public_resolution start uses two exact production anchors without fallback
+PASS: public_resolution start has zero presentation mutation deltas
+PASS: public_resolution start uses one read-only fixture bridge
+PASS: public_resolution applies mid frame
+PASS: public_resolution mid PNG saves
+PASS: public_resolution mid PNG is exact 1600x960
+PASS: public_resolution mid keeps the fixture banner visible
+PASS: public_resolution mid leaves authority unchanged
+PASS: public_resolution mid uses two exact production anchors without fallback
+PASS: public_resolution mid has zero presentation mutation deltas
+PASS: public_resolution mid uses one read-only fixture bridge
+PASS: public_resolution applies end frame
+PASS: public_resolution end PNG saves
+PASS: public_resolution end PNG is exact 1600x960
+PASS: public_resolution end keeps the fixture banner visible
+PASS: public_resolution end leaves authority unchanged
+PASS: public_resolution end uses two exact production anchors without fallback
+PASS: public_resolution end has zero presentation mutation deltas
+PASS: public_resolution end uses one read-only fixture bridge
+PASS: public_resolution expected cue equals actual queued/surface cue
+PASS: public_resolution byte-equivalent receipt replay is suppressed
+PASS: public_resolution finishes exactly once
+PASS: public_resolution has one enqueue and one finish
+PASS: public_resolution drains the Director without collision or rejection
+PASS: public_resolution end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: facility has an output directory
+PASS: facility prepares against the production main
+PASS: facility applies start frame
+PASS: facility start PNG saves
+PASS: facility start PNG is exact 1600x960
+PASS: facility start keeps the fixture banner visible
+PASS: facility start leaves authority unchanged
+PASS: facility start uses two exact production anchors without fallback
+PASS: facility start has zero presentation mutation deltas
+PASS: facility start uses one read-only fixture bridge
+PASS: facility applies mid frame
+PASS: facility mid PNG saves
+PASS: facility mid PNG is exact 1600x960
+PASS: facility mid keeps the fixture banner visible
+PASS: facility mid leaves authority unchanged
+PASS: facility mid uses two exact production anchors without fallback
+PASS: facility mid has zero presentation mutation deltas
+PASS: facility mid uses one read-only fixture bridge
+PASS: facility applies end frame
+PASS: facility end PNG saves
+PASS: facility end PNG is exact 1600x960
+PASS: facility end keeps the fixture banner visible
+PASS: facility end leaves authority unchanged
+PASS: facility end uses two exact production anchors without fallback
+PASS: facility end has zero presentation mutation deltas
+PASS: facility end uses one read-only fixture bridge
+PASS: facility expected cue equals actual queued/surface cue
+PASS: facility byte-equivalent receipt replay is suppressed
+PASS: facility finishes exactly once
+PASS: facility has one enqueue and one finish
+PASS: facility drains the Director without collision or rejection
+PASS: facility end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: monster has an output directory
+PASS: monster prepares against the production main
+PASS: monster applies start frame
+PASS: monster start PNG saves
+PASS: monster start PNG is exact 1600x960
+PASS: monster start keeps the fixture banner visible
+PASS: monster start leaves authority unchanged
+PASS: monster start uses two exact production anchors without fallback
+PASS: monster start has zero presentation mutation deltas
+PASS: monster start uses one read-only fixture bridge
+PASS: monster applies mid frame
+PASS: monster mid PNG saves
+PASS: monster mid PNG is exact 1600x960
+PASS: monster mid keeps the fixture banner visible
+PASS: monster mid leaves authority unchanged
+PASS: monster mid uses two exact production anchors without fallback
+PASS: monster mid has zero presentation mutation deltas
+PASS: monster mid uses one read-only fixture bridge
+PASS: monster applies end frame
+PASS: monster end PNG saves
+PASS: monster end PNG is exact 1600x960
+PASS: monster end keeps the fixture banner visible
+PASS: monster end leaves authority unchanged
+PASS: monster end uses two exact production anchors without fallback
+PASS: monster end has zero presentation mutation deltas
+PASS: monster end uses one read-only fixture bridge
+PASS: monster expected cue equals actual queued/surface cue
+PASS: monster byte-equivalent receipt replay is suppressed
+PASS: monster finishes exactly once
+PASS: monster has one enqueue and one finish
+PASS: monster drains the Director without collision or rejection
+PASS: monster end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: military has an output directory
+PASS: military prepares against the production main
+PASS: military applies start frame
+PASS: military start PNG saves
+PASS: military start PNG is exact 1600x960
+PASS: military start keeps the fixture banner visible
+PASS: military start leaves authority unchanged
+PASS: military start uses two exact production anchors without fallback
+PASS: military start has zero presentation mutation deltas
+PASS: military start uses one read-only fixture bridge
+PASS: military applies mid frame
+PASS: military mid PNG saves
+PASS: military mid PNG is exact 1600x960
+PASS: military mid keeps the fixture banner visible
+PASS: military mid leaves authority unchanged
+PASS: military mid uses two exact production anchors without fallback
+PASS: military mid has zero presentation mutation deltas
+PASS: military mid uses one read-only fixture bridge
+PASS: military applies end frame
+PASS: military end PNG saves
+PASS: military end PNG is exact 1600x960
+PASS: military end keeps the fixture banner visible
+PASS: military end leaves authority unchanged
+PASS: military end uses two exact production anchors without fallback
+PASS: military end has zero presentation mutation deltas
+PASS: military end uses one read-only fixture bridge
+PASS: military expected cue equals actual queued/surface cue
+PASS: military byte-equivalent receipt replay is suppressed
+PASS: military finishes exactly once
+PASS: military has one enqueue and one finish
+PASS: military drains the Director without collision or rejection
+PASS: military end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: track_handoff has an output directory
+PASS: track_handoff prepares against the production main
+PASS: track_handoff applies start frame
+PASS: track_handoff start PNG saves
+PASS: track_handoff start PNG is exact 1600x960
+PASS: track_handoff start keeps the fixture banner visible
+PASS: track_handoff start leaves authority unchanged
+PASS: track_handoff start uses two exact production anchors without fallback
+PASS: track_handoff start has zero presentation mutation deltas
+PASS: track_handoff start uses one read-only fixture bridge
+PASS: track_handoff applies mid frame
+PASS: track_handoff mid PNG saves
+PASS: track_handoff mid PNG is exact 1600x960
+PASS: track_handoff mid keeps the fixture banner visible
+PASS: track_handoff mid leaves authority unchanged
+PASS: track_handoff mid uses two exact production anchors without fallback
+PASS: track_handoff mid has zero presentation mutation deltas
+PASS: track_handoff mid uses one read-only fixture bridge
+PASS: track_handoff applies end frame
+PASS: track_handoff end PNG saves
+PASS: track_handoff end PNG is exact 1600x960
+PASS: track_handoff end keeps the fixture banner visible
+PASS: track_handoff end leaves authority unchanged
+PASS: track_handoff end uses two exact production anchors without fallback
+PASS: track_handoff end has zero presentation mutation deltas
+PASS: track_handoff end uses one read-only fixture bridge
+PASS: track_handoff expected cue equals actual queued/surface cue
+PASS: track_handoff byte-equivalent receipt replay is suppressed
+PASS: track_handoff finishes exactly once
+PASS: track_handoff has one enqueue and one finish
+PASS: track_handoff drains the Director without collision or rejection
+PASS: track_handoff end Rect matches the target Rect
+PASS: episode id is non-empty
+PASS: final_settlement has an output directory
+PASS: final_settlement prepares against the production main
+PASS: final_settlement applies start frame
+PASS: final_settlement start PNG saves
+PASS: final_settlement start PNG is exact 1600x960
+PASS: final_settlement start keeps the fixture banner visible
+PASS: final_settlement start leaves authority unchanged
+PASS: final_settlement start uses two exact production anchors without fallback
+PASS: final_settlement start has zero presentation mutation deltas
+PASS: final_settlement start uses one read-only fixture bridge
+PASS: final_settlement applies mid frame
+PASS: final_settlement mid PNG saves
+PASS: final_settlement mid PNG is exact 1600x960
+PASS: final_settlement mid keeps the fixture banner visible
+PASS: final_settlement mid leaves authority unchanged
+PASS: final_settlement mid uses two exact production anchors without fallback
+PASS: final_settlement mid has zero presentation mutation deltas
+PASS: final_settlement mid uses one read-only fixture bridge
+PASS: final_settlement applies end frame
+PASS: final_settlement end PNG saves
+PASS: final_settlement end PNG is exact 1600x960
+PASS: final_settlement end keeps the fixture banner visible
+PASS: final_settlement end leaves authority unchanged
+PASS: final_settlement end uses two exact production anchors without fallback
+PASS: final_settlement end has zero presentation mutation deltas
+PASS: final_settlement end uses one read-only fixture bridge
+PASS: final_settlement expected cue equals actual queued/surface cue
+PASS: final_settlement byte-equivalent receipt replay is suppressed
+PASS: final_settlement finishes exactly once
+PASS: final_settlement has one enqueue and one finish
+PASS: final_settlement drains the Director without collision or rejection
+PASS: final_settlement end Rect matches the target Rect
+PASS: capture uses a headed display server
+PASS: headed root viewport is exact 1600x960
+PASS: headed ready payload writes
+PASS: external headed client probe acknowledgement arrives
+PASS: external headed probe passes
+PASS: external headed probe binds this Godot PID
+PASS: external headed client capture is exact 1600x960
+PASS: capture leaves the unique Director collision-free and drained
+PASS: main_menu evidence JSON writes atomically
+PASS: loading evidence JSON writes atomically
+PASS: acquire_to_deck evidence JSON writes atomically
+PASS: shuffle evidence JSON writes atomically
+PASS: draw evidence JSON writes atomically
+PASS: hand_hover evidence JSON writes atomically
+PASS: public_play evidence JSON writes atomically
+PASS: public_resolution evidence JSON writes atomically
+PASS: facility evidence JSON writes atomically
+PASS: monster evidence JSON writes atomically
+PASS: military evidence JSON writes atomically
+PASS: track_handoff evidence JSON writes atomically
+PASS: final_settlement evidence JSON writes atomically
+PASS: performance report writes atomically
+PASS: animation exact-once report writes atomically
+PASS: fixture bridge report writes atomically
+PASS: showcase capture manifest writes atomically
+V076_PHASE8_COMMERCIAL_PRESENTATION_CAPTURE|status=PASS|fixture_class=PRESENTATION_FIXTURE|natural_gameplay=false|human_green=false|episodes=13|frames=39|checks=463|failures=0

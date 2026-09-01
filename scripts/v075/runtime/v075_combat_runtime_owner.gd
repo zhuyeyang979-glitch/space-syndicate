@@ -1836,6 +1836,25 @@ func capture_checkpoint(checkpoint_id: String) -> Dictionary:
 	)
 
 
+## Read-only witness used by the commercial presentation guard.  The private
+## checkpoint never crosses the boundary; only its canonical fingerprint does.
+## This remains valid while idle, unlike the public rollback checkpoint flow.
+func presentation_authority_guard_snapshot() -> Dictionary:
+	var checkpoint_state := _checkpoint_state()
+	var state_sha256 := _fingerprint(checkpoint_state)
+	return {
+		"schema": "V076CombatPresentationAuthorityGuardV1",
+		"component_id": "V075CombatRuntimeOwner",
+		"valid": state_sha256.length() == 64,
+		"initialized": _initialized,
+		"phase": _phase,
+		"revision": _revision,
+		"state_sha256": state_sha256,
+		"contains_private_values": false,
+		"writes_authority": false,
+	}
+
+
 func rollback_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	var rollback := CombatCheckpoint.rollback(
 		_checkpoint_state(),

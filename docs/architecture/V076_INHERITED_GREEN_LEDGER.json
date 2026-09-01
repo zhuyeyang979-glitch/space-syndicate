@@ -1,0 +1,1993 @@
+{
+  "schema_version": "space_syndicate.v076.inherited_green_ledger.v2",
+  "ledger_id": "v076-inherited-green-ledger-20260821",
+  "recorded_on": "2026-08-24",
+  "candidate": {
+    "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+    "head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+    "tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
+    "pull_request": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/93",
+    "pull_request_state": "OPEN_DRAFT"
+  },
+  "discipline": {
+    "point_inertia": "ACTIVE",
+    "historical_reuse": "ACTIVE",
+    "change_class": "CROSS_DOMAIN_INTEGRATION",
+    "full_reproof_performed": false,
+    "godot_execution_count": 82,
+    "production_composition_changed": true
+  },
+  "status_vocabulary": [
+    "INHERITED_GREEN",
+    "CURRENT_DELTA_GREEN",
+    "ISOLATED_GREEN",
+    "PRODUCTION_GREEN",
+    "PENDING",
+    "UNVERIFIED",
+    "REGRESSED_WITH_EVIDENCE"
+  ],
+  "stages": [
+    {
+      "stage_id": "V076_STAGE_1_DETERMINISTIC_KERNEL",
+      "ledger_status": "INHERITED_GREEN",
+      "origin_head_sha": "553a89a1fd37170eecee50dbb373e0978604ef9f",
+      "origin_tree_sha": "80e526a36020a057c6679d625d0cddd8990b47d7",
+      "current_direct_owner_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+      "current_owner": "V076DeterministicKernel",
+      "current_owner_path": "scripts/v076/simulation/v076_deterministic_kernel.gd",
+      "change_note": "Stage 3 directly upgraded Kernel V2 root/derived/outbox/fizzle and replay ownership; this is not an unchanged-byte inheritance claim.",
+      "evidence": [
+        {
+          "evidence_id": "stage1-origin-focused",
+          "result": "PASS",
+          "checks": "57/57",
+          "replay_count": 2000,
+          "state_hash_mismatch_count": 0,
+          "evidence_scope": "origin_stage"
+        },
+        {
+          "evidence_id": "stage3-kernel-v2-direct-owner-regression",
+          "result": "PASS",
+          "checks": "74/74",
+          "replay_count": 2000,
+          "state_hash_mismatch_count": 0,
+          "evidence_scope": "current_direct_owner_delta"
+        }
+      ],
+      "not_claimed": [
+        "production_composition_cutover",
+        "human_playtest_pass",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_STAGE_2_SHARED_HALF_EDGE_SPHERICAL_PARTITION",
+      "ledger_status": "INHERITED_GREEN",
+      "origin_head_sha": "98165f09228b3ddb0cd4c09d86e52ec1a1fe5ca7",
+      "origin_tree_sha": "8516523f086c7c56ce8c2e7476c50826d1106783",
+      "current_owner": "V076SharedHalfEdgePartitionV1",
+      "current_owner_path": "scripts/v076/map/v076_shared_half_edge_partition_v1.gd",
+      "topology_sha256": "5cbd98e4027bc2cfd058c857e1a24a5f7c8c61291f1cb7ae7336bcf6851f6452",
+      "change_note": "Stage 3 did not change the Stage 2 generator, topology, validator, or codec; it changed only the map reducer for the Kernel V2 reducer ABI.",
+      "evidence": [
+        {
+          "evidence_id": "stage2-focused",
+          "result": "PASS",
+          "checks": "90/90",
+          "evidence_scope": "origin_and_current_sentinel"
+        },
+        {
+          "evidence_id": "stage2-distinct-seed-audit",
+          "result": "PASS",
+          "distinct_seed_count": 2000,
+          "fresh_same_seed_regeneration_count": 2000,
+          "generation_failure_count": 0,
+          "validation_failure_count": 0,
+          "partition_replay_mismatch_count": 0,
+          "terrain_replay_mismatch_count": 0,
+          "float_authority_field_count": 0,
+          "evidence_scope": "inherited_origin_evidence"
+        }
+      ],
+      "not_claimed": [
+        "production_map_cutover",
+        "production_presentation_cutover",
+        "human_playtest_pass",
+        "docs_only_full_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_STAGE_3_DETERMINISTIC_MONSTER_L1_DIRECTIONAL_GEODESIC_MOVE",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+      "tree_sha": "0a7c885023b75bb3f67d892b79fb8914ef87da6c",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "current_owner": "V076MonsterL1ReducerV1",
+      "current_owner_path": "scripts/v076/monster/v076_monster_l1_reducer_v1.gd",
+      "evidence": [
+        {
+          "evidence_id": "stage3-focused",
+          "result": "PASS",
+          "checks": "47/47"
+        },
+        {
+          "evidence_id": "stage3-distinct-seed-replay",
+          "result": "PASS",
+          "distinct_seed_count": 1000,
+          "replay_count_per_seed": 2,
+          "total_replay_count": 2000,
+          "replay_state_hash_mismatch_count": 0,
+          "aggregate_receipt_sha256": "bc3ebb6c182e5ee49a8aa7437562482447bfd232d9f46fd2fc765f0a4fcabca8",
+          "arc_class_table_sha256": "33ec702946b6d4bb5c417e4203b85ccb4d787547cb543c1f133f9c23ff1d07d5"
+        },
+        {
+          "evidence_id": "stage3-isolated-warning-clean-bench",
+          "result": "PASS",
+          "evidence_scope": "isolated_diagnostic_only",
+          "errors": [],
+          "human_golden_step_06_09": false,
+          "production_composition_cutover": false,
+          "manifest_sha256": "75fd0debfbb400debb3a4b0e1dffabd1cf465526a1402146be4d29dd5a87f912",
+          "runtime_log_sha256": "3244c2446a1d5b176acc59c3646af75d7134a1f4e417cc8b68e2e59a870d876d",
+          "screenshot_sha256": "262690ef1c2424b6219548a885d816170a1f0b511b5781e848fad41edd2f823c"
+        }
+      ],
+      "not_claimed": [
+        "human_golden_step_06_09",
+        "human_playtest_pass",
+        "production_composition_cutover",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_STAGE_4_PRIVATE_MILITARY_DIRECT_ACTION_ISOLATED",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b",
+      "tree_sha": "c8c4577c832665f937888d7ad215821e90518710",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "PLAYABLE_CAPABILITY",
+      "golden_step_ids": ["STEP10"],
+      "current_owner": "V076PrivateDirectActionInputOwnerV1",
+      "current_owner_path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "evidence": [
+        {
+          "evidence_id": "stage4-military-card-crosswalk-partial",
+          "result": "PASS",
+          "checks": "48/48",
+          "source_military_card_count": 28,
+          "source_military_family_count": 7,
+          "source_family_rank_coverage": "7/7",
+          "source_card_fingerprint_coverage": "28/28",
+          "mapping_record_count": 28,
+          "exact_mapped_count": 12,
+          "reauthor_required_count": 16,
+          "unmapped_card_count": 0,
+          "duplicate_mapping_count": 0,
+          "unknown_source_card_count": 0,
+          "forbidden_mission_token_count": 0,
+          "mission_fallback_count": 0,
+          "crosswalk_fingerprint_sha256": "148fbc9194a0ad4d143bff359ce92e1a4766e70193988326dd0e275c5ebd7f51",
+          "authoring_gap_report": "reports/card_certification/v076_military_authoring_gap_report.json"
+        },
+        {
+          "evidence_id": "stage4-private-input-owner-contract",
+          "result": "PASS",
+          "checks": "7/7",
+          "allowed_missions": ["ASSAULT_REGION", "ASSAULT_MONSTER"],
+          "forbidden_missions": ["GUARD", "PROTECT"]
+        },
+        {
+          "evidence_id": "stage4-private-military-direct-action-integration",
+          "result": "PASS",
+          "checks": "25/25",
+          "golden_status": "ISOLATED_GREEN",
+          "eta_ticks": 45,
+          "total_distance_mu": 2217508,
+          "kernel_root_command_count": 1,
+          "kernel_execution_count": 1,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0,
+          "route_sha256": "3925e2784627b36a5a4eb3ddec277b84107767caca9974c739439e37a97d727f",
+          "mission_receipt_fingerprint": "92d1f46eebe595805c3f38b25ea7ed97e085f74842b16419a62de489d6ee4e1e"
+        },
+        {
+          "evidence_id": "stage4-godot-mcp-isolated-bench",
+          "result": "PASS",
+          "scene": "res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn",
+          "evidence_scope": "isolated_diagnostic_only",
+          "new_file_warning_count": 0,
+          "hard_error_count": 0,
+          "stop_result": "Godot project stopped",
+          "production_green": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "stage4-inherited-focused-sentinels",
+          "result": "PASS",
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "v075_military_contract_test_count": 4,
+          "gate_selftest_checks": "114/114"
+        }
+      ],
+      "not_claimed": [
+        "production_composition_cutover",
+        "human_playtest_pass",
+        "exact_mapping_for_16_deferred_military_cards",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_STAGE4_MILITARY_AUTHORING_GAP_CLOSURE_AND_PHYSICAL_ETA_SLICE",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "d134d8ab933d829c42f3a5d57b44f852b8c1d2c9",
+      "tree_sha": "fd6678421967af06914e2a08e1db84ac213d6294",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Closes the already-green STEP10 authoring and ETA infrastructure inside the existing Stage 4 capability without adding a Golden step or claiming the still-pending tick-driven mission lifecycle.",
+      "golden_step_ids": [
+        "STEP10"
+      ],
+      "current_owners": [
+        "V076MilitaryUnitProfileAuthority",
+        "V076MilitaryPhysicalEtaOwnerV1"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "stage4-military-profile-authoring-v1",
+          "result": "PASS",
+          "checks": "59/59",
+          "profile_record_count": 28,
+          "new_authored_profile_count": 16,
+          "inherited_combat_profile_count": 12,
+          "new_authored_speed_field_count": 28,
+          "active_forbidden_mission_count": 0,
+          "active_persistent_unit_count": 0,
+          "profile_catalog_fingerprint_sha256": "b444752da78cd215606b40957260c3447f8394809eeafdbc165e7b4d5eae88fe"
+        },
+        {
+          "evidence_id": "stage4-military-crosswalk-exact",
+          "result": "PASS",
+          "checks": "52/52",
+          "source_military_card_count": 28,
+          "exact_mapped_count": 28,
+          "reauthor_required_count": 0,
+          "unmapped_card_count": 0,
+          "duplicate_mapping_count": 0,
+          "profile_binding_coverage": "28/28",
+          "crosswalk_fingerprint_sha256": "66251fc75edf3604bb6b985f177e4c09d6b19aa6d42cf0d90bbd5016be0bda89"
+        },
+        {
+          "evidence_id": "stage4-military-physical-eta",
+          "result": "PASS",
+          "checks": "48/48",
+          "distinct_seed_count": 1000,
+          "replay_count": 2000,
+          "eta_mismatch_count": 0,
+          "teleport_count": 0,
+          "distance_owner": "V076SharedHalfEdgePartitionV1",
+          "speed_owner": "V076MilitaryUnitProfileAuthority",
+          "eta_owner": "V076MilitaryPhysicalEtaOwnerV1"
+        },
+        {
+          "evidence_id": "stage4-profile-eta-private-action-integration",
+          "result": "PASS",
+          "owner_checks": "7/7",
+          "bench_checks": "26/26",
+          "eta_ticks": 5,
+          "dispatch_delay_ticks": 5,
+          "profile_id": "v075.military.air_superiority_fighter.rank_1",
+          "eta_receipt_fingerprint": "80630b049882543192af2b071cf3cbbd40835501832e1a3fbc8fd50ca5586a5c",
+          "route_sha256": "3925e2784627b36a5a4eb3ddec277b84107767caca9974c739439e37a97d727f",
+          "new_file_warning_count": 0,
+          "hard_error_count": 0,
+          "stop_result": "Godot project stopped",
+          "production_green": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "stage4-profile-eta-inherited-sentinels",
+          "result": "PASS",
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "v075_military_contract_test_count": 4,
+          "gate_selftest_checks": "114/114"
+        }
+      ],
+      "not_claimed": [
+        "tick_driven_military_mission_lifecycle",
+        "production_composition_cutover",
+        "human_playtest_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6",
+      "tree_sha": "07b967e89a3edb362dad1ee06df8a84077dc5e24",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Completes the already-green STEP10 isolated mission lifecycle inside the registered private Direct Action reducer without adding a Golden step, a second Owner, production composition, or human evidence.",
+      "golden_step_ids": [
+        "STEP10"
+      ],
+      "current_owner": "V076PrivateDirectActionInputOwnerV1",
+      "current_reducer": "V076PrivateDirectActionReducerV1",
+      "evidence": [
+        {
+          "evidence_id": "stage4-military-mission-lifecycle-reducer",
+          "result": "PASS",
+          "checks": "29/29",
+          "phases": [
+            "ARRIVED",
+            "EXECUTED_ONCE",
+            "WITHDRAWAL_READY"
+          ],
+          "zero_distance_eta_ticks": 0,
+          "zero_distance_dispatch_delay_ticks": 1,
+          "root_command_count": 1,
+          "derived_command_count": 2,
+          "mission_execution_count": 1,
+          "withdrawal_intent_count": 1,
+          "same_tick_order_mismatch_count": 0,
+          "replay_mismatch_count": 0,
+          "tampered_route_eta_profile_acceptance_count": 0,
+          "forged_derived_root_acceptance_count": 0
+        },
+        {
+          "evidence_id": "stage4-lifecycle-private-action-integration",
+          "result": "PASS",
+          "owner_checks": "7/7",
+          "bench_checks": "30/30",
+          "eta_ticks": 5,
+          "arrival_tick": 5,
+          "execution_tick": 6,
+          "withdrawal_ready_tick": 7,
+          "kernel_root_command_count": 1,
+          "kernel_derived_command_count": 2,
+          "kernel_execution_count": 3,
+          "mission_receipt_fingerprint": "65d8703cd8860baecff210f1bbbb4d7dc139ba7f4c0623c813ec8385710fde8f",
+          "asset_consumption_count": 1,
+          "military_unit_withdrawal_count": 1,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0
+        },
+        {
+          "evidence_id": "stage4-lifecycle-inherited-sentinels",
+          "result": "PASS",
+          "profile_checks": "59/59",
+          "crosswalk_checks": "52/52",
+          "eta_checks": "48/48",
+          "eta_seed_count": 1000,
+          "eta_replay_count": 2000,
+          "eta_mismatch_count": 0,
+          "eta_teleport_count": 0,
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "v075_military_contract_test_count": 4,
+          "gate_selftest_checks": "114/114"
+        },
+        {
+          "evidence_id": "stage4-lifecycle-godot-mcp-isolated-bench",
+          "result": "PASS",
+          "scene": "res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn",
+          "evidence_scope": "isolated_diagnostic_only",
+          "changed_file_warning_count": 0,
+          "hard_error_count": 0,
+          "inherited_warning_count_ignored": true,
+          "stop_result": "Godot project stopped",
+          "scoped_godot_process_count_after_stop": 0,
+          "production_green": false,
+          "human_green": false
+        }
+      ],
+      "not_claimed": [
+        "per_tick_unit_position_state",
+        "production_damage_sink_composition",
+        "production_composition_cutover",
+        "human_playtest_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_STAGE4_MILITARY_TYPED_DAMAGE_INTENT_SINK_INTEGRATION",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
+      "tree_sha": "01636f348711e3c3038468cced7e214c0c071c89",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Completes the already-green STEP10 isolated typed-damage settlement path by consuming sealed V075 facility and monster intents through their existing unique Owners. It adds no Golden step, new damage Owner, production composition cutover, or human evidence.",
+      "golden_step_ids": [
+        "STEP10"
+      ],
+      "current_owner": "V076PrivateDirectActionInputOwnerV1",
+      "reused_facility_owner": "V075RuntimeOwner",
+      "reused_monster_path": "RuntimeCommandPipeline -> MilitaryMonsterDamageCommandSink -> MonsterRuntimeController",
+      "evidence": [
+        {
+          "evidence_id": "stage4-military-typed-damage-intent-sink-integration",
+          "result": "PASS",
+          "owner_checks": "7/7",
+          "lifecycle_checks": "29/29",
+          "bench_checks": "41/41",
+          "facility_bridge_checks": "34/34",
+          "monster_mutation_path_checks": "12/12",
+          "facility_damage_receipt_count": 1,
+          "monster_damage_receipt_count": 1,
+          "monster_hp_before": 20,
+          "monster_hp_after": 17,
+          "kernel_root_command_count": 2,
+          "kernel_derived_command_count": 4,
+          "kernel_execution_count": 6,
+          "direct_reducer_mutation_count": 0,
+          "duplicate_damage_mutation_count": 0,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0
+        },
+        {
+          "evidence_id": "stage4-typed-damage-inherited-sentinels",
+          "result": "PASS",
+          "profile_checks": "59/59",
+          "crosswalk_checks": "52/52",
+          "eta_checks": "48/48",
+          "eta_seed_count": 1000,
+          "eta_replay_count": 2000,
+          "eta_mismatch_count": 0,
+          "eta_teleport_count": 0,
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "v075_military_contract_test_count": 4,
+          "gate_selftest_checks": "117/117"
+        },
+        {
+          "evidence_id": "stage4-typed-damage-godot-mcp-isolated-bench",
+          "result": "PASS",
+          "scene": "res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn",
+          "evidence_scope": "isolated_diagnostic_only",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "changed_file_warning_count": 0,
+          "hard_error_count": 0,
+          "runner_diagnostic_count": 0,
+          "runner_script_error_count": 0,
+          "stop_result": "Godot project stopped",
+          "scoped_godot_process_count_after_stop": 0,
+          "production_green": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "stage4-v075-owner-reference-lifecycle-classification-correction",
+          "result": "PASS",
+          "correction_kind": "REFERENCE_ONLY_EXISTING_OWNER_ACTIVATION_REPAIR",
+          "component_id": "component.current.v075_runtime_owner",
+          "domain_id": "current.v075_production_combat_candidate",
+          "repair_subject_head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
+          "repair_subject_tree_sha": "01636f348711e3c3038468cced7e214c0c071c89",
+          "prior_lifecycle": "REFERENCE_ONLY_DOMAIN",
+          "corrected_lifecycle": "ACTIVE_CURRENT_DOMAIN",
+          "new_owner_created": false,
+          "parallel_owner_count": 0,
+          "affected_transitions": [
+            {
+              "head_sha": "a5bf41d5d0d26bd2ebd248e16ff0c95b6e178c7d",
+              "failure_codes": [
+                "HISTORY_PRODUCT_OWNER_BINDING_INVALID",
+                "HISTORY_REFERENCE_ONLY_AUTHORITY_WRITE"
+              ]
+            },
+            {
+              "head_sha": "d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7",
+              "failure_codes": [
+                "HISTORY_REFERENCE_ONLY_AUTHORITY_WRITE"
+              ]
+            }
+          ],
+          "rationale": "The existing V075RuntimeOwner was registered atomically with its V076 extension at a5bf41d5, but its pre-existing PR90 source domain row was accidentally left REFERENCE_ONLY. This evidence activates that same unique Owner without creating, renaming, superseding, or dual-writing any authority and excuses only the exact recorded lifecycle-classification failures."
+        }
+      ],
+      "not_claimed": [
+        "production_composition_cutover",
+        "main_tscn_wiring",
+        "human_playtest_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_STAGE4_SIMULTANEOUS_PRIVATE_ACTION_ORDERING",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+      "tree_sha": "79b6f6dc6f222a3b36d86ab6f75a173154c1b4dc",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Extends the registered private Direct Action Owner and reducer with one common next-tick intake root for military and source-bound V075 monster-skill actions. Kernel Authority Sequence is the only cross-kind ordering authority; no second channel, skill queue, Owner, Bench, production composition, or Golden step is introduced.",
+      "golden_step_ids": ["STEP10"],
+      "current_owner": "V076PrivateDirectActionInputOwnerV1",
+      "current_reducer": "V076PrivateDirectActionReducerV1",
+      "reused_v075_owner": "V075RuntimeOwner",
+      "evidence": [
+        {
+          "evidence_id": "stage5-simultaneous-private-action",
+          "result": "PASS",
+          "test": "v076_simultaneous_private_action_test",
+          "checks": "9/9",
+          "action_kinds": ["MILITARY", "MONSTER_SKILL"],
+          "root_intake_count": 2,
+          "root_authority_sequence_count": 2,
+          "derived_military_command_count": 2,
+          "same_tick_order_mismatch_count": 0,
+          "replay_state_hash_mismatch_count": 0,
+          "collision_rejection_count": 1,
+          "duplicate_effect_count": 0,
+          "hidden_info_violation_count": 0,
+          "private_action_wait_for_public_batch_count": 0,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0,
+          "seed_probe_count": 1000,
+          "deterministic_replay_count": 2000
+        },
+        {
+          "evidence_id": "stage5-v075-private-skill-contracts",
+          "result": "PASS",
+          "request_telemetry_checks": "4/4",
+          "privacy_and_failure_checks": "9/9",
+          "safe_boundary_owner": "V075RuntimeOwner/V075CombatRuntimeOwner/V075MonsterPrivateSkillCore",
+          "production_composition_cutover": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "stage5-inherited-sentinels",
+          "result": "PASS",
+          "private_input_owner_checks": "7/7",
+          "military_lifecycle_checks": "29/29",
+          "military_bench_checks": "41/41",
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "v075_military_contract_test_count": 4,
+          "full_world_reproof": false
+        },
+        {
+          "evidence_id": "stage5-reuse-scan-candidate-consideration-repair",
+          "result": "PASS",
+          "correction_kind": "REUSE_SCAN_CANDIDATE_CONSIDERATION_REPAIR",
+          "repair_subject_head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+          "repair_subject_tree_sha": "d5cb2db6191ca227c227667c214c6e9971698567",
+          "corrected_reuse_candidate_id": "reuse.v075.monster_private_skill.current",
+          "prior_condition": "CANDIDATE_ID_PRESENT_BUT_NOT_DECLARED_CONSIDERED",
+          "corrected_condition": "CANDIDATE_ID_DECLARED_IN_BOTH_SCAN_LISTS",
+          "affected_component_ids": [
+            "component.current.v075_runtime_owner",
+            "component.v076.private_direct_action_input",
+            "component.v076.private_direct_action_reducer"
+          ],
+          "affected_failures": [
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.current.v075_runtime_owner"
+            },
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.current.v075_runtime_owner"
+            },
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_input"
+            },
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_input"
+            },
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_reducer"
+            },
+            {
+              "head_sha": "200bcc4dd9447f5ec1f058a9b7c2752558bbfdce",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_reducer"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.current.v075_runtime_owner"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.current.v075_runtime_owner"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_input"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_input"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_reducer"
+            },
+            {
+              "head_sha": "e6f9b9304c6b5e77287749f5c458b4927cb90547",
+              "failure_code": "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID",
+              "component_id": "component.v076.private_direct_action_reducer"
+            }
+          ],
+          "product_behavior_changed": false,
+          "new_owner_created": false,
+          "rationale": "The Stage 5 implementation added one existing V075 monster-skill reuse candidate to the canonical scan IDs but omitted the same candidate from the considered list in the same three already-registered component rows. This append-only evidence names only the resulting historical scan-contract failures; the current rows now declare the candidate in both lists, with no product behavior or Owner identity change."
+        }
+      ],
+      "not_claimed": [
+        "production_composition_cutover",
+        "main_tscn_wiring",
+        "human_playtest_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_CUTOVER",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+      "tree_sha": "ef76a8132a39fdbfdedf3965e2f358f4f1dc76a1",
+      "change_class": "PRODUCTION_COMPOSITION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Cuts the already-isolated-green STEP10 military Direct Action into the existing production V075 RuntimeComposition without adding a Golden step or upgrading scripted fixture evidence to production/human green.",
+      "golden_step_ids": ["STEP10"],
+      "current_owner": "V076PrivateDirectActionInputOwnerV1",
+      "reused_v075_owner": "V075RuntimeOwner",
+      "kernel_owner": "V076DeterministicKernel",
+      "eta_owner": "V076MilitaryPhysicalEtaOwnerV1",
+      "production_adapter": "V076V075ProductionAdapterV1",
+      "evidence": [
+        {
+          "evidence_id": "stage4-production-cutover-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_production_cutover_receipt.json",
+          "receipt_sha256": "88d738bef0aad5a8acf2e21fd9f22f24742ee66f6639aa3e73f709f3e471d012",
+          "production_scene_path": "scenes/main.tscn",
+          "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+          "atomic_cutover": true,
+          "affected_owner_count": 4,
+          "new_owner_count": 0,
+          "parallel_production_owner_count": 0,
+          "dual_write_count": 0,
+          "fallback_count": 0
+        },
+        {
+          "evidence_id": "stage4-production-military-composition-focused",
+          "result": "PASS",
+          "test": "v076_production_military_composition_test",
+          "runner_run_id": "20260823-111116-138-v076_production_military_composition_test-c0672b6b",
+          "checks": "55/55",
+          "mission_kinds": ["ASSAULT_REGION", "ASSAULT_MONSTER"],
+          "mission_settlement_count": 2,
+          "typed_damage_settlement_count": 2,
+          "kernel_root_command_count": 2,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0,
+          "active_session_restart_reason": "new_game_requires_idle_runtime",
+          "script_error_count": 0,
+          "diagnostic_count": 0,
+          "remaining_project_runtime_process_count": 0
+        },
+        {
+          "evidence_id": "stage4-production-direct-regressions",
+          "result": "PASS",
+          "v075_application_composition_checks": "111/111",
+          "v075_private_receipt_privacy_checks": "5/5",
+          "v076_private_input_owner_checks": "7/7",
+          "v07_asset_batch_core_checks": "285/285"
+        },
+        {
+          "evidence_id": "stage4-production-inherited-sentinels",
+          "result": "PASS",
+          "kernel_checks": "74/74",
+          "partition_checks": "90/90",
+          "monster_geodesic_checks": "47/47",
+          "military_profile_checks": "59/59",
+          "military_crosswalk_checks": "52/52",
+          "military_eta_checks": "48/48",
+          "military_lifecycle_checks": "29/29",
+          "simultaneous_private_action_checks": "9/9",
+          "full_world_reproof": false
+        },
+        {
+          "evidence_id": "stage4-production-main-runtime",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "hard_runtime_error_count": 0,
+          "stop_result": "Godot project stopped"
+        }
+      ],
+      "not_claimed": [
+        "golden_production_green",
+        "human_playtest_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_ALPHA07_HUMAN_GOLDEN_OBSERVATION_READINESS",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "f9963d6a615934d68d80a63a7c69a9ade710215d",
+      "tree_sha": "154f9a98c20e940dc0896672fcb9174e07ec5d9e",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Extends the one existing production-reachable V073 observation-only telemetry Owner with an immutable V076 candidate identity Adapter and one fail-closed V075 bootstrap binding. It prepares exact evidence collection without adding a Golden step, gameplay authority, human attestation, production-green claim, or human-green claim.",
+      "golden_step_ids": ["STEP10"],
+      "observation_owner": "V073PlaytestTelemetryService",
+      "candidate_profile_adapter": "V076Alpha07HumanGoldenCandidateProfile",
+      "composition_adapter": "V075ApplicationBootstrap",
+      "evidence": [
+        {
+          "evidence_id": "alpha07-human-golden-observation-readiness",
+          "result": "PASS",
+          "test": "v076_human_golden_observation_readiness_test",
+          "runner_run_id": "20260823-121905-494-v076_human_golden_observation_readiness_test-5b731c5a",
+          "checks": "35/35",
+          "evidence_source_type": "OBSERVATION_ONLY",
+          "human_executed": false,
+          "human_confirmed": false,
+          "human_evidence_claim_allowed": false,
+          "observer_attestation_required": true,
+          "script_error_count": 0,
+          "diagnostic_count": 0,
+          "remaining_project_runtime_process_count": 0
+        },
+        {
+          "evidence_id": "alpha07-human-golden-observation-owner-cardinality",
+          "result": "PASS",
+          "domain_id": "future.v076_human_playtest_evidence",
+          "owner_component_id": "component.current.v073_playtest_telemetry",
+          "owner_count": 1,
+          "adapter_count": 2,
+          "parallel_owner_count": 0,
+          "gameplay_owner_count": 0,
+          "save_owner_count": 0,
+          "rng_owner_count": 0,
+          "tick_owner_count": 0
+        },
+        {
+          "evidence_id": "alpha07-human-golden-observation-direct-regressions",
+          "result": "PASS",
+          "v075_application_composition_checks": "111/111",
+          "v075_application_composition_run_id": "20260823-122038-993-v075_application_composition_test-cffbec12",
+          "v076_production_military_composition_checks": "55/55",
+          "v076_production_military_composition_run_id": "20260823-122050-111-v076_production_military_composition_test-9300f315",
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0,
+          "production_green": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "alpha07-human-golden-observation-main-runtime",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "changed_file_warning_count": 0,
+          "hard_runtime_error_count": 0,
+          "untracked_uid_count": 0,
+          "remaining_project_runtime_process_count": 0,
+          "stop_result": "Godot project stopped"
+        },
+        {
+          "evidence_id": "alpha07-human-golden-observation-cumulative-cutover-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_human_golden_observation_production_cutover_receipt.json",
+          "receipt_sha256": "d0a5db5c4adb9c401269691612ded4e1307fe1d8684a050636eac4be7f88277d",
+          "previous_receipt_path": "reports/reuse/v076_production_cutover_receipt.json",
+          "previous_receipt_sha256": "88d738bef0aad5a8acf2e21fd9f22f24742ee66f6639aa3e73f709f3e471d012",
+          "production_scene_path": "scenes/main.tscn",
+          "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+          "atomic_cutover": true
+        },
+        {
+          "evidence_id": "alpha07-human-golden-observation-reuse-point-inertia-gate",
+          "result": "PASS",
+          "gate_selftest_checks": "119/119",
+          "point_inertia_history_transition_count": 26,
+          "point_inertia_history_failure_count": 0,
+          "new_or_changed_component_gate_coverage": "100_PERCENT",
+          "new_owner_without_reuse_scan_count": 0,
+          "parallel_production_owner_count": 0,
+          "unclassified_new_component_count": 0,
+          "golden_human_false_green_count": 0,
+          "golden_production_false_green_count": 0,
+          "card_certification_reset_count": 0,
+          "full_world_reproof_count": 0,
+          "pr93_body_status_match": true,
+          "pr93_description_false_green_count": 0
+        }
+      ],
+      "not_claimed": [
+        "golden_production_green",
+        "human_playtest_pass",
+        "observer_attestation",
+        "step09_monster_production_cutover",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP09_MONSTER_CUTOVER",
+      "ledger_status": "REGRESSED_WITH_EVIDENCE",
+      "head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+      "tree_sha": "330a83b92cd1af6382d98590744ee3449328cc5b",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "PLAYABLE_CAPABILITY",
+      "golden_step_ids": [
+        "STEP09"
+      ],
+      "current_owner": "V076MonsterL1ReducerV1",
+      "reused_target_plan_owner": "V075CombatRuntimeOwner",
+      "reused_consequence_owner": "V075RuntimeOwner",
+      "evidence": [
+        {
+          "evidence_id": "alpha07-step09-monster-production-composition",
+          "result": "PASS",
+          "test": "v076_production_military_composition_test",
+          "runner_run_id": "20260823-134657-219-v076_production_military_composition_test-76ffe936",
+          "checks": "74/74",
+          "v075_production_monster_movement_writer_count": 0,
+          "v076_production_monster_movement_owner_count": 1,
+          "kernel_monster_root_batch_count": 1,
+          "physical_region_crossing_minimum": 1,
+          "facility_consequence_consumed_count": 1,
+          "movement_presentation_count": 1,
+          "trample_presentation_count": 1,
+          "duplicate_consequence_count": 0,
+          "production_asset_quantity_write_count": 0,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0,
+          "script_error_count": 0,
+          "diagnostic_count": 0,
+          "remaining_project_runtime_process_count": 0
+        },
+        {
+          "evidence_id": "alpha07-step09-monster-deterministic-replay",
+          "result": "PASS",
+          "focused_checks": "47/47",
+          "distinct_seed_count": 1000,
+          "replay_count": 2000,
+          "replay_state_hash_mismatch_count": 0,
+          "failure_count": 0,
+          "aggregate_receipt_sha256": "77b70c7f61ed29ffe647ca01f81994baaaeb887badbffde2739e89e395d18c8d",
+          "runner_run_id": "20260823-132137-953-v076_monster_l1_directional_geodesic_move_1000_seed_test-f6bd3ace"
+        },
+        {
+          "evidence_id": "alpha07-step09-direct-regressions",
+          "result": "PASS",
+          "v075_application_composition_checks": "111/111",
+          "v075_application_composition_run_id": "20260823-134503-354-v075_application_composition_test-a723dd60",
+          "human_observation_readiness_checks": "35/35",
+          "human_observation_readiness_run_id": "20260823-134514-573-v076_human_golden_observation_readiness_test-945afd87",
+          "v075_autonomy_trample_sentinel_count": 4,
+          "human_executed": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "alpha07-step09-main-runtime",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "changed_file_warning_count": 0,
+          "hard_runtime_error_count": 0,
+          "untracked_uid_count": 0,
+          "remaining_project_runtime_process_count": 0,
+          "stop_result": "Godot project stopped"
+        },
+        {
+          "evidence_id": "alpha07-step09-golden-production-execution-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step09_golden_production_execution_receipt.json",
+          "receipt_sha256": "a18a53aa7fa3a70faa0617e172292ebdbe045a2157c7e5c7754fc70a8e14ee94",
+          "production_scene_path": "scenes/main.tscn",
+          "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+          "pass_count": 1
+        },
+        {
+          "evidence_id": "alpha07-step09-cumulative-cutover-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_monster_production_cutover_receipt.json",
+          "receipt_sha256": "22038a6ae6c1eeb6fec804ca2a6c303d060cafe203a894542b0661aa06a235d8",
+          "previous_receipt_path": "reports/reuse/v076_human_golden_observation_production_cutover_receipt.json",
+          "previous_receipt_sha256": "d0a5db5c4adb9c401269691612ded4e1307fe1d8684a050636eac4be7f88277d",
+          "original_receipt_path": "reports/reuse/v076_production_cutover_receipt.json",
+          "original_receipt_sha256": "88d738bef0aad5a8acf2e21fd9f22f24742ee66f6639aa3e73f709f3e471d012",
+          "atomic_cutover": true
+        },
+        {
+          "evidence_id": "alpha07-step09-focused-test-scope-metadata-repair",
+          "result": "PASS",
+          "correction_kind": "FOCUSED_TEST_SCOPE_METADATA_REPAIR",
+          "repair_subject_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+          "repair_subject_tree_sha": "330a83b92cd1af6382d98590744ee3449328cc5b",
+          "prior_condition": "COMPONENT_TEST_DECLARED_BEFORE_CANONICAL_SCOPE",
+          "corrected_condition": "COMPONENT_TEST_PRESENT_IN_CANONICAL_SCOPE",
+          "affected_component_ids": [
+            "component.v076.monster_l1"
+          ],
+          "added_focused_test_ids": [
+            "v076_monster_l1_directional_geodesic_move_1000_seed_test"
+          ],
+          "affected_failures": [
+            {
+              "head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+              "failure_code": "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING",
+              "component_id": "component.v076.monster_l1"
+            }
+          ],
+          "product_behavior_changed": false,
+          "new_owner_created": false,
+          "rationale": "The existing Monster component atomically declared the 1,000-seed sentinel and implementation bytes, and that exact sentinel passed on the implementation tree. Only the canonical focused-test scope metadata was delayed to this append-only evidence commit; no test is waived and no product behavior or Owner changes."
+        }
+      ],
+      "not_claimed": [
+        "human_playtest_pass",
+        "observer_attestation",
+        "full_alpha07_production_green",
+        "step11_asset_consequence_cutover",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ],
+      "regression": {
+        "failure_evidence": "reports/reuse/full_convergence/production_revalidation_pending_9f8659c8.json#GOLDEN_PRODUCTION_FALSE_GREEN:STEP09",
+        "failure_evidence_json_pointer": "/revalidations/0",
+        "failure_evidence_sha256": "e8ec5c9f91630a7a69b1e28a8b2a93662a4c414a866a823f9225c2629663d534",
+        "origin_commit": "f8340207d785e7b35ea7451048e5d71d0325232c",
+        "origin_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+        "affected_commit": "ce3b644dedaa752b09e97fadf3c7880889ea7e9f",
+        "affected_tree_sha": "4350218e4076da3fb0c8f04dfbe7b690eefc73d2",
+        "affected_owner": "component.current.v075_runtime_owner",
+        "repair_plan": "Re-run STEP09 against the exact current product subject in the real production composition and append a fresh receipt before restoring any production claim.",
+        "prior_status": "CURRENT_DELTA_GREEN"
+      }
+    },
+    {
+      "stage_id": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP11_ASSET_CONSEQUENCE_CUTOVER",
+      "ledger_status": "REGRESSED_WITH_EVIDENCE",
+      "head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
+      "tree_sha": "cd55e424756f12a2b8cf5993fd4f9141f233cbbb",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "PLAYABLE_CAPABILITY",
+      "golden_step_ids": [
+        "STEP11"
+      ],
+      "current_owner": "V075RuntimeOwner",
+      "reused_asset_reducer": "V07AssetBatchCore",
+      "reused_input_owner": "V076PrivateDirectActionInputOwnerV1",
+      "reused_presentation_owner": "V075RuntimeOwner",
+      "evidence": [
+        {
+          "evidence_id": "alpha07-step11-asset-consequence-production-composition",
+          "result": "PASS",
+          "test": "v076_production_military_composition_test",
+          "runner_run_id": "20260823-144239-522-v076_production_military_composition_test-5f74842b",
+          "checks": "86/86",
+          "asset_debit_exact_once": true,
+          "asset_projection_count_per_mission": 1,
+          "asset_rail_post_action_parity": true,
+          "region_assault_presentation_count": 1,
+          "monster_assault_presentation_count": 1,
+          "withdrawal_presentation_count_per_mission": 1,
+          "canonical_route_distance_eta_visible": true,
+          "private_card_instance_field_count": 0,
+          "consequence_replay_duplicate": true,
+          "duplicate_asset_projection_count": 0,
+          "duplicate_presentation_count": 0,
+          "presentation_gameplay_mutation_count": 0,
+          "asset_quantity_owner_count": 1,
+          "new_asset_owner_count": 0,
+          "new_presentation_owner_count": 0,
+          "public_batch_entry_count": 0,
+          "shared_sushi_track_resolution_count": 0,
+          "script_error_count": 0,
+          "diagnostic_count": 0,
+          "remaining_project_runtime_process_count": 0
+        },
+        {
+          "evidence_id": "alpha07-step11-direct-regressions",
+          "result": "PASS",
+          "v075_application_composition_checks": "111/111",
+          "v075_application_composition_run_id": "20260823-143643-479-v075_application_composition_test-c1177f7e",
+          "v07_asset_batch_core_checks": "285/285",
+          "v07_asset_batch_core_run_id": "20260823-143711-185-v07_asset_batch_core_test-358eab33",
+          "v075_presentation_binding_checks": "38/38",
+          "v075_presentation_binding_run_id": "20260823-143643-481-v075_ui_runtime_presentation_binding_integration_test-f5ee77c0",
+          "human_observation_readiness_checks": "35/35",
+          "human_observation_readiness_run_id": "20260823-143643-480-v076_human_golden_observation_readiness_test-4fd6c1a2",
+          "private_input_owner_checks": "7/7",
+          "private_military_integration_checks": "41/41",
+          "military_lifecycle_checks": "29/29",
+          "simultaneous_private_action_checks": "9/9",
+          "simultaneous_distinct_seed_count": 1000,
+          "simultaneous_replay_count": 2000,
+          "simultaneous_state_hash_mismatch_count": 0,
+          "human_executed": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "alpha07-step11-main-runtime",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "changed_file_warning_count": 0,
+          "changed_file_warning_semantics": "EXTERNAL_CHANGED_FILE_NOTIFICATION",
+          "repository_preexisting_gdscript_warnings_present": true,
+          "task_introduced_gdscript_warning_count": 0,
+          "hard_runtime_error_count": 0,
+          "untracked_uid_count": 0,
+          "remaining_project_runtime_process_count": 0,
+          "stop_result": "Godot project stopped"
+        },
+        {
+          "evidence_id": "alpha07-step11-golden-production-execution-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step11_golden_production_execution_receipt.json",
+          "receipt_sha256": "32f9f12201ae7c4367c7c16a08d3c368f832452beb4b065a87d997a0102e0aa2",
+          "production_scene_path": "scenes/main.tscn",
+          "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+          "pass_count": 1
+        },
+        {
+          "evidence_id": "alpha07-step11-cumulative-cutover-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_asset_consequence_production_cutover_receipt.json",
+          "receipt_sha256": "f9b988d487e1f3753c0394328903cac1560467fa03a694ab512c7b7103d0c8de",
+          "previous_receipt_path": "reports/reuse/v076_monster_production_cutover_receipt.json",
+          "previous_receipt_sha256": "22038a6ae6c1eeb6fec804ca2a6c303d060cafe203a894542b0661aa06a235d8",
+          "atomic_cutover": true
+        },
+        {
+          "evidence_id": "alpha07-step09-current-candidate-production-revalidation",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step09_current_candidate_production_revalidation_receipt.json",
+          "receipt_sha256": "92be5ca9d0b168015f05e0fbda61eca54babe7d43b53b038cc2999e128684951",
+          "historical_receipt_path": "reports/reuse/v076_step09_golden_production_execution_receipt.json",
+          "historical_receipt_sha256": "a18a53aa7fa3a70faa0617e172292ebdbe045a2157c7e5c7754fc70a8e14ee94",
+          "focused_checks": "86/86",
+          "product_behavior_changed_by_revalidation": false
+        },
+        {
+          "evidence_id": "alpha07-step11-task-warning-repair",
+          "result": "PASS",
+          "implementation_head_sha": "e299defd16859418c9357b1849844eec3d1fe83b",
+          "repair_head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
+          "repair_kind": "LOCAL_PRELOAD_ALIAS_WARNING_REMOVAL",
+          "product_behavior_changed": false,
+          "new_owner_created": false,
+          "focused_checks_after_repair": "86/86",
+          "task_introduced_gdscript_warning_count_after": 0
+        }
+      ],
+      "not_claimed": [
+        "human_playtest_pass",
+        "observer_attestation",
+        "full_alpha07_production_green",
+        "step12_ai_privacy_cutover",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ],
+      "regression": {
+        "failure_evidence": "reports/reuse/full_convergence/production_revalidation_pending_9f8659c8.json#GOLDEN_PRODUCTION_FALSE_GREEN:STEP11",
+        "failure_evidence_json_pointer": "/revalidations/1",
+        "failure_evidence_sha256": "e8ec5c9f91630a7a69b1e28a8b2a93662a4c414a866a823f9225c2629663d534",
+        "origin_commit": "f8340207d785e7b35ea7451048e5d71d0325232c",
+        "origin_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+        "affected_commit": "ce3b644dedaa752b09e97fadf3c7880889ea7e9f",
+        "affected_tree_sha": "4350218e4076da3fb0c8f04dfbe7b690eefc73d2",
+        "affected_owner": "component.current.v075_runtime_owner",
+        "repair_plan": "Re-run STEP11 against the exact current product subject in the real production composition and append a fresh receipt before restoring any production claim.",
+        "prior_status": "CURRENT_DELTA_GREEN"
+      }
+    },
+    {
+      "stage_id": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP12_AI_PRIVACY_CUTOVER",
+      "ledger_status": "REGRESSED_WITH_EVIDENCE",
+      "head_sha": "e458525fe579b7d552daeb64129b3d002ed3fa35",
+      "tree_sha": "dddd7834240c296c84578ef2cccdb5627b9a3fd5",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "PLAYABLE_CAPABILITY",
+      "golden_step_ids": ["STEP12"],
+      "current_owner": "V075RuntimeOwner",
+      "reused_ai_adapter": "V075CombatAIAdapter",
+      "reused_projection_adapter": "V075CombatProjectionAdapter",
+      "reused_production_screen": "V075SampleGameScreen",
+      "evidence": [
+        {
+          "evidence_id": "alpha07-step12-ai-privacy-production-composition",
+          "result": "PASS",
+          "test": "v076_production_ai_privacy_test",
+          "runner_run_id": "20260823-152832-450-v076_production_ai_privacy_test-f8bdebed",
+          "checks": "57/57",
+          "production_ai_natural_action_count_minimum": 1,
+          "production_ai_submission_lock_count": 1,
+          "unauthorized_viewer_count": 2,
+          "rival_private_card_disclosure_count": 0,
+          "ai_private_plan_disclosure_count": 0,
+          "ai_exact_cash_disclosure_count": 0,
+          "public_private_binding_field_count": 0,
+          "combat_hidden_info_violation_count": 0,
+          "ai_invalid_target_count": 0,
+          "ai_hidden_info_reader_count": 0,
+          "ai_rng_draw_count": 0,
+          "hand_cash_target_result_injection_count": 0,
+          "new_ai_owner_count": 0,
+          "new_projection_owner_count": 0,
+          "new_privacy_owner_count": 0,
+          "script_error_count": 0,
+          "diagnostic_count": 0,
+          "remaining_project_runtime_process_count": 0
+        },
+        {
+          "evidence_id": "alpha07-step12-direct-regressions",
+          "result": "PASS",
+          "v075_combat_ai_checks": "77/77",
+          "v075_combat_ai_runtime_policy_checks": "28/28",
+          "v075_combat_ai_natural_acquisition_checks": "56/56",
+          "v075_combat_public_private_projection_checks": "69/69",
+          "v075_application_composition_checks": "111/111",
+          "v076_production_military_composition_checks": "86/86",
+          "human_executed": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "alpha07-step12-legacy-v06-oracle-disclosure",
+          "result": "STALE_ORACLE_PRECONDITION",
+          "test": "player_facing_privacy_boundary_test",
+          "runner_run_id": "20260823-153007-876-player_facing_privacy_boundary_test-fa8e1033",
+          "failed_before_privacy_assertions": true,
+          "reason": "Removed V06 GameSaveRuntimeCoordinator path is still required by the historical test.",
+          "step12_changed_file_count_in_oracle_dependency": 0,
+          "claimed_as_green": false
+        },
+        {
+          "evidence_id": "alpha07-step12-main-runtime",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "renderer": "Vulkan Forward+",
+          "device": "NVIDIA GeForce RTX 4080 SUPER",
+          "changed_file_warning_count": 0,
+          "changed_file_warning_semantics": "EXTERNAL_CHANGED_FILE_NOTIFICATION",
+          "repository_preexisting_gdscript_warnings_present": true,
+          "task_introduced_gdscript_warning_count": 0,
+          "hard_runtime_error_count": 0,
+          "untracked_uid_count": 0,
+          "remaining_project_runtime_process_count": 0,
+          "stop_result": "Godot project stopped"
+        },
+        {
+          "evidence_id": "alpha07-step12-golden-production-execution-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step12_golden_production_execution_receipt.json",
+          "receipt_sha256": "3f27f497c467390014456e18a79f6a614fd6166e023c9f33736bd69fddc44dd9",
+          "production_scene_path": "scenes/main.tscn",
+          "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+          "pass_count": 1
+        },
+        {
+          "evidence_id": "alpha07-step12-cumulative-cutover-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_ai_privacy_production_cutover_receipt.json",
+          "receipt_sha256": "3d604f8fba5c21a80385814b7ff1ed3c1019a9a0e96f6e54acc537443bb02d09",
+          "previous_receipt_path": "reports/reuse/v076_asset_consequence_production_cutover_receipt.json",
+          "previous_receipt_sha256": "f9b988d487e1f3753c0394328903cac1560467fa03a694ab512c7b7103d0c8de",
+          "atomic_cutover": true
+        },
+        {
+          "evidence_id": "alpha07-step09-step12-candidate-revalidation",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step09_step12_candidate_production_revalidation_receipt.json",
+          "receipt_sha256": "679b3a6c7eef7fe300a467e87e4c2d6d81526a8e81127bd9d5ed65096d1e407f",
+          "focused_checks": "86/86",
+          "product_behavior_changed_by_revalidation": false
+        },
+        {
+          "evidence_id": "alpha07-step11-step12-candidate-revalidation",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step11_step12_candidate_production_revalidation_receipt.json",
+          "receipt_sha256": "29d55a57b4a8a903c9c00a74f43c89e2d3f97be7db6a74feccecef78ccfb0f33",
+          "focused_checks": "86/86",
+          "product_behavior_changed_by_revalidation": false
+        }
+      ],
+      "not_claimed": [
+        "human_playtest_pass",
+        "observer_attestation",
+        "full_alpha07_production_green",
+        "step13_victory_audit",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ],
+      "regression": {
+        "failure_evidence": "reports/reuse/full_convergence/production_revalidation_pending_9f8659c8.json#GOLDEN_PRODUCTION_FALSE_GREEN:STEP12",
+        "failure_evidence_json_pointer": "/revalidations/2",
+        "failure_evidence_sha256": "e8ec5c9f91630a7a69b1e28a8b2a93662a4c414a866a823f9225c2629663d534",
+        "origin_commit": "f8340207d785e7b35ea7451048e5d71d0325232c",
+        "origin_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+        "affected_commit": "ce3b644dedaa752b09e97fadf3c7880889ea7e9f",
+        "affected_tree_sha": "4350218e4076da3fb0c8f04dfbe7b690eefc73d2",
+        "affected_owner": "component.current.v075_runtime_owner",
+        "repair_plan": "Re-run STEP12 against the exact current product subject in the real production composition and append a fresh receipt before restoring any production claim.",
+        "prior_status": "CURRENT_DELTA_GREEN"
+      }
+    },
+    {
+      "stage_id": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT_READINESS",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
+      "tree_sha": "868bddedd7a3f85b4c3594ef3d8579b6ea379523",
+      "change_class": "TEST_ORACLE_ONLY",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Revalidates the current production Victory/audit/final-settlement binding through the one existing V075RuntimeOwner and reused V07SolarVictoryCore. It adds one focused proof test and append-only receipts, changes zero product bytes, and prepares the required real-human STEP13-STEP15 execution without asserting STEP13 pass, human confirmation, observer attestation, or full-product production green.",
+      "golden_step_ids": ["STEP13"],
+      "current_owner": "V075RuntimeOwner",
+      "reused_victory_reducer": "V07SolarVictoryCore",
+      "evidence": [
+        {
+          "evidence_id": "alpha07-step13-victory-audit-production-binding-readiness",
+          "result": "PASS",
+          "test": "v076_production_victory_audit_readiness_test",
+          "runner_run_id": "20260823-161503-688-v076_production_victory_audit_readiness_test-d2253613",
+          "checks": "24/24",
+          "production_main_instantiated": true,
+          "public_new_game_intent_accepted": true,
+          "natural_production_progression": true,
+          "victory_qualification_reached": true,
+          "authoritative_boundary_revalidation_reached": true,
+          "solar_victory_state_valid": true,
+          "final_settlement_count": 1,
+          "final_settlement_public_log_count": 1,
+          "final_settlement_presentation_count": 1,
+          "game_screen_settlement_presented_count": 1,
+          "duplicate_settlement_count": 0,
+          "terminal_replay_state_delta_count": 0,
+          "private_queue_count": 0,
+          "private_skill_resolving_count": 0,
+          "private_skill_atomic_inflight_count": 0,
+          "unresolved_military_lock_count": 0,
+          "card_injection_count": 0,
+          "asset_injection_count": 0,
+          "target_injection_count": 0,
+          "hidden_info_violation_count": 0,
+          "new_victory_owner_count": 0,
+          "v06_victory_owner_production_reachable_count": 0,
+          "script_error_count": 0,
+          "diagnostic_count": 0,
+          "remaining_project_runtime_process_count": 0,
+          "step13_readiness": true,
+          "step13_golden": false,
+          "human_executed": false,
+          "human_confirmed": false
+        },
+        {
+          "evidence_id": "alpha07-step13-direct-regressions",
+          "result": "PASS",
+          "v075_runtime_owner_integration_checks": "20/20",
+          "v075_runtime_owner_integration_run_id": "20260823-161655-083-v075_runtime_owner_integration_test-31090c6a",
+          "v07_solar_victory_core_checks": "190/190",
+          "v07_solar_victory_core_run_id": "20260823-161753-745-v07_solar_victory_core_test-a5b2c726",
+          "final_settlement_exact_once_checks": "4/4",
+          "final_settlement_exact_once_run_id": "20260823-161754-636-v075_final_settlement_presentation_exact_once_regression_test-ddcd89a6",
+          "terminal_combat_quiescence_checks": "12/12",
+          "terminal_combat_quiescence_run_id": "20260823-161803-455-v075_terminal_combat_quiescence_test-185fdd02",
+          "v075_application_composition_checks": "111/111",
+          "v075_application_composition_run_id": "20260823-161806-816-v075_application_composition_test-2830b1e0",
+          "human_observation_readiness_checks": "35/35",
+          "human_observation_readiness_run_id": "20260823-161813-169-v076_human_golden_observation_readiness_test-8906fff8",
+          "human_executed": false,
+          "human_green": false
+        },
+        {
+          "evidence_id": "alpha07-step09-step13-candidate-revalidation",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step09_step13_candidate_production_revalidation_receipt.json",
+          "receipt_sha256": "1b5b51e30a69fbd0362c0a73f0728f3b518523f40bb75cdddb3049b8b196f208",
+          "focused_checks": "86/86",
+          "runner_run_id": "20260823-162814-928-v076_production_military_composition_test-db2c0cdd",
+          "product_behavior_changed_by_revalidation": false
+        },
+        {
+          "evidence_id": "alpha07-step11-step13-candidate-revalidation",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step11_step13_candidate_production_revalidation_receipt.json",
+          "receipt_sha256": "64fb820e193b233908151e841c4831a7dc87b6f54820df80cfb75c8b2f45d404",
+          "focused_checks": "86/86",
+          "runner_run_id": "20260823-162814-928-v076_production_military_composition_test-db2c0cdd",
+          "product_behavior_changed_by_revalidation": false
+        },
+        {
+          "evidence_id": "alpha07-step12-step13-candidate-revalidation",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_step12_step13_candidate_production_revalidation_receipt.json",
+          "receipt_sha256": "868efa96e3070e91b19dd37461f71b4dbe5ee567a12a80cdf4d4f5b7265bec51",
+          "focused_checks": "57/57",
+          "runner_run_id": "20260823-163034-679-v076_production_ai_privacy_test-fc3e6e7f",
+          "product_behavior_changed_by_revalidation": false
+        },
+        {
+          "evidence_id": "alpha07-step13-main-runtime",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "godot_version": "4.7.stable.official.5b4e0cb0f",
+          "renderer": "Vulkan Forward+",
+          "device": "NVIDIA GeForce RTX 4080 SUPER",
+          "changed_file_warning_count": 0,
+          "repository_preexisting_gdscript_warnings_present": true,
+          "task_introduced_gdscript_warning_count": 0,
+          "hard_runtime_error_count": 0,
+          "untracked_uid_count": 0,
+          "remaining_project_runtime_process_count": 0,
+          "stop_result": "Godot project stopped"
+        },
+        {
+          "evidence_id": "alpha07-step13-victory-audit-readiness-receipt",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/v076_victory_audit_readiness_production_binding_receipt.json",
+          "receipt_sha256": "43197224112f7739cf8f1bfff2abc42f1da9f37309802909d94aedbb51d38d7c",
+          "previous_receipt_path": "reports/reuse/v076_ai_privacy_production_cutover_receipt.json",
+          "previous_receipt_sha256": "3d604f8fba5c21a80385814b7ff1ed3c1019a9a0e96f6e54acc537443bb02d09",
+          "production_scene_path": "scenes/main.tscn",
+          "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+          "atomic_cutover": true,
+          "product_byte_change_count": 0
+        }
+      ],
+      "not_claimed": [
+        "step13_golden_pass",
+        "human_playtest_pass",
+        "human_confirmation",
+        "observer_attestation",
+        "full_alpha07_production_green",
+        "step14_final_settlement_human_pass",
+        "step15_feedback_clean_stop_human_pass",
+        "alpha07_per_card_certification",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_ALPHA07_HUMAN_PLAYABILITY_REPAIR_READINESS",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
+      "tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Binds the existing production GameScreen, track, hand, Application Flow, Runtime Owner, Coach, and DBG receipt consumer after the Human Playability repair. This stage proves automated readiness for a new real-human attempt; it does not rewrite the Victory readiness stage or claim Golden STEP13-15.",
+      "golden_step_ids": ["STEP01", "STEP06", "STEP07", "STEP08", "STEP13"],
+      "current_owner": "V075SampleGameScreen",
+      "reused_owners": [
+        "V075ApplicationFlow",
+        "V075RuntimeOwner",
+        "V076Kernel",
+        "V076SharedHalfEdgePartition",
+        "V07DbgDeckCore",
+        "V073PlaytestCoachMarks"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "alpha07-human-playability-readiness",
+          "result": "PASS",
+          "receipt_path": "reports/playtest/alpha07_human_candidate_1_blocker/candidate3_layout_revalidation_receipt.json",
+          "receipt_sha256": "11a947d7a432cae791ba361c2592087c38c6ce172544becec0bcfe34af054f26",
+          "test": "v076_alpha07_human_playability_readiness_test",
+          "runner_run_id": "20260823-214021-065-v076_alpha07_human_playability_readiness_test-397f755f",
+          "checks": "169/169",
+          "production_scene": "res://scenes/main.tscn",
+          "human_count": 1,
+          "ai_count": 3,
+          "fixture_state_injection_count": 0,
+          "human_green_claimed": false,
+          "result_sha256": "c4db111d50d107b3334a476715b8ed84ba1e1bfc97b0092bdb2387bd0365c451"
+        },
+        {
+          "evidence_id": "alpha07-human-playability-responsive-1366",
+          "result": "PASS",
+          "test": "v075_responsive_viewport_matrix_test",
+          "runner_run_id": "20260823-214709-020-v075_responsive_viewport_matrix_test-60def905",
+          "viewport": "1366x768",
+          "checks": "24/24",
+          "main_table_root_vertical_scroll_count": 0,
+          "main_table_draggable_vertical_splitter_count": 0,
+          "result_sha256": "0efd753522a0fb134278adfc78cccfa1da74a2bd08300d22434139f9f3463dfa"
+        },
+        {
+          "evidence_id": "alpha07-human-playability-responsive-1600",
+          "result": "PASS",
+          "test": "v075_responsive_viewport_matrix_test",
+          "runner_run_id": "20260823-214709-020-v075_responsive_viewport_matrix_test-a65ccc2f",
+          "viewport": "1600x960",
+          "checks": "25/25",
+          "main_table_root_vertical_scroll_count": 0,
+          "main_table_draggable_vertical_splitter_count": 0,
+          "result_sha256": "8dae75d70ddab43fdd303dd16eb762b94dfa9650cdd98a2105b3ef00340ec46f"
+        },
+        {
+          "evidence_id": "alpha07-human-playability-responsive-1920",
+          "result": "PASS",
+          "test": "v075_responsive_viewport_matrix_test",
+          "runner_run_id": "20260823-214709-020-v075_responsive_viewport_matrix_test-d09a78a8",
+          "viewport": "1920x1080",
+          "checks": "24/24",
+          "main_table_root_vertical_scroll_count": 0,
+          "main_table_draggable_vertical_splitter_count": 0,
+          "result_sha256": "2131b3705af37b0f961c5833d63ac78037264f82528403e10305439ef05a8bbc"
+        },
+        {
+          "evidence_id": "alpha07-human-playability-pacing-wrapper-coach-visual",
+          "result": "PASS",
+          "tests": [
+            "v076_alpha07_pacing_determinism_test",
+            "v075_sample_game_screen_wrapper_test",
+            "v073_coach_safe_placement_test",
+            "visual_snapshot"
+          ],
+          "runner_run_ids": [
+            "20260823-214743-956-v076_alpha07_pacing_determinism_test-660c4206",
+            "20260823-214743-956-v075_sample_game_screen_wrapper_test-10f5d095",
+            "20260823-214743-931-v073_coach_safe_placement_test-fee4daf2",
+            "20260823-214743-957-visual_snapshot-7d5718c1"
+          ],
+          "checks": ["11/11", "30/30", "258/258", "PASS"],
+          "result_sha256": [
+            "b48f3df3f5aee355450a82684234245cb288ccc1931e9cd418f332f3c8e44eb7",
+            "46d212784946f7410778dd8a2a2aa7ca054259c47054f39f07f3ef010ac95690",
+            "4e99a6c7996dd55ea4fe9b580766ef628af8b18638aced91f8b899cadce04439",
+            "3293703c1859540486d27abfbab1d9446e326f6644e7c4c5a58a5c601e63457c"
+          ]
+        },
+        {
+          "evidence_id": "alpha07-human-playability-headed-candidate-2",
+          "result": "PASS",
+          "scene": "res://scenes/main.tscn",
+          "headed_receipts": [
+            "reports/playtest/alpha07_human_candidate_1_blocker/headed_receipts/candidate2_1366x768_green.json",
+            "reports/playtest/alpha07_human_candidate_1_blocker/headed_receipts/candidate2_1600x960_green.json",
+            "reports/playtest/alpha07_human_candidate_1_blocker/headed_receipts/candidate2_1920x1080_green.json"
+          ],
+          "screenshots_directory": "reports/playtest/alpha07_human_candidate_1_blocker/screenshots",
+          "human_executed": false,
+          "human_confirmed": false,
+          "production_green": false,
+          "human_green": false,
+          "mcp_stop_status": "STOPPED",
+          "hard_runtime_error_count": 0,
+          "remaining_project_runtime_process_count": 0
+        },
+        {
+          "evidence_id": "alpha07-responsive-audit-existing-consumer-classification-repair",
+          "result": "PASS",
+          "correction_kind": "UNREGISTERED_EXISTING_CONSUMER_CLASSIFICATION_REPAIR",
+          "component_id": "component.current.v075_responsive_acceptance_audit",
+          "domain_id": "current.v075_production_combat_candidate",
+          "repair_subject_head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
+          "repair_subject_tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
+          "prior_lifecycle": "UNREGISTERED_EXISTING_CONSUMER",
+          "corrected_lifecycle": "REGISTERED_ACTIVE_CONSUMER",
+          "new_owner_created": false,
+          "parallel_owner_count": 0,
+          "affected_transitions": [
+            {
+              "head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
+              "failure_codes": ["HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT"]
+            }
+          ],
+          "rationale": "The existing stateless V075ResponsiveAcceptanceAudit implementation was added with the e02e18ac UI audit repair and later registered as a consumer of the existing V075RuntimeOwner domain. This append-only correction binds the exact implementation head/tree, creates no Owner, writes no authority, and repairs only the one historical classification transition."
+        },
+        {
+          "evidence_id": "alpha07-responsive-audit-existing-consumer-domain-binding-repair",
+          "result": "PASS",
+          "correction_kind": "EXISTING_CONSUMER_DOMAIN_BINDING_REPAIR",
+          "component_id": "component.current.v075_responsive_acceptance_audit",
+          "domain_id": "current.v075_production_combat_candidate",
+          "repair_subject_head_sha": "68cac1baf7d217b1537c539e27bec02cf66125b1",
+          "repair_subject_tree_sha": "85243b93fab4782c92459126b486aa8d961bf31e",
+          "prior_lifecycle": "REGISTERED_WRONG_DOMAIN_CONSUMER",
+          "corrected_lifecycle": "REGISTERED_ACTIVE_DOMAIN_CONSUMER",
+          "new_owner_created": false,
+          "parallel_owner_count": 0,
+          "affected_transitions": [
+            {
+              "head_sha": "5850fcf458b1c888f06f26323f2a53130b0ae530",
+              "failure_codes": ["HISTORY_NON_OWNER_BINDING_INVALID"]
+            },
+            {
+              "head_sha": "68cac1baf7d217b1537c539e27bec02cf66125b1",
+              "failure_codes": ["COMPONENT_IDENTITY_SILENT_REPLACEMENT"]
+            }
+          ],
+          "rationale": "The existing stateless responsive audit consumer was first recorded in the Human Playability evidence domain, which did not own the existing V075RuntimeOwner. This append-only correction binds the exact follow-up registry repair to the existing combat domain and excuses only the consumer binding and component identity transition produced by that domain move; it creates no Owner and writes no authority."
+        },
+        {
+          "evidence_id": "alpha07-telemetry-domain-row-mispatch-repair",
+          "result": "PASS",
+          "correction_kind": "TRANSIENT_DOMAIN_IDENTITY_MISPATCH_REPAIR",
+          "registry_path": "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+          "owner_component_id": "component.current.v073_playtest_telemetry",
+          "prior_domain_id": "future.v076_human_playtest_evidence",
+          "mistaken_domain_id": "current.v075_production_combat_candidate",
+          "pre_mistake_head_sha": "5850fcf458b1c888f06f26323f2a53130b0ae530",
+          "mistaken_head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4",
+          "repair_head_sha": "68cac1baf7d217b1537c539e27bec02cf66125b1",
+          "repair_tree_sha": "85243b93fab4782c92459126b486aa8d961bf31e",
+          "product_behavior_changed": false,
+          "new_owner_created": false,
+          "affected_failures": [
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "DOMAIN_INVENTORY_SILENT_DELETE", "target": "future.v076_human_playtest_evidence"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_ACTIVE_DOMAIN_OWNER_BINDING", "target": "current.v075_production_combat_candidate"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_COMPONENT_DOMAIN_UNKNOWN", "target": "component.current.v073_playtest_coach"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_COMPONENT_DOMAIN_UNKNOWN", "target": "component.current.v073_playtest_coach_scene"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_COMPONENT_DOMAIN_UNKNOWN", "target": "component.current.v073_playtest_telemetry"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_COMPONENT_DOMAIN_UNKNOWN", "target": "component.current.v075_application_bootstrap"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_COMPONENT_DOMAIN_UNKNOWN", "target": "component.current.v075_responsive_acceptance_audit"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_COMPONENT_DOMAIN_UNKNOWN", "target": "component.v076.human_golden_candidate_profile"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_DOMAIN_ID_NOT_UNIQUE", "target": ""},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_DOMAIN_ROW_INVALID_OR_DUPLICATE", "target": ""},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_NON_OWNER_BINDING_INVALID", "target": "component.current.v073_playtest_coach"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_NON_OWNER_BINDING_INVALID", "target": "component.current.v073_playtest_coach_scene"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_NON_OWNER_BINDING_INVALID", "target": "component.current.v075_application_bootstrap"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_NON_OWNER_BINDING_INVALID", "target": "component.current.v075_responsive_acceptance_audit"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_NON_OWNER_BINDING_INVALID", "target": "component.current.v075_sample_game_screen"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_NON_OWNER_BINDING_INVALID", "target": "component.current.v075_sample_game_screen_scene"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_NON_OWNER_BINDING_INVALID", "target": "component.current.v07_asset_batch_core"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_NON_OWNER_BINDING_INVALID", "target": "component.current.v07_dbg_deck_core"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_NON_OWNER_BINDING_INVALID", "target": "component.v076.human_golden_candidate_profile"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_NON_OWNER_BINDING_INVALID", "target": "component.v076.v075_production_adapter"},
+            {"head_sha": "8f5b5de2a3d2db7ca6a5b9808faacdeab4a045f4", "failure_code": "HISTORY_UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH", "target": ""}
+          ],
+          "rationale": "The 8f5b5de2 registry-only commit changed one existing Telemetry Owner domain_id by mistake. The immediate follow-up restored the exact prior domain row; this evidence names that one transient field mispatch and its complete derived failure set, with no product behavior, Owner, or authority change."
+        }
+      ],
+      "not_claimed": [
+        "step13_golden_pass",
+        "human_playtest_pass",
+        "human_confirmation",
+        "observer_attestation",
+        "full_alpha07_production_green",
+        "step14_final_settlement_human_pass",
+        "step15_feedback_clean_stop_human_pass",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_9F8659C8",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+      "tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Append-only registration of the latest exact product subject after the animation-director catalog-path repair. It preserves all earlier stage and receipt identities, claims no new Golden capability, and explicitly leaves current-subject production and cutover revalidation pending.",
+      "golden_step_ids": [],
+      "current_owner": "V075RuntimeOwner",
+      "reused_owners": [
+        "V075RuntimeOwner",
+        "V076Kernel",
+        "V076SharedHalfEdgePartition",
+        "V076PresentationAnimationDirector"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "v076-current-product-subject-manifest-9f8659c8",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/full_convergence/candidate_subject_manifest_9f8659c8.json",
+        "receipt_sha256": "edfbf306f37b25ad1b4daaece0e3b2eae0c4ab5e9340fef577f593b4e2e245d0",
+          "subject_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+          "subject_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+          "product_delta_path_count_to_evaluated_head": 0
+        },
+        {
+          "evidence_id": "v076-current-evidence-tree-manifest-9f8659c8",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/full_convergence/evidence_tree_manifest_9f8659c8.json",
+        "receipt_sha256": "fadad767bc6db511d12733d8676cd01e345294af76536cf1b36515b6174c1d43",
+          "subject_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+          "subject_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff"
+        },
+        {
+          "evidence_id": "v076-current-production-revalidation-pending-9f8659c8",
+          "result": "PENDING_REVALIDATION",
+          "receipt_path": "reports/reuse/full_convergence/production_revalidation_pending_9f8659c8.json",
+        "receipt_sha256": "e8ec5c9f91630a7a69b1e28a8b2a93662a4c414a866a823f9225c2629663d534",
+          "affected_golden_step_ids": ["STEP09", "STEP11", "STEP12"],
+          "production_green_claimed": false
+        },
+        {
+          "evidence_id": "v076-current-production-cutover-revalidation-pending-9f8659c8",
+          "result": "PENDING_REVALIDATION",
+          "receipt_path": "reports/reuse/full_convergence/production_cutover_revalidation_pending_9f8659c8.json",
+        "receipt_sha256": "b0a678c553db7ce766858e4ee2ab99dd3d4398fb485244d595f4d83acb28ab13",
+          "production_cutover_authorized": false
+        }
+      ],
+      "not_claimed": [
+        "step09_current_subject_production_green",
+        "step11_current_subject_production_green",
+        "step12_current_subject_production_green",
+        "production_cutover",
+        "human_playtest_pass",
+        "full_alpha07_production_green",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_2CE2CE21",
+      "ledger_status": "CURRENT_DELTA_GREEN",
+      "head_sha": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
+      "tree_sha": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Append-only registration of the exact 2ce2ce21 product subject after the prior 9f8659c8 subject. Product bytes remain unchanged through the evaluated governance successors. The current-subject MCP receipts are bound here without converting their honest REGRESSED_WITH_EVIDENCE results into production or human green claims.",
+      "golden_step_ids": [],
+      "current_owner": "V075RuntimeOwner",
+      "reused_owners": [
+        "V075RuntimeOwner",
+        "V076Kernel",
+        "V076SharedHalfEdgePartition",
+        "V076PresentationAnimationDirector"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "v076-current-product-subject-manifest-2ce2ce21",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/full_convergence/candidate_subject_manifest_2ce2ce21.json",
+          "receipt_sha256": "cf2a45c742c66cd47fe5d46756c5e6f177274b3aec0ff3915de41b85b7ec0205",
+          "subject_head_sha": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
+          "subject_tree_sha": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
+          "product_delta_path_count_to_evaluated_head": 0
+        },
+        {
+          "evidence_id": "v076-current-subject-step09-mcp-revalidation-2ce2ce21",
+          "result": "REGRESSED_WITH_EVIDENCE",
+          "receipt_path": "reports/reuse/full_convergence/current_subject_step09_receipt.json",
+          "receipt_sha256": "16313453ed36d9016b5d5d69397148811c701924f9d034bccc84b5979bb89247",
+          "subject_head_sha": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
+          "subject_tree_sha": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
+          "affected_golden_step_ids": ["STEP09"],
+          "production_green_claimed": false
+        },
+        {
+          "evidence_id": "v076-current-subject-step11-mcp-revalidation-2ce2ce21",
+          "result": "REGRESSED_WITH_EVIDENCE",
+          "receipt_path": "reports/reuse/full_convergence/current_subject_step11_receipt.json",
+          "receipt_sha256": "c18af4d74df1748f64abd12e373f8d25b1a2121a1744a8b17420059b8a1e3fce",
+          "subject_head_sha": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
+          "subject_tree_sha": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
+          "affected_golden_step_ids": ["STEP11"],
+          "production_green_claimed": false
+        },
+        {
+          "evidence_id": "v076-current-subject-step12-mcp-revalidation-2ce2ce21",
+          "result": "REGRESSED_WITH_EVIDENCE",
+          "receipt_path": "reports/reuse/full_convergence/current_subject_step12_receipt.json",
+          "receipt_sha256": "4329874b5ac23ad62428f9c43c4bc662a3b542234fd5274dee1a737ca4e02e13",
+          "subject_head_sha": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
+          "subject_tree_sha": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
+          "affected_golden_step_ids": ["STEP12"],
+          "production_green_claimed": false
+        }
+      ],
+      "not_claimed": [
+        "step09_current_subject_production_green",
+        "step11_current_subject_production_green",
+        "step12_current_subject_production_green",
+        "production_cutover",
+        "human_playtest_pass",
+        "full_alpha07_production_green",
+        "full_repository_reproof"
+      ]
+    },
+    {
+      "stage_id": "V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_AC5EFCC5",
+      "ledger_status": "SUBJECT_REGISTERED_PENDING_GATE",
+      "head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+      "tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
+      "change_class": "CROSS_DOMAIN_INTEGRATION",
+      "stage_kind": "INFRASTRUCTURE",
+      "infrastructure_justification": "Append-only registration of the exact ac5efcc5 product subject after 2ce2ce21. The product change adds current-subject STEP11/STEP12 witness plumbing through the existing V075 Runtime Owner and creates no new gameplay, asset, map, card-catalog, tick, RNG, or presentation Owner. STEP09, STEP11, and STEP12 remain pending exact-subject production revalidation; no production-green or human-green claim is made.",
+      "golden_step_ids": [],
+      "current_owner": "V075RuntimeOwner",
+      "reused_owners": [
+        "V075RuntimeOwner",
+        "V076Kernel",
+        "V076SharedHalfEdgePartition",
+        "V076PresentationAnimationDirector"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "v076-current-product-subject-manifest-ac5efcc5",
+          "result": "PASS",
+          "receipt_path": "reports/reuse/full_convergence/candidate_subject_manifest_ac5efcc5.json",
+          "receipt_sha256": "446aa8d52b3936977e78776741e020d3cda0d10d310c20561dd47c243b0bef9f",
+          "subject_head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+          "subject_tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
+          "product_delta_path_count_to_evaluated_head": 0,
+          "product_path_coverage_percent": 100,
+          "unknown_product_path_count": 0
+        }
+      ],
+      "not_claimed": [
+        "step09_current_subject_production_green",
+        "step11_current_subject_production_green",
+        "step12_current_subject_production_green",
+        "production_cutover",
+        "human_playtest_pass",
+        "full_alpha07_production_green",
+        "full_repository_reproof"
+      ]
+    }
+  ],
+  "docs_only_inheritance": {
+    "source_bytes_changed_after_stage3": true,
+    "test_bytes_changed_after_stage3": true,
+    "evidence_reexecuted": true,
+    "inheritance_rule": "Reuse exact recorded green evidence only while its owner bytes and declared dependency boundary remain unchanged; otherwise require a scoped sentinel or a new proof.",
+    "current_claim": "The exact current product subject is ac5efcc5a5119b8022b573333f707b3a73bff590 / 9757eef0e73118f89356b0c09833a44c2c76f8ee. STEP09, STEP11, and STEP12 remain REGRESSED_WITH_EVIDENCE pending new exact-subject production revalidation. The 2ce2ce21 receipts remain immutable historical evidence and are not current production claims. Production cutover is not authorized or claimed. STEP13 remains PENDING; Human Green, STEP13-STEP15, and full-product production green remain false or pending."
+  },
+  "canonical_pr_status": {
+    "schema_version": "space_syndicate.v076.canonical_pr_status.v1",
+    "pr_number": 93,
+    "stage_1_status": "ISOLATED_GREEN",
+    "stage_2_status": "ISOLATED_GREEN",
+    "stage_3_status": "ISOLATED_GREEN",
+    "stage_1_ledger_status": "INHERITED_GREEN",
+    "stage_2_ledger_status": "INHERITED_GREEN",
+    "stage_3_ledger_status": "CURRENT_DELTA_GREEN",
+    "historical_reuse_status": "ACTIVE",
+    "point_inertia_status": "ACTIVE",
+    "golden_isolated_green_count": 5,
+    "golden_production_green_count": 0,
+    "golden_human_green_count": 0,
+    "production_cutover_status": false,
+    "latest_completed_stage": "V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_AC5EFCC5",
+    "latest_completed_stage_head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+    "latest_completed_stage_tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
+    "next_stage": "V076_CURRENT_SUBJECT_PRODUCTION_REVALIDATION",
+    "v075_pr90_dependency_boundary": "CURRENT_V075_OWNER_REUSED_NO_OWNER_SUPERSESSION"
+  },
+  "canonical_change_scope": {
+    "change_classes": [
+      "CROSS_DOMAIN_INTEGRATION",
+      "PRODUCTION_COMPOSITION",
+      "DOMAIN_CORE",
+      "RULESET_CONSTITUTION",
+      "TEST_ORACLE_ONLY",
+      "TOOLING_ONLY"
+    ],
+    "affected_domains": [
+      "future.private_direct_action_input",
+      "current.v06_semantic_card_source",
+      "current.v075_production_combat_candidate",
+      "v076.execution_order_tick_rng_snapshot_replay",
+      "v076.spherical_partition_authority",
+      "v076.monster_l1_directional_geodesic_move",
+      "current.gameplay_card_definitions",
+      "current.player_six_color_asset_quantity",
+      "current.military_unit_state",
+      "v076.military_unit_profile_authority",
+      "v076.military_physical_eta",
+      "future.v076_human_playtest_evidence",
+      "current.card_codex_playerface_presentation"
+    ],
+    "affected_owners": [
+      "component.v076.private_direct_action_input",
+      "component.v076.military_card_crosswalk_adapter",
+      "component.v076.military_card_crosswalk_data",
+      "component.current.card_runtime_catalog_v06",
+      "component.v076.kernel",
+      "component.v076.partition",
+      "component.v076.monster_l1",
+      "component.current.card_runtime_catalog",
+      "PlayerManaRuntimeController",
+      "MilitaryRuntimeController",
+      "component.v076.military_unit_profile_authority",
+      "component.v076.military_unit_profile_catalog_adapter",
+      "component.v076.military_physical_eta",
+      "component.current.v075_runtime_owner",
+      "component.current.v075_responsive_acceptance_audit",
+      "component.current.v073_playtest_telemetry",
+      "component.v076.human_golden_candidate_profile",
+      "component.current.v075_application_bootstrap",
+      "RuntimeCommandPipeline",
+      "MonsterRuntimeController",
+      "component.current.card_codex_public_source"
+    ],
+    "focused_tests": [
+      "v076_private_direct_action_input_owner_test",
+      "v076_military_mission_lifecycle_reducer_test",
+      "v076_military_unit_profile_authoring_v1_test",
+      "v076_military_card_crosswalk_v1_test",
+      "v076_military_physical_eta_owner_test",
+      "v076_private_military_direct_action_integration_test",
+      "v076_simultaneous_private_action_test",
+      "v075_private_skill_request_telemetry_integration_test",
+      "v075_private_skill_failure_privacy_test",
+      "v076_private_monster_skill_bundle_contract_test",
+      "v075_runtime_facility_bridge_integration_test",
+      "v075_application_composition_test",
+      "v075_combat_ai_runtime_policy_test",
+      "v075_combat_ai_natural_acquisition_test",
+      "v075_combat_public_private_projection_test",
+      "v075_application_private_skill_receipt_privacy_test",
+      "v075_combat_ai_test",
+      "v07_asset_batch_core_test",
+      "v076_production_military_composition_test",
+      "v076_production_ai_privacy_test",
+      "v076_production_victory_audit_readiness_test",
+      "v075_runtime_owner_integration_test",
+      "v07_solar_victory_core_test",
+      "v075_final_settlement_presentation_exact_once_regression_test",
+      "v075_terminal_combat_quiescence_test",
+      "v076_human_golden_observation_readiness_test",
+      "simulation_runtime_authority_migration_test",
+      "v076_deterministic_kernel_test",
+      "v076_shared_half_edge_partition_test",
+      "v076_monster_l1_directional_geodesic_move_test",
+      "v076_monster_l1_directional_geodesic_move_1000_seed_test",
+      "v075_monster_autonomy_shortest_path_test",
+      "v075_monster_ground_trample_test",
+      "v075_monster_trample_exact_once_test",
+      "v075_monster_flying_no_trample_test",
+      "v075_military_two_task_contract_test",
+      "v075_military_no_guard_test",
+      "v075_military_no_retarget_test",
+      "v075_military_withdraw_to_discard_test",
+      "v076_alpha07_human_playability_readiness_test",
+      "v076_alpha07_pacing_determinism_test",
+      "v075_sample_game_screen_wrapper_test",
+      "v075_responsive_viewport_matrix_test",
+      "v075_geometry_asset_false_green_negative_test",
+      "ui_text_smoke_test",
+      "visual_snapshot",
+      "v073_coach_safe_placement_test",
+      "v07_dbg_deck_core_test",
+      "v075_runtime_acquisition_trace_test",
+      "v075_authoritative_card_identity_lifecycle_binding_test",
+      "v076_reuse_point_inertia_gate_selftest",
+      "v076_reuse_point_inertia_gate_validate",
+      "check_v06_mechanic_authority_selftest",
+      "alpha01_content_manifest_test",
+      "alpha01_manifest_runtime_activation_test",
+      "alpha01_selected_role_consumer_test",
+      "art_identity_gate_test",
+      "bestiary_double_click_detail_navigation_test",
+      "card_codex_playerface_runtime_invariants_test",
+      "card_resolution_runtime_controller_test",
+      "codex_public_snapshot_service_test",
+      "commercial_audio_asset_contract_test",
+      "commercial_audio_production_wiring_test",
+      "commercial_audio_runtime_service_test",
+      "commercial_font_locale_runtime_test",
+      "commodity_sushi_track_runtime_test",
+      "compendium_readonly_navigation_cutover_test",
+      "compendium_v06_public_semantics_test",
+      "layout_scene_smoke_test",
+      "menu_lifecycle_application_flow_cutover_test",
+      "monster_codex_public_snapshot_service_test",
+      "planet_map_live_refresh_identity_test",
+      "player_rules_in_game_test",
+      "product_codex_public_snapshot_service_test",
+      "public_card_track_focus_selection_cutover_test",
+      "region_codex_public_source_privacy_acceptance_test",
+      "role_codex_public_contract_test",
+      "rules_quick_reference_snapshot_v06_test",
+      "runtime_pointer_input_layer_test",
+      "showcase_frame_capture",
+      "table_presentation_viewmodel_parity_test",
+      "v07_canonical_adapter_aggregate_test",
+      "v07_canonical_ai_observation_adapter_test",
+      "v07_canonical_player_projection_adapter_test",
+      "v07_unified_card_track_core_test",
+      "v073_planet_map_snapshot_connection_test",
+      "v074_planet_map_view_test",
+      "v074_sushi_track_authoritative_presentation_test",
+      "v076_bottom_countdown_production_binding_test",
+      "v076_commercial_shell_reachability_test",
+      "v076_deck_lifecycle_presentation_test",
+      "v076_new_game_loading_feedback_test",
+      "v076_presentation_animation_director_test",
+      "v076_public_action_arrangement_privacy_test",
+      "v076_public_action_arrangement_test",
+      "vertical_slice_showcase_test",
+      "visual_event_smoke_test"
+    ],
+    "inherited_sentinels": [
+      "V076_KERNEL",
+      "V076_HALF_EDGE_SPHERE",
+      "PR65_AUTHORIZATION_PATTERN",
+      "V075_PRIVATE_SKILL_CONTRACT",
+      "V075_MONSTER_AUTONOMY_TRAMPLE_CONTRACT",
+      "V075_AI_VIEWER_PRIVACY_CONTRACT",
+      "V075_VICTORY_FINAL_SETTLEMENT_CONTRACT",
+      "V073_PLAYTEST_INSTRUMENTATION_PRIVACY",
+      "REUSE_POINT_INERTIA_GATE"
+    ],
+    "full_reproof_required": false,
+    "full_reproof_trigger": "NONE",
+    "why_focused_tests_are_sufficient": "The current product delta advances only scripts/v075_runtime/v075_runtime_owner.gd through the existing V075 Runtime Owner to expose exact STEP11/STEP12 production witnesses. It creates no new gameplay, presentation, tutorial, clock, tick, RNG, card-catalog, asset, map, hand, track, save, replay, or receipt Owner. The scoped MCP landing receipt and focused current-subject tests cover the changed Owner byte; the inherited Kernel, Half-Edge sphere, military, Monster, card lifecycle, AI/privacy, application, UI, and presentation sentinels remain required. STEP09, STEP11, and STEP12 remain REGRESSED_WITH_EVIDENCE pending exact-subject production revalidation; production cutover, Human Green, STEP13-STEP15, and full-world reproof remain false or pending."
+  },
+  "point_inertia_baseline_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
+  "gate_activation_boundary_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
+  "point_inertia_gate_queued": true,
+  "current_task_interrupted_by_gate": false,
+  "current_task_result_preserved": true,
+  "product_development_resume_target": "V076_PRODUCTION_NATURAL_DECK_DISCARD_PILE_COMMERCIAL_VISUALIZATION_QUALIFICATION",
+  "production_composition_authorization_boundary": {
+    "status": "CONSUMED",
+    "historical_only": true,
+    "prior_subject_only": true,
+    "current_cutover_authorized": false,
+    "required_authorization": "PRODUCTION_CUTOVER_AUTHORIZED=true",
+    "precheck_status": "PASS",
+    "precheck_evidence_scope": "READ_ONLY_CURRENT_PRODUCTION_COMPOSITION",
+    "production_cutover_authorized": true,
+    "production_cutover_head_sha": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+    "production_green_claim_allowed": false,
+    "human_green_claim_allowed": false
+  },
+  "production_composition_precheck": {
+    "status": "PASS",
+    "historical_only": true,
+    "prior_subject_only": true,
+    "current_cutover_authorized": false,
+    "evidence_scope": "READ_ONLY_CURRENT_PRODUCTION_COMPOSITION",
+    "test": "tests/v076_production_composition_precheck_test.gd",
+    "runner": "tools/invoke_godot_test.ps1",
+    "runner_run_id": "20260823-084557-856-v076_production_composition_precheck_test-f0f8497f",
+    "completion_marker": "V076_PRODUCTION_COMPOSITION_PRECHECK|status=PASS",
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "checks": "64/64",
+    "main_scene": "res://scenes/main.tscn",
+    "main_v075_entry_dependency_count": 3,
+    "instantiated_node_count": 578,
+    "instantiated_v076_script_count": 0,
+    "v075_runtime_owner_count": 1,
+    "v075_combat_owner_count": 1,
+    "duplicate_v076_owner_node_count": 0,
+    "legacy_runtime_fallback_count": 0,
+    "runner_diagnostic_count": 0,
+    "runner_script_error_count": 0,
+    "stop_result": "Godot project stopped",
+    "production_cutover_authorized": true,
+    "production_green": false,
+    "human_green": false,
+    "golden_production_pass_count": 0,
+    "golden_human_execution_count": 0,
+    "stdout_sha256": "3c86610d7650dbaae7229e2eda1e9c35f0e186cae26f42ae9af6b80f6bc27829",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "production_cutover_receipt": {
+    "status": "PASS",
+    "historical_only": true,
+    "prior_subject_only": true,
+    "current_cutover_authorized": false,
+    "path": "reports/reuse/v076_victory_audit_readiness_production_binding_receipt.json",
+    "sha256": "43197224112f7739cf8f1bfff2abc42f1da9f37309802909d94aedbb51d38d7c",
+    "candidate_head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
+    "production_scene_path": "scenes/main.tscn",
+    "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+    "atomic_cutover": true,
+    "production_green": false,
+    "human_green": false
+  },
+  "required_check_name": "V076 Reuse and Point-Inertia Gate",
+  "agent_merge_requires_reuse_gate": true
+}

@@ -104,6 +104,11 @@ func run_simulation_until_settled(max_steps: int = 2000) -> Dictionary:
 	)
 	var was_coalesced: bool = _projection_emit_coalesced
 	_projection_emit_coalesced = true
+	# The production owner owns playtest pacing, while this test-only driver
+	# already owns the historical accelerated 30x simulation clock. Keep the
+	# production multiplier from compounding the deterministic harness delta.
+	var prior_playtest_pace_multiplier := _playtest_pace_multiplier
+	_playtest_pace_multiplier = 1
 	var steps: int = 0
 	while _phase not in ["settled", "failed"] and steps < max_steps:
 		var phase_before: String = _phase
@@ -119,6 +124,7 @@ func run_simulation_until_settled(max_steps: int = 2000) -> Dictionary:
 		steps += 1
 		_simulation_process_call_count += 1
 		_observe_private_skill_resolution_deltas()
+	_playtest_pace_multiplier = prior_playtest_pace_multiplier
 	_projection_emit_coalesced = was_coalesced
 	if _projection_emit_pending and not _projection_emit_coalesced:
 		_projection_emit_pending = false

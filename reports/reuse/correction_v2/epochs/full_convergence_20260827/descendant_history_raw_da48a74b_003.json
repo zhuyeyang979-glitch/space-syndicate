@@ -1,0 +1,2510 @@
+{
+  "status": "FAIL",
+  "check_name": "V076 Reuse and Point-Inertia Gate",
+  "failures": [
+    "HISTORY_COMPONENT_CHANGE_CLASS_NOT_DECLARED:46b33bba77b3->e584cd4d8b0c:component.current.card_runtime_catalog",
+    "HISTORY_COMPONENT_CHANGE_CLASS_NOT_DECLARED:46b33bba77b3->e584cd4d8b0c:component.current.card_runtime_catalog_v06",
+    "HISTORY_COMPONENT_CHANGE_CLASS_NOT_DECLARED:46b33bba77b3->e584cd4d8b0c:component.current.card_semantic_catalog",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.file_exists:path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.get_file_as_string:owner_path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.get_file_as_string:path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.get_file_as_string:path:8208001e7be8->62ceba063d68:scripts/presentation/v076_presentation_animation_director.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.get_file_as_string:path:8208001e7be8->62ceba063d68:scripts/ui/showcase_director.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.open:path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:FileAccess.open:source_path:46b33bba77b3->e584cd4d8b0c:scripts/cards/card_runtime_catalog_v06_resource.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:ResourceLoader.exists:owner_path:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:ResourceLoader.exists:path:46b33bba77b3->e584cd4d8b0c:scripts/card_art_view.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:ResourceLoader.exists:path:8208001e7be8->62ceba063d68:scripts/monster_art_view.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:load:path:46b33bba77b3->e584cd4d8b0c:scripts/card_art_view.gd",
+    "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED:load:path:8208001e7be8->62ceba063d68:scripts/monster_art_view.gd",
+    "HISTORY_PRODUCT_AFFECTED_DOMAIN_MISSING:46b33bba77b3->e584cd4d8b0c:component.current.card_semantic_catalog",
+    "HISTORY_PRODUCT_AFFECTED_OWNER_MISSING:46b33bba77b3->e584cd4d8b0c:component.current.card_semantic_catalog",
+    "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING:46b33bba77b3->e584cd4d8b0c:component.current.card_runtime_catalog",
+    "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING:46b33bba77b3->e584cd4d8b0c:component.current.card_runtime_catalog_v06",
+    "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING:46b33bba77b3->e584cd4d8b0c:component.current.card_semantic_catalog",
+    "HISTORY_PRODUCT_REUSE_SCAN_INVALID:46b33bba77b3->e584cd4d8b0c:component.current.card_runtime_catalog",
+    "HISTORY_PRODUCT_REUSE_SCAN_INVALID:46b33bba77b3->e584cd4d8b0c:component.current.card_runtime_catalog_v06",
+    "HISTORY_PRODUCT_REUSE_SCAN_INVALID:46b33bba77b3->e584cd4d8b0c:component.current.card_semantic_catalog",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:3bf9e9b2468e->ce3b644dedaa:scenes/main.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:3bf9e9b2468e->ce3b644dedaa:scenes/ui/v075/V075NewGameLoadingOverlay.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:3bf9e9b2468e->ce3b644dedaa:scripts/ui/v075/v075_new_game_loading_overlay.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/game_icons_ccby/bank.svg",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/game_icons_ccby/breaking_chain.svg",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/game_icons_ccby/coins_pile.svg",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/game_icons_ccby/contract.svg",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/game_icons_ccby/fall_down.svg",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/game_icons_ccby/profit.svg",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/game_icons_ccby/robber_hand.svg",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/game_icons_ccby/shaking_hands.svg",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/game_icons_ccby/warehouse.svg",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/moth_kaijuice/city/buildings/mothkaiju_bldg_m.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/moth_kaijuice/city/buildings/mothkaiju_bldg_s.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_atfield.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_laser.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_mech.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_soldier.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/night_patrol/ui/button-blue.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/night_patrol/ui/button-red.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/night_patrol/ui/card-frame-skill.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/night_patrol/ui/card-sigil.svg",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:assets/third_party/night_patrol/ui/panel-talisman.png",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:data/cards/card_runtime_catalog_v06.json",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:docs/rules/v06_mechanic_status_registry.json",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/ai/ai_policy_profile_v1.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/ai/personalities/arbitrage_ai_policy.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/ai/personalities/contract_ai_policy.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/ai/personalities/disruptor_ai_policy.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/ai/personalities/intelligence_ai_policy.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/ai/personalities/monster_tamer_ai_policy.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/ai/personalities/pioneer_ai_policy.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/cards/runtime/card_runtime_catalog_v06.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/content/alpha01/alpha01_content_manifest.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/content/product_industry_catalog_v05.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/monsters/monster_family_weather_traits_v1.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/rules/space_syndicate_ruleset_v06.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/weather/crystal_dust_storm.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/weather/deep_freeze.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/weather/gravity_tide.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/weather/ion_storm.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/weather/solar_flare.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/weather/spore_season.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:resources/weather/weather_definition_catalog_v1.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scenes/CardUI.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scenes/runtime/RoleCatalogRuntimeService.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scenes/ui/CardFace.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scenes/ui/CardResolutionTrack.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scenes/ui/DistrictSupplyMarketCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scenes/ui/DistrictSupplyPreviewCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scenes/ui/DistrictSupplyStatusChip.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scenes/ui/table/PlayerRosterEntry.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scenes/ui/v075/V075InteractiveCardFace.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scenes/ui/v075/V075PublicActionArrangement.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/CardUI.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ai/ai_personality_policy_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ai/ai_policy_profile_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/balance/combat_balance_model.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/balance/development_route_catalog_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/balance/environment_balance_model.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/balance/movement_balance_model.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/balance/runtime_balance_model.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/card_art_view.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/card_play_requirement_policy.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/card_runtime_catalog_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/card_runtime_definition_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/card_runtime_family_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/card_runtime_kind_schema.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/card_runtime_pack_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/card_runtime_rank_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/semantic/authorized_card_semantic_envelope_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/semantic/card_instance_decision_state_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/semantic/card_semantic_compiler_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/semantic/card_semantic_schema_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/semantic/card_v04_interaction_semantic_reference_adapter_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/shared_card_group_window.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/card_flow_policy_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/card_flow_transaction_service_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/card_player_state_port_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/effects/card_effect_adapter_support_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/effects/commodity_card_effect_adapter_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/effects/facility_card_effect_adapter_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/effects/global_supply_demand_card_effect_adapter_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/organization/organization_card_effect_adapter_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/production/card_player_state_production_adapter_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/production/commodity_flow_atomic_batch_sink_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/production/commodity_flow_candidate_snapshot_port_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/production/core_economic_card_effect_router_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/production/core_economic_card_runtime_adapter_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/production/organization_production_port_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/units/monster_card_effect_adapter_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/units/monster_card_owner_port_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/units/unit_card_owner_forwarding_port_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/cards/v06/units/unit_card_runtime_schema_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/content/product_industry_catalog_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/content/product_industry_definition_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/content/product_industry_entry_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/finance/city_gdp_derivative_terms_catalog_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/finance/product_futures_terms_catalog_resource.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/card_history_public_query_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/card_illustration_catalog.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/context_detail_projection_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/current_action_context_projection_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/developer_balance_presentation_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/developer_balance_presentation_target.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/district_supply_viewer_query_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/local_viewer_authorization.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/player_card_dock_projection_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/player_card_dock_projection_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/player_card_dock_viewer_query_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/player_inspection_projection_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/public_facility_target_candidates_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/public_feedback_projection_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/public_log_presentation_owner.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/public_log_producer_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/public_log_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/public_player_roster_projection_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/public_player_roster_projection_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/region_supply_popup_projection_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_action_presentation_projection.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_action_presentation_query.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_full_presentation_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_interaction_mode_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_live_presentation_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_presentation_apply_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_presentation_pure_data_policy.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_presentation_query_ports.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_presentation_refresh_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_presentation_refresh_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_presentation_source_owner.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_presentation_viewer_context.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_presentation_viewmodel_query.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_public_map_projection.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_public_map_query.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/table_selection_catalog_query_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/victory_presentation_receipt_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/victory_presentation_state_change_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/viewer_private_feedback_owner.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/world_map_geometry_projection.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/world_session_presentation_query.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/world_session_private_projection.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/presentation/world_session_public_projection.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/rules/space_syndicate_ruleset_profile_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_actor_economy_facts_capability.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_actor_economy_facts_query_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_actor_hand_inventory_capability.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_actor_hand_inventory_query_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_actor_state_capability.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_actor_state_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_business_cost_capability.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_business_cost_cash_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_business_cost_debit_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_business_cost_debit_request.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_card_interaction_observation_capability.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_card_interaction_observation_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_city_inference_command_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_region_knowledge_capability.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_region_knowledge_query_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/ai_runtime_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/alpha01_content_manifest_loader.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/alpha01_runtime_content_selection.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/bankruptcy_neutral_estate_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/bankruptcy_neutral_estate_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_commitment_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_cooldown_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_counter_settlement_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_economy_product_route_effect_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_economy_product_route_effect_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_economy_product_route_formula_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_effect_runtime_router.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_group_action_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_history_private_annotation_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_history_restore_dependency_contract.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_intel_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_inventory_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_market_policy_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_market_pricing_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_play_eligibility_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_play_eligibility_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_play_submission_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_presentation_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_resolution_execution_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_resolution_execution_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_resolution_frame_driver.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_resolution_history_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_resolution_presentation_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_resolution_queue_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_resolution_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_resolution_stable_target_envelope.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_resolution_transition_sink.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_runtime_definition_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_semantic_source_authorization_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_target_choice_response_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_target_choice_response_sink.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/card_target_choice_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/city_gdp_derivative_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/city_gdp_derivative_runtime_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/commodity_card_effect_runtime_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/commodity_card_inventory_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/commodity_flow_post_commit_receipt_consumer.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/commodity_flow_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/commodity_flow_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/commodity_sushi_track_claim_request.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/commodity_sushi_track_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/district_purchase_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/district_purchase_settlement_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/district_supply_action_intent.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/district_supply_action_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/district_supply_action_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/district_supply_ai_query_capability.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/district_supply_runtime_query_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/district_supply_snapshot_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/forced_decision_candidate_sources.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/forced_decision_response_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/forced_decision_response_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/forced_decision_response_request.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/forced_decision_runtime_scheduler.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/game_action_ai_submission_capability.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/game_runtime_coordinator.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/game_session_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/game_table_viewmodel_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/gameplay_actor_authorization_context.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/intel_application_intent.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/military_monster_damage_command_sink.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/military_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/military_runtime_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_action_command_sink.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_battle_lifecycle_policy_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_catalog_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_family_weather_traits.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_move_command_sink.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_runtime_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_wager_cash_commitment_query_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_wager_response_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_wager_response_sink.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/monster_wager_settlement_policy_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/player_cash_mutation_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/player_hand_interaction_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/player_identity_action_request.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/player_identity_authorization_boundary.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/player_identity_authorization_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/player_mana_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/player_organization_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/product_market_frozen_target_context.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/product_market_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/product_market_runtime_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/region_infrastructure_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/region_infrastructure_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/region_supply_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/role_catalog_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/role_resource_cash_settlement_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/route_network_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/route_network_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/run_rng_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_actor_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_card_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_command_envelope.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_command_phase_coordinator.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_command_pipeline.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_economy_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_lifecycle_phase_coordinator.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_lifecycle_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_loop.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_monster_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_phase_coordinator.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_phase_frame_context.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_presentation_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_presentation_schedule_coordinator.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_resolution_phase_coordinator.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_simulation_phase_coordinator.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_simulation_step.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_state_commit_coordinator.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_victory_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/runtime_world_ports.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/simulation_determinism_audit.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/simulation_mutation_authority.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/simulation_randomness_boundary.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/simulation_state_identity.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/simulation_trace_contract.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/solar_availability_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/table_card_supply_presentation_state.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/table_navigation_action_intent.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/table_player_action_application_flow_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/table_presentation_refresh_scheduler.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/table_selection_intent.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/table_selection_intent_port.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/table_selection_receipt.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/table_selection_request.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/table_selection_state.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/victory_control_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/victory_control_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/visual_cue_runtime_owner.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/weather_definition.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/weather_definition_catalog.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/weather_effect_resolver.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/weather_presentation_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/weather_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/weather_runtime_state.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/weather_runtime_world_bridge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/weather_system.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/weather_telemetry_runtime_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/world_effective_clock_runtime_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/world_session_envelope_codec.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/runtime/world_session_state.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/semantic/ai_card_interaction_legacy_source_bundle_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/semantic/ai_card_interaction_observation_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/semantic/ai_card_interaction_policy_compatibility_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/semantic/game_action_card_binding_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/semantic/game_action_intent_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/semantic/game_action_offer_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/semantic/game_action_receipt_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/action_dock.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/card_face.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/developer_balance_panel.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/district_supply_drawer.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/district_supply_market_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/district_supply_preview_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/district_supply_status_chip.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/focus_tools.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/game_screen.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/map/planet_map_control_toolbar.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/overlay_layer.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/player_board.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/card_dock_action_feedback.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/compact_current_action_surface.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/context_detail_drawer.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/expandable_public_history_surface.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/non_blocking_toast_surface.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/player_card_dock.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/player_inspection_popup.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/player_roster_entry.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/player_roster_panel.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/region_supply_popup.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/table/top_commodity_sushi_track.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/v073/v073_sample_game_screen.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/v074/v074_sample_game_screen.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/v074/v074_track_card_button.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/v075/v075_interactive_card_face.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/v075/v075_new_game_loading_overlay.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/ui/v075/v075_public_action_arrangement.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/v073_runtime/v073_sample_runtime_owner.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/v074/track/v074_shared_sushi_track_core.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/v074_runtime/v074_runtime_owner.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/v07_adapters/v07_canonical_ai_observation_adapter.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/v07_adapters/v07_canonical_player_projection_adapter.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/v07_semantic/v07_unified_card_track_core.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/action_dock_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/bid_board_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/card_view_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/optional_route_public_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/planet_board_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/player_board_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/public_product_selection_catalog_entry.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/public_product_selection_catalog_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/public_region_selection_catalog_entry.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/public_region_selection_catalog_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/public_track_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/table_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:46b33bba77b3->e584cd4d8b0c:scripts/viewmodels/top_bar_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:data/presentation/v076_commercial_showcase_episode_plan.json",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scenes/tools/CommercialPresentationShowcase.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scenes/ui/HandRack.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scenes/ui/TargetingOverlay.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scenes/ui/VerticalSliceShowcase.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scenes/ui/VisualEventLayer.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scripts/HandLayout.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scripts/ui/commercial_showcase_visual_layer.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scripts/ui/hand_rack.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scripts/ui/targeting_overlay.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scripts/ui/vertical_slice_showcase.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:62ceba063d68->152ce054010c:scripts/ui/visual_event_layer.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:6e1825a34070->23da2c90e4a7:scripts/ui/vertical_slice_showcase.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:data/presentation/v076_animation_cue_catalog.json",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:data/presentation/v076_sound_cue_routes.json",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:data/showcase/hearthstone_grade_sequence.json",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:default_bus_layout.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:docs/tabletop_rulebook_v06.md",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/main.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/runtime/presentation/CommercialAudioPresentationHost.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/runtime/presentation/GameThemeLocaleResolver.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/BestiaryCodexBrowser.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/BestiaryDetail.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/BottomCountdownBar.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/CardCodexBrowser.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/CardCodexDetail.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/CodexCompendiumSurface.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/CommercialSettingsSurface.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/CompendiumHubBoard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/MenuOverlay.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/MenuQuickNavigation.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/ProductCodexBrowser.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/ProductCodexDetail.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/RegionCodexDetail.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/RoleCodexIdentityBoard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/RulesQuickReferenceBoard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/BestiaryCodexThumbnailCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/BestiaryMonsterActionCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/BestiaryMonsterKpiCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/CardCodexFilterChip.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/CardCodexInfoCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/CardCodexThumbnailCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/CodexBrowserSummaryCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/ProductCodexKpiCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/ProductCodexMarketBadge.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/ProductCodexStrategyCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/codex/ProductCodexThumbnailCard.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/map/PlanetCityMarker.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/v075/V075CombatPlayerSurface.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scenes/ui/v076/V076DeckLifecyclePresentation.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/CardUI.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/audio/commercial_audio_presentation_host.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/audio/commercial_audio_presentation_service.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/map_view.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/monster_art_view.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/presentation/game_theme_locale_resolver.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/presentation/table_presentation_pure_data_policy.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/presentation/v074/v074_planet_presentation_adapter_v1.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/presentation/v076_deck_lifecycle_presentation.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/presentation/v076_presentation_animation_director.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/bestiary_codex_browser.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/bestiary_detail.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/bottom_countdown_bar.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/card_codex_browser.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/card_codex_detail.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/bestiary_codex_thumbnail_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/bestiary_monster_action_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/bestiary_monster_kpi_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/card_codex_filter_chip.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/card_codex_info_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/card_codex_thumbnail_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/codex_browser_summary_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/product_codex_kpi_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/product_codex_market_badge.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/product_codex_strategy_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex/product_codex_thumbnail_card.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/codex_compendium_surface.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/commercial_settings_surface.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/compendium_hub_board.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/map/planet_city_marker.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/map/planet_map_event_effect.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/menu_quick_navigation.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/planet_map_view.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/product_codex_browser.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/product_codex_detail.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/region_codex_detail.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/role_codex_identity_board.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/rules_quick_reference_board.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/showcase_director.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/v074/v074_sample_game_screen.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/v074/v074_track_card_button.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/v075/v075_combat_player_surface.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/v075/v075_interactive_card_face.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/v075/v075_new_game_loading_overlay.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/ui/v075/v075_public_action_arrangement.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/v075/runtime/v075_combat_runtime_owner.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/viewmodels/compendium_hub_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/viewmodels/rules_quick_reference_snapshot_v06.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:8208001e7be8->62ceba063d68:scripts/viewmodels/visual_event_snapshot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:ce3b644dedaa->46b33bba77b3:scenes/ui/CardResolutionTrackSlot.tscn",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:ce3b644dedaa->46b33bba77b3:scripts/ui/card_resolution_track.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:ce3b644dedaa->46b33bba77b3:scripts/ui/card_resolution_track_slot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:ce3b644dedaa->46b33bba77b3:scripts/ui/card_track_slot.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:ce3b644dedaa->46b33bba77b3:scripts/ui/v075/v075_public_action_arrangement.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:d701a81dce69->0d2a2b798f32:docs/rules/v06_mechanic_status_registry.json",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:d701a81dce69->0d2a2b798f32:resources/content/alpha01/alpha01_content_manifest.tres",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:d701a81dce69->0d2a2b798f32:scripts/map_view.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:de520b646930->9f8659c8e374:scripts/presentation/v076_presentation_animation_director.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:e584cd4d8b0c->e372c105cb0e:scripts/ui/v075/v075_interactive_card_face.gd",
+    "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:e584cd4d8b0c->e372c105cb0e:scripts/ui/v075/v075_public_action_arrangement.gd"
+  ],
+  "metrics": {
+    "CANONICAL_REUSE_GATE_IMPLEMENTATION_COUNT": 1,
+    "EXISTING_SCANNER_INVENTORY_COUNT": 7,
+    "REUSED_SCANNER_COUNT": 7,
+    "NEW_SCANNER_REASON": "NO_EXISTING_SCANNER_ACCEPTS_GIT_BASE_HEAD_DELTA_AND_PR_BODY_WITHOUT_GODOT",
+    "PARALLEL_ARCHITECTURE_SCANNER_COUNT_DELTA": 0,
+    "HISTORICAL_REUSE_REGISTRY_IMPLEMENTATION_COUNT": 1,
+    "OWNER_REUSE_MAP_IMPLEMENTATION_COUNT": 1,
+    "INHERITED_GREEN_LEDGER_IMPLEMENTATION_COUNT": 1,
+    "GOLDEN_PLAYTEST_SCENARIO_IMPLEMENTATION_COUNT": 1,
+    "ACTIVE_DOMAIN_OWNER_COUNT_MISMATCH": 0,
+    "PENDING_DOMAIN_IMPLICIT_OWNER_COUNT": 0,
+    "RETIRED_DOMAIN_ACTIVE_OWNER_COUNT": 0,
+    "REFERENCE_ONLY_AUTHORITY_WRITE_COUNT": 0,
+    "PARALLEL_PRODUCTION_OWNER_COUNT": 0,
+    "NEW_OWNER_WITHOUT_REUSE_SCAN_COUNT": 0,
+    "NEW_OWNER_WITH_REUSABLE_EXISTING_OWNER_COUNT": 0,
+    "UNJUSTIFIED_REIMPLEMENTATION_COUNT": 0,
+    "UNCLASSIFIED_NEW_COMPONENT_COUNT": 0,
+    "REGISTERED_COMPONENT_PATH_MISSING_COUNT": 0,
+    "NON_OWNER_WITHOUT_OWNER_BINDING_COUNT": 0,
+    "DIAGNOSTIC_BENCH_PRODUCTION_OWNER_COUNT": 0,
+    "TEST_SUPPORT_PRODUCTION_OWNER_COUNT": 0,
+    "OWNER_REPLACEMENT_WITHOUT_SUPERSESSION_COUNT": 0,
+    "DUAL_WRITE_COUNT": 0,
+    "FALLBACK_COUNT": 0,
+    "OLD_OWNER_STILL_PRODUCTION_REACHABLE_COUNT": 0,
+    "RETIRED_IMPLEMENTATION_REACTIVATION_COUNT": 0,
+    "INHERITED_GREEN_SILENT_REMOVAL_COUNT": 0,
+    "OWNER_SILENT_REPLACEMENT_COUNT": 0,
+    "COMPONENT_INVENTORY_SILENT_DELETE_COUNT": 0,
+    "DOMAIN_INVENTORY_SILENT_DELETE_COUNT": 0,
+    "UNIQUE_OWNER_DOMAIN_SILENT_DELETE_COUNT": 0,
+    "COMPONENT_IDENTITY_SILENT_REPLACEMENT_COUNT": 0,
+    "GLOBAL_AUTHORITY_SURFACE_OWNER_MISMATCH_COUNT": 0,
+    "GOLDEN_SCENARIO_STEP_DELETE_COUNT": 0,
+    "GOLDEN_SCENARIO_STEP_COUNT_MONOTONIC": true,
+    "GOLDEN_HUMAN_FALSE_GREEN_COUNT": 0,
+    "GOLDEN_PRODUCTION_FALSE_GREEN_COUNT": 0,
+    "DIAGNOSTIC_AS_HUMAN_PASS_COUNT": 0,
+    "CARD_CERTIFICATION_RESET_COUNT": 0,
+    "ALPHA07_CERTIFIED_CARD_COUNT_MONOTONIC": true,
+    "CERTIFIED_CARD_SILENT_REGRESSION_COUNT": 0,
+    "HISTORICAL_REUSE_ENTRY_SILENT_DELETE_COUNT": 0,
+    "UNJUSTIFIED_FULL_REPROOF_COUNT": 0,
+    "TOOLING_ONLY_FULL_PRODUCT_REPROOF_COUNT": 0,
+    "UNTOUCHED_LEGACY_DEBT_BLOCK_COUNT": 0,
+    "TOUCHED_UNCLASSIFIED_LEGACY_COMPONENT_COUNT": 0,
+    "PRODUCT_CODE_CHANGE_COUNT": 137,
+    "PRODUCT_RULE_CHANGE_COUNT": 12,
+    "UNNECESSARY_FULL_SUITE_RUN_COUNT": 0,
+    "FULL_WORLD_REPROOF_COUNT": 0,
+    "CHANGE_CLASS_DECLARED": true,
+    "TEST_SCOPE_DERIVED_FROM_CHANGE_CLASS": true,
+    "PR93_BODY_STATUS_BLOCK_PRESENT": true,
+    "PR93_BODY_STATUS_MATCH": true,
+    "PR93_DESCRIPTION_STAGE3_CURRENT": true,
+    "PR93_BODY_STALE_STAGE_COUNT": 0,
+    "PR93_DESCRIPTION_FALSE_GREEN_COUNT": 0,
+    "STAGE_PARENT_IS_PREVIOUS_STAGE_DESCENDANT": true,
+    "DELTA_ONLY_GATE": true,
+    "LEGACY_UNTOUCHED_DEBT_BLOCK_COUNT": 0,
+    "NEW_OR_CHANGED_COMPONENT_GATE_COVERAGE": "100_PERCENT",
+    "CI_GATE_READ_ONLY": true,
+    "CI_PRODUCT_RUNTIME_MUTATION_COUNT": 0,
+    "CI_GAMEPLAY_EXECUTION_COUNT": 0,
+    "CI_FULL_PRODUCT_REPROOF_COUNT": 0,
+    "AGENT_MERGE_REQUIRES_REUSE_GATE": true,
+    "READY_TRANSITION_WITHOUT_GATE_COUNT": 0,
+    "MERGE_WITHOUT_GATE_COUNT": 0,
+    "GITHUB_REQUIRED_STATUS_CHECK_CONFIGURED": false,
+    "GITHUB_REQUIRED_STATUS_CONFIGURATION_PENDING": true,
+    "OWNER_MAP_IMPLEMENTATION_COUNT": 1,
+    "SUPERSESSION_MAP_IMPLEMENTATION_COUNT": 1,
+    "CARD_CERTIFICATION_MATRIX_IMPLEMENTATION_COUNT": 1,
+    "NEW_COMPONENT_REGISTRY_COVERAGE": "100_PERCENT",
+    "TOUCHED_UNCLASSIFIED_COMPONENT_COUNT": 0,
+    "NEW_UNCLASSIFIED_COMPONENT_COUNT": 0,
+    "GOLDEN_PASS_SILENT_REGRESSION_COUNT": 0,
+    "CARD_ID_SILENT_REPLACEMENT_COUNT": 0,
+    "PER_CARD_FALSE_GREEN_COUNT": 0,
+    "STAGE_BRANCH_RESTART_COUNT": 0,
+    "READY_WITHOUT_REUSE_GATE_COUNT": 0,
+    "TAG_WITHOUT_REUSE_GATE_COUNT": 0,
+    "PRODUCTION_COMPOSITION_CHANGE_COUNT": 1
+  },
+  "schema_version": "space_syndicate.v076.reuse_point_inertia_gate_report.v1",
+  "direction_amendment_id": "V076_REUSE_POINT_INERTIA_MANDATORY_CI_AND_REVIEW_GATE_V1",
+  "gate_activation_commit": "a80ad3e107491d03e8a1ccf5379fcb44c705f951",
+  "v076_gate_base_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
+  "pr_base_ref": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "head_ref": "da48a74b3d12af9040230ea659b1663bd9eb2cbe",
+  "head_sha": "da48a74b3d12af9040230ea659b1663bd9eb2cbe",
+  "include_worktree": false,
+  "evaluated_source": "COMMITTED_HEAD",
+  "merge_base_sha": "d701a81dce693b584d52fbfca3e0e78b521ad775",
+  "point_inertia_history_base_sha": "f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5",
+  "point_inertia_history_transition_count": 92,
+  "point_inertia_history_failure_count": 501,
+  "golden_regression_provenance": {
+    "STEP09": {
+      "valid": true,
+      "origin_commit": "f8340207d785e7b35ea7451048e5d71d0325232c",
+      "origin_status": "PRODUCTION_GREEN",
+      "promotion_metadata_commit": "3bf9e9b2468e4a279af47cd3be36d0660abcfe91",
+      "affected_commit": "ce3b644dedaa752b09e97fadf3c7880889ea7e9f"
+    },
+    "STEP11": {
+      "valid": true,
+      "origin_commit": "f8340207d785e7b35ea7451048e5d71d0325232c",
+      "origin_status": "PRODUCTION_GREEN",
+      "promotion_metadata_commit": "3bf9e9b2468e4a279af47cd3be36d0660abcfe91",
+      "affected_commit": "ce3b644dedaa752b09e97fadf3c7880889ea7e9f"
+    },
+    "STEP12": {
+      "valid": true,
+      "origin_commit": "f8340207d785e7b35ea7451048e5d71d0325232c",
+      "origin_status": "PRODUCTION_GREEN",
+      "promotion_metadata_commit": "3bf9e9b2468e4a279af47cd3be36d0660abcfe91",
+      "affected_commit": "ce3b644dedaa752b09e97fadf3c7880889ea7e9f"
+    }
+  },
+  "scanner_inventory": [
+    {
+      "scanner_id": "architecture",
+      "path": "tests/main_gd_architecture_gate_test.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    },
+    {
+      "scanner_id": "semantic_architecture",
+      "path": "tests/game_action_semantic_protocol_v1_test.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    },
+    {
+      "scanner_id": "owner",
+      "path": "scripts/diagnostics/runtime_authority_audit.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    },
+    {
+      "scanner_id": "main_retirement",
+      "path": "tools/rules/check_v06_mechanic_authority.py",
+      "reuse_mode": "EXECUTED_STATIC_SCANNER",
+      "present": true
+    },
+    {
+      "scanner_id": "privacy",
+      "path": "tests/player_facing_privacy_boundary_test.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    },
+    {
+      "scanner_id": "card_semantic",
+      "path": "tests/card_semantic_architecture_scan_test.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    },
+    {
+      "scanner_id": "production_composition",
+      "path": "tests/main_runtime_composition_test.gd",
+      "reuse_mode": "INHERITED_SENTINEL",
+      "present": true
+    }
+  ],
+  "retired_mechanic_scanner": {
+    "status": "PASS",
+    "retired_production_identifier_count": 0,
+    "source_splitting_evasion_count": 0,
+    "rule_authority_unreferenced_mechanic_count": 0,
+    "allowlisted_hit_count": 138,
+    "registry_errors": [],
+    "unreferenced_mechanics": [],
+    "production_hits": [],
+    "source_splitting_hits": [],
+    "allowlisted_hits": [],
+    "scanner_selftest": {
+      "status": "PASS",
+      "case_count": 24,
+      "failures": []
+    },
+    "scanner_selftest_exit_code": 0,
+    "summary_exit_code": 0,
+    "inherited_summary_status": "PASS",
+    "delta_production_hits": [],
+    "delta_source_splitting_hits": [],
+    "delta_status": "PASS",
+    "summary_contract_valid": true
+  },
+  "gate_selftest": {
+    "CASE_FAILURE_COUNT": 0,
+    "FALSE_GREEN_COUNT": 0,
+    "INVALID_DELTA_CASE_COUNT": 96,
+    "REUSE_POINT_INERTIA_GATE_SELFTEST_CASE_COUNT": 143,
+    "REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT": 143,
+    "REUSE_POINT_INERTIA_GATE_SELFTEST_STATUS": "PASS",
+    "VALID_DELTA_CASE_COUNT": 47,
+    "VALID_DELTA_FALSE_REJECT_COUNT": 0,
+    "cases": [
+      {
+        "case_id": "01",
+        "description": "valid extension of existing owner",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "02",
+        "description": "valid consumer bound to existing owner",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "03",
+        "description": "valid adapter reuses historical result",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "04",
+        "description": "valid non-production diagnostic bench",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "05",
+        "description": "new owner without reuse scan",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GLOBAL_AUTHORITY_SURFACE_PARALLEL_OWNER:owns_tick:2",
+          "NEW_OWNER_WITHOUT_REUSE_SCAN:component.unsearched.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "06",
+        "description": "two production owners in one active domain",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "ACTIVE_DOMAIN_OWNER_COUNT:map:2"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "07",
+        "description": "consumer without owner binding",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "NON_OWNER_WITHOUT_OWNER_BINDING:component.map.unbound_consumer"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "08",
+        "description": "new component missing classification",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "UNCLASSIFIED_NEW_COMPONENT:scripts/v076/unclassified/runtime_component.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "09",
+        "description": "owner replacement without supersession",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:component.map.existing_owner:owns_identity",
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:component.map.existing_owner:owns_tick",
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:component.map.existing_owner:production_reachable",
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:component.map.existing_owner:reads_authority",
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:component.map.existing_owner:writes_authority",
+          "OWNER_REPLACEMENT_WITHOUT_SUPERSESSION:component.map.replacement_owner",
+          "OWNER_SILENT_REPLACEMENT:map",
+          "SUPERSESSION_FORWARD_LINK_WITHOUT_ENTRY:component.map.existing_owner:component.map.replacement_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "10",
+        "description": "owner replacement retains dual write",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "OWNER_REPLACEMENT_WITH_DUAL_WRITE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "11",
+        "description": "owner replacement retains fallback",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "OWNER_REPLACEMENT_WITH_FALLBACK"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "12",
+        "description": "old owner remains production reachable",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "OLD_OWNER_STILL_PRODUCTION_REACHABLE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "13",
+        "description": "retired implementation is reactivated",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GLOBAL_AUTHORITY_SURFACE_PARALLEL_OWNER:owns_tick:2",
+          "RETIRED_IMPLEMENTATION_REACTIVATED:component.retired_reactivation.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "14",
+        "description": "historical reuse entry is silently deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORICAL_REUSE_ENTRY_SILENT_DELETE:reuse.inherited.only"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "15",
+        "description": "inherited green stage is silently deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "INHERITED_GREEN_SILENT_REMOVAL:stage.2",
+          "INHERITED_STAGE_ORDER_OR_PREFIX_CHANGED"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "16",
+        "description": "golden scenario step is deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_SCENARIO_STEP_DELETE:golden.deleted.step"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "17",
+        "description": "diagnostic fixture impersonates human green",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_STATUS_GOLDEN_COUNT_MISMATCH:golden_human_green_count",
+          "CANONICAL_STATUS_GOLDEN_COUNT_MISMATCH:golden_isolated_green_count",
+          "DIAGNOSTIC_AS_HUMAN_PASS:golden.map.owner",
+          "GOLDEN_HUMAN_COUNT_MISMATCH",
+          "GOLDEN_HUMAN_FALSE_GREEN:golden.map.owner",
+          "GOLDEN_ISOLATED_COUNT_MISMATCH",
+          "GOLDEN_PRODUCTION_COUNT_MISMATCH",
+          "GOLDEN_SUMMARY_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "18",
+        "description": "card certification matrix is reset",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "ALPHA07_CERTIFIED_CARD_COUNT_NOT_MONOTONIC",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:AI_PROJECTION_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:ALPHA07_CERTIFIED",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:CATALOG_VALID",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:COMMIT_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:EXACT_ONCE_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:PLAN_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:PLAYER_PROJECTION_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:PRIVACY_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:RECEIPT_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:REPLAY_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:SEMANTIC_COMPILED",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:TARGET_QUERY_GREEN"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "19",
+        "description": "tooling-only delta demands full reproof",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_CHANGE_SCOPE_REASON:HEAD:why_focused_tests_are_insufficient",
+          "CANONICAL_CHANGE_SCOPE_SCHEMA_INVALID:HEAD",
+          "FOCUSED_TEST_SCOPE_MISSING",
+          "TOOLING_ONLY_FULL_PRODUCT_REPROOF",
+          "UNJUSTIFIED_FULL_REPROOF"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "20",
+        "description": "full reproof has no trigger",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_CHANGE_SCOPE_REASON:HEAD:why_focused_tests_are_insufficient",
+          "CANONICAL_CHANGE_SCOPE_SCHEMA_INVALID:HEAD",
+          "CANONICAL_CHANGE_SCOPE_TRIGGER:HEAD",
+          "FOCUSED_TEST_SCOPE_MISSING",
+          "TOOLING_ONLY_FULL_PRODUCT_REPROOF",
+          "UNJUSTIFIED_FULL_REPROOF"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "21",
+        "description": "PR body canonical status block is missing",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PR93_DESCRIPTION_STAGE3_STALE",
+          "STALE_PR_STATUS_BLOCK:COUNT:0",
+          "STALE_PR_STATUS_BLOCK:MISSING"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "22",
+        "description": "PR body stage description is stale",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_LATEST_COMPLETED_STAGE_MISMATCH",
+          "LATEST_STAGE_LEDGER_SUBJECT_MISMATCH",
+          "PR93_DESCRIPTION_STAGE3_STALE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "23",
+        "description": "PR body falsely claims production cutover",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PRODUCTION_CUTOVER_EVIDENCE_MISSING"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "24",
+        "description": "untouched historical debt does not block",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "25",
+        "description": "touched historical component remains unclassified",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "TOUCHED_UNCLASSIFIED_LEGACY_COMPONENT:tests/legacy/pr70_runtime_attempt.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "26",
+        "description": "normal stage inheritance",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "27",
+        "description": "stage restarts from an old base",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "STAGE_PARENT_NOT_PREVIOUS_STAGE_DESCENDANT"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "28",
+        "description": "retired PR70 runtime attempt is revived",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GLOBAL_AUTHORITY_SURFACE_PARALLEL_OWNER:owns_tick:2",
+          "RETIRED_IMPLEMENTATION_REACTIVATED:component.pr70_runtime_revival.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "29",
+        "description": "new owner was searched but reasons are empty",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GLOBAL_AUTHORITY_SURFACE_PARALLEL_OWNER:owns_tick:2",
+          "OWNER_REUSE_REASON_EMPTY:component.empty_reasons.owner:why_adapter_is_insufficient",
+          "OWNER_REUSE_REASON_EMPTY:component.empty_reasons.owner:why_existing_owner_cannot_be_extended",
+          "OWNER_REUSE_REASON_EMPTY:component.empty_reasons.owner:why_new_owner_is_required"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "30",
+        "description": "valid atomic owner replacement",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "31",
+        "description": "production owner references an unknown domain",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_DOMAIN_UNKNOWN:component.unknown_domain.owner:domain.not.registered"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "32",
+        "description": "component inventory row is silently deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "ACTIVE_DOMAIN_OWNER_COUNT:map:0",
+          "COMPONENT_INVENTORY_SILENT_DELETE:component.map.existing_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "33",
+        "description": "domain inventory row is silently deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_DOMAIN_UNKNOWN:component.map.existing_owner:map",
+          "DOMAIN_INVENTORY_SILENT_DELETE:map",
+          "UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "34",
+        "description": "unique owner domain row is silently deleted",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "ACTIVE_DOMAIN_UNIQUE_OWNER_MAP_MISMATCH:map",
+          "UNIQUE_OWNER_DOMAIN_INVENTORY_MISMATCH",
+          "UNIQUE_OWNER_DOMAIN_SILENT_DELETE:map"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "35",
+        "description": "same component id silently changes class and path",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_IDENTITY_SILENT_REPLACEMENT:component.map.existing_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "36",
+        "description": "legacy production script path evades V076-only matching",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "UNCLASSIFIED_NEW_COMPONENT:scripts/runtime/v076_stage4_market_owner.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "37",
+        "description": "canonical authority schema or id is wrong",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "AUTHORITY_ID_MISMATCH:historical_reuse",
+          "AUTHORITY_SCHEMA_MISMATCH:card_matrix"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "38",
+        "description": "canonical PR status uses invented states",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_HISTORICAL_REUSE_STATUS_INVALID",
+          "CANONICAL_STAGE_STATUS_INVALID:3",
+          "PR93_DESCRIPTION_STAGE3_STALE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "39",
+        "description": "human green lacks human and production evidence",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_HUMAN_COUNT_MISMATCH",
+          "GOLDEN_HUMAN_FALSE_GREEN:golden.map.owner",
+          "GOLDEN_ISOLATED_COUNT_MISMATCH",
+          "GOLDEN_PRODUCTION_COUNT_MISMATCH",
+          "GOLDEN_SUMMARY_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "40",
+        "description": "Alpha certification is true without prerequisite axes",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:AI_PROJECTION_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:ALPHA07_CERTIFIED",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:COMMIT_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:EXACT_ONCE_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:PLAN_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:PLAYER_PROJECTION_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:PRIVACY_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:RECEIPT_GREEN",
+          "CARD_CERTIFICATION_PREREQUISITE_MISSING:ordinary_cards:REPLAY_GREEN",
+          "CARD_CERTIFICATION_RESET:ordinary_cards:TARGET_QUERY_GREEN"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "41",
+        "description": "second domain reuses the deterministic Kernel class and authority surfaces",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_CLASS_NAME_NOT_UNIQUE",
+          "GLOBAL_AUTHORITY_SURFACE_PARALLEL_OWNER:owns_tick:2"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "42",
+        "description": "negative Stage 3 prose cannot satisfy the current-status sentence",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PR93_DESCRIPTION_STAGE3_STALE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "43",
+        "description": "unrelated focused test list cannot prove the gate delta",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "TOOLING_FOCUSED_TEST_SET_INCOMPLETE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "44",
+        "description": "production consumer reconnects a retired implementation",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "RETIRED_IMPLEMENTATION_REACTIVATED:component.map.retired_consumer"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "45",
+        "description": "consumer binds another consumer instead of the canonical owner",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "NON_OWNER_BOUND_TO_NON_OWNER:component.map.consumer_b:component.map.consumer_a"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "46",
+        "description": "release candidate may request an evidence-scoped full reproof",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "47",
+        "description": "production cutover with atomic evidence remains a legal future state",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "48",
+        "description": "multiple canonical PR status blocks are rejected",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "STALE_PR_STATUS_BLOCK:COUNT:2",
+          "STALE_PR_STATUS_BLOCK:MISSING"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "49",
+        "description": "free prose cannot claim human green or cutover beyond canonical status",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PR93_DESCRIPTION_FALSE_GREEN:production_cutover"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "50",
+        "description": "product delta omits the affected canonical owner",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_CHANGE_SCOPE_AFFECTED_OWNERS_EMPTY:HEAD",
+          "PRODUCT_DELTA_AFFECTED_OWNERS_INCOMPLETE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "139",
+        "description": "Golden aggregate counts reject bool-as-int substitutions",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_HUMAN_COUNT_TYPE_INVALID",
+          "GOLDEN_ISOLATED_COUNT_TYPE_INVALID",
+          "GOLDEN_PRODUCTION_COUNT_TYPE_INVALID",
+          "GOLDEN_SUMMARY_MISMATCH",
+          "GOLDEN_SUMMARY_STEP_COUNT_TYPE_INVALID"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "140",
+        "description": "canonical status counts reject bool-as-int substitutions",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_STATUS_COUNT_TYPE:golden_human_green_count",
+          "CANONICAL_STATUS_COUNT_TYPE:golden_isolated_green_count",
+          "CANONICAL_STATUS_COUNT_TYPE:golden_production_green_count"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "141",
+        "description": "card aggregate counts reject bool-as-int substitutions",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "ALPHA07_CERTIFIED_CARD_COUNT_AGGREGATE_MISMATCH",
+          "ALPHA07_CERTIFIED_CARD_COUNT_NOT_MONOTONIC",
+          "CARD_CERTIFICATION_CARD_SUM_MISMATCH",
+          "CARD_CERTIFICATION_CATEGORY_COUNT_MISMATCH",
+          "CARD_CERTIFIED_COUNT_INVALID"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "142",
+        "description": "supersession counts reject bool-as-int substitutions",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SUPERSESSION_INTEGER_FIELD:component.map.replacement_owner:dual_write_count",
+          "SUPERSESSION_INTEGER_FIELD:component.map.replacement_owner:fallback_count",
+          "SUPERSESSION_INTEGER_FIELD:component.map.replacement_owner:new_owner_production_owner_count",
+          "SUPERSESSION_INTEGER_FIELD:component.map.replacement_owner:old_owner_production_reachability"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "143",
+        "description": "active unique-owner cardinality rejects bool-as-int substitution",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "UNIQUE_OWNER_COUNT_TYPE_INVALID:map"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "51",
+        "description": "merge ratchet accepts one completed success on the expected head",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "52",
+        "description": "merge ratchet rejects duplicate exact-name checks",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "53",
+        "description": "merge ratchet rejects a success from a stale head",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "54",
+        "description": "merge ratchet accepts duplicate completed successes on the expected head",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "55",
+        "description": "merge ratchet uses the latest identified current-head run",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "56",
+        "description": "merge ratchet rejects a newer pending current-head run",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "57",
+        "description": "activation-root history walk rejects an intermediate green reset",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CARD_CERTIFICATION_RESET:selftest-history:ordinary_cards:ALPHA07_CERTIFIED",
+          "ALPHA07_CERTIFIED_CARD_COUNT_NOT_MONOTONIC:selftest-history"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "58",
+        "description": "activation-root history walk accepts a stable monotonic transition",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "59",
+        "description": "valid inherited scanner debt remains grandfathered for an empty Delta",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "60",
+        "description": "non-JSON or invalid retired-scanner summary fails closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "61",
+        "description": "CI binds immutable Gate history and inherits product skips only from a green Head",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "62",
+        "description": "self-asserted Golden human evidence cannot impersonate bound production artifacts",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_HUMAN_FALSE_GREEN:golden.map.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "63",
+        "description": "cryptographically bound production Golden evidence is a legal future state",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "64",
+        "description": "typed human-executed evidence bound to production receipts is legal",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "65",
+        "description": "regression evidence is sticky and cannot be washed through a second commit",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "INHERITED_GREEN_REGRESSION_NOT_STICKY:selftest-regression-wash:V076_STAGE_3_DETERMINISTIC_MONSTER_L1_DIRECTIONAL_GEODESIC_MOVE",
+          "GOLDEN_SCENARIO_REGRESSION_NOT_STICKY:selftest-regression-wash:golden.map.owner",
+          "CARD_CERTIFICATION_REGRESSION_NOT_STICKY:selftest-regression-wash:ordinary_cards:RECEIPT_GREEN"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "66",
+        "description": "a complete unchanged regression marker remains a legal retained record",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "67",
+        "description": "a RETIRED reuse disposition cannot be reactivated by rewriting the row",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "RETIRED_REUSE_DISPOSITION_REACTIVATED:selftest-retired-sticky:reuse.retired.sticky"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "68",
+        "description": "an active domain cannot silently retire without explicit evidence",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_NONACTIVE_DOMAIN_ACTIVE_OWNER:selftest-domain-retirement:map",
+          "ACTIVE_DOMAIN_LIFECYCLE_SILENT_DOWNGRADE:selftest-domain-retirement:map"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "69",
+        "description": "an existing owner authority surface cannot silently turn off",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_AUTHORITY_SURFACE_SILENT_DOWNGRADE:selftest-owner-surface:component.map.existing_owner:writes_authority"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "70",
+        "description": "Golden and ledger evidence subjects must match the canonical candidate SHA",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_EVIDENCE_SUBJECT_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "71",
+        "description": "Golden aggregate and step inventories cannot contradict their rows",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_SUMMARY_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "72",
+        "description": "an explicit constitution-backed domain retirement remains a legal future state",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "73",
+        "description": "a three-field supersession row cannot authorize an owner replacement",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SUPERSESSION_FIELDS_MISSING:component.map.replacement_owner:consumer_inventory,cutover_commit,dual_write_count,fallback_count,kind,migration_strategy,new_owner_path,new_owner_production_owner_count,old_owner_path,old_owner_production_reachability,old_owner_retirement_status,replacement_reason,replay_impact,rng_impact,save_impact,supersession_id",
+          "SUPERSESSION_ID_NOT_UNIQUE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "74",
+        "description": "a retained A-to-B-to-C supersession chain is a legal sequential replacement",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "75",
+        "description": "an unknown Golden state cannot bridge two otherwise valid commits",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_SCENARIO_STATUS_INVALID:selftest-unknown-golden:golden.map.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "76",
+        "description": "a bot observer cannot satisfy typed HUMAN_EXECUTED evidence",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_HUMAN_FALSE_GREEN:golden.map.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "77",
+        "description": "a diagnostic surface cannot impersonate production Golden evidence",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "DIAGNOSTIC_AS_PRODUCTION_PASS:golden.map.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "78",
+        "description": "the evidence subject commit must bind the declared Git tree",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "EVIDENCE_SUBJECT_GIT_TREE_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "79",
+        "description": "a retired domain cannot be reactivated in a later commit",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "RETIRED_DOMAIN_REACTIVATED:selftest-retired-domain-reactivation:map"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "80",
+        "description": "every Godot-loadable production root fails closed when its component is unregistered",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PRODUCT_DELTA_COMPONENT_CLASSIFICATION_INCOMPLETE",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:addons/funplay_mcp/runtime/stage4_runtime_owner.gd",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:addons/unknown_runtime/stage4_runtime_owner.gd",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:assets/v076/new_surface.tres",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:export_presets.cfg",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:localization/v076_stage4.po",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:project.godot",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:shaders/v076_stage4_owner.gdshader",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:themes/GameTheme.tres",
+          "UNCLASSIFIED_NEW_COMPONENT:addons/funplay_mcp/runtime/stage4_runtime_owner.gd",
+          "UNCLASSIFIED_NEW_COMPONENT:addons/unknown_runtime/stage4_runtime_owner.gd",
+          "UNCLASSIFIED_NEW_COMPONENT:assets/v076/new_surface.tres",
+          "UNCLASSIFIED_NEW_COMPONENT:export_presets.cfg",
+          "UNCLASSIFIED_NEW_COMPONENT:localization/v076_stage4.po",
+          "UNCLASSIFIED_NEW_COMPONENT:project.godot",
+          "UNCLASSIFIED_NEW_COMPONENT:shaders/v076_stage4_owner.gdshader",
+          "UNCLASSIFIED_NEW_COMPONENT:themes/GameTheme.tres"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "81",
+        "description": "current production rule authorities cannot pass under a tooling or docs-only declaration",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PRODUCT_DELTA_COMPONENT_CLASSIFICATION_INCOMPLETE",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:data/cards/v076_stage4.json",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:resources/cards/runtime/v076_stage4.tres",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:resources/rules/v076_stage4.tres",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:README.md",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:data/cards/v076_stage4.json",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:docs/rules/v076_stage4.md",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:docs/rules_v06_runtime_directive.md",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:docs/tabletop_rulebook_v06.md",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:resources/cards/runtime/v076_stage4.tres",
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:resources/rules/v076_stage4.tres"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "82",
+        "description": "an unregistered product commit remains a history failure even if the next commit registers it",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:selftest-code-before-registry:scripts/v076/stage4_history/runtime_owner.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "83",
+        "description": "supersession entries and reciprocal links are append-only history",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SUPERSESSION_ENTRY_SILENT_DELETE:selftest-supersession-history-erasure:selftest.atomic.replacement.one",
+          "COMPONENT_SUPERSESSION_LINK_SHRANK:selftest-supersession-history-erasure:component.map.existing_owner:superseded_by",
+          "COMPONENT_SUPERSESSION_LINK_SHRANK:selftest-supersession-history-erasure:component.map.replacement_owner:supersedes"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "84",
+        "description": "an owner supersession graph cannot cycle back to a retired owner",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SUPERSESSION_GRAPH_INVALID",
+          "SUPERSESSION_OWNER_STATE_INVALID:component.map.replacement_owner->component.map.existing_owner",
+          "SUPERSESSION_RECIPROCAL_LINK_MISSING:component.map.replacement_owner->component.map.existing_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "85",
+        "description": "an unused Owner may be atomically replaced with an explicit empty consumer inventory",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "86",
+        "description": "every future Stage ledger row must use a canonical point-inertia state",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "INHERITED_STAGE_LEDGER_STATUS_INVALID:V076_STAGE_4_UNKNOWN"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "87",
+        "description": "an evidence-backed card regression preserves the cumulative certified-card count",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "88",
+        "description": "an honestly described evidence-backed Stage regression is a legal point-inertia state",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "89",
+        "description": "the public committed-history orchestrator rejects code-before-registry across two commits",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:b926941ae800->c27290e2930b:scripts/v076/stage4_history/runtime_owner.gd",
+          "HISTORY_COMPONENT_CLASS_DECLARATION_MISMATCH:09115372a8a0:component.stage4_history.owner:scripts/v076/stage4_history/runtime_owner.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "90",
+        "description": "the public committed-history orchestrator accepts atomic registry plus implementation",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "91",
+        "description": "Godot sidecars inherit their source binding without bypassing runtime addon coverage",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "92",
+        "description": "NUL-safe rename classification preserves old, new, and Unicode rule paths",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "93",
+        "description": "regression evidence must descend from an actually green prior state",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CARD_CERTIFICATION_REGRESSION_WITHOUT_GREEN_ORIGIN:ordinary_cards:ALPHA07_CERTIFIED",
+          "INHERITED_STAGE_REGRESSION_WITHOUT_GREEN_ORIGIN:selftest-regression-origin:V076_STAGE_4_NEVER_GREEN",
+          "GOLDEN_SCENARIO_REGRESSION_WITHOUT_GREEN_ORIGIN:selftest-regression-origin:golden.never.green"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "94",
+        "description": "an established authority cannot erase its reuse scan by relabeling itself inherited",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "COMPONENT_CHANGE_CLASS_REVERTED_TO_INHERITED:selftest-reuse-scan-erasure:component.map.existing_owner",
+          "HISTORY_AUTHORITY_INERTIA_REUSE_SCAN_INVALID:selftest-reuse-scan-erasure:component.map.existing_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "95",
+        "description": "composition changes expose trusted-path runtime files while ordinary product plus test deltas stay focused",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "96",
+        "description": "runtime data extensions and future card rule roots fail closed without reclassifying compendium presentation",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "97",
+        "description": "every historical authority snapshot enforces full rows, nonempty scope, and owner cardinality",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_COMPONENT_REQUIRED_FIELDS:component.map.existing_owner:focused_test_ids",
+          "HISTORY_COMPONENT_STRING_LIST_FIELD:component.map.existing_owner:focused_test_ids",
+          "HISTORY_CHANGE_SCOPE_FOCUSED_TESTS_EMPTY:selftest-empty-scope",
+          "HISTORY_CHANGE_SCOPE_SENTINELS_EMPTY:selftest-empty-scope",
+          "HISTORY_ACTIVE_DOMAIN_OWNER_COUNT:selftest-double-owner-snapshot:map:2"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "98",
+        "description": "a registered non-production diagnostic in a trusted tools path remains a legal focused delta",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "99",
+        "description": "the canonical main scene cannot self-declare as non-production tooling",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PRODUCT_DELTA_FOCUSED_TESTS_INCOMPLETE",
+          "TOOLING_GATE_PRODUCT_CODE_CHANGE:scenes/main.tscn"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "100",
+        "description": "Stage status cannot outrun Golden evidence or introduce a capability-free ghost Stage",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "CANONICAL_STAGE_STATUS_WITHOUT_GOLDEN_EVIDENCE:3",
+          "PR93_DESCRIPTION_STAGE3_STALE",
+          "INHERITED_STAGE_WITHOUT_NEW_GOLDEN_CAPABILITY:V076_STAGE_4_GHOST_NO_CAPABILITY"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "101",
+        "description": "PR prose rejects English and Chinese false-green claims without misreading the next Stage clause",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PR93_DESCRIPTION_FALSE_GREEN:human_green",
+          "PR93_DESCRIPTION_FALSE_GREEN:human_green",
+          "PR93_DESCRIPTION_FALSE_GREEN:production_cutover"
+        ],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "102",
+        "description": "hash-bound scripted fixture evidence cannot impersonate the canonical production scene",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "GOLDEN_PRODUCTION_FALSE_GREEN:golden.map.owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "103",
+        "description": "regression evidence binds a real commit and registered affected owner",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SELFTEST_REGRESSION_EVIDENCE_INVALID:selftest-bad-regression-binding:stage:V076_STAGE_3_DETERMINISTIC_MONSTER_L1_DIRECTIONAL_GEODESIC_MOVE"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "104",
+        "description": "an owner supersession cutover must bind a real commit-shaped identity",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "SUPERSESSION_CUTOVER_COMMIT_INVALID:component.map.replacement_owner"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "105",
+        "description": "production cutover evidence binds the candidate, canonical scene, receipt, and typed owner set",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "PRODUCTION_CUTOVER_EVIDENCE_MISSING"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "106",
+        "description": "Golden evidence subject must be a Head ancestor with an unchanged product tree",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "EVIDENCE_SUBJECT_NOT_HEAD_ANCESTOR",
+          "EVIDENCE_SUBJECT_PRODUCT_TREE_DRIFT"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "107",
+        "description": "a registry-only production Owner cannot precede its implementation commit",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_REGISTERED_COMPONENT_PATH_MISSING:11bb470e3a43:component.stage4_history.owner:scripts/v076/stage4_history/runtime_owner.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "108",
+        "description": "a previously harmless tools file is classified at the exact commit that production first references it",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_PRODUCT_FOCUSED_TESTS_MISSING:ed1a46b77cce->b4090f4cd66b:component.main.composition",
+          "HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT:ed1a46b77cce->b4090f4cd66b:scripts/tools/hidden_runtime_owner.gd"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "109",
+        "description": "the Gate reuses registry-declared rule sources without treating broad scanner inputs as rules",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:docs/ai_runtime_ownership_contract.md"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "110",
+        "description": "production closure follows const loads while ignoring comments and editor-only sections",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "111",
+        "description": "a newly introduced unresolved dynamic production load fails closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "DYNAMIC_REFERENCE_UNRESOLVED"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "112",
+        "description": "real Git rename records preserve Unicode card authority paths without quote loss",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "113",
+        "description": "a pending future domain may atomically register its first unique Owner",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "114",
+        "description": "a predeclared pending Golden step may become a new isolated Stage capability",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "115",
+        "description": "an exact existing-Owner lifecycle correction names every repairable transition and failure",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "116",
+        "description": "history correction evidence cannot excuse code-before-registry or another failure class",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "INVALID_CORRECTION_WAS_APPLIED:{'c254e00e38cbd75515019c0dbddbfcd7afea1dc1': {('HISTORY_UNCLASSIFIED_PRODUCT_COMPONENT', 'scripts/v076/map/existing_owner.gd')}}"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "117",
+        "description": "accepted history classification correction evidence is append-only and immutable",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "HISTORY_CLASSIFICATION_CORRECTION_MUTATED"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "118",
+        "description": "reuse-scan correction is exact, fail-closed, and append-only",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "119",
+        "description": "truthful pending cutover prose is not classified as a positive cutover claim",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "120",
+        "description": "focused-test scope repair is exact, executed, fail-closed, and append-only",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "121",
+        "description": "an exact source-bound dynamic manifest resolves only its declared targets",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "122",
+        "description": "dynamic source SHA, line, loader, and expression drift all fail closed",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "123",
+        "description": "target hash, wildcard, and false constant target cannot be manifested",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "124",
+        "description": "future sites, unknown callers, missing probes, and permissive policy do not auto-pass",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "125",
+        "description": "non-component rule authorities remain scanned while runtime rule resources stay component-eligible",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "TOOLING_GATE_PRODUCT_RULE_CHANGE:docs/rules/v06_mechanic_status_registry.json"
+        ],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "126",
+        "description": "Golden regression binds distinct green-origin and promotion-metadata commits",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "127",
+        "description": "wrong Golden step and wrong prior status fail closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "128",
+        "description": "late or non-ancestor origin and promotion commits fail closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "129",
+        "description": "stale Golden candidate SHA and tree fail closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "130",
+        "description": "quoted GDScript extends participates in the production reference closure",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "131",
+        "description": "an anonymous GDScript uses an explicit normalized path-bound identity",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      },
+      {
+        "case_id": "132",
+        "description": "declared, fabricated, wrong-path, and case-drift anonymous identities fail closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "133",
+        "description": "a promotion snapshot with the wrong top-level candidate tree fails closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "134",
+        "description": "a promotion snapshot with wrong step production-evidence SHA and tree fails closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "135",
+        "description": "the external PR90 activation evidence identity remains exact",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [
+          "EXTERNAL_GATE_ACTIVATION_BOUNDARY_IDENTITY_MISMATCH"
+        ],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "136",
+        "description": "a Golden origin outside the branch-local provenance anchor fails closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "137",
+        "description": "promotion and affected commits outside the evaluated Head ancestry fail closed",
+        "expected_status": "FAIL",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "FAIL",
+        "status": "PASS"
+      },
+      {
+        "case_id": "138",
+        "description": "the real f834 origin, 3bf promotion, and ce3 affected chain uses the branch-local Gate base",
+        "expected_status": "PASS",
+        "metric_mismatches": [],
+        "missing_failure_prefixes": [],
+        "observed_failures": [],
+        "observed_status": "PASS",
+        "status": "PASS"
+      }
+    ],
+    "check_name": "V076 Reuse and Point-Inertia Gate",
+    "fixture_model": "ValidationInput->validate_model",
+    "gate_implementation_sha256": "09bc04b52058cdafb7e966ca36230dc153dd637b829b766677ac542be02a9885",
+    "godot_execution_count": 0,
+    "repository_mutation_count": 0,
+    "schema_version": "space_syndicate.v076.reuse_point_inertia_gate_selftest.v1",
+    "selftest_script_sha256": "08ad4dff7267d9d28bc21885df126ef303dcea06827d3fa6d616b5e1521c0003"
+  },
+  "REUSE_POINT_INERTIA_GATE_SELFTEST_STATUS": "PASS",
+  "REUSE_POINT_INERTIA_GATE_SELFTEST_CASE_COUNT": 143,
+  "REUSE_POINT_INERTIA_GATE_SELFTEST_PASS_COUNT": 143,
+  "FALSE_GREEN_COUNT": 0,
+  "VALID_DELTA_FALSE_REJECT_COUNT": 0,
+  "changed_path_count": 38,
+  "gate_changed_path_count": 570,
+  "implementation_bindings": [
+    {
+      "path": "tools/v076/v076_reuse_point_inertia_gate.py",
+      "sha256": "09bc04b52058cdafb7e966ca36230dc153dd637b829b766677ac542be02a9885",
+      "byte_count": 317211
+    },
+    {
+      "path": "tools/v076/v076_reuse_point_inertia_gate_selftest.py",
+      "sha256": "08ad4dff7267d9d28bc21885df126ef303dcea06827d3fa6d616b5e1521c0003",
+      "byte_count": 196747
+    },
+    {
+      "path": ".github/workflows/v076-reuse-point-inertia-gate.yml",
+      "sha256": "af1abe52b01b6b061c1e460a7e7be5440ddc4d9e23153261d4c0f28127cc263b",
+      "byte_count": 18134
+    },
+    {
+      "path": ".github/workflows/v075-pr90-acceptance.yml",
+      "sha256": "ddd0833a156ab9d1049dffcc01c0c3cdd8b3ed37ab57878419dbcf7034d2e215",
+      "byte_count": 16806
+    },
+    {
+      "path": "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+      "sha256": "831ea1a35201b672080321e000f174bc1411ba359c7fba7840e7de26ed8c6e4d",
+      "byte_count": 275989
+    },
+    {
+      "path": "docs/architecture/V076_SUPERSESSION_MAP.json",
+      "sha256": "2b262536cc9dd9cedb34ec4578210fb57c737e1e4735675cebcac73623ea0451",
+      "byte_count": 11467
+    },
+    {
+      "path": "docs/architecture/V076_OWNER_REUSE_MAP.md",
+      "sha256": "44daa51a44fb0f663976af83e00a606f1f77a406fed45c7027ed0eabc5a25f6b",
+      "byte_count": 18733
+    },
+    {
+      "path": "docs/architecture/V076_INHERITED_GREEN_LEDGER.json",
+      "sha256": "faedc5adb962d532e24e888ab0a91c5814694c06ed4e759487ac297cfc85ce1d",
+      "byte_count": 94964
+    },
+    {
+      "path": "docs/architecture/V076_ALPHA07_GOLDEN_PLAYTEST_SCENARIO.json",
+      "sha256": "748814512f2c318850493bbe80a21734c46855795d1032ba92c450f8e95ebcb5",
+      "byte_count": 33127
+    },
+    {
+      "path": "reports/card_certification/v076_card_certification_matrix.json",
+      "sha256": "501d687c8d4d5b54cecd3ef7825b99261bc4fab54806a932a1c6eabf39dd1758",
+      "byte_count": 13405
+    }
+  ]
+}

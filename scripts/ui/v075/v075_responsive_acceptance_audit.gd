@@ -26,7 +26,7 @@ static func audit_control_tree(root: Control) -> Dictionary:
 		if root_rect.encloses(rect):
 			continue
 		outside_count += 1
-		if not _has_scroll_ancestor(control, root):
+		if not _has_enabled_scroll_ancestor(control):
 			unreachable_count += 1
 	var overlap_count := _direct_sibling_overlap_count(root)
 	return {
@@ -135,12 +135,17 @@ static func _direct_sibling_overlap_count(node: Node) -> int:
 	return count
 
 
-static func _has_scroll_ancestor(control: Control, root: Control) -> bool:
+static func _has_enabled_scroll_ancestor(control: Control) -> bool:
 	var cursor := control.get_parent()
 	while cursor != null:
 		if cursor is ScrollContainer:
-			return true
-		if cursor == root:
-			break
+			var scroll := cursor as ScrollContainer
+			if (
+				scroll.horizontal_scroll_mode
+					!= ScrollContainer.SCROLL_MODE_DISABLED
+				or scroll.vertical_scroll_mode
+					!= ScrollContainer.SCROLL_MODE_DISABLED
+			):
+				return true
 		cursor = cursor.get_parent()
 	return false

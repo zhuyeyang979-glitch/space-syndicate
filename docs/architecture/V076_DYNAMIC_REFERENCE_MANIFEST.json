@@ -1,0 +1,202 @@
+{
+  "schema_version": "space_syndicate.v076.dynamic_reference_manifest.v1",
+  "manifest_id": "v076-current-dynamic-reference-manifest-20260827",
+  "entries": [
+    {
+      "dynamic_reference_id": "dynamic.current.monster_art.optional_texture.exists",
+      "source_path": "scripts/monster_art_view.gd",
+      "source_blob_sha256": "89515b0b4212d6c5bbc372749eb353dde20b03b835a79d1e3872eb16dce4be70",
+      "source_line_or_ast_location": {
+        "line": 523,
+        "column": 5,
+        "containing_function": "_load_optional_texture"
+      },
+      "loader": "ResourceLoader.exists",
+      "reference_expression": "path",
+      "resolved_targets": [
+        "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png",
+        "res://assets/third_party/kenney_cc0/platformer/enemies/fishSwim1.png",
+        "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png",
+        "res://assets/third_party/kenney_cc0/space/enemyUFO.png",
+        "res://assets/third_party/monster_battler/monsters/dino.png",
+        "res://assets/third_party/monster_battler/monsters/rock.png",
+        "res://assets/third_party/monster_battler/monsters/rodent.png",
+        "res://assets/third_party/monster_battler/monsters/salamander.png",
+        "res://assets/third_party/monster_battler/monsters/turtle.png",
+        "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png",
+        "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_atfield.png",
+        "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_laser.png",
+        "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_mech.png",
+        "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png",
+        "res://assets/third_party/pixelmob_cc0/sprites/SlimeA.png",
+        "res://assets/third_party/pixelmob_cc0/sprites/SlimeSquareA.png",
+        "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png",
+        "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png",
+        "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/slim.png",
+        "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png"
+      ],
+      "target_set_sha256": "06fcadb6e363cc49da61463a1b42da4138d4050fb48a8ee1ec9b9a050c65a43a",
+      "production_reachable": true,
+      "resolution_method": "EXACT_CONSTANT_CALL_GRAPH_MANIFEST",
+      "callsite_contract": {
+        "helper_function": "_load_optional_texture",
+        "required_invocation_count": 20,
+        "allowed_argument_constants": [
+          "KENNEY_ALIEN_BLUE_PATH",
+          "KENNEY_ENEMY_UFO_PATH",
+          "KENNEY_FISH_PATH",
+          "KENNEY_SLIME_PATH",
+          "MONSTER_BATTLER_DINO_PATH",
+          "MONSTER_BATTLER_ROCK_PATH",
+          "MONSTER_BATTLER_RODENT_PATH",
+          "MONSTER_BATTLER_SALAMANDER_PATH",
+          "MONSTER_BATTLER_TURTLE_PATH",
+          "MOTH_KAIJUICE_ATFIELD_PATH",
+          "MOTH_KAIJUICE_KAIJU_PATH",
+          "MOTH_KAIJUICE_LASER_PATH",
+          "MOTH_KAIJUICE_MECH_PATH",
+          "MOTH_KAIJUICE_TANK_PATH",
+          "PIXELMOB_SLIME_PATH",
+          "PIXELMOB_SLIME_SQUARE_PATH",
+          "SUPERPOWERS_CYCLOP_PATH",
+          "SUPERPOWERS_DRAGON_PATH",
+          "SUPERPOWERS_SLIM_PATH",
+          "SUPERPOWERS_SNAKE_PATH"
+        ],
+        "external_or_unknown_invocation_count": 0,
+        "required_loader_sites": [
+          {
+            "line": 523,
+            "column": 5,
+            "loader": "ResourceLoader.exists",
+            "reference_expression": "path"
+          },
+          {
+            "line": 524,
+            "column": 19,
+            "loader": "load",
+            "reference_expression": "path"
+          },
+          {
+            "line": 527,
+            "column": 5,
+            "loader": "image.load",
+            "reference_expression": "path"
+          }
+        ]
+      },
+      "runtime_probe": {
+        "probe_id": "gameplay_balance_diagnostics_monster_art_profile_test",
+        "test_path": "tests/gameplay_balance_diagnostics_monster_art_profile_test.gd",
+        "expected_target_count": 20,
+        "required_before_production_claim": true
+      },
+      "failure_policy": {
+        "source_blob_change_invalidates": true,
+        "source_location_change_invalidates": true,
+        "target_set_change_invalidates": true,
+        "unknown_callsite_fails_closed": true,
+        "future_site_auto_resolution_count": 0,
+        "wildcard_count": 0
+      }
+    },
+    {
+      "dynamic_reference_id": "dynamic.current.monster_art.optional_texture.load",
+      "source_path": "scripts/monster_art_view.gd",
+      "source_blob_sha256": "89515b0b4212d6c5bbc372749eb353dde20b03b835a79d1e3872eb16dce4be70",
+      "source_line_or_ast_location": {
+        "line": 524,
+        "column": 19,
+        "containing_function": "_load_optional_texture"
+      },
+      "loader": "load",
+      "reference_expression": "path",
+      "resolved_targets": [
+        "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png",
+        "res://assets/third_party/kenney_cc0/platformer/enemies/fishSwim1.png",
+        "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png",
+        "res://assets/third_party/kenney_cc0/space/enemyUFO.png",
+        "res://assets/third_party/monster_battler/monsters/dino.png",
+        "res://assets/third_party/monster_battler/monsters/rock.png",
+        "res://assets/third_party/monster_battler/monsters/rodent.png",
+        "res://assets/third_party/monster_battler/monsters/salamander.png",
+        "res://assets/third_party/monster_battler/monsters/turtle.png",
+        "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png",
+        "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_atfield.png",
+        "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_laser.png",
+        "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_mech.png",
+        "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png",
+        "res://assets/third_party/pixelmob_cc0/sprites/SlimeA.png",
+        "res://assets/third_party/pixelmob_cc0/sprites/SlimeSquareA.png",
+        "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png",
+        "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png",
+        "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/slim.png",
+        "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png"
+      ],
+      "target_set_sha256": "06fcadb6e363cc49da61463a1b42da4138d4050fb48a8ee1ec9b9a050c65a43a",
+      "production_reachable": true,
+      "resolution_method": "EXACT_CONSTANT_CALL_GRAPH_MANIFEST",
+      "callsite_contract": {
+        "helper_function": "_load_optional_texture",
+        "required_invocation_count": 20,
+        "allowed_argument_constants": [
+          "KENNEY_ALIEN_BLUE_PATH",
+          "KENNEY_ENEMY_UFO_PATH",
+          "KENNEY_FISH_PATH",
+          "KENNEY_SLIME_PATH",
+          "MONSTER_BATTLER_DINO_PATH",
+          "MONSTER_BATTLER_ROCK_PATH",
+          "MONSTER_BATTLER_RODENT_PATH",
+          "MONSTER_BATTLER_SALAMANDER_PATH",
+          "MONSTER_BATTLER_TURTLE_PATH",
+          "MOTH_KAIJUICE_ATFIELD_PATH",
+          "MOTH_KAIJUICE_KAIJU_PATH",
+          "MOTH_KAIJUICE_LASER_PATH",
+          "MOTH_KAIJUICE_MECH_PATH",
+          "MOTH_KAIJUICE_TANK_PATH",
+          "PIXELMOB_SLIME_PATH",
+          "PIXELMOB_SLIME_SQUARE_PATH",
+          "SUPERPOWERS_CYCLOP_PATH",
+          "SUPERPOWERS_DRAGON_PATH",
+          "SUPERPOWERS_SLIM_PATH",
+          "SUPERPOWERS_SNAKE_PATH"
+        ],
+        "external_or_unknown_invocation_count": 0,
+        "required_loader_sites": [
+          {
+            "line": 523,
+            "column": 5,
+            "loader": "ResourceLoader.exists",
+            "reference_expression": "path"
+          },
+          {
+            "line": 524,
+            "column": 19,
+            "loader": "load",
+            "reference_expression": "path"
+          },
+          {
+            "line": 527,
+            "column": 5,
+            "loader": "image.load",
+            "reference_expression": "path"
+          }
+        ]
+      },
+      "runtime_probe": {
+        "probe_id": "gameplay_balance_diagnostics_monster_art_profile_test",
+        "test_path": "tests/gameplay_balance_diagnostics_monster_art_profile_test.gd",
+        "expected_target_count": 20,
+        "required_before_production_claim": true
+      },
+      "failure_policy": {
+        "source_blob_change_invalidates": true,
+        "source_location_change_invalidates": true,
+        "target_set_change_invalidates": true,
+        "unknown_callsite_fails_closed": true,
+        "future_site_auto_resolution_count": 0,
+        "wildcard_count": 0
+      }
+    }
+  ]
+}

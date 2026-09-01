@@ -1,0 +1,38 @@
+{
+  "schema": "space_syndicate.v076.alpha07.candidate_3.runtime_manifest.v1",
+  "recorded_at_utc": "2026-08-24T17:51:14.0119632Z",
+  "project": "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice",
+  "scene": "res://scenes/main.tscn",
+  "godot_version": "4.7.stable.official.5b4e0cb0f",
+  "mcp_run_project": "started",
+  "mcp_get_debug_output": {
+    "engine": "Godot Engine v4.7.stable.official.5b4e0cb0f",
+    "renderer": "Vulkan 1.4.329 - Forward+ - NVIDIA GeForce RTX 4080 SUPER",
+    "hard_errors": [],
+    "warnings": "GDScript reload warnings from existing code; no gameplay/runtime-owner hard error"
+  },
+  "headed_window": {
+    "left_open": true,
+    "human_input_injected": false,
+    "fixture_state_injected": false
+  },
+  "headless_final_probe": {
+    "command": "godot --headless --path . --script res://tests/v076_alpha07_card_table_flow_readiness_test.gd",
+    "exit_code": 0,
+    "status": "PASS",
+    "passed": 391,
+    "total": 391,
+    "fixture_card_injection_count": 0,
+    "fixture_track_phase_injection_count": 0,
+    "fixture_ai_action_injection_count": 0,
+    "failures": []
+  },
+  "headless_shutdown": {
+    "clean_process_exit": true,
+    "hard_product_error_count": 0,
+    "residual_diagnostics_disclosed": true,
+    "canvas_item_leaks": 25,
+    "objectdb_leaks": 820,
+    "resources_in_use": 535
+  }
+}

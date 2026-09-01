@@ -1,0 +1,106 @@
+{
+  "schema": "space_syndicate.v076.alpha07.human_candidate_2.short_retest_root_cause.v1",
+  "append_only": true,
+  "candidate_head_sha": "3bf9e9b2468e4a279af47cd3be36d0660abcfe91",
+  "human_session_id": "v076-alpha07-1787540860-db7006b993",
+  "production_scene": "res://scenes/main.tscn",
+  "classification": "PRE_GOLDEN_PRODUCT_USABILITY_BLOCKED",
+  "human_green": false,
+  "step13_status": "PENDING",
+  "observations": {
+    "new_game_started_elapsed_ms": 0,
+    "coach_mark_elapsed_ms": [3, 22566, 26337, 28221],
+    "batch_locked_elapsed_ms": 31177,
+    "batch_locked_queue_count": 0,
+    "first_human_hand_selection_elapsed_ms": 34074,
+    "batch_resolution_completed_elapsed_ms": 47960,
+    "first_track_hover_elapsed_ms": 72356,
+    "actions_submitted_total": 0,
+    "track_acquisition_count": 0,
+    "zero_action_batch_count": 1
+  },
+  "root_causes": [
+    {
+      "blocker": "NEW_GAME_WAIT_HAS_NO_FEEDBACK",
+      "root_cause_class": "PRESENTATION_AND_MEASUREMENT_GAP",
+      "owner_path": "V075ApplicationFlow existing synchronous new-game transaction",
+      "signal_path": "start control -> new_game.start -> V075ApplicationFlow -> RuntimeOwner",
+      "affected_scene": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+      "affected_scripts": [
+        "res://scripts/ui/v075/v075_sample_game_screen.gd",
+        "res://scripts/v075_runtime/v075_application_flow.gd"
+      ],
+      "evidence": "The existing trace reaches the first runtime action at about 2054 ms, while the production UI exposes no loading surface and telemetry has no click-to-first-playable-frame metric.",
+      "minimal_repair_scope": "Add a presentation-only loading surface and monotonic start/receipt/first-playable-frame instrumentation; keep deterministic initialization synchronous and owner-controlled."
+    },
+    {
+      "blocker": "SHARED_TRACK_ACQUISITION_NOT_HUMAN_COMPLETABLE",
+      "root_cause_class": "COACH_MODAL_DID_NOT_GATE_EXISTING_PACING_OWNER",
+      "owner_path": "V075ApplicationFlow playtest pacing -> V075RuntimeOwner submission clock",
+      "signal_path": "Coach lifecycle -> V075SampleGameScreen pacing request -> existing ApplicationFlow pacing owner",
+      "affected_scene": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+      "affected_scripts": [
+        "res://scripts/ui/v073/v073_playtest_coach_marks.gd",
+        "res://scripts/ui/v075/v075_sample_game_screen.gd"
+      ],
+      "evidence": "The tutorial remained open while the batch locked at 31177 ms with zero queued actions. The first hand selection occurred at 34074 ms and the first track hover at 72356 ms, after the submission phase.",
+      "minimal_repair_scope": "Pause through the existing pacing owner whenever Coach is active, preserve the selected pace, and restore it exactly once on completion, skip, or close."
+    },
+    {
+      "blocker": "LEGAL_HAND_CARD_PLAY_NOT_HUMAN_COMPLETABLE",
+      "root_cause_class": "SUBMISSION_WINDOW_EXPIRED_BEFORE_FIRST_HUMAN_ACTION",
+      "owner_path": "existing DBG hand and V075 card.queue authority",
+      "signal_path": "hand card activation/drag -> existing target query -> fixed CurrentAction confirm -> card.queue",
+      "affected_scene": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+      "affected_scripts": [
+        "res://scripts/ui/v073/v073_sample_card_button.gd",
+        "res://scripts/ui/v075/v075_sample_game_screen.gd"
+      ],
+      "evidence": "The five-card opening hand is intentional. The normal click/target/confirm route exists, but the human first interacted after the authority had already left submission. Drag currently selects a card but has no visible central drop affordance.",
+      "minimal_repair_scope": "Preserve the authority route, keep click-to-select, and add an optional visible drop target that forwards into the same selection/target/confirm path."
+    },
+    {
+      "blocker": "CENTRAL_PUBLIC_ACTION_ARRANGEMENT_MISSING",
+      "root_cause_class": "EXISTING_PUBLIC_PROJECTION_NOT_RENDERED_ON_CENTRAL_TABLE",
+      "owner_path": "V075PublicActionBatchCore anonymous public projection",
+      "signal_path": "RuntimeOwner player snapshot -> V075SampleGameScreen -> existing CardResolutionTrack renderer",
+      "affected_scene": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+      "affected_scripts": [
+        "res://scripts/v075/runtime/v075_public_action_batch_core.gd",
+        "res://scripts/v075_runtime/v075_runtime_owner.gd",
+        "res://scripts/ui/card_resolution_track.gd"
+      ],
+      "evidence": "Candidate 2 renders only the compact right-side PublicActionFeed. The existing anonymous_global_queue and CardResolutionTrack renderer are not composed into the central V075 production table.",
+      "minimal_repair_scope": "Compose the existing renderer as a central presentation surface, feed only sanitized public/own-authorized rows, animate arrangement changes, and retain anonymous placeholders for rival private facts."
+    },
+    {
+      "blocker": "SUSHI_TRACK_APPEARS_NOT_TO_SCROLL",
+      "root_cause_class": "DELAYED_REFILL_RULE_NOT_EXPLAINED_BY_PRESENTATION",
+      "owner_path": "existing V07UnifiedCardTrackCore shared_scroll_vacancy mode",
+      "signal_path": "track.acquire receipt -> authoritative vacancy -> maintenance boundary scroll",
+      "affected_scene": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+      "affected_scripts": [
+        "res://scripts/ui/v075/v075_sample_game_screen.gd"
+      ],
+      "evidence": "A claimed slot intentionally remains vacant until the maintenance boundary. Immediate refill, supply-cursor advance, and extra supply RNG draw are forbidden by the existing contract.",
+      "minimal_repair_scope": "Keep delayed authority refill unchanged and clearly label claimable, unavailable, vacant, normal-card discard destination, and commodity-inventory destination states."
+    }
+  ],
+  "preserved_authorities": [
+    "V076DeterministicKernel",
+    "V076SharedHalfEdgePartitionV1",
+    "existing CardRuntimeCatalogService",
+    "existing DBG hand/discard owner",
+    "existing unified sushi-track owner",
+    "existing V075 ApplicationFlow and RuntimeOwner",
+    "existing Presentation Owner",
+    "existing Coach Mark system"
+  ],
+  "forbidden_claims": [
+    "human_green",
+    "production_green",
+    "step13_pass",
+    "step14_pass",
+    "step15_pass"
+  ]
+}

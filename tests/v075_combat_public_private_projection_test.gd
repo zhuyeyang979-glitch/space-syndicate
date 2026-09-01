@@ -374,6 +374,7 @@ func _run() -> void:
 	var clean_player_snapshot := production_runtime.player_snapshot(
 		production_viewer
 	)
+	var debug_before_poison := production_runtime.debug_snapshot()
 	_expect(
 		bool(production_bound.get("accepted", false))
 		and bool(production_started.get("accepted", false))
@@ -390,6 +391,7 @@ func _run() -> void:
 	var rejected_player_snapshot := production_runtime.player_snapshot(
 		production_viewer
 	)
+	var debug_after_poison := production_runtime.debug_snapshot()
 	_expect(
 		rejected_player_snapshot.is_empty()
 		and int(production_runtime.get(
@@ -397,6 +399,23 @@ func _run() -> void:
 		)) == 1
 		and int(production_runtime.get("_hidden_info_violation_count")) == 1,
 		"production player snapshot rejects poisoned public history"
+	)
+	_expect(
+		int(debug_after_poison.get(
+			"public_card_identity_rejection_count",
+			0
+		)) == int(debug_before_poison.get(
+			"public_card_identity_rejection_count",
+			0
+		)) + 1
+		and int(debug_after_poison.get(
+			"hidden_info_violation_count",
+			0
+		)) == int(debug_before_poison.get(
+			"hidden_info_violation_count",
+			0
+		)) + 1,
+		"privacy rejection invalidates the cached production debug observer"
 	)
 	production_runtime.queue_free()
 	production_combat.queue_free()

@@ -69,7 +69,47 @@ func _test_geometry_negative_control() -> void:
 		_asset_lane_overlap_detected == 1,
 		"one-pixel combat/asset-lane intersection turns the gate red"
 	)
+	var external_scroll := ScrollContainer.new()
+	external_scroll.name = "ExternalScrollAncestor"
+	external_scroll.size = Vector2(100.0, 50.0)
+	external_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	external_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	root.add_child(external_scroll)
+	var scrolled_surface := Control.new()
+	scrolled_surface.name = "ScrolledSurface"
+	scrolled_surface.size = Vector2(100.0, 50.0)
+	external_scroll.add_child(scrolled_surface)
+	var scrolled_child := ColorRect.new()
+	scrolled_child.name = "ScrolledChild"
+	scrolled_child.position = Vector2(0.0, 60.0)
+	scrolled_child.size = Vector2(20.0, 20.0)
+	scrolled_surface.add_child(scrolled_child)
+	await process_frame
+	var reachable_audit := ResponsiveAcceptanceAudit.audit_control_tree(
+		scrolled_surface
+	)
+	_expect(
+		int(reachable_audit.get("outside_surface_count", 0)) == 1
+		and int(reachable_audit.get(
+			"unreachable_clipped_control_count",
+			1
+		)) == 0,
+		"an enabled parent ScrollContainer makes clipped content reachable"
+	)
+	external_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	await process_frame
+	var disabled_scroll_audit := ResponsiveAcceptanceAudit.audit_control_tree(
+		scrolled_surface
+	)
+	_expect(
+		int(disabled_scroll_audit.get(
+			"unreachable_clipped_control_count",
+			0
+		)) == 1,
+		"a disabled parent ScrollContainer cannot hide unreachable content"
+	)
 	harness.queue_free()
+	external_scroll.queue_free()
 	await process_frame
 
 

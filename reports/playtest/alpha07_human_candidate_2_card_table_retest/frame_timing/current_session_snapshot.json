@@ -1,0 +1,13 @@
+{
+  "schema": "space_syndicate.v076.alpha07.card_table_frame_snapshot.v1",
+  "captured_at_utc": "2026-08-24T18:19:01.2862847Z",
+  "source": "Windows.Graphics.Capture via computer-use",
+  "window_id": 9898298,
+  "window_title": "太空辛迪加 (DEBUG)",
+  "screenshot_id": "screenshot-0",
+  "width": 1602,
+  "height": 992,
+  "screenshot_file": "../screenshots/candidate_2_card_table_blocker_001.jpg",
+  "coachmark_close_timing_available_in_preserved_session": false,
+  "note": "The current window was captured before repair; no synthetic coach-close action was injected into the human-owned state. A new 30-sample production probe will measure the repair."
+}

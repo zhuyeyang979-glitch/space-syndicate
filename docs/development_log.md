@@ -1,7 +1,46 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-23。
+> 最新记录日期：2026-08-21。
+
+## 2026-08-21 — V0.7.6 deterministic simulation kernel candidate
+
+- Added an isolated, test-only V0.7.6 authority kernel with an exact integer
+  20Hz clock (`50000us` per tick); it owns no engine-frame callback and reads no
+  wall, OS, camera, animation, or presentation state.
+- Added stable same-tick command closure followed by a single monotonic
+  Authority Sequence. Exact duplicate commands are idempotent, while a
+  same-ID/different-payload collision fails closed.
+- Added a strict authoritative state codec: only null, bool, int, String,
+  Array, and String-keyed Dictionary values enter snapshots or hashes. Float,
+  Vector, Object, Callable, StringName, and presentation fields are rejected.
+- Added independent integer-only RNG streams per gameplay domain, tick-boundary
+  snapshots, pending-queue continuation, ordered per-command before/after state
+  hashes, and an independent replay runner.
+- Added a production-wiring Bench scene and focused acceptance test, including
+  a 2,000-replay parity gate. This stage does not touch the V0.7.5 production
+  composition; production activation remains an atomic Stage 7 task.
+- Focused runner evidence `20260820-154737-214-v076_deterministic_kernel_test-4f375bc0`
+  passes the final strengthened 57/57 gate with 2,000 replays, zero state-hash
+  mismatches, zero diagnostics, exact completion marker, and no remaining
+  process. UI text,
+  visual contract, and smoke `--check-only` runners also passed with zero
+  diagnostics; existing determinism foundation (30/30), consumption (33/33),
+  and Run RNG (21/21) gates stayed green.
+- Godot MCP ran `res://scenes/tools/v076/V076DeterministicKernelBench.tscn`
+  against Godot 4.7 and recorded PASS, 2,000 replays, zero mismatches, zero
+  float authority fields, zero debug errors, and a clean explicit stop. The
+  sealed terminal authority hash is
+  `eb4061fa0d4536d029daaeb8b3cb156d46c2120f95d3ad3a46fd165522986708`.
+- The full legacy `smoke_test.gd` remains red on the unchanged PR #90 candidate
+  and this Stage 1 tree with the identical first failure and stderr SHA256
+  `0e6f9d9278eaf869e68e6d8f036b591afdd00d2ae31155d67e4759bb78031082`:
+  it still expects a QA save path before the retired `Main` enters the tree.
+  The isolated 770d baseline receipt is
+  `20260820-152718-599-smoke_test-efba8fbc`; Stage 1 receipt is
+  `20260820-152648-233-smoke_test-e5f35b96`. This is unchanged legacy-oracle
+  debt, not a deterministic-kernel regression, and no retired Main fallback was
+  restored.
 
 ## 2026-07-23 — CommodityFlow post-commit exact-once cutover
 
@@ -9228,3 +9267,856 @@ deleted. Evidence and the remaining action inventory are recorded in
   exact-SHA MCP, three desktop-size captures, and the Ready transition remain
   external post-freeze gates and are intentionally not claimed by this tracked
   log entry.
+
+## V0.7.6 Stage 2 shared half-edge spherical partition
+
+- Added an isolated pure-integer level-2 icosahedron topology with explicit
+  directed `next`/`previous`/`twin` half-edges, a canonical topology seal,
+  reciprocal face-cycle and endpoint-continuity checks, and closed-sphere Euler
+  validation. Float/Vector geometry remains outside gameplay authority.
+- Added deterministic integer graph-distance seed placement and multi-source
+  partitioning with independent `SIMPLE`/`STANDARD`/`COMPLEX` positive integer
+  edge-cost profiles. Positive region counts are accepted through the natural
+  320-face capacity; 6/8/12/16/20/24/30 remains the release acceptance matrix,
+  while focused gates also prove 31/32 acceptance and 321 rejection. The
+  projection binds topology identity, shape complexity, exact ownership,
+  connected membership, symmetric adjacency, canonical directed boundary
+  cycles, shared twin pairs, and the independent `map.partition` Domain RNG
+  cursor.
+- Added deterministic Land/Ocean authority for every region and all 320 faces,
+  plus replay-safe continent, bay, peninsula, strait, and archipelago facts.
+  The validator independently regenerates terrain and the complete canonical
+  partition; re-signed terrain, complexity, RNG, or synchronized derived-data
+  mutation fails closed.
+- Integrated the map domain through the V0.7.6 Stage 1 Script-only fresh reducer
+  contract with atomic command execution, closed authority state, snapshot,
+  and semantic replay support.
+- Added focused tests, a true 2,000-distinct-seed gate with fresh same-seed
+  parity, and an editable Godot MCP Bench scene. Stage 2 does not modify or cut
+  over `project.godot`, `main.tscn`, V0.7.5 composition, V0.7.4 runtime/map
+  ownership, or presentation.
+- Godot 4.7 verification passes the focused gate across the full 21-case
+  count/complexity matrix and the Stage 2 gate with 2,000 distinct seeds plus
+  2,000 fresh same-seed regenerations. Generation, validation, partition replay,
+  terrain replay, and float-authority counts are all zero. Complexity
+  distribution is `667/667/666`; aggregate terrain evidence contains 1,986
+  continents, 8,585 bays, 7,364 peninsulas, 9,096 straits, and 574
+  archipelagos. The final focused gate passes `90/90`; Stage 1 remains `57/57`
+  with `2000/0` replay parity.
+- The Debug Sphere binds topology SHA
+  `5cbd98e4027bc2cfd058c857e1a24a5f7c8c61291f1cb7ae7336bcf6851f6452`
+  and presentation mapping SHA
+  `01bdd9e9a5cbda0fd036c649b223ef8fa5bcdfd5c9dc51bad83b91199ef14959`.
+  Exact presentation vertex/face identity and order are required before V0.7.6
+  IDs index V0.7.4 float arrays. The legacy full smoke remains disclosed at its
+  pre-existing QA-save isolation oracle; no retired production compatibility
+  path was restored for this isolated stage.
+- Hardened validator identity beyond shape/topology checks. It now replays the
+  exact Domain RNG root/domain/draw cursor and state, then rebuilds the complete
+  canonical partition. Re-signed RNG-state mutation and synchronized
+  seed/owner/membership/adjacency/boundary mutation both fail closed.
+- Expanded the Bench into a real isolated Debug Sphere with three
+  `MeshInstance3D` nodes and one `Camera3D`. Godot input drives drag rotation,
+  wheel zoom, camera-ray spherical-triangle hit-testing with smallest-face-ID
+  edge ties, selected-region face highlighting, and authority-derived shared
+  boundary lines. Land and Ocean use distinct palettes; HUD and receipts expose
+  complexity, terrain coverage, five feature counts, mapping parity, and
+  interaction evidence. The final Godot MCP run records real rotation, zoom,
+  spherical hit selection and 20-face highlight; it captures a 1600x960 PNG,
+  completes the full 2,000-seed gate, and cleanly stops with empty runtime and
+  final error arrays. Presentation float geometry remains excluded from
+  authority and production composition remains untouched.
+
+## V0.7.6 Stage 3 deterministic Monster L1 movement
+
+- Upgraded the isolated Stage 1 kernel to schema V2. Replay inputs now contain
+  root commands only; reducer-emitted derived commands live in a sealed outbox
+  with source command, Authority Sequence, and SHA lineage. Fresh replay
+  regenerates and compares the derived inventory/outbox instead of submitting
+  a second source. Domain registration freezes at tick zero, and legal
+  `FIZZLE` outcomes consume expected gameplay misses without weakening
+  transactional `REJECT` rollback.
+- Added an integer-only directional geodesic metric and canonical route over
+  the Stage 2 face graph, bound to topology SHA
+  `5cbd98e4027bc2cfd058c857e1a24a5f7c8c61291f1cb7ae7336bcf6851f6452`.
+  Authority stores segment index/progress, target, maximum distance, speed,
+  accepted tick/sequence, region crossings, and exact physical distance.
+- Added Script-only fresh Monster L1 reducer authority. A root move activates
+  an asset exactly once and future movement advances are derived through the
+  Kernel V2 outbox. Cooldown/stale gameplay conflicts become recorded legal
+  fizzles. GROUND trample is allocated by exact half-segment region overlap;
+  FLYING and PHASE retain exact zero trample.
+- Added focused semantic/replay gates, a 1,000-distinct-seed gate with two
+  fresh replays per seed, and an isolated headed Godot route Bench. Production
+  main/composition remains untouched; results are recorded only after the final
+  verification pass.
+- Classified the Stage 3 direction correction as `CROSS_DOMAIN_INTEGRATION`.
+  Monster authority now uses a sealed six-class great-circle face-center arc
+  table (`33ec7029…`) in integer microradians and a closed exact spherical
+  target-point projection instead of a uniform hop metric or face label alone.
+  Kernel V2 and replay are direct Owner changes for root/derived/outbox/fizzle
+  semantics; their focused gate passes `74/74` with `2,000` deterministic
+  replays. Stage 2 generator, topology, validator, and codec bytes remain
+  unchanged; only the map reducer changes for the Kernel V2 reducer-ABI
+  adaptation, and the Stage 2 focused sentinel passes `90/90`.
+- Added preferred-color asset quantities with exact one-unit activation
+  decrement and positive reuse after cooldown. GROUND damage is independently
+  derived from physical per-region arc distance, monster efficiency, and the
+  modifier PPM list frozen at root acceptance; FLYING/PHASE remain exact zero.
+- The isolated headed Bench is explicitly diagnostic only and records
+  `human_golden_step_06_09=false`; it is not human Golden evidence.
+
+## V0.7.6 inherited-green and historical-reuse ledgers
+
+- Activated `POINT_INERTIA` and `HISTORICAL_REUSE` as documentation-only
+  development disciplines at clean candidate head
+  `2a365d465f199481da7fa1ef8f734e7525a136f5`. Added stable JSON/Markdown
+  ledgers for inherited Stage 1/2 evidence, the current Stage 3 delta,
+  supersession, one-Owner reuse, duplicate implementation, card certification,
+  and the cumulative 15-step Alpha 0.7 Golden scenario.
+- Classified historical reuse without merging a whole branch: PR #62 remains
+  the deterministic semantic transform/cache only; PR #63 and PR #65 provide
+  consumer-side privacy/authorization patterns; PR #64 and PR #80 are test
+  sources only; PR #70 is retired; PR #79 may be adapted only through V0.7.6
+  reducer ABI/replay/RNG gates. The current V0.4 gameplay catalog and V0.6
+  semantic source retain separate unique Owners.
+- Preserved the exact card debt instead of declaring a blanket green catalog:
+  348 records / 87 families are structurally inherited, 256 are historical
+  compile-active and 92 projection-only, 132 retain effect-review debt, and all
+  32 monster plus all 28 military exact V0.7.6 mappings remain `UNVERIFIED`.
+- Recorded PR90 release Tooling only as the external sealed source
+  `70ccb5c0ae91460ffcdd1448685f579b8027a457`; no `tools/pr90*` controller was
+  copied into the product repository. Historical Tooling, Seal, Manifest, and
+  raw evidence remain non-product references requiring new exact-SHA authority
+  for any future invocation.
+- Golden STEP02-STEP05 are labeled `ISOLATED_GREEN` only. STEP01 and
+  STEP06-STEP15 remain pending human production evidence. The Stage 3 Bench
+  stays diagnostic-only with `human_golden_step_06_09=false`.
+- `CHANGE_CLASS=DOCS_ONLY`: no Godot, Probe, full regression, or full reproof
+  was run; no production composition, gameplay, map, Save, presentation, or
+  test byte changed.
+- Registered merged PR #88 at source
+  `558cc1107881c993468ad9a5670016e5a7534f50`, head
+  `82334b9b43fc608de5863b13af58750c41b5e4b8`, and merge
+  `05c2415014187e902592bf3a8d1291222f738694` as `ADAPT_AS_CONSUMER` for
+  responsive-globe, typed-targeting, hit, rotation, zoom, collision, and
+  no-gameplay-mutation patterns. Its tests may be reused, but the V0.7.3
+  six-region float Voronoi is `RETIRED_AS_AUTHORITY`; no controller copy may
+  replace the Stage 2 integer half-edge Owner.
+- Registered frozen Alpha 0.4-C representative head
+  `744b541840dc370ef4af6f93e8af6a024e66ecb3` as
+  `REFERENCE_ONLY_BLOCKED_UNVERIFIED`: `FORMAL_FULL_RUN=false`, implementation
+  ownership frozen/pending, and official eligibility blocked. V0.7.6 remains
+  `NEW_GAME_ONLY` with zero Save schema/delete/overwrite/migration changes.
+  Coordinator/registry/barrier/flow import and cross-attempt evidence mixing
+  are forbidden; ownership/dependency/privacy/fault tests are only candidate
+  `REUSE_AS_TEST` inputs for a separately authorized V0.7.7.
+
+## V0.7.6 reuse and point-inertia mandatory gate
+
+- Activated the queued hard gate at the next safe atomic boundary, after the
+  external PR90 Tooling V19 authority commit
+  `a80ad3e107491d03e8a1ccf5379fcb44c705f951`. The preceding task was preserved
+  and no Stage 1–3 work was restarted or reclassified.
+- Extended the existing Historical Reuse Registry instead of creating a
+  parallel database. Schema v2 registers 18 lifecycle-classified domains and
+  23 components. Seven active domains each have exactly one production Owner;
+  pending and retired domains have none. Four changed authority writers carry
+  complete reuse searches, exact candidate counts/IDs, dispositions, and
+  non-empty extension/adapter/new-owner reasoning.
+- Added the single Delta-only Python aggregator because no existing scanner can
+  jointly validate a Git base/head delta, registry schemas, point inertia, and
+  PR body without Godot. It binds seven existing scanners and directly executes
+  the existing retired-mechanic static scanner in Delta mode; untouched scanner
+  debt is reported but does not block.
+- Added 112 focused self-test cases: the required legal/adversarial Delta
+  fixtures plus current-Head merge-ratchet ordering, immutable activation-root
+  history, inherited product-check prerequisites, exact authority schemas,
+  sticky regression/retirement records, bound production/human Golden evidence,
+  evidence-subject/aggregate cross-links, and legal future release/cutover
+  states, including an evidence-backed legal domain retirement. The expanded
+  set also covers per-commit schema/cardinality, Unicode Git paths, production
+  reference closure, dynamic-load failure, and registry-declared rule sources.
+  All 112 pass
+  with false-green count 0
+  and valid-delta false-reject count 0.
+- Extended the one Inherited Green Ledger with the canonical PR #93 status and
+  current change scope. Golden remains 4 isolated / 0 production / 0 human;
+  production cutover remains false. The card matrix now has 12 monotonic axes
+  for all seven categories while Alpha 0.7 certified cards remain 0.
+- Added the exact CI check `V076 Reuse and Point-Inertia Gate`, a current-push
+  Delta classifier, and Ready/Merge/Tag/Cutover ratchets. The exact
+  `TOOLING_ONLY+DOCS_ONLY` synchronize delta skips the old Godot product reproof;
+  any path outside its closed allowlist restores the bounded product workflow.
+- This focused work ran Python self-tests, the reused static scanner, JSON/schema
+  checks, PR-body comparison, and CI definition checks only. It ran no Godot,
+  MCP, gameplay, Exact-SHA MCP, 79-gate suite, or full-world reproof.
+
+## V0.7.6 Stage 4 private military Direct Action input
+
+- Registered `V076PrivateDirectActionInputOwnerV1` as the single Owner for
+  `future.private_direct_action_input`. Its authority is limited to the
+  actor-private authorized envelope, own-hand membership revalidation,
+  exact-once submission identity, source-collision rejection, and Kernel root
+  submission. Tick, Authority Sequence, RNG, topology, catalog, asset quantity,
+  military unit state, and presentation remain with their existing Owners.
+- Reused the PR #65 authorization pattern, V0.7.6 Kernel and half-edge path,
+  `CardRuntimeCatalogService`, `PlayerManaRuntimeController`,
+  `MilitaryRuntimeController`, and `V075MilitaryMissionCore`. The only accepted
+  missions are `ASSAULT_REGION` and `ASSAULT_MONSTER`; `GUARD`, `PROTECT`,
+  teleport, retarget, persistent action, public batch, and shared sushi-track
+  resolution are rejected or absent.
+- Added one pure Kernel reducer and an editable isolated production-wiring Bench.
+  The verified route has ETA 45 ticks and distance 2,217,508 microradians;
+  exactly one root command executes, one mission settles, existing asset
+  quantity is consumed once, and the existing military Owner withdraws the unit.
+- Focused verification passed: Owner `7/7`, integration `19/19`, Kernel `74/74`,
+  half-edge `90/90`, Monster geodesic `47/47`, four V075 military contract
+  sentinels, and Reuse/Point-Inertia Gate Self-Test `114/114`. The final Godot
+  MCP run of
+  `res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn` reported
+  the same `19/19` receipt, zero new-file warnings, zero hard errors, and a clean
+  stop.
+- Bound the evidence to implementation commit
+  `bb9e9f60e6a3d34fa2faabba96c9a1ae181bfee4` and tree
+  `3133d8c4f00ee5110336b8b8efb7f8fe60523d15`. Golden STEP10 is
+  `ISOLATED_GREEN` only, raising the isolated count to 5 while production and
+  human counts stay 0. Production composition and `main.tscn` are unchanged;
+  all 28 military card mappings remain `UNVERIFIED` and no full-world reproof
+  was claimed.
+
+## V0.7.6 Stage 4 military card Crosswalk
+
+- Added one read-only `V076MilitaryCardCrosswalkV1` Adapter over the unique
+  `CardRuntimeCatalogV06Resource` source. All 28 military machine identities,
+  seven I-IV family ladders, and 28 canonical source fingerprints close without
+  copying card names, art, descriptions, or full price definitions.
+- The frozen V0.7.5 active catalog and balance profiles authorize exactly three
+  families / 12 cards. Orbital Bomber, Heavy Tank, Missile Emplacement, and Star
+  Ocean Battleship remain deferred, so 16 records are `REAUTHOR_REQUIRED` with
+  an explicit field-level report. No legacy protection or persistent-unit value
+  was converted into an assault rule and no numeric fallback was invented.
+- Focused verification passed: Crosswalk `48/48`, Owner `7/7`, extended Stage 4
+  Bench `25/25`, Kernel `74/74`, half-edge `90/90`, Monster geodesic `47/47`,
+  and all four V0.7.5 military contracts. Godot MCP ran the existing Stage 4
+  Bench with new-file warnings 0, hard errors 0, and a clean stop.
+- Bound the product delta to implementation commit
+  `a132cfa57ab2a6bafa2c7a5b34303df9e4ba5f8b` and tree
+  `c8c4577c832665f937888d7ad215821e90518710`. STEP10 remains the same isolated
+  Golden step; production/human green, `main.tscn` changes, public batch entries,
+  shared sushi-track resolution, and full-world reproof all remain zero/false.
+
+## 2026-08-23 — V0.7.6 Stage 4 military Profile authoring and physical ETA
+
+- Preserved the prior Stage 4 row and all twelve exact mappings as historical
+  evidence. The only correction to those twelve records is explicitly marked
+  `REGRESSED_WITH_EVIDENCE` and changes the speed owner from a future placeholder
+  to `V076MilitaryUnitProfileAuthority`; their remaining projection is byte- and
+  semantics-stable under fingerprint
+  `98d1a65fdcc7dde5712dc19cc14006ae2796946062385118196aeabfdd855078`.
+- Registered one 28-record Profile data authority and one read-only catalog
+  Adapter. Twelve combat Profiles stay bound to frozen V0.7.5 values, while all
+  twenty-eight physical speeds and the sixteen former-gap Profiles are explicit
+  reversible `NEW_V076_ALPHA07_PLAYTEST_AUTHORITY` with
+  `FIRST_PLAYTEST_DEFAULT` maturity. Source card identity and positive 2/4/6/9
+  costs remain owned by the existing V06 card catalog.
+- The four new families are deliberately distinct: Orbital Bomber is the fastest
+  flying region striker; Heavy Tank is slow ground force with strong direct
+  region/monster growth; Missile Emplacement is a temporary ground
+  deploy-fire-withdraw platform with relatively stronger monster pressure; Star
+  Ocean Battleship is a large flying long-range generalist. Every I-IV ladder is
+  monotonic, but speed and damage curves are not forced to rise together.
+- No `GUARD`, `PROTECT`, permanent garrison, persistent unit, auto-retarget,
+  auto-repeat, mission fallback, public batch, or shared sushi-track behavior was
+  restored. The Crosswalk now closes 28/28 exact bindings and 0 authoring gaps;
+  it remains an Adapter rather than a card catalog or numeric Owner.
+- Added the unique stateless `V076MilitaryPhysicalEtaOwnerV1`. It consumes the
+  existing canonical integer geodesic route and the exact authored Profile speed,
+  computes ceiling division, and emits a canonical receipt. It owns no map,
+  pathfinder, speed table, tick, Authority Sequence, RNG, replay, unit state,
+  assets, cards, authorization, attack resolution, or presentation.
+- Removed caller-authored speed from the private Direct Action request. Authorized
+  source card ID now binds through the existing Crosswalk to a Profile ID; the
+  reducer validates the ETA receipt. Physical `eta_ticks=0` remains legal for
+  zero distance, while the separate Kernel `dispatch_delay_ticks=max(1, eta)`
+  preserves future-command scheduling without rewriting physical ETA.
+- Focused verification passed: Profile `59/59`, Crosswalk `52/52`, ETA `48/48`
+  with 1,000 seeds / 2,000 replays / 0 mismatch / 0 teleport, Input Owner `7/7`,
+  Stage 4 Bench `26/26`, Kernel `74/74`, half-edge `90/90`, Monster `47/47`, all
+  four V0.7.5 military contracts, and Gate self-test `114/114`. Godot MCP ran the
+  existing STEP10 Bench with new-file warnings 0, hard errors 0, PASS output, and
+  a clean stop; unrelated inherited production warnings were not relabeled.
+- Bound product evidence to implementation commit
+  `d134d8ab933d829c42f3a5d57b44f852b8c1d2c9` and tree
+  `fd6678421967af06914e2a08e1db84ac213d6294`. STEP10 remains the same fifth
+  isolated-green step; production/human green, Alpha 0.7 certified cards,
+  `main.tscn` changes, and full-world reproof remain zero/false. The next atomic
+  task is `V076_STAGE4_MILITARY_MISSION_LIFECYCLE_REDUCER_ARRIVE_EXECUTE_WITHDRAW`.
+
+## 2026-08-23 — V0.7.6 Stage 4 military arrive-execute-withdraw lifecycle
+
+- Extended the already-registered `V076PrivateDirectActionReducerV1` under the
+  existing unique private-input Owner; no new Domain or Owner was created. The
+  reducer records `ARRIVED` at the exact physical ETA tick, asks the Kernel to
+  derive one `EXECUTED_ONCE` command for the next tick, and derives one
+  `WITHDRAWAL_READY` command for the following tick. Execute and withdraw command
+  types are derived-only, so a caller cannot submit them as a second root.
+- The Profile Authority now supplies the region and monster combat values used
+  to build the locked V0.7.5 mission; the existing card catalog continues to own
+  card definition/rank and asset cost. The reducer revalidates the canonical
+  route, ETA receipt, Profile identity/fingerprint/speed, mission kind, and
+  Profile combat binding before recording arrival. It resolves the locked V0.7.5
+  assault exactly once and validates its typed withdrawal intent on the third
+  lifecycle tick.
+- Authority boundaries remain split: Kernel owns tick, Authority Sequence,
+  derived lineage, stable same-tick order, and replay; half-edge/geodesic owns
+  route/distance; Profile owns speed/combat; ETA owns only distance plus speed to
+  ticks; `PlayerManaRuntimeController` consumes the reservation once; and
+  `MilitaryRuntimeController` removes the unit once after withdrawal readiness.
+  The reducer owns no per-tick position, unit quantity, asset quantity, target
+  state, card catalog, presentation, RNG, or teleport path.
+- Focused lifecycle verification passed `29/29`, including zero-distance
+  `eta_ticks=0` with one-tick Kernel dispatch, positive-distance no-early-effect,
+  exact phase ticks, same-tick stable ordering, terminal no-repeat behavior,
+  root-only replay, route/ETA/Profile/Guard tamper rejection, and derived-root
+  injection rejection. The existing STEP10 Bench passed `30/30` with ETA 5,
+  arrival 5, execution 6, withdrawal-ready 7, one root, two derived commands,
+  one Profile-authored attack, one asset consumption, and one unit withdrawal.
+- Inherited sentinels passed: Owner `7/7`, Profile `59/59`, Crosswalk `52/52`,
+  ETA `48/48` with 1,000 seeds / 2,000 replays / 0 mismatch / 0 teleport, Kernel
+  `74/74`, half-edge `90/90`, Monster `47/47`, four V0.7.5 military contracts,
+  and Gate self-test `114/114`. Godot MCP ran
+  `res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn` to PASS;
+  changed lifecycle files emitted zero warnings, hard errors were zero, the
+  project stopped cleanly, and scoped Godot processes after stop were zero.
+- Bound product evidence to implementation commit
+  `9c5eb2be7a76a9035672fbcf3adadbd8b5f254e6` and tree
+  `07b967e89a3edb362dad1ee06df8a84077dc5e24`. Golden STEP10 remains the same
+  fifth isolated-green step; production/human green, Alpha 0.7 certified cards,
+  public batch, shared sushi-track resolution, `main.tscn` changes, and
+  full-world reproof remain zero/false. Production typed damage-intent sink
+  integration remains the next atomic boundary.
+
+## 2026-08-23 — V0.7.6 Stage 4 military typed damage-intent sinks
+
+- Extended the already-registered `V076PrivateDirectActionInputOwnerV1`
+  settlement ledger without creating a new Owner, Service, Controller, Reducer,
+  sink, or parallel Bench. The pure Kernel reducer still performs zero external
+  mutation. It exposes sealed V075 typed intents only after mission-receipt
+  revalidation and marks settlement complete only after damage, asset, and unit
+  outcomes succeed exactly once.
+- Facility intents enter one new narrow method on the existing
+  `V075RuntimeOwner`, reusing its Facility bridge, processed/witness ledgers,
+  fizzle journal, and presentation receipts. Monster intents traverse the
+  existing `RuntimeCommandPipeline -> MilitaryMonsterDamageCommandSink ->
+  MonsterRuntimeController` path and are rejected outside the active
+  `SimulationMutationAuthority` step. Kernel execution ticks convert to command
+  time with the existing integer `TICK_DURATION_US` constant.
+- The same STEP10 Bench passed `41/41`: two roots, four derived commands, six
+  executions, facility/monster receipts `1/1`, monster HP `20 -> 17`, zero
+  direct reducer mutation, exact missing-target fizzle replay, tamper rejection
+  before all sinks/quantity mutation, and duplicate settlement with no repeated
+  damage, asset consumption, or withdrawal. `GUARD`, `PROTECT`, retarget,
+  repeat, persistent units, teleport, public batch, and shared sushi-track
+  resolution remain absent or rejected.
+- Focused verification on implementation/fix subject
+  `d1675d8027cf4e4d790f0d91f5e407d4cf68c8a7`, tree
+  `01636f348711e3c3038468cced7e214c0c071c89`, passed: Owner `7/7`, lifecycle
+  `29/29`, Bench `41/41`, V075 Facility bridge `34/34`, existing monster
+  mutation path `12/12`, Profile `59/59`, Crosswalk `52/52`, ETA `48/48` with
+  1,000 seeds / 2,000 replays / 0 mismatch / 0 teleport, Kernel `74/74`,
+  half-edge `90/90`, Monster `47/47`, and four V075 military contracts.
+- Godot MCP and the repository blocking Runner both executed
+  `res://scenes/tools/v076/V076PrivateMilitaryDirectActionBench.tscn` to PASS.
+  Changed-file warnings, hard errors, runner diagnostics, script errors, and
+  scoped residual processes were all zero; the MCP project stopped cleanly.
+- The formal Reuse Gate correctly exposed a lifecycle-classification omission:
+  the atomically registered, already-existing `V075RuntimeOwner` was still
+  attached to a source-only `REFERENCE_ONLY_DOMAIN`. The one existing registry
+  now activates that same unique Owner and records an exact correction for only
+  the affected `a5bf41d5`/`d1675d80` transition errors. The Gate self-test grows
+  to `117/117`; code-before-registry, correction mutation/deletion, and unrelated history failures remain
+  blocking. Its retired-mechanic reuse scanner now checks actual changed paths,
+  so production dependency closure cannot turn unchanged Kernel bytes into a
+  false Delta hit.
+- Golden STEP10 remains the same fifth isolated-green step. Production
+  composition/`main.tscn`, human play, Alpha 0.7 certified cards, full 79 Gate,
+  Exact-SHA release proof, natural match, and full-world reproof remain
+  unperformed and unclaimed. The next safe task is a read-only production
+  composition precheck; cutover still requires separate authority.
+
+## 2026-08-23 — V076 Stage 5 simultaneous private-action intake ordering
+
+- Extended the existing `V076PrivateDirectActionInputOwnerV1` and
+  `V076PrivateDirectActionReducerV1` in place. Both military and source-bound
+  V075 monster-skill submissions now enter one `submission_tick + 1` intake
+  root in `future.private_direct_action_input`; the V076 Kernel alone assigns
+  cross-kind Authority Sequence and replay order.
+- Military intake preserves the existing physical ETA: positive-distance
+  arrival remains at the authored ETA tick, while zero-distance arrival is
+  recorded at the intake tick before the existing execute-once/withdrawal
+  continuations. Monster-skill intake records
+  `PRIVATE_SKILL_SETTLEMENT_READY` only; V075RuntimeOwner continues to own
+  source/generation/skill/target revalidation, reservation, safe-boundary,
+  effect/cooldown/Fizzle, asset, damage, and public privacy contracts.
+- Added narrow V075 typed bundle APIs and stable V076-derived request identity;
+  source-bound skills remain outside own-hand, public batch, and sushi-track
+  rules. No second channel, queue, skill state, asset ledger, damage sink,
+  presentation Owner, Bench, or production composition was created.
+- Existing Stage 4 Bench remains green (`41/41`) after intake migration.
+  `v076_simultaneous_private_action_test` passes the mixed MILITARY +
+  MONSTER_SKILL A/B reverse-submit parity, collision rejection, exact duplicate
+  root, hidden-info, public-batch, sushi-track, and replay checks, plus a
+  1,000-seed / 2,000-probe canonical matrix. V075 private-skill telemetry and
+  failure/privacy sentinels remain green (`4/4`, `9/9`).
+- Production composition, `main.tscn`, production green, human green, per-card
+  production certification, and full-world reproof remain false/unclaimed.
+
+## 2026-08-23 — V076 Stage 4 read-only production composition precheck
+
+- Registered the next authorized atomic evidence as a read-only boundary test:
+  `tests/v076_production_composition_precheck_test.gd`. It does not edit
+  `main.tscn`, instantiate V076 Owners into production, mutate runtime state,
+  or authorize cutover.
+- The dedicated Godot Runner passed `64/64` under Godot
+  `4.7.stable.official.5b4e0cb0f`. Static checks found one V075 bootstrap,
+  composition, and screen dependency. Instantiated `main.tscn` reached 578
+  nodes with zero `scripts/v076/` Owner scripts, one `V075RuntimeOwner`, one
+  `V075CombatRuntimeOwner`, zero duplicate V076 Owner nodes, and zero retired
+  runtime fallback paths. Runner diagnostics and script errors were zero; the
+  project stopped cleanly.
+- Golden remains `ISOLATED_GREEN=5`, `PRODUCTION_GREEN=0`,
+  `HUMAN_GREEN=0`; `production_cutover_authorized=false`. This precheck is
+  complete, but production wiring/cutover and human execution still require
+  separate authority. The next atomic task remains the explicit production
+  composition authorization boundary.
+
+## 2026-08-23 — V076 production composition authorization boundary registered
+
+- The read-only composition precheck is complete and its status is now
+  advanced monotonically to `V076_STAGE4_MILITARY_PRODUCTION_COMPOSITION_AUTHORIZATION_BOUNDARY`.
+- This is a governance boundary, not a product cutover: the Ledger records
+  `PENDING_EXTERNAL_AUTHORITY`, requires an explicit
+  `PRODUCTION_CUTOVER_AUTHORIZED=true` decision, and keeps production/human
+  green false. `main.tscn`, production Owners, and runtime behavior remain
+  unchanged.
+
+## 2026-08-23 — Recoverable PR status false-green wording repair
+
+- The first Gate run after the authorization-boundary status sync recorded one
+  and only one failure: `PR93_DESCRIPTION_FALSE_GREEN:production_cutover`.
+  Local reproduction confirmed `PR93_BODY_STATUS_MATCH=true`, all Owner,
+  history, point-inertia, and Golden counters clean, and no product-tree drift;
+  the failure was an ambiguous prose sentence, not a product or Registry fault.
+- The PR body was restored with preserved Markdown newlines and the sentence
+  was replaced by an explicit `no cutover is authorized` statement. The local
+  validator then returned `STATUS=PASS`, failure count `0`, and
+  `PR93_DESCRIPTION_FALSE_GREEN_COUNT=0`; the repaired cloud Gate and bounded
+  acceptance both passed. No product bytes, `main.tscn`, Golden status, or
+  production/human claim changed.
+
+## 2026-08-23 — V076 Stage 4 military production composition cutover
+
+- Consumed the explicit `PRODUCTION_CUTOVER_AUTHORIZED=true` boundary and cut
+  the already-isolated-green military Direct Action into the existing
+  `V075RuntimeComposition`. The composition contains exactly one V076 Kernel,
+  one physical ETA Owner, one private Direct Action Input Owner, the existing
+  `V075RuntimeOwner`, and one stateless V075 adapter. It does not instantiate
+  `GameRuntimeCoordinator` or add a second asset, military, monster, map, card,
+  tick, RNG, replay, or presentation Owner.
+- The production bridge reuses V075 hand membership, the existing card catalog,
+  V07 asset balances and reservations, facility/monster mutation paths, card
+  consumption, withdrawal, privacy, and presentation lifecycle. Both legal
+  missions, `ASSAULT_REGION` and `ASSAULT_MONSTER`, use physical geodesic ETA,
+  execute exactly once, and withdraw; `GUARD`, `PROTECT`, teleport, retarget,
+  persistent units, public batch fallback, and sushi-track settlement remain
+  absent.
+- Focused verification on implementation commit
+  `ad12cfa8c9fd877a1f69283d04f1d671796bbf74`, tree
+  `ef76a8132a39fdbfdedf3965e2f358f4f1dc76a1`, passed production composition
+  `55/55`, V075 application composition `111/111`, private receipt privacy
+  `5/5`, Input Owner `7/7`, and V07 asset core `285/285`. Script errors,
+  diagnostics, and remaining project runtime processes were all zero.
+- The append-only cutover receipt binds exact `scenes/main.tscn` SHA-256
+  `1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a`
+  and `V075RuntimeComposition.tscn` SHA-256
+  `d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9`.
+  Golden STEP10 remains `ISOLATED_GREEN`; production green, human green,
+  Alpha 0.7 certified cards, and full-world reproof remain zero or false. The
+  next boundary is `V076_ALPHA07_HUMAN_GOLDEN_EXECUTION`.
+
+## 2026-08-23 — V076 Alpha 0.7 Human Golden observation readiness
+
+- Reused and extended the one existing production-reachable
+  `V073PlaytestTelemetryService` as the unique Human Golden observation-package
+  Owner. No second telemetry, evidence, gameplay, Save, RNG, Tick,
+  presentation, balance, or human-attestation Owner was created.
+- Added one immutable `V076Alpha07HumanGoldenCandidateProfile` Adapter. It
+  fingerprints the existing V072 economy, V075 combat, and V076 military
+  Profile authorities without copying their values. The existing V075
+  bootstrap configures that identity exactly once and rejects malformed,
+  mismatched, path-escaping, or self-promoting profiles.
+- Manifest and summary exports permanently declare
+  `evidence_source_type=OBSERVATION_ONLY`, `human_executed=false`,
+  `human_confirmed=false`, `human_evidence_claim_allowed=false`,
+  `production_green=false`, `human_green=false`, and
+  `observer_attestation_required=true`. A scripted run cannot promote itself to
+  Human Golden evidence.
+- Focused verification on implementation commit
+  `f9963d6a615934d68d80a63a7c69a9ade710215d`, tree
+  `154f9a98c20e940dc0896672fcb9174e07ec5d9e`, passed observation readiness
+  `35/35`, V075 application composition `111/111`, and military production
+  composition `55/55`. Script errors, diagnostics, untracked UIDs, and scoped
+  residual processes were zero.
+- Godot MCP ran the real `res://scenes/main.tscn` under Godot 4.7/Vulkan,
+  reported no hard runtime error or warning from the changed files, and stopped
+  cleanly. Existing unrelated repository warnings remain inherited and were not
+  relabeled as this delta.
+- Added a new cumulative cutover receipt that references the immutable prior
+  `ad12cfa8` military receipt and binds the current bootstrap, telemetry Owner,
+  candidate Adapter, readiness test, unchanged `main.tscn`, and current
+  implementation identity. Golden remains `5/0/0`; STEP10 remains
+  `ISOLATED_GREEN`; production/human green and Alpha 0.7 per-card certification
+  remain false or zero. The next product task is
+  `V076_ALPHA07_PRODUCTION_GOLDEN_STEP09_MONSTER_CUTOVER`, before any real human
+  execution claim.
+- The formal Reuse/Point-Inertia Gate passed against `HEAD_PLUS_WORKTREE` with
+  self-test `119/119`, 26 committed-history transitions, history failures `0`,
+  new/changed component coverage `100_PERCENT`, and zero new-owner reuse-scan,
+  parallel-owner, unclassified-component, Golden false-green, card-reset,
+  full-world-reproof, stale-PR-status, or false-green prose failures.
+
+## 2026-08-23 — V076 Alpha 0.7 STEP09 Monster production cutover
+
+- Extended the existing `V076MonsterL1ReducerV1` instead of creating a second
+  Monster Owner. The production V075 autonomy plan remains the target/detection
+  source, but its historical movement/trample receipt is removed before the old
+  writer can run. One V076 Kernel root batch now owns the physical half-edge
+  movement, region crossings, and trample ledger for all planned Monsters.
+- The existing V075 source, facility HP, exact-once, and presentation journals
+  consume one closed V076 terminal result. Replay returns duplicate without a
+  second source move, facility mutation, or movement/trample presentation.
+  V076 production asset quantity/cooldown ledgers remain absent; public-batch
+  and shared sushi-track counts remain zero.
+- Implementation `46f985a23686291100cdd8ea10706983d1147514`, tree
+  `330a83b92cd1af6382d98590744ee3449328cc5b`, passes production composition
+  `74/74`, Monster L1 `47/47`, V075 application composition `111/111`, Human
+  observation readiness `35/35`, and four adjacent V075 autonomy/trample
+  sentinels. The formal 1,000-seed sentinel completes 2,000 replays with zero
+  mismatch/failure and aggregate receipt
+  `77b70c7f61ed29ffe647ca01f81994baaaeb887badbffde2739e89e395d18c8d`.
+- Godot MCP ran the real `res://scenes/main.tscn`; the one task-introduced
+  parameter-shadow warning was repaired before evidence was sealed. The final
+  run has changed-file warnings `0`, hard errors `0`, UID changes `0`, and
+  scoped residual processes `0`, followed by a clean stop.
+- Added a dedicated STEP09 Golden production-execution receipt and a cumulative
+  Monster production-cutover receipt. The cumulative receipt references both
+  immutable earlier cutover receipts without modifying them. STEP09 becomes
+  `PRODUCTION_GREEN`; the full product remains `production_green=false`, and
+  human execution, confirmation, observer attestation, per-card certification,
+  STEP11+, and full-world reproof remain false or pending.
+- The first formal Gate isolated one committed metadata timing defect: the
+  implementation component row declared the already-executed 1,000-seed test
+  before the canonical focused-test scope listed it. Because published history
+  may not be amended, the Gate gained a narrowly self-tested append-only
+  `FOCUSED_TEST_SCOPE_METADATA_REPAIR` contract. It accepts only an exact
+  existing component/transition whose missing test is currently declared and
+  executed; it cannot waive an absent test, code-before-registry, a new Owner,
+  or any other failure class. Gate self-test is now `120/120`.
+
+## 2026-08-23 — V076 Alpha 0.7 STEP11 asset consequence cutover
+
+- Extended the already-registered `V076PrivateDirectActionInputOwnerV1` only at
+  its exact-once terminal boundary. It builds one closed
+  `V076MilitaryProductionConsequenceEnvelopeV1` and hands it to the existing
+  `V075RuntimeOwner`; the Input Owner still owns no tick, Authority Sequence,
+  RNG, map, asset quantity, card catalog, military unit state, or presentation.
+- The existing `V07AssetBatchCore` state remains the only six-color asset
+  quantity reducer. After withdrawal, the existing V075 Runtime Owner publishes
+  one final player projection through `ApplicationFlow -> projection_changed`;
+  the real `V075SampleGameScreen` AssetRail renders the authoritative post-action
+  quantity. No new asset, projection, or presentation Owner was created.
+- The existing V075 Presentation Owner publishes one region/monster assault and
+  one withdrawal per mission. The public consequence includes canonical route
+  SHA-256, integer physical distance, and ETA ticks but no private card-instance
+  field. Replaying the terminal envelope returns duplicate and adds no asset
+  projection or presentation; presentation gameplay mutation remains zero.
+- Implementation `e299defd16859418c9357b1849844eec3d1fe83b` was followed by
+  the non-amending warning repair `1488399c4b3df2694c96c68c2a163d5dfb2e8c1a`,
+  tree `cd55e424756f12a2b8cf5993fd4f9141f233cbbb`. The repair only renamed a
+  local preload alias that collided with a global class name. Production
+  composition then passed `86/86` with stdout SHA-256
+  `a5b296257fb9d53c76eddda93506246fc39a2273bfa8fd9eb15ec9fc1061f7c4`,
+  diagnostics/script errors/residual processes all zero.
+- Direct regressions passed: V075 application composition `111/111`, Human
+  observation readiness `35/35` with `human_executed=false`, V07 asset core
+  `285/285`, presentation binding `38/38`, Input Owner `7/7`, private military
+  integration `41/41`, lifecycle `29/29`, and simultaneous private action
+  `9/9` with 1,000 seeds / 2,000 replays / zero mismatch.
+- Godot MCP ran and cleanly stopped the real `res://scenes/main.tscn` under
+  Godot `4.7.stable.official.5b4e0cb0f` / Vulkan. External changed-file
+  notifications, task-introduced GDScript warnings, hard runtime errors, UID
+  changes, and scoped residual processes were zero. Existing unrelated repository
+  GDScript warnings remain disclosed and were not falsely relabeled as absent.
+- Added append-only STEP11 production-execution, cumulative asset-consequence
+  cutover, and current-candidate STEP09 revalidation receipts. The cumulative
+  and revalidation receipts retain the immutable original STEP09 receipt
+  SHA-256 `22038a6ae6c1eeb6fec804ca2a6c303d060cafe203a894542b0661aa06a235d8`.
+  STEP11 becomes step-level `PRODUCTION_GREEN`; Golden counts are `5/2/0`.
+  Full-product production green, human green/execution, observer attestation,
+  per-card certification, and full-world reproof remain false or pending. The
+  next boundary is `V076_ALPHA07_PRODUCTION_GOLDEN_STEP12_AI_PRIVACY_CUTOVER`.
+
+## 2026-08-24 — V076 Alpha 0.7 STEP12 production AI/privacy cutover
+
+- Added one production-composition proof test and changed no product script,
+  scene, card, AI policy, projection, privacy, cash, RNG, or presentation Owner.
+  The active authority remains the existing `V075RuntimeOwner` lineage with its
+  `V075CombatAIAdapter` and `V075CombatProjectionAdapter`; PR63 remains a passive
+  viewer/privacy pattern only and did not become production AI authority.
+- The committed candidate `e458525fe579b7d552daeb64129b3d002ed3fa35`, tree
+  `dddd7834240c296c84578ef2cccdb5627b9a3fd5`, instantiates the unchanged
+  `V075RuntimeComposition` and real `V075SampleGameScreen`, starts one human and
+  three AI seats, and advances the real submission phase. One AI naturally
+  acquires, queues, and locks legal actions without hand, cash, target, or result
+  injection. Focused production AI/privacy passes `57/57`.
+- The AI observation contains only the acting actor's private facts plus
+  detached public facts. Local-human and rival-AI viewer projections, public
+  roster/history/combat facts, and GameScreen contain zero rival-hand identity,
+  queued-plan identity, exact AI cash, or private card binding. Hidden-info,
+  invalid-target, hidden-reader, and AI RNG counts are zero.
+- Direct sentinels pass: V075 AI `77/77`, runtime policy `28/28`, natural
+  acquisition `56/56`, public/private projection `69/69`, V075 application
+  composition `111/111`, and existing production military/asset/presentation
+  composition `86/86`. The historical V06
+  `player_facing_privacy_boundary_test` is not claimed green: it still requires
+  the removed `GameSaveRuntimeCoordinator` path and fails before its privacy
+  assertions; STEP12 changes none of its dependencies.
+- Godot MCP ran and cleanly stopped real `res://scenes/main.tscn` under Godot
+  `4.7.stable.official.5b4e0cb0f`, Vulkan, and RTX 4080 SUPER. External
+  changed-file notifications, STEP12 warnings, hard errors, UID changes, and
+  scoped residual processes are zero. Existing unrelated warnings remain
+  disclosed.
+- Added append-only STEP12 execution/cutover receipts and current-candidate
+  STEP09/STEP11 revalidation receipts without modifying historical evidence.
+  STEP12 becomes step-level `PRODUCTION_GREEN`; Golden counts are `5/3/0`.
+  Full-product production green, every human claim, observer attestation,
+  per-card certification, and full-world reproof remain false or pending. The
+  next boundary is `V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT`.
+
+## 2026-08-24 — V076 Alpha 0.7 STEP13 Victory/audit production-binding readiness
+
+- Added one focused proof test at committed candidate
+  `174cbded0df3ef57fa7861276987f8e3a6e6f785`, tree
+  `868bddedd7a3f85b4c3594ef3d8579b6ea379523`; changed no product script,
+  scene, Owner, rule, balance, card, asset, target, or presentation byte. The
+  existing `V075RuntimeOwner` remains the sole production Victory/audit and
+  FinalSettlement authority and continues to reuse `V07SolarVictoryCore`.
+  V06 `VictoryControlRuntimeController` remains production-unreachable.
+- Production Victory/audit readiness passes `24/24` through real
+  `res://scenes/main.tscn`: public new-game intent, natural progression from
+  below the target, qualification, authoritative audit-boundary revalidation,
+  one FinalSettlement, one public log, one existing presentation, GameScreen
+  consumption, terminal replay idempotence, and combat quiescence. Card, asset,
+  and target injection, duplicate settlement, replay state delta, hidden-info
+  violation, new Victory Owner, script error, diagnostic, and residual process
+  counts are zero.
+- Direct sentinels pass: V075 Runtime Owner `20/20`, V07 Solar Victory Core
+  `190/190`, FinalSettlement exact-once `4/4`, terminal combat quiescence
+  `12/12`, V075 application composition `111/111`, and Human observation
+  readiness `35/35`. Godot MCP ran and cleanly stopped the real main scene under
+  Godot `4.7.stable.official.5b4e0cb0f`, Vulkan, and RTX 4080 SUPER with zero
+  task warnings, hard errors, UID changes, or residual processes; existing
+  unrelated repository warnings remain disclosed.
+- Revalidated every existing production-green step at the exact current
+  evidence subject: STEP09/STEP11 production composition `86/86` and STEP12
+  AI/privacy `57/57`, each with zero diagnostics, script errors, and residual
+  processes. Added append-only current-candidate receipts and chained the new
+  Victory-readiness production-binding receipt to the immutable STEP12 cutover
+  receipt.
+- STEP13 remains `PENDING`, `pass_claimed=false`, `human_executed=false`, and
+  `human_confirmed=false`; Golden counts remain `5/3/0`. Full-product production
+  green, human green, observer attestation, STEP14/STEP15, per-card
+  certification, and full-world reproof remain false or pending. The next
+  boundary is `V076_ALPHA07_HUMAN_GOLDEN_STEP13_TO_STEP15_EXECUTION`.
+
+## 2026-08-24 — V076 Alpha 0.7 Human Playability repair readiness
+
+- Continued the same Draft PR #93 candidate through product commits
+  `fcdc2d6d`, `ef6dbcc2`, and `e02e18ac`; final evidence subject is head
+  `e02e18acdb54508ad166c53384125411a94369aa`, tree
+  `ff82bef2b139f6370eb71cf811c2acb7a40db1f0`. The existing GameScreen,
+  shared track, hand, card catalog, Application Flow, V075 Runtime Owner,
+  V076 Kernel, map partition, and presentation/Coach owners remain the only
+  authorities. No second screen, hand, track, catalog, clock, RNG, map, or
+  receipt owner was introduced.
+- The real `res://scenes/main.tscn` Human Playability Readiness gate passes
+  `169/169` with one Human plus three AI, zero fixture-state injection, zero
+  diagnostics, zero script errors, and zero residual processes. Focused
+  production viewport cases pass at `1366x768`, `1600x960`, and `1920x1080`;
+  the full matrix's four intentionally narrow `480/640/660/900` cases retain
+  their pre-existing narrow-panel overflow boundary and are not part of the
+  three-size Candidate 2 acceptance contract. Pacing is `11/11`, the screen
+  wrapper `30/30`, Coach placement `258/258`, and visual contract is green.
+- Automated headed captures show the single-screen table, ten-slot track,
+  direct acquisition feedback, real hand selection and target confirmation,
+  human/AI Action Feed entries, frozen Pause countdown, and exact maintenance
+  phase rejection. This is `GREEN_AFTER_REPAIR` readiness for a new real-human
+  attempt, not a human pass: `READY_FOR_REAL_HUMAN_RETEST=true`,
+  `human_green=false`, Golden counts remain `5/3/0`, and STEP13 remains
+  `PENDING`. The append-only receipt is
+  `reports/playtest/alpha07_human_candidate_1_blocker/candidate2_readiness_receipt.json`.
+
+## 2026-08-24 — V076 Alpha 0.7 Human Candidate 2 repair validation
+
+- Continued the same task-owned Candidate 2 worktree without resetting or
+  discarding the earlier human blocker evidence. The narrow delta adds a
+  presentation-only staged new-game loading overlay, Coach pacing lifecycle
+  gating through the existing Application Flow, explicit full-hand shared-track
+  affordances, a central privacy-safe public-action arrangement with a
+  staggered fade/scale formation animation, and a native plus manual drag
+  bridge that reuses the existing legal `card.queue` path.
+- Focused validation is green: loading `19/19`, central arrangement `8/8`, real
+  production human-playability readiness `182/182`, pacing determinism `11/11`,
+  golden observation readiness `35/35`, UI text PASS, visual contract PASS, and
+  `git diff --check` PASS. A real headed production drag audit observed one
+  drag start, one central drop, one accepted `card.queue` submission, one manual
+  drop, and zero rejections.
+- Godot MCP ran the real `res://scenes/main.tscn` under
+  `4.7.stable.official.5b4e0cb0f`; hard product/runtime-owner errors are zero.
+  A later headed poll reported one local WASAPI output-device invalidation,
+  classified as an environment/runner issue. The latest
+  automated first-playable marker is `3209 ms`; authority initialization remains
+  synchronous by design, while the overlay makes the wait visible and records
+  presentation-only timing. The headed window is intentionally left open for
+  the next human short retest.
+- This is `GREEN_AFTER_REPAIR_AUTOMATED_ONLY` and
+  `READY_FOR_REAL_HUMAN_RETEST=true`. It does not claim human execution,
+  human green, full-product production green, STEP13, STEP14, or STEP15. The
+  append-only receipt is
+  `reports/playtest/alpha07_human_candidate_2_short_retest/repair_validation_001.json`.
+
+## 2026-08-24 — V076 Alpha 0.7 Human Candidate 3 card-table focused readiness
+
+- Preserved the Candidate 2 six-blocker evidence and continued the same
+  task-owned worktree at head `46b33bba77b356b100ab68bc7c3676d503049a2c`,
+  committed tree `60099c99bd15aca044958038c55bff7b74592544`, Draft PR #93.
+  No reset, restore, checkout, stash, clean, untracked-file deletion, or
+  second gameplay/presentation Owner was introduced. The existing production
+  scene, card catalog, shared track, Application Flow, Runtime Owner, and
+  GameScreen remain authoritative.
+- The real card-table flow probe using `res://scenes/main.tscn`, one Human plus
+  three AI seats, and zero fixture injection passes `400/400`. It observes
+  three AI public cards, fifteen public arrangement entries and transitions,
+  100% public card-face coverage, zero transition failures, and zero
+  presentation gameplay/RNG mutation. The bounded overlay is default
+  collapsed, map-visible, and layout-neutral. Every rendered public face was
+  exercised through the hover path; the focused hover-capability assertion is
+  100% with zero layout reflow.
+- Narrow regressions remain green: public arrangement privacy `8/8`, public
+  arrangement behavior `8/8`, card requeue identity `12/12`, loading `19/19`,
+  shared-track authoritative presentation `42/42`, pacing `11/11`, Human
+  Playability `182/182`, and Coach close performance `161/161` over 30 samples
+  (`P95=15ms`, max `17ms`, white frames/input loss/duplicate signals all zero).
+  Editor parse and runtime-owner check-only both exit zero; MCP reports only
+  existing GDScript reload warnings and no hard runtime error.
+- The default real production seed `900626424` naturally reaches `settled` at
+  batch 4 (`progress=43`, `target=8`, `AI public=3`, `scroll=3`) and therefore
+  ends normally before a post-Victory natural tail can be observed. The
+  inherited `V074_UNIFIED_TRACK_VISIBLE_CAPACITY_10_TEST` remains the separate
+  authority proof for vacancy-following and natural-tail refill (`32/32`); the
+  two evidence classes are not conflated.
+- The desktop shortcut is verified against the Candidate 3 launcher and
+  worktree. The historical old launcher log remains recoverably in Recycle Bin;
+  Codex backups, sessions, Godot userdata, and the worktree remain retained.
+  Old empty `v076-*` temp directories were not deleted because the cleanup
+  command was blocked by execution policy; files deleted this turn: zero.
+- Candidate 3 is `READY_FOR_REAL_HUMAN_RETEST`, not Human Green. `HUMAN_GREEN=false`,
+  `STEP13=PENDING`, STEP14/15 are not started, and the headed window remains
+  open for the human short retest. Append-only evidence is under
+  `reports/playtest/alpha07_human_candidate_3_card_table_flow/`.
+
+## 2026-08-26 — Commercial Presentation M1 natural Cue evidence and hard stop
+
+- Kept the single `V076CommercialPresentationFixtureBridgeV1` boundary for the
+  13-episode Showcase and retained the production main scene as a presentation
+  host only. The focused fixture gate passes `1043/1043`; all fixture receipts
+  remain sealed as non-natural, non-production, and non-human evidence.
+- Added two thin headed observers over the existing production-main drivers.
+  The four natural Cue bundle covers `CARD_SELECT`, `CARD_PLAY_PUBLIC`,
+  `CARD_RESOLUTION_FOCUS`, and `FINAL_SETTLEMENT` in 12 frames at 1600x960,
+  with zero fixture receipts, diagnostics, task-introduced errors, or residual
+  project processes. Visual inspection confirms all three terminal frames show
+  the real Settlement Overlay rather than the commercial menu.
+- The independent natural production proof passes `243/243`, while preserving
+  `human_green=false`, `commercial_m1_green=false`, and STEP13-15 `PENDING`.
+  Reuse/Point-Inertia selftest remains `120/120 PASS`, but committed-HEAD
+  validation at `6e1825a34070de043a03bcff0af6b1a1587bed65` fails with 620 total
+  failures, including 509 committed-history failures across 65 transitions.
+  Therefore Draft PR #93 stays at `TRUE_HARD_STOP_REQUIRING_USER_DECISION`;
+  no Ready, merge, tag, cutover, or Human Green transition is authorized.
+
+## 2026-08-26 — Exact-receipt headed evidence finality checkpoint
+
+- Continued the same task-owned Draft PR #93 line at product/evidence source
+  head `12019fdf5ff78733a36b3f0e889fecd1fcfb227c`, tree
+  `c5710c978fee111b33b265b2e5ad4ea6cebcba38`. The existing GameScreen and
+  unique Presentation Director now retain event-time Card-table evidence by
+  receipt identity; no gameplay, catalog, map, asset, Victory, or other Owner
+  was added or reimplemented.
+- Focused gates pass at `1043/1043` for Showcase and `1067/1067` for the real
+  production-main Card-table flow. The independent natural four-Cue proof is
+  `243/243 PASS`: Card-table run
+  `20260826-081712-139-v076_alpha07_card_table_flow_readiness_test-a5c91e41`
+  and Victory run
+  `20260826-081921-586-v076_production_victory_audit_readiness_test-e1a48a75`,
+  both with zero diagnostics, script errors, task-introduced errors, or residual
+  project processes.
+- Sealed production headed bundle
+  `production_natural_headed/20260826-081006-934-12bb685a3d67`: 4 natural Cues,
+  12 declared frames, zero fixture receipts, exact capture/queue/finish receipt
+  identity for all three Card-table Cues, Director queue=1 and finish=1 per
+  receipt, and 12/12 non-empty 1600x960 frame hashes matching the manifest.
+  Sealed fixture finality bundle
+  `showcase_headed_finality/20260826-081645-855-ae71c1dc5841`: run
+  `20260826-081646-474-showcase_frame_capture-5963edd5`, 13/13 episode evidence
+  final `PASS`, 39/39 frame hashes, and zero runner diagnostics or residuals.
+  It remains explicitly `PRESENTATION_FIXTURE`, not natural or human evidence.
+- Godot MCP ran and cleanly stopped the real `res://scenes/main.tscn` under
+  `4.7.stable.official.5b4e0cb0f`; no task-introduced hard runtime error was
+  observed. Existing unrelated GDScript warnings remain disclosed.
+- The clean committed-source Reuse/Point-Inertia selftest remains `120/120
+  PASS` with false-green count 0, but full validation at `12019fdf` with explicit
+  PR base `770d741f` and inertia/gate base `f6fe547e` is `FAIL`: 569 total
+  failures, 510 historical failures, and 67 transitions. Therefore
+  `STATUS=TRUE_HARD_STOP_REQUIRING_USER_DECISION`, `COMMERCIAL_M1_GREEN=false`,
+  `READY_FOR_NEXT_CONSOLIDATED_HUMAN_PLAYTEST=false`, `HUMAN_GREEN=false`, and
+  STEP13-15 remain `PENDING`; no Ready, merge, tag, or cutover is authorized.
+
+### 2026-08-30 — V076 current-subject cache revalidation repair
+
+- In an isolated sibling worktree, MCP-only `edit_script` added full V075 snapshot-cache invalidation immediately before the V076 military asset-consequence projection reads `player_snapshot`.
+- The focused production military composition fixture now invalidates the same snapshot cache after its direct asset/facility/DBG setup at both region and monster probes; this removes the confirmed stale-fixture false negative without changing any authority owner.
+- MCP `validate_script` passed for both changed GDScripts, and the focused production composition gate passed `57/57` with zero script or task-introduced errors. Real `res://scenes/main.tscn` was opened and run through the local Godot MCP endpoint, a 1600x960 runtime view was captured, and play mode stopped cleanly.
+- `ui_text_smoke_test` and `visual_snapshot` passed. The broad legacy `smoke_test.gd` remains blocked by its existing save-coordinator path oracle before Main enters the tree; this is recorded as an unrelated stale-oracle failure and was not altered in this scoped repair.
+
+## 2026-08-30 — Full-convergence Batch-009 materialized
+
+- Preserved the exact Batch-009 registry projection commit `6209465d` and
+  appended the minimal historical Military identity alignment `4f6feab2`;
+  no Godot product files were changed and the original two-file projection was
+  not reapplied.
+- The sealed materializer proposal is bound to head
+  `4f6feab227bedfb8005d9fbf4bc2f6883c8b4c19` / tree
+  `47f22c79a56d0eb968e8bc73204b994498e4317a`, with 50 exact identities,
+  proposal `47180f70389405afec2e2e48940259551df7f566bde5fa47bf998a93b12fd262`,
+  and distinct reviewer A/B receipts, both `GO` with P0/P1 zero.
+- Batch-009 materializer generated and promoted exactly ten allowlisted files:
+  seven batch artifacts and three disposition records. All three records pass
+  document and repository identity-binding validation; materializer official
+  write count remains zero. The official evidence commit is `da9b6966`.
+- The pre-apply materializer self-test's stale negative cases intentionally no
+  longer apply after exact Registry rows exist; 15 non-stale focused cases pass.
+  Existing full-chain validation reports touched prior projections, which is
+  preserved as an append-only revalidation follow-up rather than hidden or
+  rewritten.

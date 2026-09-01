@@ -1,4 +1,5 @@
 extends Control
+class_name SpaceSyndicateMapViewBase
 
 signal district_selected(index: int)
 signal district_double_clicked(index: int)
@@ -327,6 +328,10 @@ func set_map(
 			_cancel_focus_rotation()
 	if should_center_view:
 		_map_signature = next_signature
+	# Geometry centering and visual payload invalidation are independent.  A
+	# facility BUILD/UPGRADE/REPAIR/DAMAGE can change markers while the map
+	# topology stays identical; retain the new payload signature on every path so
+	# the sceneized marker consumer reconciles that presentation edge.
 	_visual_payload_signature = next_payload_signature
 	if should_redraw:
 		queue_redraw()
@@ -2646,7 +2651,12 @@ func _build_visual_payload_signature(
 		"call:%s" % _marker_array_signature(callouts, ["position", "actor", "action", "detail", "color", "duration", "remaining"]),
 		"effect:%s" % _marker_array_signature(event_effects, ["position", "from", "to", "kind", "label", "color", "duration", "remaining", "radius", "motion_family", "pose_key", "effect_layer", "profile_key", "range_meters", "knockback_meters", "throw_meters", "impact_seconds"]),
 		"monster:%s" % _marker_array_signature(monster_markers, ["position", "label", "name", "glyph", "motif", "sprite_key", "sprite_cell", "visual_source_id", "upstream_source_id", "down"]),
-		"city:%s" % _marker_array_signature(new_city_markers, ["district", "position", "level", "active", "tag", "products", "competition", "rise"]),
+		"city:%s" % _marker_array_signature(new_city_markers, [
+			"marker_id", "facility_id", "slot_id", "region_id", "district",
+			"position", "level", "active", "tag", "facility_type", "shape_kind",
+			"products", "damage_points", "damage_revision", "visual_revision",
+			"damage_state", "competition", "rise",
+		]),
 		"route:%s" % _marker_array_signature(new_trade_route_markers, ["product", "from", "to", "points", "disrupted", "flow_multiplier"]),
 	]
 	for i in range(new_districts.size()):

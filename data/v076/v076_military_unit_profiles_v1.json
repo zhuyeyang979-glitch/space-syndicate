@@ -1,0 +1,1562 @@
+{
+  "schema_version": "space_syndicate.v076.military_unit_profile_authority.v1",
+  "profile_authority_id": "V076MilitaryUnitProfileAuthority",
+  "catalog_adapter_id": "V076MilitaryUnitProfileCatalogV1",
+  "component_role": "AUTHORING_RESOURCE",
+  "ruleset_id": "v0.7.6",
+  "playtest_milestone": "ALPHA_0_7_LIVING_PLANET",
+  "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+  "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+  "reversible": true,
+  "source_catalog_owner": "CardRuntimeCatalogV06Resource",
+  "inherited_combat_profile_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+  "profile_record_count": 28,
+  "new_authored_profile_count": 16,
+  "production_green": false,
+  "human_green": false,
+  "balance_rationales": [
+    {
+      "family_id": "orbital_bomber",
+      "speed_rationale": "Fast flying regional strike profile, below the fighter ceiling.",
+      "target_rationale": "Region pressure leads while monster damage remains conservative.",
+      "rank_rationale": "Damage and speed rise monotonically without increasing every field at every rank.",
+      "non_replacement_rationale": "Fighter remains faster and more monster-efficient at comparable ranks."
+    },
+    {
+      "family_id": "heavy_tank",
+      "speed_rationale": "Slow ground movement pays for direct frontal assault strength.",
+      "target_rationale": "Balanced region and monster assault without any guard capability.",
+      "rank_rationale": "Power rises each rank while speed deliberately plateaus.",
+      "non_replacement_rationale": "Industry fighters retain a decisive mobility advantage."
+    },
+    {
+      "family_id": "missile_emplacement",
+      "speed_rationale": "Temporary launch deployment is the slowest physical profile.",
+      "target_rationale": "Monster assault specialization trades away region efficiency.",
+      "rank_rationale": "Monster power grows faster than region power; speed advances only at rank III.",
+      "non_replacement_rationale": "It never persists as a facility and cannot replace mobile dual-purpose forces."
+    },
+    {
+      "family_id": "star_ocean_battleship",
+      "speed_rationale": "Large flying force is slower than bombers but faster than heavy ground profiles.",
+      "target_rationale": "Dual-purpose heavy assault favors monster pressure over bomber speed.",
+      "rank_rationale": "Both attack curves grow monotonically with a measured speed increase.",
+      "non_replacement_rationale": "Bomber remains the faster region specialist and missile retains monster efficiency."
+    }
+  ],
+  "records": [
+    {
+      "profile_id": "v075.military.planetary_defense_force.rank_1",
+      "family_id": "planetary_defense_force",
+      "rank": 1,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 225000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 4
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 2
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 2,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/planetary_defense_force/0",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "65045dd4cc10f07f24069e4fafaa19343361e98c3d23deff64c13b3e6f1c6192"
+    },
+    {
+      "profile_id": "v075.military.planetary_defense_force.rank_2",
+      "family_id": "planetary_defense_force",
+      "rank": 2,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 225000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 6
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 3
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 4,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/planetary_defense_force/1",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "e238b0abe59ab4131a1afef72e7ff1d4492d312d394caf85b122484c46afedc4"
+    },
+    {
+      "profile_id": "v075.military.planetary_defense_force.rank_3",
+      "family_id": "planetary_defense_force",
+      "rank": 3,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 250000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 8
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 4
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 6,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/planetary_defense_force/2",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "d239b2f1d57c126c474b2460b8b3f5ccb9fc92aac752e2427c36610642889c03"
+    },
+    {
+      "profile_id": "v075.military.planetary_defense_force.rank_4",
+      "family_id": "planetary_defense_force",
+      "rank": 4,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 250000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 11
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 6
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 9,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/planetary_defense_force/3",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "a4976ddc151aa96a046e0b3c00f7d0fbaa04a4070ba9ca5b1de559e847e0c8eb"
+    },
+    {
+      "profile_id": "v075.military.air_superiority_fighter.rank_1",
+      "family_id": "air_superiority_fighter",
+      "rank": 1,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 450000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 3
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 3
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 2,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/air_superiority_fighter/0",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "a3176e959782156c9089548255c5fa443d32c8c0dc2f15fcd31169cbfa6f79c8"
+    },
+    {
+      "profile_id": "v075.military.air_superiority_fighter.rank_2",
+      "family_id": "air_superiority_fighter",
+      "rank": 2,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 475000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 5
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 4
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 4,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/air_superiority_fighter/1",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "f64d863df00d24d60687bb842160270ed41e8789e235394d31c6ee38808377c1"
+    },
+    {
+      "profile_id": "v075.military.air_superiority_fighter.rank_3",
+      "family_id": "air_superiority_fighter",
+      "rank": 3,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 500000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 7
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 6
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 6,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/air_superiority_fighter/2",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "735987049cc41b5743aaef243984838538417dff83c7e53c8895587c25e49553"
+    },
+    {
+      "profile_id": "v075.military.air_superiority_fighter.rank_4",
+      "family_id": "air_superiority_fighter",
+      "rank": 4,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 525000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 9
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 8
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 9,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/air_superiority_fighter/3",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "ec85649f1aa09e423ad79632c538b887fd2b554b369afa6e4ec863b50fcd033a"
+    },
+    {
+      "profile_id": "v076.military.orbital_bomber.rank_1",
+      "family_id": "orbital_bomber",
+      "rank": 1,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 400000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 5
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 2
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "energy",
+        "expected_positive_amount": 2,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "e870d9ed7375a8dc8c5c0f872b94f96d08420dddde93c7beb8301ad65584aeff"
+    },
+    {
+      "profile_id": "v076.military.orbital_bomber.rank_2",
+      "family_id": "orbital_bomber",
+      "rank": 2,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 425000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 7
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 3
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "energy",
+        "expected_positive_amount": 4,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "523192c82aab2d667ea52eb475e873791afd574018aeb0c3243b16f64ae4056f"
+    },
+    {
+      "profile_id": "v076.military.orbital_bomber.rank_3",
+      "family_id": "orbital_bomber",
+      "rank": 3,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 450000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 10
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 4
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "energy",
+        "expected_positive_amount": 6,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "f7b0fee7351ab14b17e10922b634593a6a84dc90c2abee530246b24a90f4e54c"
+    },
+    {
+      "profile_id": "v076.military.orbital_bomber.rank_4",
+      "family_id": "orbital_bomber",
+      "rank": 4,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 475000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 13
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 5
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "energy",
+        "expected_positive_amount": 9,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "e93e98eef56ca2924d87d44562dc6096875a1130370800d0a311416534ac01b2"
+    },
+    {
+      "profile_id": "v076.military.heavy_tank.rank_1",
+      "family_id": "heavy_tank",
+      "rank": 1,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 175000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 4
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 3
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 2,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "0634c661b73be37f431f0a62b67b9ac47c557f3c81188158459a4a2d026a527c"
+    },
+    {
+      "profile_id": "v076.military.heavy_tank.rank_2",
+      "family_id": "heavy_tank",
+      "rank": 2,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 175000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 6
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 4
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 4,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "0f5f01041c75de80af0bf37ee8eabfd352502a666588b633c24259423727fc92"
+    },
+    {
+      "profile_id": "v076.military.heavy_tank.rank_3",
+      "family_id": "heavy_tank",
+      "rank": 3,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 200000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 9
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 6
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 6,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "0f819100faf0c3ab7650f82faf5ebca18fd0c87d86a7fe3de889c197c2a558e5"
+    },
+    {
+      "profile_id": "v076.military.heavy_tank.rank_4",
+      "family_id": "heavy_tank",
+      "rank": 4,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 200000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 12
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 8
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "industry",
+        "expected_positive_amount": 9,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "14e00655be8645bda3e98b00ce8fb89cd0a4a7fdc8ef17dfb7e759a9006f9ca0"
+    },
+    {
+      "profile_id": "v076.military.missile_emplacement.rank_1",
+      "family_id": "missile_emplacement",
+      "rank": 1,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 125000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 3
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 3
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "technology",
+        "expected_positive_amount": 2,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "9603365cf6c259f149c950c3dc4f5741158e6f02d7152035821330141fabdde2"
+    },
+    {
+      "profile_id": "v076.military.missile_emplacement.rank_2",
+      "family_id": "missile_emplacement",
+      "rank": 2,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 125000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 4
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 5
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "technology",
+        "expected_positive_amount": 4,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "2bb36d1376600a12a3b7264b7a4051f8aed2306ca305a69a74dcfec7d247904f"
+    },
+    {
+      "profile_id": "v076.military.missile_emplacement.rank_3",
+      "family_id": "missile_emplacement",
+      "rank": 3,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 150000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 6
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 7
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "technology",
+        "expected_positive_amount": 6,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "a3a943094bbb323f5053df96355cddb99d40f8d0dc2c42f6b83e5c8c42366dbb"
+    },
+    {
+      "profile_id": "v076.military.missile_emplacement.rank_4",
+      "family_id": "missile_emplacement",
+      "rank": 4,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 150000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 8
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 9
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "technology",
+        "expected_positive_amount": 9,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "35459b2bf555c1733aeaea635a3b02f67b198145d0eeb89f029a568e349bb335"
+    },
+    {
+      "profile_id": "v075.military.submarine_fleet.rank_1",
+      "family_id": "submarine_fleet",
+      "rank": 1,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 250000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 5
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 2
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "technology",
+        "expected_positive_amount": 2,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/submarine_fleet/0",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "6dfb76111c523376fb7ef5de779eb94a5c6e70d83bfba211e3cb76fa22cda176"
+    },
+    {
+      "profile_id": "v075.military.submarine_fleet.rank_2",
+      "family_id": "submarine_fleet",
+      "rank": 2,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 275000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 7
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 4
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "technology",
+        "expected_positive_amount": 4,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/submarine_fleet/1",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "6a04d82e3d81307c906580101d51cdbf58bedc9315ce7b0552c8f16322ca808f"
+    },
+    {
+      "profile_id": "v075.military.submarine_fleet.rank_3",
+      "family_id": "submarine_fleet",
+      "rank": 3,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 300000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 10
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 5
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "technology",
+        "expected_positive_amount": 6,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/submarine_fleet/2",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "4170534103b21b4d4f33aa7c3f1dd88a51f7a13865c91aa58de79441cc441ebb"
+    },
+    {
+      "profile_id": "v075.military.submarine_fleet.rank_4",
+      "family_id": "submarine_fleet",
+      "rank": 4,
+      "movement_class": "GROUND",
+      "speed_distance_mu_per_tick": 325000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage_budget": 13
+      },
+      "assault_monster_profile": {
+        "owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "damage": 7
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "technology",
+        "expected_positive_amount": 9,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V075_COMBAT_BALANCE_DEFAULTS",
+        "combat_profile_ref": "/military_definition_rank_profiles/submarine_fleet/3",
+        "combat_value_status": "INHERITED_V075_ACTIVE_PROFILE",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "INHERITED_V075_COMBAT_WITH_NEW_V076_ALPHA07_MOVEMENT_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "MIXED_INHERITED_COMBAT_AND_NEW_MOVEMENT",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "08cd8a4d46487d289986fb5ce5c17438122b80334bf77f03cc2e77297b77d1d9"
+    },
+    {
+      "profile_id": "v076.military.star_ocean_battleship.rank_1",
+      "family_id": "star_ocean_battleship",
+      "rank": 1,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 250000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 5
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 3
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "energy",
+        "expected_positive_amount": 2,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "723357c5717c214355aaa9150dc8f59ebd60a54a41b567eabb6046dd5c003d0f"
+    },
+    {
+      "profile_id": "v076.military.star_ocean_battleship.rank_2",
+      "family_id": "star_ocean_battleship",
+      "rank": 2,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 275000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 7
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 4
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "energy",
+        "expected_positive_amount": 4,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "3b912c9da3e870717084cd9a3768cd83f6069bf6e95d20ef175b1fcd6443b195"
+    },
+    {
+      "profile_id": "v076.military.star_ocean_battleship.rank_3",
+      "family_id": "star_ocean_battleship",
+      "rank": 3,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 300000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 9
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 6
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "energy",
+        "expected_positive_amount": 6,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "d61b53becdbdc484f861c0cb140fb41aebabc15b20a6a74928309fb4efa18182"
+    },
+    {
+      "profile_id": "v076.military.star_ocean_battleship.rank_4",
+      "family_id": "star_ocean_battleship",
+      "rank": 4,
+      "movement_class": "FLYING",
+      "speed_distance_mu_per_tick": 325000,
+      "allowed_missions": [
+        "ASSAULT_REGION",
+        "ASSAULT_MONSTER"
+      ],
+      "allowed_target_kinds": [
+        "REGION",
+        "MONSTER"
+      ],
+      "assault_region_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage_budget": 12
+      },
+      "assault_monster_profile": {
+        "owner": "V076MilitaryUnitProfileAuthority",
+        "damage": 8
+      },
+      "asset_cost_binding": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "source_field": "machine.asset_cost",
+        "expected_positive_color": "energy",
+        "expected_positive_amount": 9,
+        "validation_only_expected_value": true
+      },
+      "lifecycle": "ARRIVE_EXECUTE_ONCE_WITHDRAW",
+      "withdraw_after_resolution": true,
+      "persistent_unit": false,
+      "auto_retarget": false,
+      "auto_repeat_task": false,
+      "mission_fallback": "NONE",
+      "name_based_runtime_inference": false,
+      "text_based_runtime_parse": false,
+      "source_provenance": {
+        "combat_values_owner": "V076MilitaryUnitProfileAuthority",
+        "combat_value_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_values_owner": "V076MilitaryUnitProfileAuthority",
+        "movement_authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+        "movement_authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+        "movement_source_status": "NOT_INHERITED",
+        "historical_reference_status": "REFERENCE_ONLY_NOT_INHERITED",
+        "asset_cost_owner": "CardRuntimeCatalogV06Resource"
+      },
+      "authoring_status": "NEW_V076_ALPHA07_PLAYTEST_AUTHORITY",
+      "authoring_decision_id": "V076_ALPHA07_MILITARY_PROFILE_V1",
+      "source_status": "NOT_INHERITED",
+      "balance_maturity": "FIRST_PLAYTEST_DEFAULT",
+      "reversible": true,
+      "canonical_fingerprint": "15a0cc1eb4b6d1749ca19516b7ee7dcdb8bd16594cfad75c4aade3ae6df40d60"
+    }
+  ],
+  "profile_catalog_fingerprint_sha256": "b444752da78cd215606b40957260c3447f8394809eeafdbc165e7b4d5eae88fe"
+}

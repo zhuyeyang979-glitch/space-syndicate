@@ -5,6 +5,7 @@ name: V075 PR Acceptance
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -46,7 +47,118 @@ jobs:
             throw "git diff --check failed for $diffBase...HEAD"
           }
 
+      - name: Classify the exact synchronize delta
+        id: change-scope
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $runProduct = $true
+          $reason = "non-synchronize event requires bounded product acceptance"
+          $eventName = "${{ github.event_name }}"
+          $eventAction = "${{ github.event.action }}"
+
+          if ($eventName -eq "pull_request" -and $eventAction -eq "synchronize") {
+            $before = "${{ github.event.before }}"
+            $after = "${{ github.event.pull_request.head.sha }}"
+            if ($before -notmatch '^[0-9a-f]{40}$' -or $after -notmatch '^[0-9a-f]{40}$') {
+              throw "Synchronize delta identity is incomplete: before=$before after=$after"
+            }
+            & git cat-file -e "$before^{commit}"
+            if ($LASTEXITCODE -ne 0) {
+              throw "Synchronize before commit is unavailable: $before"
+            }
+            & git cat-file -e "$after^{commit}"
+            if ($LASTEXITCODE -ne 0) {
+              throw "Synchronize after commit is unavailable: $after"
+            }
+            & git merge-base --is-ancestor $before $after
+            if ($LASTEXITCODE -ne 0) {
+              throw "Non-fast-forward synchronize delta is not eligible for a product-reproof skip: before=$before after=$after"
+            }
+
+            $allowedPaths = [Collections.Generic.HashSet[string]]::new(
+              [StringComparer]::Ordinal
+            )
+            @(
+              ".github/pull_request_template.md",
+              ".github/workflows/v075-pr90-acceptance.yml",
+              ".github/workflows/v076-reuse-point-inertia-gate.yml",
+              "AGENTS.md",
+              "docs/PR_CHECKLIST.md",
+              "docs/architecture/V076_ALPHA07_GOLDEN_PLAYTEST_SCENARIO.json",
+              "docs/architecture/V076_ALPHA07_GOLDEN_PLAYTEST_SCENARIO.md",
+              "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+              "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.md",
+              "docs/architecture/V076_INHERITED_GREEN_LEDGER.json",
+              "docs/architecture/V076_INHERITED_GREEN_LEDGER.md",
+              "docs/architecture/V076_OWNER_REUSE_MAP.md",
+              "docs/architecture/V076_SUPERSESSION_MAP.json",
+              "docs/development_log.md",
+              "docs/release/windows_export_alpha01.md",
+              "reports/architecture/v076_reuse_point_inertia_gate.json",
+              "reports/architecture/v076_reuse_point_inertia_gate.md",
+              "reports/card_certification/v076_card_certification_matrix.json",
+              "reports/card_certification/v076_card_certification_matrix.md",
+              "reports/reuse/v076_duplicate_implementation_audit.json",
+              "tools/v076/v076_reuse_point_inertia_gate.py",
+              "tools/v076/v076_reuse_point_inertia_gate_selftest.py"
+            ) | ForEach-Object { [void]$allowedPaths.Add($_) }
+
+            $changedPaths = @(
+              & git diff --no-renames --name-only "$before..$after" |
+                ForEach-Object { $_.Trim().Replace('\', '/') } |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            )
+            if ($LASTEXITCODE -ne 0 -or $changedPaths.Count -eq 0) {
+              throw "Synchronize delta could not be classified."
+            }
+            $unexpectedPaths = @(
+              $changedPaths | Where-Object { -not $allowedPaths.Contains($_) }
+            )
+            if ($unexpectedPaths.Count -eq 0) {
+              $headers = @{
+                Authorization = "Bearer $env:GITHUB_TOKEN"
+                Accept = "application/vnd.github+json"
+                "X-GitHub-Api-Version" = "2022-11-28"
+              }
+              $workflowUri = "https://api.github.com/repos/${{ github.repository }}/actions/workflows/v075-pr90-acceptance.yml/runs?head_sha=$before&event=pull_request&per_page=100"
+              $workflowRuns = Invoke-RestMethod -Method Get -Uri $workflowUri -Headers $headers
+              $previousRuns = @(
+                $workflowRuns.workflow_runs |
+                  Where-Object {
+                    [string]$_.head_sha -ceq $before -and
+                    [string]$_.name -ceq "V075 PR Acceptance"
+                  } |
+                  Sort-Object -Property run_number -Descending
+              )
+              $previousRun = $previousRuns | Select-Object -First 1
+              $previousGreen = (
+                $null -ne $previousRun -and
+                [string]$previousRun.status -ceq "completed" -and
+                [string]$previousRun.conclusion -ceq "success"
+              )
+              if ($previousGreen) {
+                $runProduct = $false
+                $reason = "exact TOOLING_ONLY plus DOCS_ONLY V076 gate delta inherited from green previous Head $before"
+              } else {
+                $runProduct = $true
+                $reason = "previous Head lacks a completed successful V075 acceptance; product reproof cannot be skipped"
+              }
+            } else {
+              $reason = "delta includes non-gate paths: $($unexpectedPaths -join ', ')"
+            }
+          }
+
+          $runProductText = if ($runProduct) { "true" } else { "false" }
+          "RUN_V075_PRODUCT=$runProductText" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "scope=$reason" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Output "RUN_V075_PRODUCT=$runProductText"
+          Write-Output "V075_ACCEPTANCE_SCOPE=$reason"
+
       - name: Install pinned Godot 4.7
+        if: ${{ env.RUN_V075_PRODUCT == 'true' }}
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -68,6 +180,7 @@ jobs:
           "GODOT_GUI_PATH=$($godot.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Prove runner decoding and failure gates
+        if: ${{ env.RUN_V075_PRODUCT == 'true' }}
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -94,6 +207,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Formal-authority tooling self-test failed." }
 
       - name: Run bounded V075 production gates
+        if: ${{ env.RUN_V075_PRODUCT == 'true' }}
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -212,3 +326,13 @@ jobs:
             -Script "res://tests/v075_responsive_viewport_headed_capture.gd" `
             -Marker "V075_RESPONSIVE_VIEWPORT_HEADED_CAPTURE|status=PASS|case=parse-only" `
             -Arguments @("--parse-only")
+
+      - name: Confirm focused gate-only product-reproof skip
+        if: ${{ env.RUN_V075_PRODUCT == 'false' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Write-Output "CHANGE_CLASS=TOOLING_ONLY+DOCS_ONLY"
+          Write-Output "V075_PRODUCT_REPROOF_SKIPPED=true"
+          Write-Output "UNNECESSARY_FULL_SUITE_RUN_COUNT=0"
+          Write-Output "FULL_WORLD_REPROOF_COUNT=0"

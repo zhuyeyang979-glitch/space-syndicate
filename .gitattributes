@@ -5,6 +5,15 @@
 # Godot rewrites import sidecars with LF, so make the policy explicit.
 *.import text eol=lf
 
+# V076 correction evidence is hash-sealed from exact Windows-produced bytes.
+# Do not normalize JSON, Markdown, or SHA sidecars in this append-only tree.
+reports/reuse/correction_v2/** binary
+
+# Full-convergence raw scans are also sealed from exact scanner output bytes.
+# Preserve CRLF where emitted so the declared SHA-256 and Git blob identity bind
+# the same byte sequence before and after the evidence is committed.
+reports/reuse/full_convergence/raw_scans/** binary
+
 # Preserve upstream Kenney license evidence byte-for-byte; these files contain
 # intentional leading tabs and CRLF line endings from the selected archives.
 assets/third_party/commercial/audio/kenney_interface_sounds/LICENSE.txt binary

@@ -1,0 +1,47 @@
+{
+  "schema_version": "space_syndicate.mcp_runtime_validation_receipt.v1",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "validated_commit": "0d2a2b798f328624cc9aaee65be4187609b142a2",
+  "validated_tree": "e8e5ddc2a523b3bd4397683ffa756a1118725461",
+  "godot_version": "4.7-stable (official)",
+  "mcp_role": "Supervisor",
+  "mcp_port": 8845,
+  "project_root": "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice/",
+  "scene_path": "res://scenes/main.tscn",
+  "runtime_scene_path": "/root/Main",
+  "runtime_scene_script": "res://scripts/v075_runtime/v075_application_bootstrap.gd",
+  "runtime_status": "ready",
+  "runtime_viewport": {
+    "width": 1600,
+    "height": 960
+  },
+  "console_error_count": 0,
+  "capture_path": "res://reports/development/mcp_landing/0d2a2b798f328624cc9aaee65be4187609b142a2/main_runtime.png",
+  "capture_sha256": "3e66463cb523eb8eb7651cb1d2ddcf2327eca347ba218ee8ce09dd8e27cbbf7d",
+  "mcp_raw_response_sha256": {
+    "get_project_info": "476dbc729521165506245caaf7ba16e90e1321c7640050fbc956085370a6bc26",
+    "open_main_scene": "061fb96c37d6ee497e06f882e267a3c6d01ad54697dcdf8436cc4484f0da1f15",
+    "main_scene_tree": "ad460ef9a6bd73cb6a508da238974f135ba91448de0e78ba9a904a55e65085aa",
+    "play_main_scene": "bd0876dc640d6d3fbc0fa000ee164c5c64b1a20beed34e9558cf6d075ef958c8",
+    "runtime_bridge_status": "a2316f1e63b347e8c10d4a1c993aeaa2ee7fa183203a5e0d76ef95c13980a3cd",
+    "play_state_running": "9d4abb1b66e022ad07488899e880d34b51b0e01de6ddc6bedc5b9b46f41a65fb",
+    "capture_runtime_view": "53885e6b588e6a8b43c02872fbc03d7ea7784473f0bdf0dd2c34660dc963861e",
+    "console_errors": "0b8c45158e5f6a988950d14532e5e9447d64ee79ea59a5262a7687f944f904c0",
+    "exit_play_mode": "2e7a614beec760a27bfec5ecea74c6f71b8b621a0baf09ff763812bda8f4cfc1",
+    "play_state_stopped": "d69ddea060ab4be833adad89af4a3c84af660e4f227f8b31cb70d7bc30b2f82e"
+  },
+  "clean_stop": {
+    "stopped": true,
+    "identity_verified": true,
+    "normal_close_requested": true,
+    "forced_stop": false,
+    "process_count_after": 0,
+    "endpoint_count_after": 0,
+    "listener_8845_after": 0,
+    "role_identity_metadata_count_after": 0
+  },
+  "mcp_product_file_mutation_coverage": "100_PERCENT",
+  "direct_filesystem_product_edit_count": 0,
+  "player_visible_mcp_runtime_validation": "PASS",
+  "real_main_tscn_mcp_validation": "PASS"
+}

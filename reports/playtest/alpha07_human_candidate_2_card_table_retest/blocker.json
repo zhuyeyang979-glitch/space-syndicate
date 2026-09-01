@@ -1,0 +1,36 @@
+{
+  "schema": "space_syndicate.v076.alpha07.human_candidate_2_card_table_retest.blocker.v1",
+  "append_only": true,
+  "recorded_at_utc": "2026-08-24T18:19:01.2862847Z",
+  "candidate": "Alpha 0.7 Living Planet - Human Candidate 2",
+  "classification": "PRE_GOLDEN_HUMAN_CARD_TABLE_PRESENTATION_BLOCKED",
+  "human_candidate_2_retest_started": true,
+  "human_candidate_2_retest_completed": false,
+  "human_golden_step13_started": false,
+  "human_golden_step13_pass_claimed": false,
+  "human_green": false,
+  "full_product_production_green": false,
+  "step13_status": "PENDING",
+  "blockers": [
+    "PUBLIC_ARRANGEMENT_PERMANENTLY_OCCLUDES_PLANET_MAP",
+    "PUBLIC_ARRANGEMENT_IS_NOT_A_COLLAPSIBLE_DRAWER",
+    "HAND_CARD_VISUALS_NO_LONGER_EXPLAIN_CARD_PURPOSE",
+    "COACHMARK_CLOSE_CAUSES_APPROXIMATELY_FIVE_SECOND_WHITE_SCREEN",
+    "ACTION_FEED_HAS_ANONYMOUS_ACTIONS_BUT_PUBLIC_CARD_PROJECTION_IS_EMPTY",
+    "SUSHI_TRACK_DOES_NOT_PERFORM_AUTHORITATIVE_SCROLL_OR_NEXT_PLAYER_HANDOFF"
+  ],
+  "blocker_count": 6,
+  "screenshot": "screenshots/candidate_2_card_table_blocker_001.jpg",
+  "current_human_session_evidence_preserved": true,
+  "current_local_work_preserved": true,
+  "current_worktree_reset_count": 0,
+  "current_worktree_stash_count": 0,
+  "current_worktree_clean_count": 0,
+  "not_claimed": [
+    "human_green",
+    "step13_pass",
+    "step14_pass",
+    "step15_pass",
+    "full_product_production_green"
+  ]
+}

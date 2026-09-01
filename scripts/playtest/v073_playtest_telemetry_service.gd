@@ -9,6 +9,8 @@ const EventV1 := preload("res://scripts/playtest/v073_playtest_event_v1.gd")
 const Baseline := preload("res://scripts/playtest/v073_human_baseline_profile.gd")
 const RULESET_ID := "v0.7.3"
 const EXPORT_ROOT := "user://playtests/v073"
+const DEFAULT_SESSION_PREFIX := "v073"
+const DEFAULT_REPORT_TITLE := "V0.7.3 Playtest Report"
 const COLORS := [
 	"life", "energy", "industry", "technology", "commerce", "shipping",
 ]
@@ -62,6 +64,7 @@ var _export_succeeded := false
 var _export_root := EXPORT_ROOT
 var _export_paths: Dictionary = {}
 var _last_export_error := ""
+var _candidate_profile: Dictionary = {}
 
 
 func _ready() -> void:
@@ -73,6 +76,29 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if not _session_id.is_empty() and not _export_attempted:
 		finalize_session({"skipped": true, "reason": "application_closed"})
+
+
+func configure_candidate_profile(profile: Dictionary) -> bool:
+	if not _session_id.is_empty() or not _candidate_profile.is_empty():
+		return false
+	if not _candidate_profile_valid(profile):
+		return false
+	_candidate_profile = profile.duplicate(true)
+	_export_root = str(_candidate_profile.get("export_root", EXPORT_ROOT))
+	return true
+
+
+func candidate_identity_snapshot() -> Dictionary:
+	var identity := _effective_candidate_profile()
+	identity["configured"] = not _candidate_profile.is_empty()
+	identity["build_sha"] = _build_sha
+	identity["source_ruleset_id"] = _source_ruleset_id
+	identity["observation_owner_class"] = "V073PlaytestTelemetryService"
+	identity["gameplay_owner_count"] = 0
+	identity["save_owner_count"] = 0
+	identity["rng_owner_count"] = 0
+	identity["tick_owner_count"] = 0
+	return identity
 
 
 func bind_sources(flow: Node, screen: Node) -> void:
@@ -153,9 +179,23 @@ func finalize_session(feedback: Dictionary = {}) -> bool:
 		"event_schema_version": EventV1.SCHEMA_VERSION,
 		"session_id": _session_id,
 		"build_sha": _build_sha,
-		"ruleset_id": RULESET_ID,
-		"balance_profile_id": Baseline.PROFILE_ID,
-		"balance_profile_fingerprint": Baseline.PROFILE_FINGERPRINT,
+		"ruleset_id": _product_version(),
+		"runtime_ruleset_id": _runtime_ruleset_id(),
+		"balance_profile_id": _profile_id(),
+		"balance_profile_fingerprint": _profile_fingerprint(),
+		"golden_scenario_id": str(
+			_effective_candidate_profile().get("golden_scenario_id", "")
+		),
+		"production_scene_path": str(
+			_effective_candidate_profile().get("production_scene_path", "")
+		),
+		"evidence_source_type": "OBSERVATION_ONLY",
+		"human_executed": false,
+		"human_confirmed": false,
+		"human_evidence_claim_allowed": false,
+		"production_green": false,
+		"human_green": false,
+		"observer_attestation_required": true,
 		"seed": _seed,
 		"player_count": _player_count,
 		"start_time": _session_started_at,
@@ -193,8 +233,9 @@ func debug_snapshot() -> Dictionary:
 		"event_count": _events.size(),
 		"session_id": _session_id,
 		"build_sha": _build_sha,
-		"balance_profile_id": Baseline.PROFILE_ID,
-		"balance_profile_fingerprint": Baseline.PROFILE_FINGERPRINT,
+		"balance_profile_id": _profile_id(),
+		"balance_profile_fingerprint": _profile_fingerprint(),
+		"candidate_identity": candidate_identity_snapshot(),
 		"gameplay_owner_count": 0,
 		"save_owner_count": 0,
 		"rng_owner_count": 0,
@@ -358,7 +399,11 @@ func _start_session(receipt: Dictionary) -> void:
 	_session_ended_at = ""
 	_source_session_id = str(receipt.get("session_id", "")).strip_edges()
 	_source_ruleset_id = str(receipt.get("ruleset_id", "")).strip_edges()
-	_session_id = "v073-%d-%s" % [
+	if _source_ruleset_id != _runtime_ruleset_id():
+		_last_export_error = "playtest_source_ruleset_mismatch"
+		return
+	_session_id = "%s-%d-%s" % [
+		_session_prefix(),
 		int(Time.get_unix_time_from_system()),
 		_source_session_id.sha256_text().left(10),
 	]
@@ -394,9 +439,9 @@ func _record(event_type: String, payload: Dictionary) -> bool:
 	var common := {
 		"session_id": _session_id,
 		"build_sha": _build_sha,
-		"ruleset_id": RULESET_ID,
-		"balance_profile_id": Baseline.PROFILE_ID,
-		"balance_profile_fingerprint": Baseline.PROFILE_FINGERPRINT,
+		"ruleset_id": _product_version(),
+		"balance_profile_id": _profile_id(),
+		"balance_profile_fingerprint": _profile_fingerprint(),
 		"seed": _seed,
 		"player_count": _player_count,
 		"local_player_index": 0,
@@ -502,9 +547,14 @@ func _build_summary() -> Dictionary:
 		"schema_version": 1,
 		"session_id": _session_id,
 		"build_sha": _build_sha,
-		"ruleset_id": RULESET_ID,
-		"balance_profile_id": Baseline.PROFILE_ID,
-		"balance_profile_fingerprint": Baseline.PROFILE_FINGERPRINT,
+		"ruleset_id": _product_version(),
+		"runtime_ruleset_id": _runtime_ruleset_id(),
+		"balance_profile_id": _profile_id(),
+		"balance_profile_fingerprint": _profile_fingerprint(),
+		"human_executed": false,
+		"human_confirmed": false,
+		"production_green": false,
+		"human_green": false,
 		"MATCH_DURATION_SECONDS": duration_seconds,
 		"TIME_TO_FIRST_CARD_SELECT_SECONDS": _first_seconds(elapsed_values, "card_selected"),
 		"TIME_TO_FIRST_VALID_SUBMISSION_SECONDS": _first_seconds(elapsed_values, "action_submitted"),
@@ -547,12 +597,13 @@ func _build_summary() -> Dictionary:
 
 func _build_report(summary: Dictionary, feedback_document: Dictionary) -> String:
 	var lines := [
-		"# V0.7.3 Playtest Report",
+		"# %s" % _report_title(),
 		"",
 		"- Session: `%s`" % _session_id,
 		"- Build: `%s`" % _build_sha,
-		"- Ruleset: `%s`" % RULESET_ID,
-		"- Baseline: `%s`" % Baseline.PROFILE_ID,
+		"- Product: `%s`" % _product_version(),
+		"- Runtime ruleset: `%s`" % _runtime_ruleset_id(),
+		"- Baseline: `%s`" % _profile_id(),
 		"- Seed: `%d`" % _seed,
 		"- Players: `%d`" % _player_count,
 		"",
@@ -571,6 +622,102 @@ func _build_report(summary: Dictionary, feedback_document: Dictionary) -> String
 		"This report is local-only and contains no opponent hidden information.",
 	]
 	return "\n".join(lines) + "\n"
+
+
+func _candidate_profile_valid(profile: Dictionary) -> bool:
+	var fingerprint_input := str(profile.get("profile_fingerprint_input", ""))
+	var fingerprint := str(profile.get("profile_fingerprint", ""))
+	var export_root := str(profile.get("export_root", ""))
+	var session_prefix := str(profile.get("session_prefix", ""))
+	return (
+		str(profile.get("schema", ""))
+			== "V076Alpha07HumanGoldenCandidateProfileV1"
+		and str(profile.get("product_version", "")) == "v0.7.6"
+		and str(profile.get("runtime_ruleset_id", "")) == "v0.7.5"
+		and not str(profile.get("profile_id", "")).is_empty()
+		and fingerprint.length() == 64
+		and fingerprint_input.sha256_text().to_lower() == fingerprint
+		and str(profile.get("golden_scenario_id", ""))
+			== "v076-alpha07-golden-playtest-scenario-01"
+		and int(profile.get("golden_step_count", 0)) == 15
+		and str(profile.get("production_scene_path", ""))
+			== "res://scenes/main.tscn"
+		and export_root.begins_with("user://")
+		and not ".." in export_root
+		and not session_prefix.is_empty()
+		and not "/" in session_prefix
+		and not "\\" in session_prefix
+		and str(profile.get("evidence_source_type", ""))
+			== "OBSERVATION_ONLY"
+		and profile.get("human_executed", true) == false
+		and profile.get("human_confirmed", true) == false
+		and profile.get("human_evidence_claim_allowed", true) == false
+		and profile.get("production_green", true) == false
+		and profile.get("human_green", true) == false
+		and int(profile.get("production_balance_value_change_count", -1)) == 0
+		and profile.get("source_authorities", {}) is Dictionary
+	)
+
+
+func _effective_candidate_profile() -> Dictionary:
+	if not _candidate_profile.is_empty():
+		return _candidate_profile.duplicate(true)
+	return {
+		"schema": "V073PlaytestCandidateProfileV1",
+		"product_version": RULESET_ID,
+		"runtime_ruleset_id": RULESET_ID,
+		"profile_id": Baseline.PROFILE_ID,
+		"profile_fingerprint": Baseline.PROFILE_FINGERPRINT,
+		"golden_scenario_id": "",
+		"production_scene_path": "res://scenes/main.tscn",
+		"export_root": EXPORT_ROOT,
+		"session_prefix": DEFAULT_SESSION_PREFIX,
+		"report_title": DEFAULT_REPORT_TITLE,
+		"evidence_source_type": "OBSERVATION_ONLY",
+		"human_executed": false,
+		"human_confirmed": false,
+		"human_evidence_claim_allowed": false,
+		"production_green": false,
+		"human_green": false,
+	}
+
+
+func _product_version() -> String:
+	return str(_effective_candidate_profile().get("product_version", RULESET_ID))
+
+
+func _runtime_ruleset_id() -> String:
+	return str(
+		_effective_candidate_profile().get("runtime_ruleset_id", RULESET_ID)
+	)
+
+
+func _profile_id() -> String:
+	return str(
+		_effective_candidate_profile().get("profile_id", Baseline.PROFILE_ID)
+	)
+
+
+func _profile_fingerprint() -> String:
+	return str(_effective_candidate_profile().get(
+		"profile_fingerprint",
+		Baseline.PROFILE_FINGERPRINT
+	))
+
+
+func _session_prefix() -> String:
+	return str(
+		_effective_candidate_profile().get(
+			"session_prefix",
+			DEFAULT_SESSION_PREFIX
+		)
+	)
+
+
+func _report_title() -> String:
+	return str(
+		_effective_candidate_profile().get("report_title", DEFAULT_REPORT_TITLE)
+	)
 
 
 func _sanitize_feedback(feedback: Dictionary) -> Dictionary:

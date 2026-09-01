@@ -1,0 +1,23 @@
+{
+  "schema": "space_syndicate.v076.alpha07.candidate_3.terminal_manifest.v1",
+  "recorded_at_local": "2026-08-25T02:51:14.0156933+09:00",
+  "worktree": "D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice",
+  "branch": "codex/v076-continuous-playable-vertical-slice-770d741f",
+  "head_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+  "working_tree_uncommitted": true,
+  "git_diff_check": "PASS",
+  "godot_parse_check": "exit 0",
+  "production_scene": "res://scenes/main.tscn",
+  "headed_process": {
+    "console_pid": 3828,
+    "window_pid": 5748,
+    "command": "Godot_v4.7-stable_win64.exe -d --path D:/SpaceSyndicateWorktrees/v076/770d741f/continuous-playable-vertical-slice res://scenes/main.tscn",
+    "owned_by_human_for_retest": true
+  },
+  "headless_validation_clean_stop": true,
+  "headless_validation_hard_errors": 0,
+  "input_injected_by_agent": false,
+  "step13_started": false,
+  "step14_started": false,
+  "step15_started": false
+}

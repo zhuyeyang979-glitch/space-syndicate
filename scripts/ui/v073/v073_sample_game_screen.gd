@@ -85,7 +85,15 @@ const MARKET_ART_PATH := (
 @onready var _commodity_label: Label = %CommodityLabel
 @onready var _special_label: Label = %SpecialLabel
 @onready var _hand_rail: HBoxContainer = %HandRail
-@onready var _queue_rail: VBoxContainer = %QueueRail
+# The V0.7.5 public-arrangement popout embeds a CardResolutionTrack with its
+# own QueueRail.  A unique-name lookup would bind this owner to that nested
+# presentation rail instead of the production hand queue, making reorder and
+# remove controls disappear from the player's actual dock.  Keep the owner
+# bound to the explicit production path so the nested arrangement remains
+# presentation-only.
+@onready var _queue_rail: VBoxContainer = (
+	$RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows/QueueScroll/QueueRail
+)
 @onready var _merge_button: Button = %MergeButton
 @onready var _finish_button: Button = %FinishMaintenanceButton
 @onready var _lock_button: Button = %LockButton
@@ -266,7 +274,21 @@ func apply_receipt(receipt: Dictionary) -> void:
 	_show_toast(reason_code, accepted)
 	_action_status.text = reason_code
 	_refresh_playtest_context()
-	_update_acceptance_state()
+	# The maintenance boundary is already committed by the runtime before
+	# this receipt reaches the presentation lane.  The acceptance audit walks
+	# the full map/layout/telemetry surface and can take over a second; doing it
+	# synchronously here makes the player's Finish action block the authority
+	# handoff.  Defer that diagnostic-only refresh to the next idle edge while
+	# keeping the receipt/status UI immediate.
+	if accepted and intent_kind == "maintenance.finish":
+		call_deferred("_update_acceptance_state")
+	elif intent_kind in ["ui.pacing.set", "ui.pacing.fast_forward_next_decision"]:
+		# Pace controls are presentation-only receipts.  A synchronous full
+		# acceptance walk here used to stall the frame in which Coach closes.
+		# The periodic diagnostic sampler remains responsible for the next audit.
+		pass
+	else:
+		_update_acceptance_state()
 
 
 func present_final_settlement(settlement: Dictionary) -> void:

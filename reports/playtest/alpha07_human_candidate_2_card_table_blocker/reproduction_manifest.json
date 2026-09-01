@@ -1,0 +1,28 @@
+{
+  "schema": "space_syndicate.v076.alpha07.card_table_blocker.reproduction_manifest.v1",
+  "append_only": true,
+  "candidate_head_sha": "46b33bba77b356b100ab68bc7c3676d503049a2c",
+  "scene": "res://scenes/main.tscn",
+  "runtime": "Godot 4.7 headed",
+  "human_count": 1,
+  "ai_count": 3,
+  "fixture_card_injection_count": 0,
+  "fixture_track_phase_injection_count": 0,
+  "fixture_ai_action_injection_count": 0,
+  "steps": [
+    "normal new game",
+    "tutorial complete or skip",
+    "hover coach prompt and Next",
+    "inspect shared track and attempt commodity claim",
+    "attempt legal ordinary-card drag/play",
+    "observe action feedback and central arrangement",
+    "switch 1x/2x/4x",
+    "normal exit"
+  ],
+  "result": "blocked_before_golden_step13",
+  "screenshots": {
+    "directory": "screenshots/",
+    "captured_in_this_record": false,
+    "note": "The headed window was still under the human tester's control when the feedback was recorded; no synthetic input or fixture screenshot was added."
+  }
+}

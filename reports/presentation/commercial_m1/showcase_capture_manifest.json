@@ -1,0 +1,547 @@
+{
+	"canonical_showcase_scene": "res://scenes/tools/CommercialPresentationShowcase.tscn",
+	"capture_size": {
+		"height": 960,
+		"width": 1600
+	},
+	"captured_at_utc": "2026-08-26 03:00:36",
+	"episode_count": 13,
+	"episodes": [
+		{
+			"actual_cue_id": "PRODUCT_SHELL_MAIN_MENU",
+			"episode_id": "main_menu",
+			"evidence_path": "reports/presentation/commercial_m1/menu_capture/evidence.json",
+			"evidence_sha256": "8a07143e9b66802d068de36fc4dad4ff850667238832d2c67e701a135c34ec60",
+			"expected_cue_id": "PRODUCT_SHELL_MAIN_MENU",
+			"frame_count": 3,
+			"output_dir": "menu_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "PRODUCT_SHELL_LOADING",
+			"episode_id": "loading",
+			"evidence_path": "reports/presentation/commercial_m1/loading_capture/evidence.json",
+			"evidence_sha256": "60e9d431d300f816df26b27452ad128d317b1ae2e6cf33fdaab8fedc82d0e737",
+			"expected_cue_id": "PRODUCT_SHELL_LOADING",
+			"frame_count": 3,
+			"output_dir": "loading_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "CARD_ENTER_DECK",
+			"episode_id": "acquire_to_deck",
+			"evidence_path": "reports/presentation/commercial_m1/deck_acquire_capture/evidence.json",
+			"evidence_sha256": "b3f1e2c0c144e98e7e45e80e0fa5b56b5b3aac0a3987554b04228bf717eeb553",
+			"expected_cue_id": "CARD_ENTER_DECK",
+			"frame_count": 3,
+			"output_dir": "deck_acquire_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "DECK_SHUFFLE",
+			"episode_id": "shuffle",
+			"evidence_path": "reports/presentation/commercial_m1/shuffle_capture/evidence.json",
+			"evidence_sha256": "4795eb66998a95a95309c1c1b551f33632b240ed6adfcdec4fbf10247c1b93c7",
+			"expected_cue_id": "DECK_SHUFFLE",
+			"frame_count": 3,
+			"output_dir": "shuffle_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "CARD_DRAW",
+			"episode_id": "draw",
+			"evidence_path": "reports/presentation/commercial_m1/draw_capture/evidence.json",
+			"evidence_sha256": "b0d1c352f52a3ba9cbda914a82b85eb41bd417e9c416ca578288ae657d0e7a9c",
+			"expected_cue_id": "CARD_DRAW",
+			"frame_count": 3,
+			"output_dir": "draw_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "CARD_SELECT",
+			"episode_id": "hand_hover",
+			"evidence_path": "reports/presentation/commercial_m1/hand_hover_capture/evidence.json",
+			"evidence_sha256": "2d5caf1813a6d0efcca4f3a37265357a5a05b3b88dc36e45d8e5885d7504aa65",
+			"expected_cue_id": "CARD_SELECT",
+			"frame_count": 3,
+			"output_dir": "hand_hover_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "CARD_PLAY_PUBLIC",
+			"episode_id": "public_play",
+			"evidence_path": "reports/presentation/commercial_m1/card_play_capture/evidence.json",
+			"evidence_sha256": "d0287fef0338a61fe900e9eec93b2484699bcdfe909e3e4fc4552eff1d012582",
+			"expected_cue_id": "CARD_PLAY_PUBLIC",
+			"frame_count": 3,
+			"output_dir": "card_play_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "CARD_RESOLUTION_FOCUS",
+			"episode_id": "public_resolution",
+			"evidence_path": "reports/presentation/commercial_m1/public_resolution_capture/evidence.json",
+			"evidence_sha256": "37e69b0ab1f8dbe8deba237cf9ea69b800caa63e351851c7a6efbbad9a4565a2",
+			"expected_cue_id": "CARD_RESOLUTION_FOCUS",
+			"frame_count": 3,
+			"output_dir": "public_resolution_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "FACILITY_BUILD",
+			"episode_id": "facility",
+			"evidence_path": "reports/presentation/commercial_m1/facility_capture/evidence.json",
+			"evidence_sha256": "c1b854486c0cb614b6012f35b1a2eb37e110ff8d953336d8d48e77167c4ef98d",
+			"expected_cue_id": "FACILITY_BUILD",
+			"frame_count": 3,
+			"output_dir": "facility_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "MONSTER_MELEE",
+			"episode_id": "monster",
+			"evidence_path": "reports/presentation/commercial_m1/monster_combat_capture/evidence.json",
+			"evidence_sha256": "088ad4730672a6de64c76e054f82c6eb5ff3536dbc6f966275d7ccc115ef191a",
+			"expected_cue_id": "MONSTER_MELEE",
+			"frame_count": 3,
+			"output_dir": "monster_combat_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "MILITARY_ASSAULT_REGION",
+			"episode_id": "military",
+			"evidence_path": "reports/presentation/commercial_m1/military_combat_capture/evidence.json",
+			"evidence_sha256": "c7f3b7c01cae6b6c11136753bf421212045dce2eb94eed88a961101ea3006b35",
+			"expected_cue_id": "MILITARY_ASSAULT_REGION",
+			"frame_count": 3,
+			"output_dir": "military_combat_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "TRACK_HANDOFF",
+			"episode_id": "track_handoff",
+			"evidence_path": "reports/presentation/commercial_m1/sushi_track_capture/evidence.json",
+			"evidence_sha256": "b6057e398de10f3365a6e41b3b7225940c7856eccb5c420a25f90378e5f25f1d",
+			"expected_cue_id": "TRACK_HANDOFF",
+			"frame_count": 3,
+			"output_dir": "sushi_track_capture",
+			"status": "PASS"
+		},
+		{
+			"actual_cue_id": "FINAL_SETTLEMENT",
+			"episode_id": "final_settlement",
+			"evidence_path": "reports/presentation/commercial_m1/final_settlement_capture/evidence.json",
+			"evidence_sha256": "54aad2815dccbfdc219600f9432f4afa06547f574b1365ac448798b6a5eb4ad2",
+			"expected_cue_id": "FINAL_SETTLEMENT",
+			"frame_count": 3,
+			"output_dir": "final_settlement_capture",
+			"status": "PASS"
+		}
+	],
+	"fixture_banner_text": "PRESENTATION_FIXTURE — NOT NATURAL GAMEPLAY / NOT HUMAN GREEN",
+	"fixture_class": "PRESENTATION_FIXTURE",
+	"frame_count": 39,
+	"frames": [
+		{
+			"byte_length": 75689,
+			"episode_id": "main_menu",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/menu_capture/start.png",
+			"sha256": "235b5af5c2617ddb7d8cccb00d6138786ab4efaf88a22dc7875b95ce394ac2f2",
+			"width": 1600
+		},
+		{
+			"byte_length": 72274,
+			"episode_id": "main_menu",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/menu_capture/mid.png",
+			"sha256": "cf1963b4ef929abe141e20a33906fa73ddca7d791c03e877611d77916428cefd",
+			"width": 1600
+		},
+		{
+			"byte_length": 70123,
+			"episode_id": "main_menu",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/menu_capture/end.png",
+			"sha256": "e8e8bd140d69e622d5a77b998f15d858750457425d7f440644a532d47ad4fa67",
+			"width": 1600
+		},
+		{
+			"byte_length": 81065,
+			"episode_id": "loading",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/loading_capture/start.png",
+			"sha256": "94afdee7a808e4841f3399790dcd4b90350ddba087e77e415ec017747dfb3259",
+			"width": 1600
+		},
+		{
+			"byte_length": 80717,
+			"episode_id": "loading",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/loading_capture/mid.png",
+			"sha256": "9cdf5a6ff0c96ed29f23ac6e3e28b8ca910af4f5ba19bee1f0cea8f7a8a97acb",
+			"width": 1600
+		},
+		{
+			"byte_length": 78723,
+			"episode_id": "loading",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/loading_capture/end.png",
+			"sha256": "97bab822cfa68ff43756dd84b39e45f8907621ee26c7c08b4a5437e5e878086e",
+			"width": 1600
+		},
+		{
+			"byte_length": 105956,
+			"episode_id": "acquire_to_deck",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/deck_acquire_capture/start.png",
+			"sha256": "2c189eccb5eb69f12729cbb8c77ed652029975e4e3612e19ede9a9e2024f16e0",
+			"width": 1600
+		},
+		{
+			"byte_length": 106924,
+			"episode_id": "acquire_to_deck",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/deck_acquire_capture/mid.png",
+			"sha256": "76725c1ba4f1f569a0ca81de3f7a2a0319b9896d4dd13a999b3cd2250c52154f",
+			"width": 1600
+		},
+		{
+			"byte_length": 104399,
+			"episode_id": "acquire_to_deck",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/deck_acquire_capture/end.png",
+			"sha256": "8d894b4533b53b87074537c465c0e02196d1f31151ba2c60655d494a97655266",
+			"width": 1600
+		},
+		{
+			"byte_length": 96375,
+			"episode_id": "shuffle",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/shuffle_capture/start.png",
+			"sha256": "db41db8e9edb4a01e53190fa7f51c8678b60d5d19d257b2854ffe98191342696",
+			"width": 1600
+		},
+		{
+			"byte_length": 93631,
+			"episode_id": "shuffle",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/shuffle_capture/mid.png",
+			"sha256": "13da667aac153fee62adb6fef01d1411cb9e9992b3dddf7cbae47ade341cda98",
+			"width": 1600
+		},
+		{
+			"byte_length": 99382,
+			"episode_id": "shuffle",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/shuffle_capture/end.png",
+			"sha256": "35daf27d66775deb405f1510c41085042f5571ad97624ffc51bbc27d4b0d6f40",
+			"width": 1600
+		},
+		{
+			"byte_length": 101027,
+			"episode_id": "draw",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/draw_capture/start.png",
+			"sha256": "87ac6a7a2a0462c9c40499056927db9842e311374277a7f7361335aaa107fe8b",
+			"width": 1600
+		},
+		{
+			"byte_length": 101513,
+			"episode_id": "draw",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/draw_capture/mid.png",
+			"sha256": "f4586e0d976043433641f5019a3eeed14ab6d834c9e5e7b1f0ff37f5ee3d4aae",
+			"width": 1600
+		},
+		{
+			"byte_length": 104229,
+			"episode_id": "draw",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/draw_capture/end.png",
+			"sha256": "fe7e12b7ec6f066f3e66af0703154d89435fea7905222dbadfc84f545236446c",
+			"width": 1600
+		},
+		{
+			"byte_length": 116664,
+			"episode_id": "hand_hover",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/hand_hover_capture/start.png",
+			"sha256": "ed2b0b4b7dbed00b0a6fcd15bc3c2853bfc2d69751b769c4180c1325d7548b07",
+			"width": 1600
+		},
+		{
+			"byte_length": 117021,
+			"episode_id": "hand_hover",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/hand_hover_capture/mid.png",
+			"sha256": "44a2966e3376c36842b148c9930ef2823a84c4eeb0db0e1e7baa92686a1368c8",
+			"width": 1600
+		},
+		{
+			"byte_length": 117067,
+			"episode_id": "hand_hover",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/hand_hover_capture/end.png",
+			"sha256": "f4bdfdfc659fa13207054a4e8f326b5164fe907a7415767a9e50e26157c7caf7",
+			"width": 1600
+		},
+		{
+			"byte_length": 97198,
+			"episode_id": "public_play",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/card_play_capture/start.png",
+			"sha256": "1ba07dfcc7e618a543ca5d461f893fbd0690f9fbd800c3eadf3bb7544ebbbc0a",
+			"width": 1600
+		},
+		{
+			"byte_length": 97210,
+			"episode_id": "public_play",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/card_play_capture/mid.png",
+			"sha256": "c798ef4d7603a5bc0c647c491779f8489711e474e322d9190bbcdab15b3a66be",
+			"width": 1600
+		},
+		{
+			"byte_length": 97050,
+			"episode_id": "public_play",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/card_play_capture/end.png",
+			"sha256": "8ecf046918e19a649cbfd9217fe9678111ca9329af3d659dac9c9856a9884b6f",
+			"width": 1600
+		},
+		{
+			"byte_length": 107215,
+			"episode_id": "public_resolution",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/public_resolution_capture/start.png",
+			"sha256": "cfd8d0fa0e2cd70a7a250ac2324ff66830f1bf642e29e22d8224356e31cef8ea",
+			"width": 1600
+		},
+		{
+			"byte_length": 108154,
+			"episode_id": "public_resolution",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/public_resolution_capture/mid.png",
+			"sha256": "d3d9331b941b280c5e526958b1a628458ea1091fe1c03744cb6925bd5e399ddd",
+			"width": 1600
+		},
+		{
+			"byte_length": 105415,
+			"episode_id": "public_resolution",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/public_resolution_capture/end.png",
+			"sha256": "dd578e57fbbd336a5656649b6a5f2e74d58e480344baeb3d416ac01245e369fc",
+			"width": 1600
+		},
+		{
+			"byte_length": 122672,
+			"episode_id": "facility",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/facility_capture/start.png",
+			"sha256": "8c50faa49ab813bb98eb1d96074ec3520a8cc14aae265f6457da065289d03d74",
+			"width": 1600
+		},
+		{
+			"byte_length": 122718,
+			"episode_id": "facility",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/facility_capture/mid.png",
+			"sha256": "d707c611b58ed33ec54697100e2b6b302bbb935931029cecf961091b5987917c",
+			"width": 1600
+		},
+		{
+			"byte_length": 122293,
+			"episode_id": "facility",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/facility_capture/end.png",
+			"sha256": "305fcc04653dc3f3d87754e0095af10d4f731a51dfdefd74f8b27dcd7bd58509",
+			"width": 1600
+		},
+		{
+			"byte_length": 96821,
+			"episode_id": "monster",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/monster_combat_capture/start.png",
+			"sha256": "286bb1d3e23c6f502965340ac6980517aafe86929cd8572a4dd4207998eaaa15",
+			"width": 1600
+		},
+		{
+			"byte_length": 103327,
+			"episode_id": "monster",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/monster_combat_capture/mid.png",
+			"sha256": "ac67d99fda84a32df38e049545124b2fad21c8da8e2303da66d8400aade330d3",
+			"width": 1600
+		},
+		{
+			"byte_length": 95819,
+			"episode_id": "monster",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/monster_combat_capture/end.png",
+			"sha256": "241eff368dbcf997ca23072ecba783d7be5ffce5c43810931f062bce64842f75",
+			"width": 1600
+		},
+		{
+			"byte_length": 120973,
+			"episode_id": "military",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/military_combat_capture/start.png",
+			"sha256": "4d65ba0cca67ab1a2b4cd16adaef5809d07740eff53d84008355caed6e22bd05",
+			"width": 1600
+		},
+		{
+			"byte_length": 122962,
+			"episode_id": "military",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/military_combat_capture/mid.png",
+			"sha256": "f5138a95dcd0df96577d7378f8e44ce0f04b15c99e12b022203cf32de61f6397",
+			"width": 1600
+		},
+		{
+			"byte_length": 125139,
+			"episode_id": "military",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/military_combat_capture/end.png",
+			"sha256": "5777ca1e5113b54a76ed290ffe0bce21a23065b66a39b28a727ecf3610fdaffa",
+			"width": 1600
+		},
+		{
+			"byte_length": 86717,
+			"episode_id": "track_handoff",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/sushi_track_capture/start.png",
+			"sha256": "d812ec9acb3617bcd9d46fa90eed1d66655c54d60f98687fc2bf67024e53077e",
+			"width": 1600
+		},
+		{
+			"byte_length": 92599,
+			"episode_id": "track_handoff",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/sushi_track_capture/mid.png",
+			"sha256": "3cbc696239be6d55359c867b94b96a745fc5d35b497e4ee1ac9665a56268fdfe",
+			"width": 1600
+		},
+		{
+			"byte_length": 86064,
+			"episode_id": "track_handoff",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/sushi_track_capture/end.png",
+			"sha256": "c3797bc6883f59767c09fd39f654e5127c970667343c4142cb4df91ef41a54ec",
+			"width": 1600
+		},
+		{
+			"byte_length": 57388,
+			"episode_id": "final_settlement",
+			"fixture_banner_visible": true,
+			"frame_phase": "start",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/final_settlement_capture/start.png",
+			"sha256": "916e7053b0e3c95ea30c433c77101db0bc77ed478752fd84945b91e4f2d376eb",
+			"width": 1600
+		},
+		{
+			"byte_length": 67380,
+			"episode_id": "final_settlement",
+			"fixture_banner_visible": true,
+			"frame_phase": "mid",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/final_settlement_capture/mid.png",
+			"sha256": "46f153f18ea9a7f473c4885f6a6c78be7414e87fa1dde69ce2462845bb79e8e7",
+			"width": 1600
+		},
+		{
+			"byte_length": 66285,
+			"episode_id": "final_settlement",
+			"fixture_banner_visible": true,
+			"frame_phase": "end",
+			"height": 960,
+			"path": "reports/presentation/commercial_m1/final_settlement_capture/end.png",
+			"sha256": "9cd0330cd16e85093f1bf21598f5059ebd15dbe69e1d895e442fb950c3ddb69d",
+			"width": 1600
+		}
+	],
+	"gameplay_green": false,
+	"headed_client_capture_path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_client_final.png",
+	"headed_client_probe_requested": true,
+	"human_green": false,
+	"human_retest_deferred": true,
+	"natural_gameplay": false,
+	"production_green": false,
+	"production_main_scene": "res://scenes/main.tscn",
+	"schema": "V076CommercialPresentationCaptureManifestV1",
+	"status": "AUTOMATION_GREEN_PENDING_VISUAL_REVIEW",
+	"step13_status": "PENDING"
+}

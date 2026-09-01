@@ -1,0 +1,327 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/main.tscn" id="1_main"]
+[ext_resource type="Script" path="res://scripts/ui/vertical_slice_showcase.gd" id="2_script"]
+[ext_resource type="Script" path="res://scripts/ui/commercial_showcase_visual_layer.gd" id="3_visual_layer"]
+
+[sub_resource type="StyleBoxFlat" id="StyleFixtureProxy"]
+bg_color = Color(0.035, 0.075, 0.12, 0.94)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.31, 0.91, 0.78, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.52)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleEpisodeHud"]
+bg_color = Color(0.008, 0.02, 0.05, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.23, 0.51, 0.96, 0.9)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleShowcasePanel"]
+bg_color = Color(0.012, 0.036, 0.07, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.19, 0.76, 0.72, 0.95)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleShowcaseSource"]
+bg_color = Color(0.035, 0.10, 0.18, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.28, 0.62, 0.95, 0.95)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleShowcaseCard"]
+bg_color = Color(0.18, 0.12, 0.06, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.93, 0.71, 0.26, 0.98)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleShowcaseTarget"]
+bg_color = Color(0.13, 0.08, 0.19, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.72, 0.39, 0.95, 0.98)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleShowcaseCountdown"]
+bg_color = Color(0.18, 0.14, 0.045, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.96, 0.72, 0.20, 0.95)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="CommercialPresentationShowcase" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_script")
+metadata/fixture_class = "PRESENTATION_FIXTURE"
+metadata/natural_gameplay = false
+metadata/human_green = false
+metadata/fixture_bridge_schema = "V076CommercialPresentationFixtureBridgeV1"
+metadata/fixture_bridge_instance_count = 1
+
+[node name="ProductionMain" parent="." instance=ExtResource("1_main")]
+unique_name_in_owner = true
+layout_mode = 1
+metadata/showcase_host_role = "PRODUCTION_PRESENTATION_HOST_ONLY"
+metadata/showcase_may_start_session = false
+metadata/showcase_may_request_save = false
+metadata/showcase_may_draw_rng = false
+
+[node name="ShowcaseVisualLayer" type="CanvasLayer" parent="."]
+layer = 126
+script = ExtResource("3_visual_layer")
+showcase_path = NodePath("..")
+
+[node name="ShowcaseVisualPanel" type="Panel" parent="ShowcaseVisualLayer"]
+unique_name_in_owner = true
+visible = false
+offset_left = 220.0
+offset_top = 88.0
+offset_right = 1090.0
+offset_bottom = 188.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleShowcasePanel")
+
+[node name="ShowcaseVisualHeader" type="Label" parent="ShowcaseVisualLayer/ShowcaseVisualPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 12.0
+offset_top = 6.0
+offset_right = 850.0
+offset_bottom = 24.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.57, 0.95, 0.89, 1)
+theme_override_font_sizes/font_size = 12
+text = "PRESENTATION LENS · receipt-driven visual preview"
+
+[node name="ShowcaseVisualSource" type="PanelContainer" parent="ShowcaseVisualLayer/ShowcaseVisualPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 12.0
+offset_top = 31.0
+offset_right = 185.0
+offset_bottom = 89.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleShowcaseSource")
+
+[node name="ShowcaseVisualSourceLabel" type="Label" parent="ShowcaseVisualLayer/ShowcaseVisualPanel/ShowcaseVisualSource"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.84, 0.93, 1, 1)
+theme_override_font_sizes/font_size = 11
+text = "SOURCE"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ShowcaseVisualArrow" type="Label" parent="ShowcaseVisualLayer/ShowcaseVisualPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 191.0
+offset_top = 45.0
+offset_right = 238.0
+offset_bottom = 75.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.78, 0.34, 1)
+theme_override_font_sizes/font_size = 22
+text = "→"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ShowcaseVisualCard" type="PanelContainer" parent="ShowcaseVisualLayer/ShowcaseVisualPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 242.0
+offset_top = 31.0
+offset_right = 414.0
+offset_bottom = 89.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleShowcaseCard")
+
+[node name="ShowcaseVisualCardLabel" type="Label" parent="ShowcaseVisualLayer/ShowcaseVisualPanel/ShowcaseVisualCard"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.94, 0.72, 1)
+theme_override_font_sizes/font_size = 11
+text = "CARD"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ShowcaseVisualArrow2" type="Label" parent="ShowcaseVisualLayer/ShowcaseVisualPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 420.0
+offset_top = 45.0
+offset_right = 467.0
+offset_bottom = 75.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.78, 0.34, 1)
+theme_override_font_sizes/font_size = 22
+text = "→"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ShowcaseVisualTarget" type="PanelContainer" parent="ShowcaseVisualLayer/ShowcaseVisualPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 471.0
+offset_top = 31.0
+offset_right = 644.0
+offset_bottom = 89.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleShowcaseTarget")
+
+[node name="ShowcaseVisualTargetLabel" type="Label" parent="ShowcaseVisualLayer/ShowcaseVisualPanel/ShowcaseVisualTarget"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.93, 0.83, 1, 1)
+theme_override_font_sizes/font_size = 11
+text = "TARGET"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ShowcaseVisualInfo" type="Label" parent="ShowcaseVisualLayer/ShowcaseVisualPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 655.0
+offset_top = 29.0
+offset_right = 856.0
+offset_bottom = 61.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.80, 0.88, 0.96, 1)
+theme_override_font_sizes/font_size = 10
+text = "visual state"
+horizontal_alignment = 0
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ShowcaseVisualCountdown" type="PanelContainer" parent="ShowcaseVisualLayer/ShowcaseVisualPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 655.0
+offset_top = 64.0
+offset_right = 856.0
+offset_bottom = 90.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleShowcaseCountdown")
+
+[node name="ShowcaseVisualCountdownLabel" type="Label" parent="ShowcaseVisualLayer/ShowcaseVisualPanel/ShowcaseVisualCountdown"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.90, 0.55, 1)
+theme_override_font_sizes/font_size = 10
+text = "30s ACTION WINDOW · presentation sample"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="FixtureEvidenceLayer" type="CanvasLayer" parent="."]
+layer = 127
+
+[node name="FixtureBannerBackground" type="ColorRect" parent="FixtureEvidenceLayer"]
+offset_right = 1600.0
+offset_bottom = 34.0
+mouse_filter = 2
+color = Color(0.36, 0.035, 0.06, 0.98)
+
+[node name="FixtureBanner" type="Label" parent="FixtureEvidenceLayer"]
+unique_name_in_owner = true
+offset_right = 1600.0
+offset_bottom = 34.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.95, 0.82, 1)
+theme_override_font_sizes/font_size = 16
+text = "PRESENTATION_FIXTURE — NOT NATURAL GAMEPLAY / NOT HUMAN GREEN"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="EpisodeHud" type="PanelContainer" parent="FixtureEvidenceLayer"]
+offset_left = 560.0
+offset_top = 42.0
+offset_right = 1040.0
+offset_bottom = 78.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleEpisodeHud")
+
+[node name="EpisodeLabel" type="Label" parent="FixtureEvidenceLayer/EpisodeHud"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.75, 0.88, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "PHASE 8 · main_menu · START"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="FixtureMotionProxy" type="PanelContainer" parent="FixtureEvidenceLayer"]
+unique_name_in_owner = true
+offset_left = 160.0
+offset_top = 680.0
+offset_right = 336.0
+offset_bottom = 772.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleFixtureProxy")
+
+[node name="FixtureMotionProxyLabel" type="Label" parent="FixtureEvidenceLayer/FixtureMotionProxy"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.88, 1, 0.96, 1)
+theme_override_font_sizes/font_size = 11
+text = "Presentation Fixture"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2

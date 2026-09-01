@@ -1,6 +1,11 @@
 extends "res://scripts/map_view.gd"
 class_name SpaceSyndicatePlanetMapView
 
+signal facility_presentation_finished(
+	receipt_id: String,
+	evidence: Dictionary
+)
+
 const PlanetDistrictNodeScene := preload("res://scenes/ui/map/PlanetDistrictNode.tscn")
 const PlanetDistrictPolygonScene := preload("res://scenes/ui/map/PlanetDistrictPolygon.tscn")
 const PlanetSelectionRingScene := preload("res://scenes/ui/map/PlanetSelectionRing.tscn")
@@ -33,6 +38,16 @@ const PlanetMapRenderModelScript := preload("res://scripts/ui/map/planet_map_ren
 const PERFORMANCE_SAMPLE_LIMIT := 600
 const V074_GLOBE_RADIUS_MIN_RATIO := 0.43
 const V074_GLOBE_RADIUS_MAX_RATIO := 0.485
+const FACILITY_PRESENTATION_CUES := {
+	"BUILD_NEW": "FACILITY_BUILD",
+	"UPGRADE_OWN": "FACILITY_UPGRADE",
+	"REPAIR_OWN": "FACILITY_REPAIR",
+}
+const FACILITY_PRESENTATION_TYPES := [
+	"factory",
+	"market",
+	"warehouse",
+]
 const EDITABLE_LAYER_NAMES := [
 	"BackdropLayer",
 	"OrbitLayer",
@@ -55,6 +70,7 @@ var _sceneized_district_nodes: Array[Node] = []
 var _sceneized_route_segment_nodes: Array[Node] = []
 var _sceneized_movement_trail_nodes: Array[Node] = []
 var _sceneized_city_marker_nodes: Array[Node] = []
+var _sceneized_city_marker_nodes_by_id: Dictionary = {}
 var _sceneized_monster_token_nodes: Array[Node] = []
 var _sceneized_route_marker_nodes: Array[Node] = []
 var _sceneized_selection_nodes: Array[Node] = []
@@ -93,6 +109,29 @@ var _v074_geometry_rebuild_count := 0
 var _v074_lod_projection_update_count := 0
 var _v074_last_lod := "far"
 var _projection_fast_path_update_count := 0
+var _pending_facility_commit_animations: Dictionary = {}
+var _facility_presentation_active: Dictionary = {}
+var _facility_presentation_finished: Dictionary = {}
+var _facility_presentation_rejected: Dictionary = {}
+var _facility_presentation_fingerprints: Dictionary = {}
+var _facility_presentation_evidence: Array[Dictionary] = []
+var _facility_presentation_request_count := 0
+var _facility_presentation_accepted_count := 0
+var _facility_presentation_started_count := 0
+var _facility_presentation_finished_count := 0
+var _facility_presentation_duplicate_count := 0
+var _facility_presentation_collision_count := 0
+var _facility_presentation_rejection_count := 0
+var _facility_presentation_destination_parity_failure_count := 0
+var _facility_presentation_cue_counts := {
+	"FACILITY_BUILD": 0,
+	"FACILITY_UPGRADE": 0,
+	"FACILITY_REPAIR": 0,
+}
+var _presentation_reduced_motion := false
+var _presentation_screen_shake_enabled := true
+var _presentation_instant_test_mode := false
+var _presentation_policy_apply_count := 0
 
 
 func _ready() -> void:
@@ -103,6 +142,155 @@ func _ready() -> void:
 		solar_camera_controller.call("bind_map_view", self)
 	set_meta("mcp_sceneized_component", "PlanetMapView")
 	_queue_sceneized_sync()
+
+
+func set_presentation_motion_policy(
+	reduced_motion: bool,
+	screen_shake_enabled: bool = true,
+	instant_test_mode: bool = false
+) -> void:
+	_presentation_reduced_motion = reduced_motion
+	_presentation_screen_shake_enabled = screen_shake_enabled
+	_presentation_instant_test_mode = instant_test_mode
+	_presentation_policy_apply_count += 1
+	for node_variant in _sceneized_city_marker_nodes:
+		_apply_motion_policy_to_sceneized_node(node_variant as Node)
+	for node_variant in _sceneized_map_event_effect_nodes:
+		_apply_motion_policy_to_sceneized_node(node_variant as Node)
+
+
+func presentation_motion_policy_snapshot() -> Dictionary:
+	return {
+		"schema": "V076PlanetMapMotionPolicyV1",
+		"motion_mode": (
+			"INSTANT_TEST_MODE"
+			if _presentation_instant_test_mode
+			else (
+				"REDUCED_MOTION"
+				if _presentation_reduced_motion
+				else "FULL_MOTION"
+			)
+		),
+		"reduced_motion": _presentation_reduced_motion,
+		"instant_test_mode": _presentation_instant_test_mode,
+		"screen_shake_enabled": (
+			_presentation_screen_shake_enabled
+			and not _presentation_reduced_motion
+			and not _presentation_instant_test_mode
+		),
+		"apply_count": _presentation_policy_apply_count,
+		"production_ui_instant_test_mode_reachable": false,
+	}
+
+
+func _apply_motion_policy_to_sceneized_node(node: Node) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	if node.has_method("set_presentation_motion_policy"):
+		node.call(
+			"set_presentation_motion_policy",
+			_presentation_reduced_motion,
+			_presentation_screen_shake_enabled,
+			_presentation_instant_test_mode
+		)
+
+
+func request_facility_commit_presentation(
+	facility_id: String,
+	slot_id: String = "",
+	facility_type: String = "",
+	mode: String = "",
+	receipt_id: String = "",
+	target_region_id: String = ""
+) -> Dictionary:
+	"""Queue one receipt-owned facility cue without mutating authority."""
+	_facility_presentation_request_count += 1
+	var normalized_facility_id := facility_id.strip_edges()
+	var normalized_slot_id := slot_id.strip_edges()
+	var normalized_type := facility_type.strip_edges().to_lower()
+	var requested_mode := mode.strip_edges().to_upper()
+	var legacy_build_compatibility := requested_mode.is_empty()
+	var normalized_mode := "BUILD_NEW" if legacy_build_compatibility else requested_mode
+	var normalized_receipt_id := receipt_id.strip_edges()
+	var normalized_region_id := target_region_id.strip_edges()
+	if (
+		(normalized_facility_id.is_empty() and normalized_slot_id.is_empty())
+		or not FACILITY_PRESENTATION_TYPES.has(normalized_type)
+		or not FACILITY_PRESENTATION_CUES.has(normalized_mode)
+		or (not legacy_build_compatibility and normalized_receipt_id.is_empty())
+	):
+		_facility_presentation_rejection_count += 1
+		return {
+			"accepted": false,
+			"reason_code": "facility_presentation_contract_invalid",
+			"legacy_build_compatibility": legacy_build_compatibility,
+		}
+	var payload_identity := "|".join([
+		normalized_facility_id,
+		normalized_slot_id,
+		normalized_type,
+		normalized_mode,
+		normalized_region_id,
+	])
+	if normalized_receipt_id.is_empty():
+		normalized_receipt_id = "legacy.facility.commit.%s" % (
+			payload_identity.sha256_text().substr(0, 24)
+		)
+	var fingerprint := "|".join([
+		normalized_receipt_id,
+		payload_identity,
+	]).sha256_text()
+	if _facility_presentation_fingerprints.has(normalized_receipt_id):
+		if str(_facility_presentation_fingerprints.get(
+			normalized_receipt_id,
+			""
+		)) == fingerprint:
+			_facility_presentation_duplicate_count += 1
+			return {
+				"accepted": false,
+				"reason_code": "facility_presentation_duplicate",
+				"duplicate": true,
+				"receipt_id": normalized_receipt_id,
+				"fingerprint": fingerprint,
+				"state": _facility_presentation_state_for_receipt(
+					normalized_receipt_id
+				),
+			}
+		_facility_presentation_collision_count += 1
+		return {
+			"accepted": false,
+			"reason_code": "facility_presentation_identity_collision",
+			"collision": true,
+			"receipt_id": normalized_receipt_id,
+		}
+	var cue_id := str(FACILITY_PRESENTATION_CUES.get(normalized_mode, ""))
+	var request := {
+		"schema": "V076FacilityMapPresentationRequestV1",
+		"receipt_id": normalized_receipt_id,
+		"fingerprint": fingerprint,
+		"facility_id": normalized_facility_id,
+		"slot_id": normalized_slot_id,
+		"facility_type": normalized_type,
+		"facility_action_mode": normalized_mode,
+		"cue_id": cue_id,
+		"target_region_id": normalized_region_id,
+		"legacy_build_compatibility": legacy_build_compatibility,
+		"queued_msec": Time.get_ticks_msec(),
+	}
+	_facility_presentation_fingerprints[normalized_receipt_id] = fingerprint
+	_pending_facility_commit_animations[normalized_receipt_id] = request
+	_facility_presentation_accepted_count += 1
+	_queue_sceneized_dynamic_sync()
+	return {
+		"accepted": true,
+		"reason_code": "none",
+		"receipt_id": normalized_receipt_id,
+		"fingerprint": fingerprint,
+		"facility_action_mode": normalized_mode,
+		"cue_id": cue_id,
+		"queued": true,
+		"legacy_build_compatibility": legacy_build_compatibility,
+	}
 
 
 func _globe_blend() -> float:
@@ -726,6 +914,28 @@ func focus_district(index: int, keep_zoom: bool = true) -> void:
 	call_deferred("_update_sceneized_projection_nodes")
 
 
+func region_global_screen_anchor(region_id: String) -> Dictionary:
+	"""Return one live presentation anchor without exposing map authority."""
+	if region_id.is_empty():
+		return {}
+	for index in range(districts.size()):
+		var district := districts[index] as Dictionary
+		if str(district.get("region_id", district.get("id", ""))) != region_id:
+			continue
+		var projection := _sceneized_world_projection(
+			district.get("center", Vector2.ZERO)
+		)
+		var local_position := projection.get("position", Vector2.ZERO) as Vector2
+		return {
+			"region_id": region_id,
+			"region_index": index,
+			"visible": bool(projection.get("visible", true)),
+			"local_position": local_position,
+			"global_position": get_global_transform_with_canvas() * local_position,
+		}
+	return {}
+
+
 func zoom_to_local_projection() -> void:
 	super.zoom_to_local_projection()
 	_sceneized_projection_signature = _current_sceneized_projection_signature()
@@ -818,6 +1028,12 @@ func get_sceneization_debug_snapshot() -> Dictionary:
 
 
 func get_sceneized_child_snapshot() -> Dictionary:
+	var facility_marker_debug: Array[Dictionary] = []
+	for node_variant in _sceneized_city_marker_nodes:
+		var node := node_variant as Control
+		if not is_instance_valid(node) or not node.has_method("debug_snapshot"):
+			continue
+		facility_marker_debug.append(node.call("debug_snapshot") as Dictionary)
 	return {
 		"globe_backdrop_sceneized": _underlay_component_sceneized(globe_backdrop, "PlanetGlobeBackdrop"),
 		"orbit_guide_sceneized": _underlay_component_sceneized(orbit_guide, "PlanetOrbitGuide"),
@@ -832,6 +1048,54 @@ func get_sceneized_child_snapshot() -> Dictionary:
 		"route_segment_count": _live_node_count(_sceneized_route_segment_nodes),
 		"movement_trail_count": _live_node_count(_sceneized_movement_trail_nodes),
 		"city_marker_count": _live_node_count(_sceneized_city_marker_nodes),
+		"facility_marker_debug": facility_marker_debug,
+		"facility_presentation_request_count": (
+			_facility_presentation_request_count
+		),
+		"facility_presentation_accepted_count": (
+			_facility_presentation_accepted_count
+		),
+		"facility_presentation_pending_count": (
+			_pending_facility_commit_animations.size()
+		),
+		"facility_presentation_active_count": (
+			_facility_presentation_active.size()
+		),
+		"facility_presentation_started_count": (
+			_facility_presentation_started_count
+		),
+		"facility_presentation_finished_count": (
+			_facility_presentation_finished_count
+		),
+		"facility_presentation_finished_registry_count": (
+			_facility_presentation_finished.size()
+		),
+		"facility_presentation_rejected_registry_count": (
+			_facility_presentation_rejected.size()
+		),
+		"facility_presentation_duplicate_count": (
+			_facility_presentation_duplicate_count
+		),
+		"facility_presentation_collision_count": (
+			_facility_presentation_collision_count
+		),
+		"facility_presentation_rejection_count": (
+			_facility_presentation_rejection_count
+		),
+		"facility_presentation_destination_parity_failure_count": (
+			_facility_presentation_destination_parity_failure_count
+		),
+		"facility_presentation_cue_counts": (
+			_facility_presentation_cue_counts.duplicate(true)
+		),
+		"facility_presentation_evidence": (
+			_facility_presentation_evidence.duplicate(true)
+		),
+		"facility_presentation_gameplay_mutation_count": 0,
+		"facility_presentation_rng_draw_delta": 0,
+		"facility_presentation_authority_sequence_delta": 0,
+		"facility_presentation_facility_state_mutation_count": 0,
+		"presentation_motion_policy": presentation_motion_policy_snapshot(),
 		"monster_token_count": _live_node_count(_sceneized_monster_token_nodes),
 		"route_marker_count": _live_node_count(_sceneized_route_marker_nodes),
 		"selection_marker_count": _live_node_count(_sceneized_selection_nodes),
@@ -961,7 +1225,8 @@ func _update_sceneized_projection_nodes() -> void:
 				used_fast_path = bool(city_node.call(
 					"update_projection",
 					city_position,
-					city_compact
+					city_compact,
+					marker
 				))
 			if used_fast_path:
 				_projection_fast_path_update_count += 1
@@ -974,6 +1239,14 @@ func _update_sceneized_projection_nodes() -> void:
 					"accent": _color_to_hex(marker.get("tag_color", Color("#38bdf8"))),
 					"active": bool(marker.get("active", true)),
 					"asset_key": str(marker.get("asset_key", "")),
+					"marker_id": str(marker.get("marker_id", marker.get("facility_id", marker.get("slot_id", "")))),
+					"region_id": str(marker.get("region_id", "")),
+					"facility_id": str(marker.get("facility_id", "")),
+					"slot_id": str(marker.get("slot_id", "")),
+					"facility_type": str(marker.get("facility_type", "city")),
+					"shape_kind": str(marker.get("shape_kind", marker.get("facility_type", "city"))),
+					"damage_points": int(marker.get("damage_points", 0)),
+					"damage_revision": int(marker.get("damage_revision", 0)),
 					"compact": city_compact,
 				})
 			city_node.visible = bool(projection.get("visible", true))
@@ -1034,6 +1307,10 @@ func _sync_sceneized_dynamic_children() -> void:
 	_clear_sceneized_node_list(_sceneized_monster_token_nodes)
 	_clear_sceneized_node_list(_sceneized_map_event_effect_nodes)
 	_clear_sceneized_node_list(_sceneized_action_callout_nodes)
+	# Facility commit cues are queued through the existing map projection owner;
+	# refresh the existing marker consumer on this dynamic edge so the pending
+	# presentation request reaches the actual marker Control.
+	_sync_city_markers()
 	_sync_movement_trails()
 	_sync_monster_tokens()
 	_sync_map_event_effects()
@@ -1212,8 +1489,8 @@ func _overview_district_label_positions() -> Dictionary:
 func _city_marker_screen_positions(compact: bool) -> Dictionary:
 	var result := {}
 	var occupied: Array[Rect2] = []
-	var marker_size := Vector2(30.0, 30.0) if compact else Vector2(86.0, 46.0)
-	var step := 34.0 if compact else 92.0
+	var marker_size := Vector2(40.0, 40.0) if compact else Vector2(92.0, 54.0)
+	var step := 44.0 if compact else 98.0
 	var offsets := [
 		Vector2.ZERO,
 		Vector2(step, 0.0),
@@ -1260,23 +1537,32 @@ func _clamp_overview_label_center(value: Vector2, label_size: Vector2) -> Vector
 
 
 func _sync_city_markers() -> void:
-	_sceneized_city_marker_nodes.clear()
 	if district_layer == null:
 		return
 	var city_compact := not _should_draw_table_token_labels()
 	var city_positions := _city_marker_screen_positions(city_compact)
+	var next_nodes: Array[Node] = []
+	var next_by_id: Dictionary = {}
+	var seen_ids: Dictionary = {}
 	for index in range(city_markers.size()):
 		var marker_variant: Variant = city_markers[index]
 		if not (marker_variant is Dictionary):
 			continue
 		var marker: Dictionary = (marker_variant as Dictionary).duplicate(true)
 		var projection := _sceneized_world_projection(marker.get("position", Vector2.ZERO))
-		var node := PlanetCityMarkerScene.instantiate() as Control
-		if node == null:
-			continue
-		node.set_meta("sceneized_planet_map_child", true)
-		node.set_meta("sceneized_planet_map_kind", "city")
-		district_layer.add_child(node)
+		var marker_id := _city_marker_identity(marker, index)
+		seen_ids[marker_id] = true
+		var node := _sceneized_city_marker_nodes_by_id.get(marker_id, null) as Control
+		if node == null or not is_instance_valid(node):
+			node = PlanetCityMarkerScene.instantiate() as Control
+			if node == null:
+				continue
+			node.set_meta("sceneized_planet_map_child", true)
+			node.set_meta("sceneized_planet_map_kind", "city")
+			district_layer.add_child(node)
+		node.set_meta("facility_marker_id", marker_id)
+		_connect_facility_marker_presentation_signal(node)
+		_apply_motion_policy_to_sceneized_node(node)
 		node.call("configure", {
 			"screen_position": city_positions.get(index, projection.get("position", Vector2.ZERO)),
 			"tag": str(marker.get("tag", "C")),
@@ -1285,10 +1571,275 @@ func _sync_city_markers() -> void:
 			"accent": _color_to_hex(marker.get("tag_color", Color("#38bdf8"))),
 			"active": bool(marker.get("active", true)),
 			"asset_key": str(marker.get("asset_key", "")),
+			"marker_id": marker_id,
+			"region_id": str(marker.get("region_id", "")),
+			"facility_id": str(marker.get("facility_id", "")),
+			"slot_id": str(marker.get("slot_id", "")),
+			"facility_type": str(marker.get("facility_type", "city")),
+			"shape_kind": str(marker.get("shape_kind", marker.get("facility_type", "city"))),
+			"damage_points": int(marker.get("damage_points", 0)),
+			"damage_revision": int(marker.get("damage_revision", 0)),
 			"compact": city_compact,
 		})
+		_dispatch_pending_facility_presentations_to_marker(
+			node,
+			marker,
+			marker_id
+		)
 		node.visible = bool(projection.get("visible", true))
-		_sceneized_city_marker_nodes.append(node)
+		next_nodes.append(node)
+		next_by_id[marker_id] = node
+	for old_id_variant in _sceneized_city_marker_nodes_by_id.keys().duplicate():
+		var old_id := str(old_id_variant)
+		if seen_ids.has(old_id):
+			continue
+		var old_node := _sceneized_city_marker_nodes_by_id.get(old_id, null) as Control
+		if old_node != null and is_instance_valid(old_node):
+			var fade := old_node.create_tween()
+			var fade_duration := (
+				0.0
+				if _presentation_instant_test_mode
+				else (0.08 if _presentation_reduced_motion else 0.18)
+			)
+			fade.tween_property(
+				old_node,
+				"modulate",
+				Color(1, 1, 1, 0),
+				fade_duration
+			)
+			fade.tween_callback(old_node.queue_free)
+	_sceneized_city_marker_nodes = next_nodes
+	_sceneized_city_marker_nodes_by_id = next_by_id
+
+
+func _city_marker_identity(marker: Dictionary, index: int) -> String:
+	# Facility upgrades and repairs keep the public slot stable even when the
+	# public receipt cannot reliably carry a facility id.
+	for key in ["slot_id", "facility_id", "marker_id"]:
+		var value := str(marker.get(key, "")).strip_edges()
+		if not value.is_empty():
+			return value
+	return "%s|%s|%s|%d" % [
+		str(marker.get("region_id", "")),
+		str(marker.get("facility_type", "city")),
+		str(marker.get("industry_id", "")),
+		index,
+	]
+
+
+func _connect_facility_marker_presentation_signal(node: Control) -> void:
+	if node == null or not node.has_signal("facility_presentation_finished"):
+		return
+	var callback := Callable(
+		self,
+		"_on_facility_marker_presentation_finished"
+	)
+	if not node.is_connected("facility_presentation_finished", callback):
+		node.connect("facility_presentation_finished", callback)
+
+
+func _dispatch_pending_facility_presentations_to_marker(
+	node: Control,
+	marker: Dictionary,
+	marker_id: String
+) -> void:
+	if node == null or not node.has_method("play_facility_presentation"):
+		return
+	for receipt_variant in (
+		_pending_facility_commit_animations.keys().duplicate()
+	):
+		var receipt_id := str(receipt_variant)
+		var request := _pending_facility_commit_animations.get(
+			receipt_id,
+			{}
+		) as Dictionary
+		if not _facility_presentation_request_matches_marker(request, marker):
+			continue
+		var parity := _facility_presentation_destination_parity(
+			request,
+			marker,
+			marker_id
+		)
+		if not bool(parity.get("destination_authority_parity", false)):
+			_reject_pending_facility_presentation(
+				receipt_id,
+				request,
+				"facility_presentation_destination_mismatch",
+				parity
+			)
+			continue
+		var marker_result_variant: Variant = node.call(
+			"play_facility_presentation",
+			str(request.get("cue_id", "")),
+			receipt_id
+		)
+		var marker_result := (
+			marker_result_variant as Dictionary
+			if marker_result_variant is Dictionary
+			else {}
+		)
+		if not bool(marker_result.get("accepted", false)):
+			_reject_pending_facility_presentation(
+				receipt_id,
+				request,
+				str(marker_result.get(
+					"reason_code",
+					"facility_marker_presentation_rejected"
+				)),
+				parity
+			)
+			continue
+		var active := request.duplicate(true)
+		active["marker_id"] = marker_id
+		active["marker_instance_id"] = node.get_instance_id()
+		active["marker_result"] = marker_result.duplicate(true)
+		active["destination_parity"] = parity.duplicate(true)
+		active["started_msec"] = Time.get_ticks_msec()
+		_facility_presentation_active[receipt_id] = active
+		_pending_facility_commit_animations.erase(receipt_id)
+		_facility_presentation_started_count += 1
+
+
+func _facility_presentation_request_matches_marker(
+	request: Dictionary,
+	marker: Dictionary
+) -> bool:
+	if request.is_empty():
+		return false
+	var requested_slot := str(request.get("slot_id", "")).strip_edges()
+	var marker_slot := str(marker.get("slot_id", "")).strip_edges()
+	if not requested_slot.is_empty():
+		return marker_slot == requested_slot
+	var requested_facility := str(
+		request.get("facility_id", "")
+	).strip_edges()
+	var marker_facility := str(marker.get("facility_id", "")).strip_edges()
+	return not requested_facility.is_empty() \
+		and marker_facility == requested_facility
+
+
+func _facility_presentation_destination_parity(
+	request: Dictionary,
+	marker: Dictionary,
+	marker_id: String
+) -> Dictionary:
+	var expected_slot := str(request.get("slot_id", "")).strip_edges()
+	var actual_slot := str(marker.get("slot_id", "")).strip_edges()
+	var expected_region := str(
+		request.get("target_region_id", "")
+	).strip_edges()
+	var actual_region := str(marker.get("region_id", "")).strip_edges()
+	var expected_type := str(
+		request.get("facility_type", "")
+	).strip_edges().to_lower()
+	var actual_type := str(
+		marker.get("facility_type", "")
+	).strip_edges().to_lower()
+	var slot_parity := expected_slot.is_empty() or expected_slot == actual_slot
+	var region_parity := (
+		expected_region.is_empty() or expected_region == actual_region
+	)
+	var type_parity := expected_type.is_empty() or expected_type == actual_type
+	return {
+		"expected_slot_id": expected_slot,
+		"actual_slot_id": actual_slot,
+		"slot_destination_parity": slot_parity,
+		"expected_region_id": expected_region,
+		"actual_region_id": actual_region,
+		"region_destination_parity": region_parity,
+		"expected_facility_type": expected_type,
+		"actual_facility_type": actual_type,
+		"facility_type_destination_parity": type_parity,
+		"actual_facility_id": str(marker.get("facility_id", "")),
+		"marker_id": marker_id,
+		"marker_identity_prefers_slot": not actual_slot.is_empty(),
+		"destination_authority_parity": (
+			slot_parity and region_parity and type_parity
+		),
+	}
+
+
+func _reject_pending_facility_presentation(
+	receipt_id: String,
+	request: Dictionary,
+	reason_code: String,
+	detail: Dictionary = {}
+) -> void:
+	var rejection := request.duplicate(true)
+	rejection["reason_code"] = reason_code
+	rejection["detail"] = detail.duplicate(true)
+	rejection["rejected_msec"] = Time.get_ticks_msec()
+	_facility_presentation_rejected[receipt_id] = rejection
+	_pending_facility_commit_animations.erase(receipt_id)
+	_facility_presentation_rejection_count += 1
+	if reason_code == "facility_presentation_destination_mismatch":
+		_facility_presentation_destination_parity_failure_count += 1
+
+
+func _on_facility_marker_presentation_finished(
+	receipt_id: String,
+	marker_evidence: Dictionary
+) -> void:
+	if _facility_presentation_finished.has(receipt_id):
+		_facility_presentation_duplicate_count += 1
+		return
+	var active := _facility_presentation_active.get(receipt_id, {}) as Dictionary
+	if active.is_empty():
+		_facility_presentation_rejection_count += 1
+		return
+	var parity := active.get("destination_parity", {}) as Dictionary
+	var evidence := marker_evidence.duplicate(true)
+	evidence["marker_evidence_schema"] = str(evidence.get("schema", ""))
+	evidence["schema"] = "V076FacilityMapPresentationEvidenceV1"
+	evidence["receipt_id"] = receipt_id
+	evidence["fingerprint"] = str(active.get("fingerprint", ""))
+	evidence["facility_action_mode"] = str(
+		active.get("facility_action_mode", "")
+	)
+	evidence["cue_id"] = str(active.get("cue_id", ""))
+	evidence["requested_facility_id"] = str(active.get("facility_id", ""))
+	evidence["requested_slot_id"] = str(active.get("slot_id", ""))
+	evidence["requested_facility_type"] = str(
+		active.get("facility_type", "")
+	)
+	evidence["requested_target_region_id"] = str(
+		active.get("target_region_id", "")
+	)
+	evidence.merge(parity, true)
+	evidence["presentation_only"] = true
+	evidence["public_only"] = true
+	evidence["gameplay_mutation_count"] = 0
+	evidence["rng_draw_delta"] = 0
+	evidence["authority_sequence_delta"] = 0
+	evidence["facility_state_mutation_count"] = 0
+	evidence["map_completed_msec"] = Time.get_ticks_msec()
+	_facility_presentation_active.erase(receipt_id)
+	_facility_presentation_finished[receipt_id] = evidence.duplicate(true)
+	_facility_presentation_finished_count += 1
+	var cue_id := str(evidence.get("cue_id", ""))
+	if _facility_presentation_cue_counts.has(cue_id):
+		_facility_presentation_cue_counts[cue_id] = int(
+			_facility_presentation_cue_counts.get(cue_id, 0)
+		) + 1
+	_facility_presentation_evidence.append(evidence.duplicate(true))
+	while _facility_presentation_evidence.size() > 32:
+		_facility_presentation_evidence.pop_front()
+	facility_presentation_finished.emit(
+		receipt_id,
+		evidence.duplicate(true)
+	)
+
+
+func _facility_presentation_state_for_receipt(receipt_id: String) -> String:
+	if _pending_facility_commit_animations.has(receipt_id):
+		return "pending"
+	if _facility_presentation_active.has(receipt_id):
+		return "active"
+	if _facility_presentation_finished.has(receipt_id):
+		return "finished"
+	if _facility_presentation_rejected.has(receipt_id):
+		return "rejected"
+	return "unknown"
 
 
 func _sync_monster_tokens() -> void:
@@ -1534,6 +2085,7 @@ func _sync_map_event_effects() -> void:
 		node.set_meta("sceneized_planet_map_child", true)
 		node.set_meta("sceneized_planet_map_kind", "event_effect")
 		effect_layer.add_child(node)
+		_apply_motion_policy_to_sceneized_node(node)
 		node.call("configure", payload)
 		_sceneized_map_event_effect_nodes.append(node)
 		effect_index += 1
@@ -1584,14 +2136,13 @@ func _clear_sceneized_map_children() -> void:
 		if layer == null:
 			continue
 		for child in layer.get_children():
-			if child.get_meta("sceneized_planet_map_child", false):
+			if child.get_meta("sceneized_planet_map_child", false) and child.get_meta("sceneized_planet_map_kind", "") != "city":
 				layer.remove_child(child)
 				child.queue_free()
 	_sceneized_district_polygon_nodes.clear()
 	_sceneized_district_nodes.clear()
 	_sceneized_route_segment_nodes.clear()
 	_sceneized_movement_trail_nodes.clear()
-	_sceneized_city_marker_nodes.clear()
 	_sceneized_monster_token_nodes.clear()
 	_sceneized_route_marker_nodes.clear()
 	_sceneized_selection_nodes.clear()

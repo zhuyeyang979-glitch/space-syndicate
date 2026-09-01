@@ -1,0 +1,152 @@
+{
+  "schema_version": "space_syndicate.v076.production_cutover_receipt.v1",
+  "receipt_id": "v076-alpha07-step11-asset-consequence-production-cutover-20260823",
+  "recorded_on": "2026-08-23",
+  "status": "PASS",
+  "candidate_head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
+  "candidate_tree_sha": "cd55e424756f12a2b8cf5993fd4f9141f233cbbb",
+  "implementation_commits": [
+    "e299defd16859418c9357b1849844eec3d1fe83b",
+    "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a"
+  ],
+  "atomic_cutover": true,
+  "cumulative_cutover_receipt": true,
+  "previous_cutover_receipt": {
+    "path": "reports/reuse/v076_monster_production_cutover_receipt.json",
+    "sha256": "22038a6ae6c1eeb6fec804ca2a6c303d060cafe203a894542b0661aa06a235d8",
+    "candidate_head_sha": "46f985a23686291100cdd8ea10706983d1147514",
+    "status": "PASS"
+  },
+  "golden_production_execution_receipt": {
+    "path": "reports/reuse/v076_step11_golden_production_execution_receipt.json",
+    "sha256": "32f9f12201ae7c4367c7c16a08d3c368f832452beb4b065a87d997a0102e0aa2",
+    "step_id": "STEP11",
+    "status": "PASS"
+  },
+  "production_scene_path": "scenes/main.tscn",
+  "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+  "runtime_composition_path": "scenes/runtime/V075RuntimeComposition.tscn",
+  "runtime_composition_sha256": "d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9",
+  "production_screen_path": "scenes/ui/v075/V075SampleGameScreen.tscn",
+  "production_screen_sha256": "f26411c764be999ef0fb8133b49a8bf90728f5548016ef253096fd6a24a91892",
+  "affected_owners": [
+    "component.v076.kernel",
+    "component.v076.partition",
+    "component.v076.military_physical_eta",
+    "component.v076.private_direct_action_input",
+    "component.current.v075_runtime_owner"
+  ],
+  "composition_counts": {
+    "v076_kernel_owner_count": 1,
+    "v076_partition_owner_count": 1,
+    "v076_private_direct_action_owner_count": 1,
+    "v075_runtime_owner_count": 1,
+    "asset_quantity_owner_count": 1,
+    "presentation_owner_count": 1,
+    "parallel_production_owner_count": 0,
+    "new_gameplay_owner_count": 0,
+    "new_asset_owner_count": 0,
+    "new_presentation_owner_count": 0,
+    "dual_write_count": 0,
+    "fallback_count": 0
+  },
+  "focused_production_gate": {
+    "test": "tests/v076_production_military_composition_test.gd",
+    "runner": "tools/invoke_godot_test.ps1",
+    "runner_run_id": "20260823-144239-522-v076_production_military_composition_test-5f74842b",
+    "status": "PASS",
+    "checks": "86/86",
+    "stdout_sha256": "a5b296257fb9d53c76eddda93506246fc39a2273bfa8fd9eb15ec9fc1061f7c4",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "asset_debit_exact_once": true,
+    "asset_projection_count_per_mission": 1,
+    "asset_rail_post_action_parity": true,
+    "region_assault_presentation_count": 1,
+    "monster_assault_presentation_count": 1,
+    "withdrawal_presentation_count_per_mission": 1,
+    "canonical_route_distance_eta_visible": true,
+    "private_card_instance_field_count": 0,
+    "consequence_replay_duplicate": true,
+    "duplicate_asset_projection_count": 0,
+    "duplicate_presentation_count": 0,
+    "presentation_gameplay_mutation_count": 0,
+    "public_batch_entry_count": 0,
+    "shared_sushi_track_resolution_count": 0,
+    "script_error_count": 0,
+    "diagnostic_count": 0,
+    "remaining_project_runtime_process_count": 0
+  },
+  "direct_regressions": [
+    {
+      "test": "v075_application_composition_test",
+      "status": "PASS",
+      "checks": "111/111",
+      "runner_run_id": "20260823-143643-479-v075_application_composition_test-c1177f7e",
+      "stdout_sha256": "981d1e67d330bc702eb144eb3d7e6a67588946d45777c477b4482426ca720271"
+    },
+    {
+      "test": "v076_human_golden_observation_readiness_test",
+      "status": "PASS",
+      "checks": "35/35",
+      "runner_run_id": "20260823-143643-480-v076_human_golden_observation_readiness_test-4fd6c1a2",
+      "stdout_sha256": "33a70da1f7b1235e56ea6cabc413c2d20f618596436024fd9ca8419dbac1eacc",
+      "human_executed": false,
+      "human_green": false
+    },
+    {
+      "test": "v07_asset_batch_core_test",
+      "status": "PASS",
+      "checks": "285/285",
+      "runner_run_id": "20260823-143711-185-v07_asset_batch_core_test-358eab33",
+      "stdout_sha256": "14af4b74f7f35f32dbd9e80f4a4bed26d330cfdb02ca434a8f90528fc555c856"
+    },
+    {
+      "test": "v075_ui_runtime_presentation_binding_integration_test",
+      "status": "PASS",
+      "checks": "38/38",
+      "runner_run_id": "20260823-143643-481-v075_ui_runtime_presentation_binding_integration_test-f5ee77c0",
+      "stdout_sha256": "bfa7cb6013620ce3efd5b89661b128177d404cc9a4dd8659cf4bdccef0a30139",
+      "presentation_gameplay_mutation_count": 0
+    },
+    {
+      "test_group": "v076_private_direct_action_inherited_sentinels",
+      "status": "PASS",
+      "tests": [
+        "v076_private_direct_action_input_owner_test 7/7",
+        "v076_private_military_direct_action_integration_test 41/41",
+        "v076_military_mission_lifecycle_reducer_test 29/29",
+        "v076_simultaneous_private_action_test 9/9"
+      ],
+      "distinct_seed_count": 1000,
+      "replay_count": 2000,
+      "state_hash_mismatch_count": 0
+    }
+  ],
+  "godot_mcp_main_runtime": {
+    "scene": "res://scenes/main.tscn",
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "renderer": "Vulkan Forward+",
+    "device": "NVIDIA GeForce RTX 4080 SUPER",
+    "changed_file_warning_count": 0,
+    "changed_file_warning_semantics": "EXTERNAL_CHANGED_FILE_NOTIFICATION",
+    "repository_preexisting_gdscript_warnings_present": true,
+    "task_introduced_gdscript_warning_count": 0,
+    "hard_runtime_error_count": 0,
+    "untracked_uid_count": 0,
+    "remaining_project_runtime_process_count": 0,
+    "stop_result": "Godot project stopped"
+  },
+  "claim_limits": {
+    "golden_step_11_status": "PRODUCTION_GREEN",
+    "golden_isolated_green_count": 5,
+    "golden_production_green_count": 2,
+    "golden_human_green_count": 0,
+    "production_green": false,
+    "human_green": false,
+    "human_executed": false,
+    "human_confirmed": false,
+    "alpha07_certified_card_count": 0,
+    "full_world_reproof_performed": false,
+    "next_stage": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP12_AI_PRIVACY_CUTOVER"
+  }
+}

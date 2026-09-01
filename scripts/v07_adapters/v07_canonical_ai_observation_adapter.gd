@@ -223,7 +223,6 @@ const DBG_FORBIDDEN_KEYS := [
 	"root_seed",
 	"draw_pile",
 	"discard_order",
-	"committed_escrow",
 	"starter_rng",
 	"reshuffle_rng",
 	"seed",
@@ -1146,7 +1145,7 @@ static func _dbg_owner_binding_reason(
 	viewer_id: String
 ) -> String:
 	var normal_prefix := "dbg.%s." % viewer_id
-	for zone in ["hand", "discard"]:
+	for zone in ["hand", "committed_escrow", "discard"]:
 		for card_variant in facts.get(zone, []) as Array:
 			if not (card_variant is Dictionary) \
 					or not str((card_variant as Dictionary).get(

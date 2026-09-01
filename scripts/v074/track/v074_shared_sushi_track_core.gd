@@ -14,6 +14,16 @@ func acquisition_refill_mode_id() -> String:
 	return REFILL_MODE_ID
 
 
+func authoritative_scroll_sequence_v1() -> int:
+	# Read-only scalar diagnostic for pacing probes.  It intentionally avoids
+	# cloning the full authority envelope while the production owner remains the
+	# sole writer of the track state.
+	return int((_state.get("track_state", {}) as Dictionary).get(
+		"scroll_sequence",
+		0
+	))
+
+
 func _incoming_claimable_scroll_sequence_for_advance(
 	track: Dictionary
 ) -> int:

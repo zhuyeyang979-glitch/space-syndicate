@@ -1,0 +1,37 @@
+{
+	"capture_io_included_in_live_samples": true,
+	"capture_size": {
+		"height": 960,
+		"width": 1600
+	},
+	"director_performance": {
+		"animation_frame_p95_ms": 84.273,
+		"animation_frame_sample_count": 209,
+		"card_input_response_p95_ms": 0.0,
+		"card_input_response_sample_count": 0,
+		"idle_frame_p95_ms": 84.101,
+		"idle_frame_sample_count": 50,
+		"loading_active": false,
+		"menu_input_response_p95_ms": 0.0,
+		"menu_input_response_sample_count": 0,
+		"outside_loading_stall_count": 0,
+		"outside_loading_stall_threshold_ms": 250.0,
+		"sample_limit": 600,
+		"schema": "V076CommercialPresentationPerformanceV1"
+	},
+	"episode_count": 13,
+	"fixture_class": "PRESENTATION_FIXTURE",
+	"frame_count": 39,
+	"gameplay_green": false,
+	"human_green": false,
+	"human_retest_deferred": true,
+	"measurement_class": "CAPTURE_IO_INCLUDED_INFORMATIONAL",
+	"milestone_performance_claim_allowed": false,
+	"milestone_threshold_source": "V076_PHASE7_SOUND_MOTION_PERFORMANCE_GATE",
+	"natural_gameplay": false,
+	"production_green": false,
+	"schema": "V076CommercialPresentationPerformanceReportV1",
+	"status": "AUTOMATION_GREEN_PENDING_VISUAL_REVIEW",
+	"step13_status": "PENDING",
+	"threshold_evaluation": "DELEGATED_TO_V076_PHASE7_SOUND_MOTION_PERFORMANCE_GATE"
+}

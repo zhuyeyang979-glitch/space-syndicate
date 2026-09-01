@@ -1,0 +1,224 @@
+{
+	"ack_path": "D:\\SpaceSyndicateGodotTestRuns\\20260823-213611-333-v075_responsive_viewport_headed_capture-2a5e1dfb\\window-ack.json",
+	"ack_payload": {
+		"capture_source_client_origin": {
+			"x": 597.0,
+			"y": 312.0
+		},
+		"capture_source_client_rect": {
+			"height": 768.0,
+			"width": 1366.0
+		},
+		"client_capture_bytes": 458418.0,
+		"client_capture_height": 768.0,
+		"client_capture_method": "win32_client_copy_from_screen",
+		"client_capture_path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\playtest\\alpha07_human_candidate_1_blocker\\screenshots\\candidate2_1366x768_02_headed_main_green.png",
+		"client_capture_sha256": "5ef8cdd3ad808198d9616dbdd49e8a0cb699a5cd89ba4c99b62dfc42c9484d06",
+		"client_capture_width": 1366.0,
+		"client_height": 768.0,
+		"client_width": 1366.0,
+		"dpi": 96.0,
+		"expected_client_size": "1366x768",
+		"hwnd_decimal": "6881828",
+		"hwnd_hex": "0x690224",
+		"hwnd_source": "MainWindowHandle",
+		"post_capture_client_height": 768.0,
+		"post_capture_client_width": 1366.0,
+		"post_capture_exact_sample_count": 3.0,
+		"post_capture_samples": [
+			{
+				"height": 768.0,
+				"sampled_at_utc": "2026-08-23T21:36:35.9017917Z",
+				"width": 1366.0
+			},
+			{
+				"height": 768.0,
+				"sampled_at_utc": "2026-08-23T21:36:36.0137846Z",
+				"width": 1366.0
+			},
+			{
+				"height": 768.0,
+				"sampled_at_utc": "2026-08-23T21:36:36.1225614Z",
+				"width": 1366.0
+			}
+		],
+		"pre_capture_client_height": 768.0,
+		"pre_capture_client_width": 1366.0,
+		"probe_nonce": "v076-alpha07-e02e18ac-1366",
+		"process_id": 14976.0,
+		"ready_sha256": "26737ce8f97a392723332a73eb08a789670eb8aebd6b3b406f894c3cd9c7f19e",
+		"schema": "space_syndicate.godot_headed_client_probe_ack.v1",
+		"stable_exact_sample_count": 3.0,
+		"status": "PASS"
+	},
+	"actual_runtime_viewport_api": "SceneTree.root.size(Window.size)",
+	"actual_runtime_viewport_kind": "main_window_client",
+	"actual_runtime_viewport_size": {
+		"height": 768,
+		"width": 1366
+	},
+	"captured_image_size": {
+		"height": 768,
+		"width": 1366
+	},
+	"case_label": "1366x768",
+	"checks": 55,
+	"combat_surface_node_path": "/root/Main/V075GameScreen/RootMargin/Shell/TableArea/V075RightSidebar/V075CombatStackHost/V075CombatOverlay/Margin/Rows/SurfaceHost/CombatSurface",
+	"composition_node_path": "/root/Main/V075RuntimeComposition",
+	"content_scale_size": {
+		"height": 960,
+		"width": 1600
+	},
+	"content_scale_size_unchanged": true,
+	"diagnostic_coordinate_spaces": {
+		"acceptance_equality_required": false,
+		"logical_canvas_visible_rect_size": {
+			"x": 1707.0,
+			"y": 960.0
+		},
+		"post_capture_render_target_texture_size": {
+			"height": 615,
+			"width": 1094
+		},
+		"render_target_texture_size": {
+			"height": 615,
+			"width": 1094
+		}
+	},
+	"display_server_window_size": {
+		"height": 768,
+		"width": 1366
+	},
+	"evidence_scope": "HEADED_RESPONSIVE_PRESENTATION_PREFLIGHT",
+	"expected_head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
+	"expected_layout_mode": "COMPACT",
+	"expected_tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
+	"failures": [],
+	"gameplay_acceptance": false,
+	"geometry_audit": {
+		"asset_reserve_lane_overlap_count": 0,
+		"combat_surface_content_origin_green": true,
+		"combat_surface_content_rect": {
+			"height": 610.0,
+			"width": 302.0,
+			"x": 1372.99560546875,
+			"y": 286.5
+		},
+		"combat_surface_host_rect": {
+			"height": 292.0,
+			"width": 310.0,
+			"x": 1372.99560546875,
+			"y": 286.5
+		},
+		"combat_surface_host_vertical_scroll_range": 318.0,
+		"dock_panel_overlap_count": 0,
+		"geometry_source": "instantiated_production_controls",
+		"layout_mode": "COMPACT",
+		"panel_rect": {
+			"height": 349.0,
+			"width": 328.0,
+			"x": 1363.99560546875,
+			"y": 236.5
+		},
+		"panel_safe_area_overflow_count": 0,
+		"panel_viewport_overflow_count": 0,
+		"panel_width_green": true,
+		"primary_planet_occlusion_count": 0,
+		"private_grid_columns": 1,
+		"responsive_physical_width": 1366.0,
+		"root_scroll_accessible": false,
+		"track_panel_overlap_count": 0,
+		"ui_child_collision_count": 0,
+		"ui_child_unreachable_clipped_control_count": 0
+	},
+	"godot_pid": 14976,
+	"layout_mode": "COMPACT",
+	"military_button_presentation_bindings": {
+		"assault_monster": {
+			"card_definition_id": "military.submarine_fleet.life.rank_1",
+			"presentation_asset_key": "procedural.military.submarine_fleet",
+			"resource_path": "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png",
+			"texture_bound": true,
+			"texture_resource_path": "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png"
+		},
+		"assault_region": {
+			"card_definition_id": "military.submarine_fleet.life.rank_1",
+			"presentation_asset_key": "procedural.military.submarine_fleet",
+			"resource_path": "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png",
+			"texture_bound": true,
+			"texture_resource_path": "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png"
+		}
+	},
+	"military_option_identity_green": true,
+	"military_option_ids": [
+		"option.military.monster.local",
+		"option.military.region.local"
+	],
+	"military_option_menu_item_count": 2,
+	"military_presentation_binding_failure_count": 0,
+	"military_presentation_green": true,
+	"military_selection_fixture_count": 2,
+	"military_task_button_count": 2,
+	"native_hwnd_decimal": "6881828",
+	"natural_runtime_state": false,
+	"owner_projection_privacy_green": true,
+	"png_bytes": 458418,
+	"png_path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\playtest\\alpha07_human_candidate_1_blocker\\screenshots\\candidate2_1366x768_02_headed_main_green.png",
+	"png_sha256": "5ef8cdd3ad808198d9616dbdd49e8a0cb699a5cd89ba4c99b62dfc42c9484d06",
+	"population_green": true,
+	"post_capture_display_server_window_size": {
+		"height": 768,
+		"width": 1366
+	},
+	"post_capture_render_backing_texture_size": {
+		"height": 615,
+		"width": 1094
+	},
+	"post_capture_runtime_viewport_size": {
+		"height": 768,
+		"width": 1366
+	},
+	"presentation_fixture_apply_count": 1,
+	"probe_nonce": "v076-alpha07-e02e18ac-1366",
+	"production_composition_mutation_count": 0,
+	"production_scene_path": "res://scenes/main.tscn",
+	"ready_path": "D:\\SpaceSyndicateGodotTestRuns\\20260823-213611-333-v075_responsive_viewport_headed_capture-2a5e1dfb\\window-ready.json",
+	"ready_sha256": "26737ce8f97a392723332a73eb08a789670eb8aebd6b3b406f894c3cd9c7f19e",
+	"render_backing_image_size": {
+		"height": 768,
+		"width": 1366
+	},
+	"render_backing_texture_size": {
+		"height": 615,
+		"width": 1094
+	},
+	"rendered_cost_pip_count": 12,
+	"requested_client_size": {
+		"height": 768,
+		"width": 1366
+	},
+	"rival_private_card_identity_leak_count": 0,
+	"rival_projection_privacy_green": true,
+	"root_visible_rect_size": {
+		"x": 1707.0,
+		"y": 960.0
+	},
+	"root_window_size": {
+		"height": 768,
+		"width": 1366
+	},
+	"runtime_viewport_size": {
+		"height": 768,
+		"width": 1366
+	},
+	"schema": "space_syndicate.v075.headed_responsive_capture.v1",
+	"screen_node_path": "/root/Main/V075GameScreen",
+	"screen_viewport_rect_size": {
+		"x": 1707.0,
+		"y": 960.0
+	},
+	"skill_card_count": 4,
+	"staging_mode": "typed_test_projection",
+	"status": "PASS",
+	"test_fixture_wired_into_production": false
+}

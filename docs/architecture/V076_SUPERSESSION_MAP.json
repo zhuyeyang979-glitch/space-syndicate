@@ -1,0 +1,335 @@
+{
+  "schema_version": "space_syndicate.v076.supersession_map.v2",
+  "map_id": "v076-supersession-map-20260821",
+  "candidate_head_sha": "3fe2f1fee5577dd7f3dd7260137d130f8c0f9f55",
+  "candidate_tree_sha": "1905bc00e72ccc1095bf67cd14c8438ddb5341fe",
+  "change_class": "PRODUCTION_COMPOSITION",
+  "production_cutover": false,
+  "production_cutover_evidence": {
+    "candidate_head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
+    "candidate_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+    "atomic_cutover": true,
+    "historical_only": true,
+    "prior_subject_only": true,
+    "current_cutover_authorized": false,
+    "production_scene_path": "scenes/main.tscn",
+    "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+    "receipt_path": "reports/reuse/v076_narrow_viewport_production_cutover_revalidation_receipt.json",
+    "receipt_sha256": "70b48b833ac9a2ff7b0d8555552f66611eed69d93abd67a55761214608fb0cf5",
+    "previous_receipt_path": "reports/reuse/v076_ai_privacy_production_cutover_receipt.json",
+    "previous_receipt_sha256": "3d604f8fba5c21a80385814b7ff1ed3c1019a9a0e96f6e54acc537443bb02d09",
+    "affected_owners": [
+      "component.v076.kernel",
+      "component.v076.partition",
+      "component.v076.military_physical_eta",
+      "component.v076.private_direct_action_input",
+      "component.current.v075_runtime_owner"
+    ],
+    "owner_replacement_count": 0,
+    "dual_write_count": 0,
+    "fallback_count": 0,
+    "golden_step_12_status": "PRODUCTION_GREEN",
+    "golden_step_13_status": "PENDING",
+    "golden_step_13_readiness": true,
+    "product_byte_change_count": 0,
+    "production_victory_owner_count": 1,
+    "new_victory_owner_count": 0,
+    "v06_victory_owner_production_reachable_count": 0,
+    "duplicate_final_settlement_count": 0,
+    "new_ai_owner_count": 0,
+    "new_projection_owner_count": 0,
+    "new_privacy_owner_count": 0,
+    "new_asset_owner_count": 0,
+    "new_presentation_owner_count": 0,
+    "production_green": false,
+    "human_green": false
+  },
+  "production_cutover_revalidation": {
+    "status": "PENDING_CURRENT_SUBJECT_REVALIDATION",
+    "candidate_head_sha": "3fe2f1fee5577dd7f3dd7260137d130f8c0f9f55",
+    "candidate_tree_sha": "1905bc00e72ccc1095bf67cd14c8438ddb5341fe",
+    "pending_manifest_path": "reports/reuse/full_convergence/production_cutover_revalidation_pending_3fe2f1fe.json",
+    "pending_manifest_sha256": "333e77e4432d1da6ed58144a4fc924babaf6c5224192bf81275736ea66997bb5",
+    "prior_evidence_retained_immutable": true,
+    "production_cutover_authorized": false,
+    "production_green": false,
+    "human_green": false
+  },
+  "whole_branch_merge_allowed": false,
+  "supersession_kinds": [
+    "REPLACED_IN_V076_CANDIDATE",
+    "ADAPTED_IN_V076_CANDIDATE",
+    "RETIRED_HISTORICALLY",
+    "NOT_SUPERSEDED_SEPARATE_DOMAIN",
+    "NOT_SUPERSEDED_REFERENCE_ONLY",
+    "HISTORICAL_IDENTITY_BACKFILL_OWNER_TO_CURRENT_REDUCER",
+    "HISTORICAL_IDENTITY_BACKFILL_OWNER_TO_CURRENT_OWNER"
+  ],
+  "entries": [
+    {
+      "supersession_id": "v076.kernel.v1-to-v2",
+      "domain_id": "v076.execution_order_tick_rng_snapshot_replay",
+      "kind": "REPLACED_IN_V076_CANDIDATE",
+      "old_component_id": "component.v076.kernel.v1",
+      "new_component_id": "component.v076.kernel",
+      "old_owner_path": "scripts/v076/simulation/v076_deterministic_kernel.gd@553a89a1fd37170eecee50dbb373e0978604ef9f",
+      "new_owner_path": "scripts/v076/simulation/v076_deterministic_kernel.gd",
+      "replacement_reason": "Stage 3 required root-only replay plus sealed derived-command outbox and legal fizzle semantics without creating a second Kernel.",
+      "migration_strategy": "Atomic in-place schema V2 replacement at the Stage 3 commit; every reducer and replay consumer binds the new contract in the same descendant.",
+      "consumer_inventory": [
+        "component.v076.authority_command",
+        "component.v076.authority_state_codec",
+        "component.v076.domain_rng",
+        "component.v076.replay_runner",
+        "component.v076.partition_reducer",
+        "component.v076.monster_l1"
+      ],
+      "save_impact": "NONE_NEW_GAME_ONLY",
+      "rng_impact": "Kernel remains the only Domain RNG owner; cursor and state replay are revalidated.",
+      "replay_impact": "Root commands are replay input; derived commands are regenerated and compared against the sealed outbox.",
+      "cutover_commit": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+      "old_owner_retirement_status": "RETIRED_BY_CONSTITUTION",
+      "dual_write_count": 0,
+      "fallback_count": 0,
+      "old_owner_production_reachability": 0,
+      "new_owner_production_owner_count": 1,
+      "old_identity": {
+        "head_sha": "553a89a1fd37170eecee50dbb373e0978604ef9f",
+        "owner": "V076DeterministicKernel",
+        "contract": "Stage 1 root command kernel"
+      },
+      "new_identity": {
+        "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "owner": "V076DeterministicKernel",
+        "contract": "Kernel V2 root/derived/outbox/fizzle and root-only replay"
+      },
+      "dual_owner_allowed": false,
+      "evidence": "74/74 plus 2,000 deterministic replays with zero mismatch"
+    },
+    {
+      "supersession_id": "v076.map.reducer-kernel-v2-abi",
+      "domain_id": "v076.spherical_partition_reducer",
+      "kind": "ADAPTED_IN_V076_CANDIDATE",
+      "old_identity": {
+        "head_sha": "98165f09228b3ddb0cd4c09d86e52ec1a1fe5ca7",
+        "path": "scripts/v076/map/v076_partition_reducer_v1.gd"
+      },
+      "new_identity": {
+        "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "path": "scripts/v076/map/v076_partition_reducer_v1.gd"
+      },
+      "unchanged_bound_dependencies": [
+        "scripts/v076/map/v076_shared_half_edge_partition_v1.gd",
+        "scripts/v076/map/v076_spherical_microgrid_index_v1.gd",
+        "scripts/v076/map/v076_partition_validator_v1.gd",
+        "scripts/v076/map/v076_partition_authority_codec_v1.gd"
+      ],
+      "dual_owner_allowed": false,
+      "evidence": "Stage 2 focused sentinel 90/90"
+    },
+    {
+      "supersession_id": "historical.pr70-card-batch",
+      "domain_id": "retired.card_batch_reference",
+      "kind": "RETIRED_HISTORICALLY",
+      "old_identity": {
+        "pull_request": 70,
+        "head_sha": "e19eb4af8b1bbc4375e71a8e6ce2b3d254f0b43a",
+        "state": "CLOSED_UNMERGED"
+      },
+      "new_identity": {
+        "pull_request": 79,
+        "merge_sha": "2e38764791cb37cdc45b2eb0836957f550822dd5",
+        "scope": "Only current-descendant domain cores and ports may be adapted"
+      },
+      "whole_branch_merge_allowed": false,
+      "revival_allowed": false
+    },
+    {
+      "supersession_id": "catalog.v04-gameplay-vs-v06-semantic",
+      "domain_id": "card_definition_sources",
+      "kind": "NOT_SUPERSEDED_SEPARATE_DOMAIN",
+      "old_identity": {
+        "owner": "CardRuntimeCatalogService",
+        "root": "resources/cards/runtime/card_runtime_catalog_v04.tres",
+        "sha256": "a468dd4231906904f521232e4c58ee8882c4fa834f958c43438eeaf3338136a6",
+        "role": "current gameplay definition graph"
+      },
+      "new_identity": {
+        "owner": "CardRuntimeCatalogV06Resource",
+        "root": "resources/cards/runtime/card_runtime_catalog_v06.tres",
+        "sha256": "5872ffc01a91860d697deb4fe23765c80feb5697e085b2873dd0872136fb04e8",
+        "role": "v06 semantic source"
+      },
+      "dual_owner_allowed": false,
+      "explanation": "The two sources own different domains. V06 semantic declarations do not silently supersede V04 gameplay execution."
+    },
+    {
+      "supersession_id": "v074-production-map-vs-v076-stage2",
+      "domain_id": "production_map_composition",
+      "kind": "NOT_SUPERSEDED_REFERENCE_ONLY",
+      "old_identity": {
+        "pull_request": 89,
+        "merge_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
+        "role": "current inherited production map lineage"
+      },
+      "new_identity": {
+        "head_sha": "98165f09228b3ddb0cd4c09d86e52ec1a1fe5ca7",
+        "role": "isolated V076 candidate partition authority and debug presentation"
+      },
+      "production_supersession": false,
+      "dual_write_allowed": false
+    },
+    {
+      "supersession_id": "v075-production-combat-vs-v076-stage3",
+      "domain_id": "production_combat_composition",
+      "kind": "NOT_SUPERSEDED_REFERENCE_ONLY",
+      "old_identity": {
+        "pull_request": 90,
+        "product_head_sha": "770d741f05964facda4afcbddcdeb3e7f40571d5",
+        "role": "V075 production combat candidate"
+      },
+      "new_identity": {
+        "head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "role": "isolated V076 Monster L1 deterministic domain"
+      },
+      "production_supersession": false,
+      "asset_ledger_dual_write_allowed": false
+    },
+    {
+      "supersession_id": "pr90-sealed-tooling-vs-product-repository",
+      "domain_id": "external.release_probe_tooling",
+      "kind": "NOT_SUPERSEDED_REFERENCE_ONLY",
+      "old_identity": {
+        "external_head_sha": "70ccb5c0ae91460ffcdd1448685f579b8027a457",
+        "tree_sha": "1ecbe01475cace247cd64907b909ec9f474010d1"
+      },
+      "new_identity": {
+        "product_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "pr90_tool_file_count": 0
+      },
+      "copy_or_migration_allowed": false,
+      "future_invocation_requires_new_exact_sha_authorization": true
+    },
+    {
+      "supersession_id": "pr88-v073-float-voronoi-vs-v076-stage2",
+      "domain_id": "v076.spherical_partition_authority",
+      "kind": "RETIRED_HISTORICALLY",
+      "old_identity": {
+        "pull_request": 88,
+        "source_sha": "558cc1107881c993468ad9a5670016e5a7534f50",
+        "head_sha": "82334b9b43fc608de5863b13af58750c41b5e4b8",
+        "merge_sha": "05c2415014187e902592bf3a8d1291222f738694",
+        "role": "V073 six-region float Voronoi authority"
+      },
+      "new_identity": {
+        "head_sha": "98165f09228b3ddb0cd4c09d86e52ec1a1fe5ca7",
+        "owner": "V076SharedHalfEdgePartitionV1",
+        "role": "Stage 2 integer half-edge partition authority"
+      },
+      "old_authority_status": "RETIRED_AS_AUTHORITY",
+      "consumer_pattern_reuse_allowed": true,
+      "test_reuse_allowed": true,
+      "controller_copy_allowed": false,
+      "stage2_replacement_allowed": false
+    },
+    {
+      "supersession_id": "alpha04c-frozen-save-resume-vs-v076-new-game-only",
+      "domain_id": "future.v077_save_resume_recovery",
+      "kind": "NOT_SUPERSEDED_REFERENCE_ONLY",
+      "old_identity": {
+        "representative_head_sha": "744b541840dc370ef4af6f93e8af6a024e66ecb3",
+        "reference_status": "REFERENCE_ONLY_BLOCKED_UNVERIFIED",
+        "formal_full_run": false,
+        "ownership_status": "ownership_frozen_implementation_pending",
+        "official_eligibility": "BLOCKED"
+      },
+      "new_identity": {
+        "product_head_sha": "2a365d465f199481da7fa1ef8f734e7525a136f5",
+        "lifecycle": "NEW_GAME_ONLY",
+        "save_schema_change_count": 0,
+        "save_delete_change_count": 0,
+        "save_overwrite_change_count": 0,
+        "save_migration_change_count": 0
+      },
+      "implementation_import_allowed": false,
+      "cross_attempt_mix_allowed": false,
+      "v077_test_pattern_reuse_allowed": true
+    },
+    {
+      "supersession_id": "historical.player-mana-to-v07-asset-batch-core",
+      "domain_id": "current.v075_production_combat_candidate",
+      "kind": "HISTORICAL_IDENTITY_BACKFILL_OWNER_TO_CURRENT_REDUCER",
+      "old_component_id": "component.current.player_mana_runtime_controller",
+      "new_component_id": "component.current.v07_asset_batch_core",
+      "old_owner_path": "scripts/runtime/player_mana_runtime_controller.gd",
+      "new_owner_path": "scripts/v07_semantic/v07_asset_batch_core.gd",
+      "old_authority_source_kind": "historical_identity_backfill",
+      "old_source_commit": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "old_source_blob_sha256": "0bf285bd2f0e10d4f44ba6779a94fdf10367cf131396b59367b7b26e9d772ac5",
+      "new_component_role": "REDUCER",
+      "new_owner_component_id": "component.current.v075_runtime_owner",
+      "production_scene_path": "scenes/main.tscn",
+      "old_runtime_composition_path": "scenes/runtime/GameRuntimeCoordinator.tscn",
+      "old_component_scene_path": "scenes/runtime/PlayerManaRuntimeController.tscn",
+      "new_runtime_composition_path": "scenes/runtime/V073RuntimeComposition.tscn",
+      "cutover_new_runtime_owner_path": "scripts/v073_runtime/v073_sample_runtime_owner.gd",
+      "cutover_manifest_path": "docs/migration/v07_atomic_cutover_manifest.json",
+      "cutover_manifest_sha256": "9562593e7173d4d6437992916f64562107593e539833ca27b64d6ff4bc0ac52d",
+      "replacement_reason": "The former standalone PlayerManaRuntimeController asset Owner is retained only in the detached legacy GameRuntimeCoordinator composition. The current production lineage keeps the same six-color asset quantity in the existing V07AssetBatchCore reducer under V075RuntimeOwner, so a second asset Owner is not registered.",
+      "migration_strategy": "The production main scene cut over atomically from GameRuntimeCoordinator to the V073 runtime lineage at f49c86af20b6a65e9792aa87703154e853d4dc76; V074 and V075 continue the same V07 asset reducer lineage with no dual write or fallback to PlayerManaRuntimeController.",
+      "consumer_inventory": [
+        "component.current.v075_runtime_owner"
+      ],
+      "save_impact": "NONE_NEW_GAME_ONLY",
+      "rng_impact": "NONE_NEITHER_COMPONENT_OWNS_RNG",
+      "replay_impact": "No replay input or cursor is added; current replay remains owned by the existing deterministic runtime lineage.",
+      "cutover_commit": "f49c86af20b6a65e9792aa87703154e853d4dc76",
+      "old_owner_retirement_status": "RETIRED_BY_CONSTITUTION",
+      "dual_write_count": 0,
+      "fallback_count": 0,
+      "old_owner_production_reachability": 0,
+      "new_owner_production_owner_count": 1
+    },
+    {
+      "supersession_id": "historical.military-runtime-controller-to-v075-runtime-owner",
+      "domain_id": "current.v075_production_combat_candidate",
+      "kind": "HISTORICAL_IDENTITY_BACKFILL_OWNER_TO_CURRENT_OWNER",
+      "old_component_id": "component.current.military_runtime_controller",
+      "new_component_id": "component.current.v075_runtime_owner",
+      "old_owner_path": "scripts/runtime/military_runtime_controller.gd",
+      "new_owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "old_authority_source_kind": "historical_identity_backfill",
+      "old_source_commit": "e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "old_source_blob_sha256": "25900cdffd2fa7b652060821c5da0b95328d8da96684cd9131449e9fa6fa6925",
+      "production_scene_path": "scenes/main.tscn",
+      "old_runtime_composition_path": "scenes/runtime/GameRuntimeCoordinator.tscn",
+      "old_component_scene_path": "scenes/runtime/MilitaryRuntimeController.tscn",
+      "new_runtime_composition_path": "scenes/runtime/V075RuntimeComposition.tscn",
+      "production_adapter_path": "scripts/v076/direct_action/v076_v075_production_adapter_v1.gd",
+      "replacement_reason": "MilitaryRuntimeController is retained only in the detached legacy/test composition. Current production military unit state and its mutation APIs are owned by the existing V075RuntimeOwner; the V076 adapter only consumes that authority.",
+      "migration_strategy": "The production application flow cut over atomically at ad12cfa8c9fd877a1f69283d04f1d671796bbf74; main.tscn composes V075RuntimeComposition, the old MilitaryRuntimeController scene is forbidden, and no dual write or fallback remains.",
+      "consumer_inventory": [
+        "component.v076.v075_production_adapter",
+        "component.current.v075_runtime_owner"
+      ],
+      "save_impact": "NONE_EXISTING_V075_OWNER_STATE",
+      "rng_impact": "NONE_EXISTING_V076_KERNEL_SEQUENCE",
+      "replay_impact": "No replay input, tick, authority sequence, or cursor is added; the existing deterministic runtime lineage remains authoritative.",
+      "cutover_commit": "ad12cfa8c9fd877a1f69283d04f1d671796bbf74",
+      "old_owner_retirement_status": "RETIRED_BY_CONSTITUTION",
+      "dual_write_count": 0,
+      "fallback_count": 0,
+      "old_owner_production_reachability": 0,
+      "new_owner_production_owner_count": 1
+    }
+  ],
+  "summary": {
+    "entry_count": 11,
+    "production_owner_supersession_count": 0,
+    "whole_branch_merge_count": 0,
+    "dual_owner_allowed_count": 0,
+    "retired_branch_revival_count": 0,
+    "retired_authority_count": 2,
+    "blocked_unverified_reference_count": 1
+  }
+}

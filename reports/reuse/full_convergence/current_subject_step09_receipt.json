@@ -1,0 +1,128 @@
+{
+  "schema_version": "space_syndicate.v076.current_subject_step_receipt.v1",
+  "receipt_id": "v076-current-subject-step09-c6a849be-20260830T200836Z",
+  "master_task_id": "V076_CURRENT_SUBJECT_MCP_REVALIDATION_REUSE_FULL_CONVERGENCE_AND_DECK_PRESENTATION_RESUME_V2",
+  "authorization_id": "USER_AUTHORIZATION_V076_CURRENT_SUBJECT_CONVERGENCE_AND_COMMERCIAL_RESUME_20260830",
+  "step_id": "STEP09",
+  "status": "REGRESSED_WITH_EVIDENCE",
+  "production_green_claimed": false,
+  "human_green_claimed": false,
+  "product_subject_head": "2ce2ce212e8252ddd554a03da8408a9cb11cba57",
+  "product_subject_tree": "97cbe5aab1a5489d402b1a03ce02f307d00bbe1c",
+  "live_pr_head": "c6a849be7346dcf9c0d9655a5769afa32c9e86b7",
+  "live_pr_tree": "5f161cdd18c68394968f62d03948214ef914de09",
+  "subject_is_ancestor_of_live_head": true,
+  "runtime_boundary": {
+    "scene_path": "res://scenes/main.tscn",
+    "project_godot_sha256": "849e8c9458b1f6f4431a00073a8d50119937e64a995303874354fb34da4fb06b",
+    "main_tscn_sha256": "aabe4e7f5dce63af558d22c2b77b0cffcfad03a763a7c6d11c4003e90e8e79f3",
+    "runtime_composition_sha256": "d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9",
+    "production_screen_sha256": "1e3461fe385f64e5ef830ce96f64a0e5ab8cf6faf1832fd8cbf3baa17acb3e19",
+    "runtime_owner_sha256": "07d370d44035f54af8c9cd150149769b5880c8dfcb403a0cb7f2259d7fc9e7f8",
+    "godot_binary": "Godot_v4.7-stable_win64.exe",
+    "godot_binary_sha256": "b2ca888d5115a6cedee564764a2ee494a625f2ec2edbabd010fe33c9a88a6bf8"
+  },
+  "mcp": {
+    "tool_identity": "Funplay MCP 0.9.6",
+    "protocol": "2025-11-25",
+    "session_identity": "D:/t/v076cs/2ce2ce21/session-c6a849be-20260830T200836Z",
+    "runtime_bridge_stream_id": "1788120596-58870292-34678506968",
+    "editor_pid": 16048,
+    "game_pid": 7080,
+    "endpoint": "http://127.0.0.1:8795/",
+    "scene_started_via_mcp": true,
+    "real_main_tscn_validation": "PASS_RUNTIME_OBSERVED",
+    "session_start_utc": "2026-08-30T20:08:36Z",
+    "session_end_utc": "2026-08-30T20:38:51Z"
+  },
+  "natural_production_runs": [
+    {
+      "run": "match_1",
+      "start_input": "real commercial menu -> StartConfiguredButton",
+      "finish_lock_cycles": 3,
+      "terminal_phase": "settled",
+      "terminal_batch": "batch.match.v075.sample.900626424.1.0004",
+      "adapter_plan_prepare_count": 4,
+      "adapter_root_submission_count": 0,
+      "adapter_terminal_receipt_attempt_count": 0,
+      "adapter_terminal_receipt_commit_count": 0,
+      "adapter_consumer_failure_count": 0,
+      "runtime_public_monster_count": 0,
+      "runtime_combat_public_history_count": 0,
+      "old_movement_writer_count": 0,
+      "old_trample_receipt_count": 0,
+      "map_monster_cue_count": 0,
+      "presentation_monster_cue_count": 0,
+      "evidence_files": [
+        "0038-query-coach-root.jsonrpc.json",
+        "0039-send-coach-skip-all-tap.jsonrpc.json",
+        "0041-capture-after-skip.jsonrpc.json",
+        "0046-send-finish-maintenance-tap.jsonrpc.json",
+        "0049-send-lock-tap.jsonrpc.json",
+        "0052-get-events-after-lock.jsonrpc.json",
+        "0054-capture-after-lock.jsonrpc.json",
+        "0060-query-kernel-step09.jsonrpc.json",
+        "0061-query-adapter-step09.jsonrpc.json",
+        "0062-query-runtime-owner-step09-12.jsonrpc.json",
+        "0064-query-presentation-consumer-step09-11.jsonrpc.json",
+        "0065-query-game-screen-step09-12.jsonrpc.json",
+        "0066-query-combat-surface-step09-11.jsonrpc.json",
+        "0067-query-old-combat-owner-step09.jsonrpc.json"
+      ]
+    },
+    {
+      "run": "match_2",
+      "start_input": "real New Game -> StartConfiguredButton",
+      "finish_lock_cycles": 0,
+      "terminal_phase": "settled",
+      "runtime_public_monster_count": 0,
+      "adapter_root_submission_count": 0,
+      "adapter_terminal_receipt_commit_count": 0,
+      "evidence_files": [
+        "0112-tap-new-game-match2.jsonrpc.json",
+        "0115-tap-start-match2.jsonrpc.json",
+        "0118-query-match2-start-state.jsonrpc.json",
+        "0120-query-match2-final-screen.jsonrpc.json",
+        "0121-query-match2-final-owner.jsonrpc.json"
+      ]
+    }
+  ],
+  "result": {
+    "positive_observations": [
+      "V076 production adapter configured",
+      "Kernel domain monster.l1.move present and deterministic tick sequence advanced",
+      "old V075 movement/trample writer remained at zero",
+      "no presentation privacy rejection or gameplay mutation was observed"
+    ],
+    "missing_required_evidence": [
+      "a natural MONSTER_MOVE authority receipt",
+      "a terminal MOVE_STEP receipt with geodesic route and consequence ledger",
+      "monster moved/trample/facility consequence presentation cue start and finish",
+      "exact-once binding of that receipt to map projection and presentation"
+    ],
+    "blocker": "NO_NATURAL_MONSTER_PRODUCTION_EVENT_IN_CURRENT_SUBJECT_MAIN_TSCN",
+    "historical_layout_diagnostics_retained": {
+      "header_overflow_count": 1,
+      "interactive_control_occlusion_count": 1,
+      "runtime_layout_offscreen_count": 2,
+      "unintended_major_panel_intersection_count": 1
+    },
+    "latest_post_coach_layout_snapshot": {
+      "header_overflow_count": 0,
+      "interactive_control_occlusion_count": 0,
+      "runtime_layout_offscreen_count": 0,
+      "unintended_major_panel_intersection_count": 0
+    }
+  },
+  "process_cleanup": {
+    "exit_play_mode": "PASS",
+    "stop_role_godot_mcp": "PASS",
+    "editor_pid_after": 0,
+    "game_pid_after": 0,
+    "listener_8795_after": 0,
+    "time_wait_connections_are_not_listeners": true
+  },
+  "result_fingerprint": "step09-regressed-no-natural-monster-event-c6a849be-session-c6a849be-20260830T200836Z",
+  "append_only": true,
+  "historical_receipts_overwritten": false
+}

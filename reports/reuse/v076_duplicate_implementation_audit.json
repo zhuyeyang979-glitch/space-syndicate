@@ -1,0 +1,541 @@
+{
+  "schema_version": "space_syndicate.v076.duplicate_implementation_audit.v1",
+  "audit_id": "v076-duplicate-implementation-audit-20260821",
+  "recorded_on": "2026-08-24",
+  "candidate_head_sha": "174cbded0df3ef57fa7861276987f8e3a6e6f785",
+  "candidate_tree_sha": "868bddedd7a3f85b4c3594ef3d8579b6ea379523",
+  "change_class": "CROSS_DOMAIN_INTEGRATION",
+  "method": "Current-tree symbol/path scan plus local git history and GitHub PR #1-#93 history inspection, focused production-binding/revalidation execution, and no whole-branch merge.",
+  "scan_scope": [
+    "scripts/v076/simulation",
+    "scripts/v076/map",
+    "scripts/v076/monster",
+    "scripts/v076/direct_action",
+    "scripts/v076/military",
+    "scripts/playtest/v073_playtest_telemetry_service.gd",
+    "scripts/playtest/v076_alpha07_human_golden_candidate_profile.gd",
+    "scripts/v075_runtime/v075_application_bootstrap.gd",
+    "data/v076/v076_military_unit_profiles_v1.json",
+    "data/diagnostics/v076_military_card_crosswalk_v1.json",
+    "scripts/tools/v076",
+    "scenes/tools/v076",
+    "current card catalog and semantic services",
+    "V074 map lineage",
+    "V075 combat lineage",
+    "V07 Solar Victory Core and V075 Victory/audit/final-settlement lineage",
+    "STEP13 production Victory/audit readiness proof",
+    "PR62-PR66 and PR70/PR79/PR80 history",
+    "external PR90 sealed Tooling identity",
+    "PR88 responsive globe lineage",
+    "frozen Alpha 0.4-C Save/resume lineage"
+  ],
+  "static_counts": {
+    "v076_class_name_count": 24,
+    "duplicate_v076_class_name_count": 0,
+    "product_repo_pr90_tool_file_count": 0,
+    "authoritative_domain_duplicate_owner_count": 0,
+    "whole_branch_merge_count": 0,
+    "production_composition_change_count": 1
+  },
+  "authoritative_domains": [
+    {
+      "domain_id": "v076.execution_order_tick_rng_snapshot_replay",
+      "owner_count": 1,
+      "unique_owner": "V076DeterministicKernel",
+      "path": "scripts/v076/simulation/v076_deterministic_kernel.gd",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "v076.spherical_partition_authority",
+      "owner_count": 1,
+      "unique_owner": "V076SharedHalfEdgePartitionV1",
+      "path": "scripts/v076/map/v076_shared_half_edge_partition_v1.gd",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "v076.monster_l1_directional_geodesic_move",
+      "owner_count": 1,
+      "unique_owner": "V076MonsterL1ReducerV1",
+      "path": "scripts/v076/monster/v076_monster_l1_reducer_v1.gd",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "future.private_direct_action_input",
+      "owner_count": 1,
+      "unique_owner": "V076PrivateDirectActionInputOwnerV1",
+      "path": "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "v076.military_unit_profile_authority",
+      "owner_count": 1,
+      "unique_owner": "V076MilitaryUnitProfileAuthority",
+      "path": "data/v076/v076_military_unit_profiles_v1.json",
+      "adapter": "V076MilitaryUnitProfileCatalogV1",
+      "duplicate_speed_table_count": 0,
+      "owns_card_catalog": false,
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "v076.military_physical_eta",
+      "owner_count": 1,
+      "unique_owner": "V076MilitaryPhysicalEtaOwnerV1",
+      "path": "scripts/v076/military/v076_military_physical_eta_owner_v1.gd",
+      "duplicate_pathfinder_count": 0,
+      "owns_tick": false,
+      "owns_map_topology": false,
+      "owns_military_unit_state": false,
+      "owns_asset_quantity": false,
+      "owns_card_catalog": false,
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "current.v075_production_combat_candidate",
+      "owner_count": 1,
+      "unique_owner": "V075RuntimeOwner",
+      "path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "v076_extension": "production own-hand authorization + typed asset reservation + facility/monster damage settlement + card consumption/withdrawal + exact-once consumption of V076 Monster terminal movement/trample results + exact-once STEP11 military asset projection and assault/withdrawal presentation + STEP12 AI/privacy proof + STEP13 Victory/audit readiness proof",
+      "production_adapter_count": 1,
+      "production_adapter_stateful_count": 0,
+      "new_owner_created": false,
+      "duplicate_facility_damage_ledger_count": 0,
+      "duplicate_asset_quantity_ledger_count": 0,
+      "duplicate_asset_projection_ledger_count": 0,
+      "duplicate_presentation_owner_count": 0,
+      "duplicate_victory_owner_count": 0,
+      "duplicate_audit_owner_count": 0,
+      "duplicate_final_settlement_ledger_count": 0,
+      "v06_victory_owner_production_reachable_count": 0,
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "current.gameplay_card_definitions",
+      "owner_count": 1,
+      "unique_owner": "CardRuntimeCatalogService",
+      "root_path": "resources/cards/runtime/card_runtime_catalog_v04.tres",
+      "root_sha256": "a468dd4231906904f521232e4c58ee8882c4fa834f958c43438eeaf3338136a6",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "current.v06_semantic_card_source",
+      "owner_count": 1,
+      "unique_owner": "CardRuntimeCatalogV06Resource",
+      "root_path": "resources/cards/runtime/card_runtime_catalog_v06.tres",
+      "root_sha256": "5872ffc01a91860d697deb4fe23765c80feb5697e085b2873dd0872136fb04e8",
+      "source_json_sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40",
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "current.card_semantic_transform_cache",
+      "owner_count": 1,
+      "unique_owner": "CardSemanticCatalogService",
+      "path": "scripts/runtime/card_semantic_catalog_service.gd",
+      "sha256": "394df72343341739622fb2c7899d30b0c0f12cd8d2acd52b91e0fecae7d50323",
+      "owns_execution": false,
+      "duplicate_status": "NONE"
+    },
+    {
+      "domain_id": "future.v076_human_playtest_evidence",
+      "owner_count": 1,
+      "unique_owner": "V073PlaytestTelemetryService",
+      "path": "scripts/playtest/v073_playtest_telemetry_service.gd",
+      "adapter_count": 2,
+      "candidate_profile_adapter": "V076Alpha07HumanGoldenCandidateProfile",
+      "composition_adapter": "V075ApplicationBootstrap",
+      "new_gameplay_owner_count": 0,
+      "parallel_observation_owner_count": 0,
+      "human_attestation_owner_count": 0,
+      "duplicate_status": "NONE"
+    }
+  ],
+  "intentional_parallel_scopes": [
+    {
+      "scope_id": "v074-production-map-vs-v076-stage2-isolated",
+      "classification": "SEPARATE_COMPOSITION_SCOPE",
+      "older_owner": "V074MapGenesisCore",
+      "v076_owner": "V076SharedHalfEdgePartitionV1",
+      "dual_write": false,
+      "production_cutover": false
+    },
+    {
+      "scope_id": "v075-production-monster-vs-v076-stage3-isolated",
+      "classification": "SEPARATE_COMPOSITION_SCOPE",
+      "older_owner": "V075RuntimeOwner/V075CombatRuntimeOwner lineage",
+      "v076_owner": "V076MonsterL1ReducerV1",
+      "dual_write": false,
+      "production_cutover": false
+    },
+    {
+      "scope_id": "v04-gameplay-catalog-vs-v06-semantic-source",
+      "classification": "SEPARATE_AUTHORITY_DOMAIN",
+      "gameplay_owner": "CardRuntimeCatalogService",
+      "semantic_source_owner": "CardRuntimeCatalogV06Resource",
+      "silent_supersession": false
+    }
+  ],
+  "historical_reuse_findings": [
+    {
+      "source": "PR62",
+      "disposition": "ADOPT_AS_OWNER",
+      "result": "Existing compiler/cache retained for deterministic transform only; no second compiler or executor created."
+    },
+    {
+      "source": "PR63/PR65",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "PR65 remains the authorization Consumer pattern for actor-private own-hand capability and membership revalidation; it does not execute or own the Stage 4 ledger."
+    },
+    {
+      "source": "V076 Kernel/half-edge plus current catalog/assets/military and V075 mission core",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "Stage 4 registers one new private-input Owner while every reused dependency retains its existing tick, topology, catalog, asset-quantity, military-unit-state, and mission-contract boundary."
+    },
+    {
+      "source": "CardRuntimeCatalogV06Resource + frozen V075 military sources",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "One read-only Crosswalk Adapter closes 28 source identities and exact-maps all 28 through the one Profile Authority without creating a catalog, compiler, or parallel Owner."
+    },
+    {
+      "source": "V06 identities/costs + V075 combat/mission history + authorized V076 playtest authoring",
+      "disposition": "ADOPT_AS_OWNER",
+      "result": "One Profile data authority inherits twelve combat records, authors twenty-eight speeds and sixteen complete reversible Profiles, and remains distinct from the card catalog and military runtime."
+    },
+    {
+      "source": "V076 half-edge/geodesic route + V076 Profile speed + V076 Kernel codec boundary",
+      "disposition": "ADOPT_AS_OWNER",
+      "result": "One ETA Owner produces integer ETA ticks and a canonical receipt without a second pathfinder, speed table, tick source, or gameplay-state Owner."
+    },
+    {
+      "source": "V075RuntimeOwner facility bridge + RuntimeCommandPipeline/MilitaryMonsterDamageCommandSink/MonsterRuntimeController",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "The existing private-input Owner settles sealed typed intents through the existing unique facility and monster mutation paths. No damage sink, HP ledger, mutation authority, asset Owner, unit Owner, or presentation Owner is duplicated."
+    },
+    {
+      "source": "V075RuntimeOwner/V075CombatRuntimeOwner/V075MonsterPrivateSkillCore",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "The existing source-bound private-skill owner, reservation, safe-boundary, exact-once, privacy, and public-aftermath contracts are consumed behind the one V076 Kernel intake root in Authority Sequence order. No second private queue, skill state, cooldown, asset ledger, damage sink, or presentation Owner is created."
+    },
+    {
+      "source": "V075RuntimeComposition/V075ApplicationFlow/V075RuntimeOwner/V07AssetBatchCore",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "One stateless production Adapter connects the already-registered Kernel, ETA, and private-input Owners to the existing V075 hand, asset, damage, card-lifecycle, privacy, and presentation paths. No GameRuntimeCoordinator, second asset ledger, military Owner, damage Owner, or fallback queue is instantiated."
+    },
+    {
+      "source": "V076PrivateDirectActionInputOwnerV1 + V075RuntimeOwner + V07AssetBatchCore + V075ApplicationFlow/V075SampleGameScreen",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "STEP11 hands one closed terminal military consequence envelope to the existing V075 consumer. The existing six-color state debits once, the existing player projection updates AssetRail once, and the existing V075 Presentation Owner emits one assault plus withdrawal. Replay adds no projection or presentation; no asset, projection, or presentation Owner is created."
+    },
+    {
+      "source": "V073PlaytestTelemetryService + V075ApplicationBootstrap + existing economy/combat/military Profile authorities",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "The one existing production-reachable telemetry Owner is extended in place and receives one immutable V076 candidate identity through the existing bootstrap. It writes only observation artifacts; no second telemetry Owner, copied balance values, gameplay mutation, Save/RNG/Tick authority, network dependency, or human attestation is created."
+    },
+    {
+      "source": "V075RuntimeOwner + V075CombatAIAdapter + V075CombatProjectionAdapter + V075SampleGameScreen",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "STEP12 consumes the existing production AI submission, actor-scoped observation, viewer projection, public allowlist, and GameScreen paths. Exact-current-head 57/57 revalidation creates no second AI, policy, projection, privacy, cash, RNG, gameplay, or presentation Owner."
+    },
+    {
+      "source": "V075RuntimeOwner + V07SolarVictoryCore + existing FinalSettlement/public-log/GameScreen path",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "STEP13 readiness consumes the existing production Victory qualification, audit-boundary revalidation, FinalSettlement, public-log, presentation, terminal replay, and combat-quiescence path through real main.tscn. No second Victory, audit, settlement, winner, telemetry, RNG, tick, asset, card, target, gameplay, or presentation Owner is created; V06 VictoryControlRuntimeController remains unreachable."
+    },
+    {
+      "source": "PR64/PR80",
+      "disposition": "REUSE_AS_TEST",
+      "result": "Test patterns only; no registry execution, Save adapter, RNG adapter, Kernel, or dispatcher imported."
+    },
+    {
+      "source": "PR70",
+      "disposition": "RETIRED",
+      "result": "Closed/unmerged final implementation absent; no revival or branch merge."
+    },
+    {
+      "source": "PR79",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "Only current-descendant reducer/port concepts may be adapted behind V076 ABI/replay/RNG gates."
+    },
+    {
+      "source": "external PR90 sealed Tooling",
+      "disposition": "REFERENCE_ONLY",
+      "result": "External head 70ccb5c0ae91460ffcdd1448685f579b8027a457 recorded; no controller copied into the product repository."
+    },
+    {
+      "source": "PR88",
+      "disposition": "ADAPT_AS_CONSUMER",
+      "result": "Responsive globe, typed target, hit, rotate, zoom, collision, and no-gameplay-mutation patterns may be adapted; the V073 six-region float Voronoi is retired as authority and no controller may replace Stage 2."
+    },
+    {
+      "source": "Alpha0.4-C representative 744b541840dc370ef4af6f93e8af6a024e66ecb3",
+      "disposition": "REFERENCE_ONLY",
+      "reference_status": "REFERENCE_ONLY_BLOCKED_UNVERIFIED",
+      "future_v077_test_disposition": "REUSE_AS_TEST",
+      "result": "FORMAL_FULL_RUN=false; ownership implementation remains frozen and pending, official eligibility is blocked, and only ownership/dependency/privacy/fault tests may be reused for a separately authorized V077."
+    }
+  ],
+  "forbidden_duplicate_patterns": [
+    "second gameplay catalog or catalog service",
+    "second semantic compiler or cache",
+    "second V076 Kernel, tick loop, Domain RNG, Authority Sequence, or replay source",
+    "second V076 military Profile authority or authored speed table",
+    "second geodesic pathfinder or copied half-edge topology for military ETA",
+    "military ETA Owner acquiring tick, replay, map, route, unit, asset, card, authorization, attack, or presentation authority",
+    "second military mission lifecycle Owner, phase ledger, or non-Kernel tick continuation",
+    "second facility or monster damage sink, HP ledger, mutation authority, or damage presentation receipt owner",
+    "second monster private-skill queue, receive sequence, safe-boundary, skill state, cooldown, reservation, result, or presentation Owner",
+    "second production Monster movement writer, route/trample ledger, topology, asset quantity ledger, terminal receipt ledger, or presentation Owner",
+    "second military asset quantity, final projection, consequence fingerprint, or assault/withdrawal presentation Owner",
+    "second production AI, policy, actor-observation, viewer-projection, privacy, cash, or hidden-information Owner",
+    "second Victory qualification, final-audit, FinalSettlement, winner, public-log, terminal replay, or settlement-presentation Owner",
+    "second Human Golden telemetry, event-sequence, evidence-package, export-finalization, observation identity, or attestation Owner",
+    "root submission of execute or withdraw commands reserved for Kernel derivation",
+    "revived PR70 card batch",
+    "PR64 metadata registry promoted to executor",
+    "PR65 source authorization port promoted to executor",
+    "PR66 presentation DTO promoted to rule authority",
+    "runtime pack promoted to card authority",
+    "Stage3 isolated asset state dual-written with a current production asset core",
+    "PR90 sealed controller copied into this product repository",
+    "PR88 controller or V073 six-region float Voronoi copied as V076 authority",
+    "Alpha0.4-C coordinator, registry, barrier, or flow imported into V076",
+    "bytes or evidence mixed across Alpha0.4-C attempts",
+    "Save schema, delete, overwrite, or migration behavior added to V076"
+  ],
+  "unverified_not_cleared": [
+    {
+      "boundary": "v06 monster card to V076 exact mapping",
+      "record_count": 32,
+      "status": "UNVERIFIED"
+    },
+    {
+      "boundary": "military human execution and per-card production certification after atomic production composition cutover",
+      "record_count": 28,
+      "exact_mapped_count": 28,
+      "reauthor_required_count": 0,
+      "status": "UNVERIFIED"
+    },
+    {
+      "boundary": "Alpha 0.7 real human observer attestation",
+      "human_executed": false,
+      "human_confirmed": false,
+      "observer_attestation_required": true,
+      "step13_readiness": true,
+      "step13_status": "PENDING",
+      "status": "UNVERIFIED"
+    },
+    {
+      "boundary": "Alpha0.4-C Save/resume ownership and official eligibility",
+      "representative_head_sha": "744b541840dc370ef4af6f93e8af6a024e66ecb3",
+      "formal_full_run": false,
+      "status": "REFERENCE_ONLY_BLOCKED_UNVERIFIED"
+    }
+  ],
+  "isolated_cleared": [
+    {
+      "boundary": "v06 military card to V076 Profile/Crosswalk/physical ETA exact mapping",
+      "record_count": 28,
+      "exact_mapped_count": 28,
+      "reauthor_required_count": 0,
+      "profile_authority_count": 1,
+      "eta_owner_count": 1,
+      "status": "ISOLATED_GREEN_28_OF_28",
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "tick-driven military arrive-execute-once-withdraw lifecycle",
+      "record_count": 28,
+      "lifecycle_owner_count": 1,
+      "root_command_count_per_mission": 1,
+      "derived_command_count_per_mission": 2,
+      "mission_execution_count_per_mission": 1,
+      "withdrawal_intent_count_per_mission": 1,
+      "same_tick_order_mismatch_count": 0,
+      "replay_mismatch_count": 0,
+      "status": "ISOLATED_GREEN",
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "typed military facility and monster damage-intent settlement through existing sinks",
+      "facility_damage_owner_count": 1,
+      "monster_damage_pipeline_count": 1,
+      "new_damage_owner_count": 0,
+      "facility_damage_receipt_count": 1,
+      "monster_damage_receipt_count": 1,
+      "direct_reducer_mutation_count": 0,
+      "duplicate_damage_mutation_count": 0,
+      "status": "ISOLATED_GREEN",
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "simultaneous private military and source-bound monster-skill intake ordering",
+      "action_kind_count": 2,
+      "unique_channel_count": 1,
+      "root_intake_count": 2,
+      "same_tick_order_mismatch_count": 0,
+      "replay_state_hash_mismatch_count": 0,
+      "duplicate_effect_count": 0,
+      "hidden_info_violation_count": 0,
+      "public_batch_entry_count": 0,
+      "shared_sushi_track_resolution_count": 0,
+      "new_owner_count": 0,
+      "new_bench_count": 0,
+      "status": "ISOLATED_GREEN",
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "military Direct Action atomic production composition cutover",
+      "production_scene_path": "scenes/main.tscn",
+      "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+      "production_adapter_count": 1,
+      "production_adapter_stateful_count": 0,
+      "new_owner_count": 0,
+      "parallel_production_owner_count": 0,
+      "dual_write_count": 0,
+      "fallback_count": 0,
+      "focused_checks": "55/55",
+      "status": "ISOLATED_GREEN",
+      "production_cutover": true,
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "Alpha 0.7 Human Golden observation identity readiness",
+      "observation_owner_count": 1,
+      "adapter_count": 2,
+      "parallel_observation_owner_count": 0,
+      "readiness_checks": "35/35",
+      "evidence_source_type": "OBSERVATION_ONLY",
+      "human_executed": false,
+      "human_confirmed": false,
+      "human_evidence_claim_allowed": false,
+      "observer_attestation_required": true,
+      "status": "ISOLATED_GREEN",
+      "production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "Alpha 0.7 STEP09 production Monster physical movement and consequence",
+      "production_scene_path": "scenes/main.tscn",
+      "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+      "v075_production_monster_movement_writer_count": 0,
+      "v076_production_monster_movement_owner_count": 1,
+      "kernel_monster_root_batch_count": 1,
+      "production_asset_quantity_write_count": 0,
+      "duplicate_consequence_count": 0,
+      "new_owner_count": 0,
+      "parallel_production_owner_count": 0,
+      "status": "PRODUCTION_GREEN",
+      "full_product_production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "Alpha 0.7 STEP11 production asset consequence and presentation",
+      "production_scene_path": "scenes/main.tscn",
+      "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+      "production_screen_path": "scenes/ui/v075/V075SampleGameScreen.tscn",
+      "asset_quantity_owner_count": 1,
+      "asset_projection_count_per_mission": 1,
+      "asset_debit_exact_once": true,
+      "asset_rail_post_action_parity": true,
+      "assault_presentation_count_per_mission": 1,
+      "withdrawal_presentation_count_per_mission": 1,
+      "duplicate_asset_projection_count": 0,
+      "duplicate_presentation_count": 0,
+      "presentation_gameplay_mutation_count": 0,
+      "new_asset_owner_count": 0,
+      "new_presentation_owner_count": 0,
+      "parallel_production_owner_count": 0,
+      "status": "PRODUCTION_GREEN",
+      "full_product_production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "Alpha 0.7 STEP12 production AI action and viewer privacy",
+      "production_scene_path": "scenes/main.tscn",
+      "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+      "production_ai_owner_count": 1,
+      "unauthorized_viewer_count": 2,
+      "rival_private_card_disclosure_count": 0,
+      "ai_private_plan_disclosure_count": 0,
+      "ai_exact_cash_disclosure_count": 0,
+      "public_private_binding_field_count": 0,
+      "new_ai_owner_count": 0,
+      "new_projection_owner_count": 0,
+      "new_privacy_owner_count": 0,
+      "parallel_production_owner_count": 0,
+      "focused_checks": "57/57",
+      "status": "PRODUCTION_GREEN",
+      "full_product_production_green": false,
+      "human_green": false
+    },
+    {
+      "boundary": "Alpha 0.7 STEP13 production Victory/audit binding readiness",
+      "production_scene_path": "scenes/main.tscn",
+      "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+      "production_victory_owner": "V075RuntimeOwner",
+      "reused_victory_reducer": "V07SolarVictoryCore",
+      "production_victory_owner_count": 1,
+      "new_victory_owner_count": 0,
+      "v06_victory_owner_production_reachable_count": 0,
+      "duplicate_final_settlement_count": 0,
+      "terminal_replay_state_delta_count": 0,
+      "card_injection_count": 0,
+      "asset_injection_count": 0,
+      "target_injection_count": 0,
+      "focused_checks": "24/24",
+      "step13_readiness": true,
+      "step13_status": "PENDING",
+      "human_executed": false,
+      "human_confirmed": false,
+      "observer_attestation_required": true,
+      "status": "PRODUCTION_BINDING_READINESS",
+      "production_cutover": true,
+      "production_green": false,
+      "human_green": false
+    }
+  ],
+  "v076_save_boundary": {
+    "lifecycle": "NEW_GAME_ONLY",
+    "save_schema_change_count": 0,
+    "save_delete_change_count": 0,
+    "save_overwrite_change_count": 0,
+    "save_migration_change_count": 0
+  },
+  "future_release_harness_boundary": {
+    "current_path_exists": false,
+    "migration_authorized": false,
+    "registry_only": true,
+    "allowed_future_generic_primitives": [
+      "exact git identity and dirty-state checks",
+      "scoped process and port convergence",
+      "immutable envelope and hash primitives",
+      "cleanup and finalizer ordering",
+      "common manifest codec"
+    ],
+    "must_remain_versioned_or_external": [
+      "release schema",
+      "product gate",
+      "authorization consumption",
+      "pull-request policy",
+      "sealed PR90 controllers"
+    ],
+    "never_owned_by_harness": [
+      "gameplay",
+      "map",
+      "Save",
+      "presentation",
+      "test oracle",
+      "production composition"
+    ]
+  },
+  "result": "GO_WITH_SCOPED_ADOPTION",
+  "no_go": [
+    "WHOLE_BRANCH_MERGE",
+    "CONTROLLER_COPY",
+    "FULL_REPROOF_CLAIM",
+    "PER_CARD_FALSE_GREEN"
+  ]
+}

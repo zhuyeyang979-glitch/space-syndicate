@@ -1,0 +1,205 @@
+{
+  "schema": "space_syndicate.v076.alpha07.human_candidate_2_readiness_receipt.v1",
+  "append_only": true,
+  "candidate": "Alpha 0.7 Living Planet — Human Candidate 2",
+  "candidate_head_sha": "e02e18acdb54508ad166c53384125411a94369aa",
+  "candidate_tree_sha": "ff82bef2b139f6370eb71cf811c2acb7a40db1f0",
+  "production_scene": "res://scenes/main.tscn",
+  "player_configuration": {
+    "human_count": 1,
+    "ai_count": 3,
+    "fixture_state_injection_count": 0
+  },
+  "status": "GREEN_AFTER_REPAIR",
+  "ready_for_real_human_retest": true,
+  "human_executed": false,
+  "human_confirmed": false,
+  "human_green": false,
+  "production_green": false,
+  "golden_counts": {
+    "isolated_green": 5,
+    "production_green": 3,
+    "human_green": 0
+  },
+  "step13_status": "PENDING",
+  "blocker_count_before": 6,
+  "blocker_count_after": 0,
+  "readiness_dimensions": {
+    "single_screen_main_table": {
+      "status": "PASS",
+      "main_table_root_vertical_scroll_count": 0,
+      "main_table_draggable_vertical_splitter_count": 0,
+      "primary_control_requires_vertical_drag_count": 0,
+      "primary_control_outside_viewport_count": 0,
+      "primary_control_occlusion_count": 0,
+      "track_visible_physical_slot_count": 10
+    },
+    "card_acquisition": {
+      "status": "PASS",
+      "human_card_acquisition_receipt_count": 1,
+      "human_card_acquisition_ui_feedback_count": 1,
+      "direct_hand_mutation_from_ui_count": 0,
+      "supply_cursor_delta_on_acquisition": 0,
+      "extra_supply_rng_draw_count": 0
+    },
+    "card_play": {
+      "status": "PASS",
+      "human_hand_card_select_count": 1,
+      "human_card_plan_count": 1,
+      "human_card_commit_count": 1,
+      "human_card_receipt_count": 1,
+      "target_query_green": true,
+      "confirm_button_visible": true,
+      "cancel_button_visible": true,
+      "private_direct_action_public_batch_entry_count": 0,
+      "shared_sushi_track_resolution_count_for_direct_action": 0
+    },
+    "action_visibility": {
+      "status": "PASS",
+      "public_action_feed_entry_count": 2,
+      "ai_action_visible_feedback_count": 1,
+      "human_action_visible_feedback_count": 1,
+      "blank_action_feedback_count": 0,
+      "authorized_anonymous_placeholder_coverage": 1.0,
+      "rival_private_card_instance_disclosure_count": 0,
+      "rival_private_plan_disclosure_count": 0,
+      "action_feed_duplicate_entry_count": 0,
+      "action_feed_presentation_gameplay_mutation_count": 0
+    },
+    "playtest_pacing": {
+      "status": "PASS",
+      "pace_control_mode_count": 4,
+      "default_playtest_pace": "2x",
+      "pause_freezes_visible_submission_countdown": true,
+      "pace_multiplier_replay_state_hash_parity": true,
+      "pace_multiplier_rng_delta": 0,
+      "pace_multiplier_command_order_delta": 0
+    },
+    "coachmark_stability": {
+      "status": "PASS",
+      "coachmark_position_recompute_on_mouse_enter_count": 0,
+      "coachmark_step3_pointer_entry_position_delta_px": 0,
+      "coachmark_step3_next_button_visible": true,
+      "coachmark_step3_next_button_enabled": true,
+      "coachmark_step3_next_click_advance_count": 1,
+      "coachmark_step3_duplicate_advance_count": 0,
+      "coachmark_step3_mouse_event_loss_count": 0
+    }
+  },
+  "focused_runs": [
+    {
+      "test_id": "v076_alpha07_human_playability_readiness_test",
+      "run_id": "20260823-214021-065-v076_alpha07_human_playability_readiness_test-397f755f",
+      "result": "PASS",
+      "checks": "169/169",
+      "result_sha256": "c4db111d50d107b3334a476715b8ed84ba1e1bfc97b0092bdb2387bd0365c451"
+    },
+    {
+      "test_id": "v075_responsive_viewport_matrix_test",
+      "run_id": "20260823-214709-020-v075_responsive_viewport_matrix_test-60def905",
+      "viewport": "1366x768",
+      "result": "PASS",
+      "checks": "24/24",
+      "result_sha256": "0efd753522a0fb134278adfc78cccfa1da74a2bd08300d22434139f9f3463dfa"
+    },
+    {
+      "test_id": "v075_responsive_viewport_matrix_test",
+      "run_id": "20260823-214709-020-v075_responsive_viewport_matrix_test-a65ccc2f",
+      "viewport": "1600x960",
+      "result": "PASS",
+      "checks": "25/25",
+      "result_sha256": "8dae75d70ddab43fdd303dd16eb762b94dfa9650cdd98a2105b3ef00340ec46f"
+    },
+    {
+      "test_id": "v075_responsive_viewport_matrix_test",
+      "run_id": "20260823-214709-020-v075_responsive_viewport_matrix_test-d09a78a8",
+      "viewport": "1920x1080",
+      "result": "PASS",
+      "checks": "24/24",
+      "result_sha256": "2131b3705af37b0f961c5833d63ac78037264f82528403e10305439ef05a8bbc"
+    },
+    {
+      "test_id": "v076_alpha07_pacing_determinism_test",
+      "run_id": "20260823-214743-956-v076_alpha07_pacing_determinism_test-660c4206",
+      "result": "PASS",
+      "checks": "11/11",
+      "result_sha256": "b48f3df3f5aee355450a82684234245cb288ccc1931e9cd418f332f3c8e44eb7"
+    },
+    {
+      "test_id": "v075_sample_game_screen_wrapper_test",
+      "run_id": "20260823-214743-956-v075_sample_game_screen_wrapper_test-10f5d095",
+      "result": "PASS",
+      "checks": "30/30",
+      "result_sha256": "46d212784946f7410778dd8a2a2aa7ca054259c47054f39f07f3ef010ac95690"
+    },
+    {
+      "test_id": "v073_coach_safe_placement_test",
+      "run_id": "20260823-214743-931-v073_coach_safe_placement_test-fee4daf2",
+      "result": "PASS",
+      "checks": "258/258",
+      "result_sha256": "4e99a6c7996dd55ea4fe9b580766ef628af8b18638aced91f8b899cadce04439"
+    },
+    {
+      "test_id": "visual_snapshot",
+      "run_id": "20260823-214743-957-visual_snapshot-7d5718c1",
+      "result": "PASS",
+      "result_sha256": "3293703c1859540486d27abfbab1d9446e326f6644e7c4c5a58a5c601e63457c"
+    },
+    {
+      "test_id": "v07_dbg_deck_core_test",
+      "run_id": "20260823-215638-209-v07_dbg_deck_core_test-cde15720",
+      "result": "PASS",
+      "checks": "325/325",
+      "result_sha256": "7836c767d1efddcb747c0544f89bd8d510d819dbcfc3e88b679cf42498167855"
+    },
+    {
+      "test_id": "v075_runtime_acquisition_trace_test",
+      "run_id": "20260823-215638-209-v075_runtime_acquisition_trace_test-b8c2bf99",
+      "result": "PASS",
+      "checks": "trace PASS",
+      "result_sha256": "e3d7e01da1b9be146806d1c414ca719d5d84562979270aa99c51682939d74fbb"
+    },
+    {
+      "test_id": "v075_authoritative_card_identity_lifecycle_binding_test",
+      "run_id": "20260823-215638-208-v075_authoritative_card_identity_lifecycle_binding_test-d3c15893",
+      "result": "PASS",
+      "checks": "14/14",
+      "result_sha256": "b3bf1e034699864d1c599cb3f708e80324016b5ec95b73b034747d02c0f4a102"
+    }
+  ],
+  "headed_production_captures": [
+    "reports/playtest/alpha07_human_candidate_1_blocker/headed_receipts/candidate2_1366x768_green.json",
+    "reports/playtest/alpha07_human_candidate_1_blocker/headed_receipts/candidate2_1600x960_green.json",
+    "reports/playtest/alpha07_human_candidate_1_blocker/headed_receipts/candidate2_1920x1080_green.json"
+  ],
+  "screenshots": {
+    "production_scene": "res://scenes/main.tscn",
+    "directory": "reports/playtest/alpha07_human_candidate_1_blocker/screenshots",
+    "representative": [
+      "candidate2_1366x768_02_headed_main_green.png",
+      "candidate2_1600x960_08_pause_frozen_15s.png",
+      "candidate2_1600x960_09_hand_card_and_map_target.png",
+      "candidate2_1600x960_10_human_card_play_and_action_feed.png",
+      "candidate2_1600x960_11_maintenance_phase_acquisition_rejected.png",
+      "candidate2_1920x1080_01_headed_main_green.png"
+    ]
+  },
+  "runtime_closeout": {
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "hard_runtime_error_count": 0,
+    "diagnostic_count": 0,
+    "mcp_stop_status": "STOPPED",
+    "scoped_candidate_process_count_after": 0,
+    "protected_port_listener_count_after": 0
+  },
+  "not_claimed": [
+    "step13_golden_pass",
+    "human_playtest_pass",
+    "human_confirmation",
+    "observer_attestation",
+    "full_alpha07_production_green",
+    "step14_final_settlement_human_pass",
+    "step15_feedback_clean_stop_human_pass",
+    "full_repository_reproof"
+  ]
+}

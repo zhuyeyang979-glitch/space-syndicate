@@ -275,14 +275,31 @@ func _run() -> void:
 				"drawn combat card enters a legal prebound action queue"
 			)
 			var binding := queued.get("binding", {}) as Dictionary
+			var queued_card_binding := (
+				binding.get("card_action_binding", {}) as Dictionary
+			)
+			var authoritative_escrow_binding := runtime.call(
+				"_authoritative_card_action_binding",
+				owner_id,
+				personal_instance_id
+			) as Dictionary
 			_expect(
 				str(binding.get("card_instance_id", "")) == personal_instance_id
 					and str(binding.get("target_slot_id", ""))
 						== str(option.get("target_slot_id", ""))
 				and bool(binding.get("target_bound", false))
-				and binding.get("card_action_binding")
-					== canonical_card_binding,
-				"prebound action keeps the DBG instance and legal target identity"
+				and str(binding.get("authority_zone", ""))
+					== "committed_escrow"
+				and queued_card_binding == authoritative_escrow_binding
+				and str(queued_card_binding.get("authoritative_zone", ""))
+					== "committed_escrow"
+				and queued_card_binding.get("immutable_identity_fingerprint")
+					== canonical_card_binding.get(
+						"immutable_identity_fingerprint"
+					)
+				and queued_card_binding.get("binding_fingerprint")
+					!= canonical_card_binding.get("binding_fingerprint"),
+				"prebound action preserves the DBG identity in committed escrow"
 			)
 			var accepted_queues := (
 				runtime.get("_queued_by_player") as Dictionary
@@ -309,6 +326,10 @@ func _run() -> void:
 				"submission_transaction_rollback_count",
 				0
 			))
+			var invalid_action_count_before := int(runtime.debug_snapshot().get(
+				"invalid_action_count",
+				0
+			))
 			var forged_lock := runtime.lock_player_submission(owner_id)
 			_expect(
 				not bool(forged_lock.get("accepted", true))
@@ -318,6 +339,10 @@ func _run() -> void:
 					"submission_transaction_rollback_count",
 					0
 				)) == rollback_count_before + 1
+				and int(runtime.debug_snapshot().get(
+					"invalid_action_count",
+					0
+				)) == invalid_action_count_before + 1
 				and _identity_gate_state(runtime, combat, owner_id)
 					== lock_state_before,
 				"lock gate revalidates the live binding and rolls back without partial effects"
@@ -479,8 +504,23 @@ func _run() -> void:
 								str(refresh_option.get("target_slot_id", "")),
 								refresh_option
 							)
+							var refresh_escrow_binding := (
+								(refresh_queued.get("binding", {}) as Dictionary).get(
+									"card_action_binding",
+									{}
+								) as Dictionary
+							)
 							_expect(
-								bool(refresh_queued.get("accepted", false)),
+								bool(refresh_queued.get("accepted", false))
+								and str(refresh_escrow_binding.get(
+									"authoritative_zone",
+									""
+								)) == "committed_escrow"
+								and refresh_escrow_binding.get(
+									"immutable_identity_fingerprint"
+								) == refresh_binding.get(
+									"immutable_identity_fingerprint"
+								),
 								"new lifecycle binding queues the real refresh action"
 							)
 							var refresh_locked := _lock_all_players(runtime)
@@ -494,11 +534,11 @@ func _run() -> void:
 									combat,
 									owner_id,
 									personal_instance_id,
-									refresh_binding
+									refresh_escrow_binding
 								)
 								_expect(
 									pre_resolve_green,
-									"pre-resolve gate rejects a card that left hand without any downstream effect"
+									"pre-resolve gate rejects a card that left committed escrow without any downstream effect"
 								)
 								var intervening := _intervening_refresh_to_full(
 									combat,
@@ -1409,7 +1449,7 @@ func _prove_pre_resolve_gate(
 	if checkpoint.is_empty():
 		return false
 	var play_intent := dbg.create_intent(
-		"request.lifecycle.pre_resolve.leave_hand",
+		"request.lifecycle.pre_resolve.leave_committed_escrow",
 		owner_id,
 		DbgCore.ACTION_PLAY_CARD,
 		{"instance_id": card_instance_id},
@@ -1443,13 +1483,18 @@ func _prove_pre_resolve_gate(
 		owner_id,
 		card_instance_id
 	) as Dictionary
+	var restored_facts := _runtime_dbg_facts(runtime, owner_id)
 	return (
 		rejected_green
 		and bool(rolled_back.get("accepted", false))
 		and bool(rolled_back.get("rolled_back", false))
 		and restored_binding == expected_binding
+		and not _zone_has_id(
+			restored_facts.get("hand", []) as Array,
+			card_instance_id
+		)
 		and _zone_has_id(
-			_runtime_dbg_facts(runtime, owner_id).get("hand", []) as Array,
+			restored_facts.get("committed_escrow", []) as Array,
 			card_instance_id
 		)
 	)

@@ -37,6 +37,15 @@ class RejectingCombatOwner extends Node:
 		return {"rolled_back": true, "reason_code": "fake_rolled_back"}
 
 
+	func debug_snapshot() -> Dictionary:
+		return {
+			"schema": "V075RejectingCombatOwnerDebugFixtureV1",
+			"rollback_count": rollback_count,
+			"gameplay_owner_count": 1,
+			"rng_owner_count": 1,
+		}
+
+
 class RuntimeHarness extends V075RuntimeOwner:
 	var fixture_source := {
 		"source_instance_id": "monster.owner.privacy",
@@ -96,6 +105,15 @@ func _run() -> void:
 	var before_assets := (
 		runtime.get("_asset_state") as Dictionary
 	).duplicate(true)
+	var debug_before_requests := runtime.debug_snapshot()
+	var entry_count_before := int(debug_before_requests.get(
+		"private_skill_submission_entry_count",
+		0
+	))
+	var invalid_action_count_before := int(debug_before_requests.get(
+		"invalid_action_count",
+		0
+	))
 	var rejected := runtime.request_private_monster_skill(
 		"player.owner",
 		{
@@ -147,6 +165,18 @@ func _run() -> void:
 				"target_region_id": "region.injected",
 			},
 		}
+	)
+	var debug_after_requests := runtime.debug_snapshot()
+	_expect(
+		int(debug_after_requests.get(
+			"private_skill_submission_entry_count",
+			0
+		)) == entry_count_before + 4
+		and int(debug_after_requests.get(
+			"invalid_action_count",
+			0
+		)) == invalid_action_count_before + 3,
+		"private skill rejection audits invalidate the cached debug observer"
 	)
 	_expect(
 		not bool(missing_generation_rejected.get("accepted", true))

@@ -1,0 +1,1007 @@
+{
+  "asset_record_count": 13,
+  "cancelled_goal_count": 0,
+  "capability_record_count": 37,
+  "check_name": "Space Syndicate Version Continuity Gate",
+  "continuity_workflow_present": true,
+  "current_product_task_resumed": false,
+  "current_work_item_count": 29,
+  "dynamic_reachability_unknown_count": 484,
+  "embedded_start_overlay_present": true,
+  "embedded_start_overlay_production_reachable": true,
+  "failure_count": 0,
+  "failures": [],
+  "full_world_reproof": false,
+  "future_backlog_item_count": 6,
+  "github_required_check_configured": false,
+  "godot_full_reproof_run": false,
+  "menu_root_lobby_present": true,
+  "menu_root_lobby_production_reachable": true,
+  "orphaned_menu_asset_count": 4,
+  "product_code_change_count": 0,
+  "product_rule_change_count": 0,
+  "product_runtime_mutation_count": 0,
+  "reachability": {
+    "asset_record_count": 4032,
+    "check_name": "Space Syndicate Version Continuity Gate",
+    "dynamic_reachability_unknown_sources": [
+      "res://addons/funplay_mcp/core/funplay_core_tools.gd",
+      "res://addons/funplay_mcp/core/funplay_mcp_settings.gd",
+      "res://addons/funplay_mcp/core/funplay_update_checker.gd",
+      "res://addons/godot_mcp/tools/project_tools.gd",
+      "res://addons/godot_mcp/tools/scene_tools.gd",
+      "res://addons/space_syndicate_design_qa/space_syndicate_design_qa_dock.gd",
+      "res://addons/space_syndicate_design_qa/space_syndicate_design_qa_plugin.gd",
+      "res://reports/ui/production_acceptance/production_acceptance.gd",
+      "res://scripts/CardUI.gd",
+      "res://scripts/ai/ai_policy_resource_registry.gd",
+      "res://scripts/balance/balance_parameter_model_adapter.gd",
+      "res://scripts/balance/balance_parameter_resource_registry.gd",
+      "res://scripts/balance/runtime_balance_model.gd",
+      "res://scripts/card_art_view.gd",
+      "res://scripts/cards/card_runtime_authoring_service.gd",
+      "res://scripts/cards/semantic/card_instance_decision_state_v1.gd",
+      "res://scripts/cards/semantic/card_v04_interaction_semantic_reference_adapter_v1.gd",
+      "res://scripts/content/compendium_content_registry.gd",
+      "res://scripts/map_view.gd",
+      "res://scripts/monster_art_view.gd",
+      "res://scripts/presentation/player_card_codex_family_ladder_dto_v1.gd",
+      "res://scripts/presentation/public_player_roster_projection_service.gd",
+      "res://scripts/presentation/role_portrait_catalog.gd",
+      "res://scripts/presentation/v076_deck_lifecycle_presentation.gd",
+      "res://scripts/presentation/v076_presentation_animation_director.gd",
+      "res://scripts/runtime/ai_card_interaction_observation_service.gd",
+      "res://scripts/runtime/ai_card_semantic_projection_input_v1.gd",
+      "res://scripts/runtime/ai_card_semantic_projection_service.gd",
+      "res://scripts/runtime/alpha01_content_manifest_loader.gd",
+      "res://scripts/runtime/card_codex_public_snapshot_service.gd",
+      "res://scripts/runtime/card_codex_public_source_adapter.gd",
+      "res://scripts/runtime/card_codex_public_source_service.gd",
+      "res://scripts/runtime/card_player_face_projection_service.gd",
+      "res://scripts/runtime/card_player_face_public_localization_source_service.gd",
+      "res://scripts/runtime/card_semantic_catalog_service.gd",
+      "res://scripts/runtime/card_semantic_source_authorization_port.gd",
+      "res://scripts/runtime/commodity_sushi_track_runtime_service.gd",
+      "res://scripts/runtime/game_runtime_coordinator.gd",
+      "res://scripts/runtime/ruleset_runtime_bridge.gd",
+      "res://scripts/semantic/ai_card_interaction_legacy_source_bundle_v1.gd",
+      "res://scripts/semantic/ai_card_interaction_observation_v1.gd",
+      "res://scripts/semantic/ai_card_interaction_policy_compatibility_v1.gd",
+      "res://scripts/tools/ai_card_interaction_observation_bench.gd",
+      "res://scripts/tools/ai_card_semantic_projection_bench.gd",
+      "res://scripts/tools/balance_runtime_bridge_bench.gd",
+      "res://scripts/tools/card_codex_public_snapshot_cutover_bench.gd",
+      "res://scripts/tools/card_core_effect_adapters_v06_bench.gd",
+      "res://scripts/tools/card_flow_transaction_v06_bench.gd",
+      "res://scripts/tools/card_flow_v06_bench.gd",
+      "res://scripts/tools/card_global_supply_demand_v06_bench.gd",
+      "res://scripts/tools/card_illustration_placeholder_lab_capture.gd",
+      "res://scripts/tools/card_inventory_runtime_characterization_bench.gd",
+      "res://scripts/tools/card_play_eligibility_runtime_bench.gd",
+      "res://scripts/tools/card_resolution_execution_runtime_characterization_bench.gd",
+      "res://scripts/tools/card_resolution_queue_runtime_characterization_bench.gd",
+      "res://scripts/tools/card_runtime_catalog_v06_builder.gd",
+      "res://scripts/tools/card_semantic_phase1_integration_bench.gd",
+      "res://scripts/tools/card_semantic_source_authorization_bench.gd",
+      "res://scripts/tools/card_semantic_source_authorization_fixture.gd",
+      "res://scripts/tools/card_style_lock_batch_capture.gd",
+      "res://scripts/tools/card_text_migration_registry_builder.gd",
+      "res://scripts/tools/card_visual_polish_capture.gd",
+      "res://scripts/tools/city_development_settlement_runtime_characterization_bench.gd",
+      "res://scripts/tools/city_gdp_derivative_runtime_bench.gd",
+      "res://scripts/tools/city_trade_network_runtime_characterization_bench.gd",
+      "res://scripts/tools/codex_atlas_scene_cutover_bench.gd",
+      "res://scripts/tools/codex_navigation_runtime_cutover_bench.gd",
+      "res://scripts/tools/codex_public_snapshot_cutover_bench.gd",
+      "res://scripts/tools/codex_scene_hard_cutover_bench.gd",
+      "res://scripts/tools/commercial_art_integration_review.gd",
+      "res://scripts/tools/commercial_art_review_capture_driver.gd",
+      "res://scripts/tools/core_economy_production_wiring_v06_bench.gd",
+      "res://scripts/tools/economy_cashflow_runtime_cutover_bench.gd",
+      "res://scripts/tools/economy_dashboard_public_snapshot_cutover_bench.gd",
+      "res://scripts/tools/final_settlement_public_snapshot_cutover_bench.gd",
+      "res://scripts/tools/first_playable_loop_bench.gd",
+      "res://scripts/tools/first_playable_loop_fixtures.gd",
+      "res://scripts/tools/first_round_runtime_playable_loop_bench.gd",
+      "res://scripts/tools/first_round_runtime_playable_loop_fixtures.gd",
+      "res://scripts/tools/full_run_quality_driver.gd",
+      "res://scripts/tools/game_session_save_ownership_bench.gd",
+      "res://scripts/tools/gdp_formula_runtime_cutover_bench.gd",
+      "res://scripts/tools/industry_capacity_card_group_runtime_bench.gd",
+      "res://scripts/tools/intel_dossier_public_snapshot_cutover_bench.gd",
+      "res://scripts/tools/legacy_player_surface_retirement_bench.gd",
+      "res://scripts/tools/legacy_runtime_surface_retirement_bench.gd",
+      "res://scripts/tools/military_runtime_characterization_bench.gd",
+      "res://scripts/tools/monster_codex_public_snapshot_cutover_bench.gd",
+      "res://scripts/tools/monster_runtime_characterization_bench.gd",
+      "res://scripts/tools/new_game_setup_page_cutover_bench.gd",
+      "res://scripts/tools/organization_production_composition_v06_bench.gd",
+      "res://scripts/tools/planet_map_interaction_bench.gd",
+      "res://scripts/tools/player_hand_interaction_runtime_characterization_bench.gd",
+      "res://scripts/tools/player_text_v05_foundation_bench.gd",
+      "res://scripts/tools/player_turn_interaction_bench.gd",
+      "res://scripts/tools/product_codex_public_snapshot_cutover_bench.gd",
+      "res://scripts/tools/product_market_runtime_characterization_bench.gd",
+      "res://scripts/tools/region_infrastructure_runtime_characterization_bench.gd",
+      "res://scripts/tools/role_portrait_render_rig.gd",
+      "res://scripts/tools/ruleset_v04_conformance_bench.gd",
+      "res://scripts/tools/ruleset_v05_foundation_bench.gd",
+      "res://scripts/tools/runtime_card_authoring_workflow_bench.gd",
+      "res://scripts/tools/runtime_card_catalog_resource_bench.gd",
+      "res://scripts/tools/runtime_card_resolution_track_flow_bench.gd",
+      "res://scripts/tools/runtime_player_turn_flow_bench.gd",
+      "res://scripts/tools/standings_public_snapshot_cutover_bench.gd",
+      "res://scripts/tools/system_resourceization_audit_bench.gd",
+      "res://scripts/tools/tomorrow_playable_vertical_slice_bench.gd",
+      "res://scripts/tools/v075/v075_combat_player_surface_bench.gd",
+      "res://scripts/tools/v075/v075_combat_runtime_owner_bench.gd",
+      "res://scripts/tools/v075/v075_military_mission_bench.gd",
+      "res://scripts/tools/v075/v075_monster_autonomy_trample_bench.gd",
+      "res://scripts/tools/v075/v075_monster_private_skill_bench.gd",
+      "res://scripts/tools/v075/v075_monster_source_core_bench.gd",
+      "res://scripts/tools/v076/v076_private_military_direct_action_bench.gd",
+      "res://scripts/tools/victory_control_runtime_bench.gd",
+      "res://scripts/tools/weather_runtime_characterization_bench.gd",
+      "res://scripts/ui/table/player_inspection_popup.gd",
+      "res://scripts/ui/table/player_roster_panel.gd",
+      "res://scripts/ui/temporary_decision_overlay_capture_bench.gd",
+      "res://scripts/ui/temporary_decision_overlay_interaction_bench.gd",
+      "res://scripts/ui/v073/v073_sample_game_screen.gd",
+      "res://scripts/ui/v074/v074_asset_pip_group.gd",
+      "res://scripts/ui/v074/v074_sample_game_screen.gd",
+      "res://scripts/ui/v075/v075_combat_player_surface.gd",
+      "res://scripts/ui/v075/v075_military_mission_panel.gd",
+      "res://scripts/ui/v075/v075_monster_private_skill_dock.gd",
+      "res://scripts/ui/v075/v075_public_action_arrangement.gd",
+      "res://scripts/ui/v075/v075_responsive_acceptance_audit.gd",
+      "res://scripts/ui/v075/v075_sample_game_screen.gd",
+      "res://scripts/ui/vertical_slice_showcase.gd",
+      "res://scripts/v071_simulation/v071_rule_consistency_review.gd",
+      "res://scripts/v072_simulation/v072_starter_bootstrap_review.gd",
+      "res://scripts/v073_runtime/v073_sample_application_flow.gd",
+      "res://scripts/v073_runtime/v073_sample_runtime_owner.gd",
+      "res://scripts/v073_simulation/v073_deterministic_contention_simulator.gd",
+      "res://scripts/v073_simulation/v073_fixed_order_facility_contention_review.gd",
+      "res://scripts/v074/ai/v074_ai_dynamic_map_bench.gd",
+      "res://scripts/v074/ai/v074_dynamic_map_ai_observation_adapter.gd",
+      "res://scripts/v074/facility/v074_card_definition_registry.gd",
+      "res://scripts/v074/facility/v074_facility_runtime_core.gd",
+      "res://scripts/v074/facility/v074_facility_slot_registry.gd",
+      "res://scripts/v074/map/v074_map_genesis_core.gd",
+      "res://scripts/v074/warehouse/v074_warehouse_card_catalog.gd",
+      "res://scripts/v074/warehouse/v074_warehouse_runtime_bench.gd",
+      "res://scripts/v074_runtime/v074_runtime_owner.gd",
+      "res://scripts/v075/ai/v075_ai_combat_action_candidate_v1.gd",
+      "res://scripts/v075/ai/v075_combat_ai_adapter.gd",
+      "res://scripts/v075/cards/v075_card_definition_registry.gd",
+      "res://scripts/v075/combat/v075_combat_catalog.gd",
+      "res://scripts/v075/combat/v075_combat_damage_core.gd",
+      "res://scripts/v075/combat/v075_facility_combat_damage_bridge.gd",
+      "res://scripts/v075/military/v075_military_mission_core.gd",
+      "res://scripts/v075/monster/v075_monster_source_core.gd",
+      "res://scripts/v075/monster/v075_monster_trample_core.gd",
+      "res://scripts/v075/player/v075_combat_projection_adapter.gd",
+      "res://scripts/v075/presentation/v075_combat_presentation_consumer.gd",
+      "res://scripts/v075/runtime/v075_combat_runtime_owner.gd",
+      "res://scripts/v075/runtime/v075_public_action_batch_core.gd",
+      "res://scripts/v075/telemetry/v075_combat_telemetry_bridge.gd",
+      "res://scripts/v075/telemetry/v075_combat_telemetry_service.gd",
+      "res://scripts/v075_runtime/v075_application_bootstrap.gd",
+      "res://scripts/v075_runtime/v075_application_flow.gd",
+      "res://scripts/v075_runtime/v075_runtime_owner.gd",
+      "res://scripts/v075_simulation/v075_combat_deterministic_simulator.gd",
+      "res://scripts/v075_simulation/v075_combat_simulation_runtime_driver.gd",
+      "res://scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd",
+      "res://scripts/v076/direct_action/v076_private_direct_action_reducer_v1.gd",
+      "res://scripts/v076/direct_action/v076_v075_production_adapter_v1.gd",
+      "res://scripts/v076/military/v076_military_card_crosswalk_v1.gd",
+      "res://scripts/v076/military/v076_military_physical_eta_owner_v1.gd",
+      "res://scripts/v076/military/v076_military_unit_profile_catalog_v1.gd",
+      "res://scripts/v07_adapters/v07_canonical_ai_observation_adapter.gd",
+      "res://scripts/v07_adapters/v07_canonical_player_projection_adapter.gd",
+      "res://scripts/v07_adapters/v07_canonical_save_adapter.gd",
+      "res://scripts/v07_semantic/v07_asset_batch_core.gd",
+      "res://scripts/v07_semantic/v07_dbg_deck_core.gd",
+      "res://scripts/v07_semantic/v07_unified_card_track_core.gd",
+      "res://tests/ai_card_interaction_genuine_v04_compatibility_test.gd",
+      "res://tests/ai_card_interaction_observation_test.gd",
+      "res://tests/ai_card_interaction_scoring_parity_test.gd",
+      "res://tests/ai_card_semantic_projection_test.gd",
+      "res://tests/alpha01_card_illustration_production_cutover_test.gd",
+      "res://tests/alpha01_content_manifest_test.gd",
+      "res://tests/alpha01_product_art_manifest_test.gd",
+      "res://tests/alpha01_selected_role_consumer_test.gd",
+      "res://tests/alpha04_commodity_art_coverage_test.gd",
+      "res://tests/alpha04_commodity_direct_claim_test.gd",
+      "res://tests/alpha04_dock_legacy_planner_parity_test.gd",
+      "res://tests/alpha04b_legacy_retirement_and_architecture_test.gd",
+      "res://tests/alpha04b_player_roster_popup_component_test.gd",
+      "res://tests/alpha04b_public_player_roster_projection_service_test.gd",
+      "res://tests/art_contact_sheet_capture.gd",
+      "res://tests/art_identity_gate_test.gd",
+      "res://tests/card_batch_auction_visibility_test.gd",
+      "res://tests/card_codex_catalog_owned_constructor_test.gd",
+      "res://tests/card_codex_dto_compatibility_adapter_test.gd",
+      "res://tests/card_codex_playerface_architecture_scan_test.gd",
+      "res://tests/card_codex_playerface_full_catalog_integration_test.gd",
+      "res://tests/card_codex_playerface_performance_test.gd",
+      "res://tests/card_codex_playerface_privacy_test.gd",
+      "res://tests/card_codex_playerface_runtime_invariants_test.gd",
+      "res://tests/card_core_effect_adapters_v06_test.gd",
+      "res://tests/card_economy_product_route_effect_runtime_service_test.gd",
+      "res://tests/card_economy_product_route_formula_runtime_service_test.gd",
+      "res://tests/card_flow_policy_v06_test.gd",
+      "res://tests/card_flow_region_supply_production_wiring_v06_test.gd",
+      "res://tests/card_flow_region_supply_purchase_v06_test.gd",
+      "res://tests/card_flow_transaction_service_v06_test.gd",
+      "res://tests/card_global_supply_demand_v06_test.gd",
+      "res://tests/card_hand_play_reason_projection_test.gd",
+      "res://tests/card_illustration_layer_test.gd",
+      "res://tests/card_instance_decision_state_test.gd",
+      "res://tests/card_play_requirement_policy_test.gd",
+      "res://tests/card_player_face_public_localization_source_test.gd",
+      "res://tests/card_player_state_production_adapter_v06_test.gd",
+      "res://tests/card_presentation_public_contract_test.gd",
+      "res://tests/card_presentation_viewmodel_runtime_test.gd",
+      "res://tests/card_resolution_controller_consolidation_test.gd",
+      "res://tests/card_resolution_execution_runtime_service_test.gd",
+      "res://tests/card_resolution_runtime_controller_test.gd",
+      "res://tests/card_resolution_transition_command_lineage_test.gd",
+      "res://tests/card_runtime_catalog_v06_test.gd",
+      "res://tests/card_runtime_review_capture.gd",
+      "res://tests/card_semantic_architecture_scan_test.gd",
+      "res://tests/card_semantic_authorization_boundary_test.gd",
+      "res://tests/card_semantic_authorized_projection_integration_test.gd",
+      "res://tests/card_semantic_catalog_public_authorization_test.gd",
+      "res://tests/card_semantic_schema_compiler_test.gd",
+      "res://tests/card_semantic_source_authorization_test.gd",
+      "res://tests/codex_navigation_backstack_test.gd",
+      "res://tests/codex_navigation_runtime_controller_test.gd",
+      "res://tests/codex_public_snapshot_service_test.gd",
+      "res://tests/commercial_art/commercial_art_review_scene_test.gd",
+      "res://tests/commercial_art/commercial_art_screenshot_capture.gd",
+      "res://tests/commercial_art/commercial_audio_asset_contract_test.gd",
+      "res://tests/commercial_art/commercial_audio_production_wiring_test.gd",
+      "res://tests/commercial_art/commercial_audio_runtime_service_test.gd",
+      "res://tests/commercial_art/commercial_font_locale_runtime_test.gd",
+      "res://tests/commercial_art/commercial_model_asset_contract_test.gd",
+      "res://tests/commercial_art/commercial_planet_asset_contract_test.gd",
+      "res://tests/commercial_art/commercial_planet_production_presentation_test.gd",
+      "res://tests/commercial_art/commercial_player_card_dock_interaction_test.gd",
+      "res://tests/commercial_art/commercial_presentation_catalog_contract_test.gd",
+      "res://tests/commercial_art/commercial_third_party_manifest_test.gd",
+      "res://tests/commercial_art/commercial_ui_asset_contract_test.gd",
+      "res://tests/commodity_flow_atomic_batch_sink_v06_test.gd",
+      "res://tests/commodity_flow_local_baseline_demand_v06_test.gd",
+      "res://tests/composition_root_audit_test.gd",
+      "res://tests/core_economy_production_integration_v06_test.gd",
+      "res://tests/e_1280_economy_topbar_capture.gd",
+      "res://tests/e_1280_table_readability_capture.gd",
+      "res://tests/economy_cashflow_runtime_test.gd",
+      "res://tests/final_settlement_board_visibility_truth_v06_test.gd",
+      "res://tests/final_settlement_public_privacy_v06_test.gd",
+      "res://tests/final_settlement_public_snapshot_service_test.gd",
+      "res://tests/final_settlement_runtime_composition_v06_test.gd",
+      "res://tests/funplay_mcp_runtime_event_cursor_contract_test.gd",
+      "res://tests/game_action_semantic_protocol_v1_test.gd",
+      "res://tests/game_runtime_context_query_test.gd",
+      "res://tests/game_session_save_characterization_test.gd",
+      "res://tests/gameplay_balance_diagnostics_monster_art_profile_test.gd",
+      "res://tests/gdp_formula_runtime_controller_test.gd",
+      "res://tests/helpers/card_resolution_main_test_harness.gd",
+      "res://tests/human_normal_table_playability_v06_test.gd",
+      "res://tests/layout_scene_smoke_test.gd",
+      "res://tests/legacy_onboarding_purge_test.gd",
+      "res://tests/legacy_v05/city_product_project_runtime_test_v05.gd",
+      "res://tests/main_application_flow_handler_extraction_test.gd",
+      "res://tests/main_dependency_direction_migration_test.gd",
+      "res://tests/main_runtime_composition_test.gd",
+      "res://tests/main_victory_public_privacy_v06_test.gd",
+      "res://tests/monster_action_map_effect_capture.gd",
+      "res://tests/monster_codex_public_snapshot_service_test.gd",
+      "res://tests/monster_map_token_capture.gd",
+      "res://tests/monster_runtime_review_capture.gd",
+      "res://tests/organization_card_catalog_v06_test.gd",
+      "res://tests/organization_card_privacy_v06_test.gd",
+      "res://tests/organization_card_runtime_v06_test.gd",
+      "res://tests/organization_production_composition_v06_test.gd",
+      "res://tests/player_card_codex_dto_v1_test.gd",
+      "res://tests/player_card_codex_family_ladder_dto_v1_test.gd",
+      "res://tests/player_facing_privacy_boundary_test.gd",
+      "res://tests/player_organization_runtime_controller_v06_test.gd",
+      "res://tests/player_rules_in_game_test.gd",
+      "res://tests/product_codex_public_snapshot_service_test.gd",
+      "res://tests/product_codex_public_source_service_test.gd",
+      "res://tests/production_ui_minimal_capture.gd",
+      "res://tests/region_codex_public_source_privacy_acceptance_test.gd",
+      "res://tests/roguelike_economic_viability_policy_test.gd",
+      "res://tests/role_catalog_runtime_service_test.gd",
+      "res://tests/runtime_pointer_input_layer_test.gd",
+      "res://tests/selected_player_actor_authority_split_test.gd",
+      "res://tests/showcase_frame_capture.gd",
+      "res://tests/smoke_test.gd",
+      "res://tests/standings_application_flow_cutover_test.gd",
+      "res://tests/standings_public_snapshot_service_test.gd",
+      "res://tests/support/production_session_start_driver.gd",
+      "res://tests/support/v073_ui_globe_test_support.gd",
+      "res://tests/support/v075_atomic_runtime_test_suite.gd",
+      "res://tests/tomorrow_playable_vertical_slice_test.gd",
+      "res://tests/ui_snapshot_capture.gd",
+      "res://tests/ui_text_smoke_test.gd",
+      "res://tests/v06_commodity_target_context_test.gd",
+      "res://tests/v06_market_acceptance_contract_test.gd",
+      "res://tests/v06_save_envelope_runtime_test.gd",
+      "res://tests/v06_save_owner_registry_test.gd",
+      "res://tests/v071_simulation/v071_deterministic_simulator_test.gd",
+      "res://tests/v071_simulation/v071_rule_consistency_review_scene_test.gd",
+      "res://tests/v072_simulation/v072_deterministic_simulator_test.gd",
+      "res://tests/v072_simulation/v072_starter_bootstrap_review_scene_test.gd",
+      "res://tests/v073_playtest_instrumentation_acceptance_test.gd",
+      "res://tests/v073_playtest_questionnaire_visual_capture.gd",
+      "res://tests/v073_production_sample_acceptance_test.gd",
+      "res://tests/v073_production_visual_capture.gd",
+      "res://tests/v073_simulation/v073_deterministic_contention_simulator_test.gd",
+      "res://tests/v073_simulation/v073_fixed_order_facility_contention_review_scene_test.gd",
+      "res://tests/v073_ui_globe_visual_capture.gd",
+      "res://tests/v074_ai_dynamic_map_fixture.gd",
+      "res://tests/v074_ai_dynamic_map_legal_target_test.gd",
+      "res://tests/v074_ai_dynamic_map_observation_test.gd",
+      "res://tests/v074_ai_dynamic_map_performance_test.gd",
+      "res://tests/v074_ai_dynamic_map_privacy_test.gd",
+      "res://tests/v074_asset_pip_projection_test.gd",
+      "res://tests/v074_bootstrap_architecture_ratchet_test.gd",
+      "res://tests/v074_facility_registry_test.gd",
+      "res://tests/v074_legacy_main_retirement_test.gd",
+      "res://tests/v074_runtime_owner_integration_test.gd",
+      "res://tests/v074_sushi_track_authoritative_presentation_test.gd",
+      "res://tests/v074_target_rail_virtualization_test.gd",
+      "res://tests/v074_track_dbg_warehouse_integration_test.gd",
+      "res://tests/v074_unified_track_visible_capacity_10_test.gd",
+      "res://tests/v074_warehouse_runtime_test.gd",
+      "res://tests/v075_application_composition_test.gd",
+      "res://tests/v075_application_flow_activation_failure_rollback_test.gd",
+      "res://tests/v075_application_flow_atomic_activation_test.gd",
+      "res://tests/v075_application_flow_signal_after_commit_test.gd",
+      "res://tests/v075_application_flow_sync_reentry_test.gd",
+      "res://tests/v075_application_private_skill_receipt_privacy_test.gd",
+      "res://tests/v075_authoritative_card_identity_lifecycle_binding_test.gd",
+      "res://tests/v075_card_definition_registry_test.gd",
+      "res://tests/v075_character_monster_capacity_port_test.gd",
+      "res://tests/v075_combat_ai_natural_acquisition_test.gd",
+      "res://tests/v075_combat_ai_runtime_policy_test.gd",
+      "res://tests/v075_combat_ai_test.gd",
+      "res://tests/v075_combat_card_dbg_lifecycle_integration_test.gd",
+      "res://tests/v075_combat_checkpoint_rollback_test.gd",
+      "res://tests/v075_combat_dbg_personal_lifecycle_test.gd",
+      "res://tests/v075_combat_presentation_exact_once_test.gd",
+      "res://tests/v075_combat_public_private_projection_test.gd",
+      "res://tests/v075_combat_resolution_fail_once_test.gd",
+      "res://tests/v075_combat_simulation_test.gd",
+      "res://tests/v075_combat_telemetry_bridge_test.gd",
+      "res://tests/v075_facility_combat_damage_bridge_test.gd",
+      "res://tests/v075_facility_combat_damage_port_test.gd",
+      "res://tests/v075_final_settlement_presentation_exact_once_regression_test.gd",
+      "res://tests/v075_geometry_asset_false_green_negative_test.gd",
+      "res://tests/v075_mcp_production_probe.gd",
+      "res://tests/v075_military_dbg_reshuffle_test.gd",
+      "res://tests/v075_military_monster_assault_test.gd",
+      "res://tests/v075_military_no_bound_action_test.gd",
+      "res://tests/v075_military_no_guard_test.gd",
+      "res://tests/v075_military_no_retarget_test.gd",
+      "res://tests/v075_military_region_budget_test.gd",
+      "res://tests/v075_military_region_no_full_damage_replication_test.gd",
+      "res://tests/v075_military_two_task_contract_test.gd",
+      "res://tests/v075_military_withdraw_to_discard_test.gd",
+      "res://tests/v075_monster_autonomy_dynamic_map_integration_test.gd",
+      "res://tests/v075_monster_autonomy_hungry_fallback_test.gd",
+      "res://tests/v075_monster_autonomy_shortest_path_test.gd",
+      "res://tests/v075_monster_autonomy_snapshot_freeze_test.gd",
+      "res://tests/v075_monster_card_reuse_exact_once_test.gd",
+      "res://tests/v075_monster_catalog_test.gd",
+      "res://tests/v075_monster_control_capacity_test.gd",
+      "res://tests/v075_monster_deploy_mode_test.gd",
+      "res://tests/v075_monster_flying_no_trample_test.gd",
+      "res://tests/v075_monster_ground_trample_test.gd",
+      "res://tests/v075_monster_one_skill_per_batch_test.gd",
+      "res://tests/v075_monster_preferred_color_test.gd",
+      "res://tests/v075_monster_private_skill_asset_reservation_test.gd",
+      "res://tests/v075_monster_private_skill_fizzle_test.gd",
+      "res://tests/v075_monster_private_skill_safe_boundary_test.gd",
+      "res://tests/v075_monster_private_skill_self_effect_test.gd",
+      "res://tests/v075_monster_private_skill_sequence_test.gd",
+      "res://tests/v075_monster_private_skill_source_lifecycle_test.gd",
+      "res://tests/v075_monster_private_skill_visibility_test.gd",
+      "res://tests/v075_monster_refresh_25_50_75_100_test.gd",
+      "res://tests/v075_monster_refresh_mode_test.gd",
+      "res://tests/v075_monster_replace_mode_test.gd",
+      "res://tests/v075_monster_skill_asset_port_test.gd",
+      "res://tests/v075_monster_skill_cooldown_reuse_test.gd",
+      "res://tests/v075_monster_skill_upgrade_unlock_test.gd",
+      "res://tests/v075_monster_source_runtime_transition_test.gd",
+      "res://tests/v075_monster_trample_complexity_independence_test.gd",
+      "res://tests/v075_monster_trample_distance_scaling_test.gd",
+      "res://tests/v075_monster_trample_exact_once_test.gd",
+      "res://tests/v075_monster_trample_region_cap_test.gd",
+      "res://tests/v075_monster_trample_warehouse_test.gd",
+      "res://tests/v075_monster_upgrade_mode_test.gd",
+      "res://tests/v075_monster_upgrade_no_cooldown_reset_test.gd",
+      "res://tests/v075_natural_runtime_error_zero_test.gd",
+      "res://tests/v075_presentation_receipt_collision_reproduction_test.gd",
+      "res://tests/v075_presentation_receipt_identity_contract_test.gd",
+      "res://tests/v075_private_skill_failure_privacy_test.gd",
+      "res://tests/v075_private_skill_request_telemetry_integration_test.gd",
+      "res://tests/v075_public_action_batch_core_test.gd",
+      "res://tests/v075_responsive_viewport_headed_capture.gd",
+      "res://tests/v075_responsive_viewport_matrix_test.gd",
+      "res://tests/v075_ruleset_runtime_owner_test.gd",
+      "res://tests/v075_runtime_acquisition_trace_test.gd",
+      "res://tests/v075_runtime_facility_bridge_integration_test.gd",
+      "res://tests/v075_runtime_owner_cleanup_failure_propagation_test.gd",
+      "res://tests/v075_runtime_owner_cleanup_idempotence_test.gd",
+      "res://tests/v075_runtime_owner_cleanup_result_required_test.gd",
+      "res://tests/v075_runtime_owner_failed_init_cleanup_test.gd",
+      "res://tests/v075_runtime_owner_integration_test.gd",
+      "res://tests/v075_runtime_owner_no_residual_bindings_test.gd",
+      "res://tests/v075_runtime_owner_no_residual_private_skill_state_test.gd",
+      "res://tests/v075_runtime_telemetry_bridge_integration_test.gd",
+      "res://tests/v075_runtime_track_supply_probe_test.gd",
+      "res://tests/v075_sample_game_screen_wrapper_test.gd",
+      "res://tests/v075_simulation_resume_contract_test.gd",
+      "res://tests/v075_simulation_step_trace_test.gd",
+      "res://tests/v075_terminal_combat_quiescence_test.gd",
+      "res://tests/v075_ui_runtime_presentation_binding_integration_test.gd",
+      "res://tests/v075_warehouse_combat_privacy_test.gd",
+      "res://tests/v076_alpha07_card_table_flow_readiness_test.gd",
+      "res://tests/v076_alpha07_coachmark_close_performance_test.gd",
+      "res://tests/v076_alpha07_human_playability_readiness_test.gd",
+      "res://tests/v076_alpha07_pacing_determinism_test.gd",
+      "res://tests/v076_bottom_countdown_production_binding_test.gd",
+      "res://tests/v076_card_submission_requeue_identity_test.gd",
+      "res://tests/v076_commercial_shell_reachability_test.gd",
+      "res://tests/v076_deck_lifecycle_presentation_test.gd",
+      "res://tests/v076_facility_commit_map_marker_e2e_test.gd",
+      "res://tests/v076_human_golden_observation_readiness_test.gd",
+      "res://tests/v076_military_card_crosswalk_v1_test.gd",
+      "res://tests/v076_military_mission_lifecycle_reducer_test.gd",
+      "res://tests/v076_military_physical_eta_owner_test.gd",
+      "res://tests/v076_military_unit_profile_authoring_v1_test.gd",
+      "res://tests/v076_new_game_loading_feedback_test.gd",
+      "res://tests/v076_phase5_combat_observatory_gate.gd",
+      "res://tests/v076_phase6_facility_map_track_presentation_gate.gd",
+      "res://tests/v076_phase7_sound_motion_performance_gate.gd",
+      "res://tests/v076_private_direct_action_input_owner_test.gd",
+      "res://tests/v076_private_military_direct_action_integration_test.gd",
+      "res://tests/v076_private_monster_skill_bundle_contract_test.gd",
+      "res://tests/v076_production_ai_privacy_test.gd",
+      "res://tests/v076_production_clock_liveness_test.gd",
+      "res://tests/v076_production_composition_precheck_test.gd",
+      "res://tests/v076_production_military_composition_test.gd",
+      "res://tests/v076_production_victory_audit_readiness_test.gd",
+      "res://tests/v076_public_action_arrangement_privacy_test.gd",
+      "res://tests/v076_public_action_arrangement_test.gd",
+      "res://tests/v076_simultaneous_private_action_test.gd",
+      "res://tests/v07_adapters/v071_ai_self_lead_observation_test.gd",
+      "res://tests/v07_adapters/v071_save_rng_contract_test.gd",
+      "res://tests/v07_adapters/v07_adapter_architecture_contract_test.gd",
+      "res://tests/v07_adapters/v07_canonical_adapter_aggregate_test.gd",
+      "res://tests/v07_adapters/v07_canonical_ai_observation_adapter_test.gd",
+      "res://tests/v07_adapters/v07_canonical_player_projection_adapter_test.gd",
+      "res://tests/v07_adapters/v07_canonical_rng_adapter_test.gd",
+      "res://tests/v07_adapters/v07_canonical_save_adapter_test.gd",
+      "res://tests/v07_adapters/v07_commercial_art_asset_key_compatibility_test.gd",
+      "res://tests/v07_semantic/v071_three_wing_contract_aggregate_test.gd",
+      "res://tests/v07_semantic/v072_card_definition_registry_test.gd",
+      "res://tests/v07_semantic/v072_three_wing_contract_aggregate_test.gd",
+      "res://tests/v07_semantic/v073_fixed_order_facility_contention_core_test.gd",
+      "res://tests/v07_semantic/v07_dbg_deck_core_test.gd",
+      "res://tests/v07_semantic/v07_solar_victory_core_test.gd",
+      "res://tests/v07_semantic/v07_three_wing_contract_aggregate_test.gd",
+      "res://tests/v07_semantic/v07_track_acquisition_authority_port_test.gd",
+      "res://tests/v07_semantic/v07_unified_card_track_core_test.gd",
+      "res://tests/vertical_slice_showcase_test.gd",
+      "res://tests/victory_control_public_projection_privacy_v06_test.gd",
+      "res://tests/victory_control_split_delta_precision_test.gd",
+      "res://tests/visual_event_smoke_test.gd",
+      "res://tests/visual_snapshot.gd",
+      "res://tests/vs06_facility_commodity_flow_integration_test.gd",
+      "res://tests/vs06_production_dispatch_replay_test.gd",
+      "res://tests/weather_card_ai_v1_test.gd",
+      "res://tests/weather_lifecycle_production_capture.gd",
+      "res://tests/weather_product_classification_tags_test.gd",
+      "res://tests/weather_v1_save_privacy_acceptance_test.gd"
+    ],
+    "embedded_start_overlay_present": true,
+    "embedded_start_overlay_production_reachable": true,
+    "failures": [],
+    "godot_full_reproof_run": false,
+    "head_sha": "3d538fce8193dfc42f4a44411d77d30f2a795669",
+    "inline_overlay_line": 507,
+    "main_chain": [
+      {
+        "from": "project.godot",
+        "kind": "project_main_scene",
+        "line": 18,
+        "to": "res://scenes/main.tscn"
+      },
+      {
+        "from": "res://scenes/main.tscn",
+        "kind": "ext_resource",
+        "line": 5,
+        "to": "res://scenes/ui/v075/V075SampleGameScreen.tscn"
+      },
+      {
+        "from": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+        "kind": "ext_resource",
+        "line": 3,
+        "to": "res://scenes/ui/v074/V074SampleGameScreen.tscn"
+      },
+      {
+        "from": "res://scenes/ui/v074/V074SampleGameScreen.tscn",
+        "kind": "ext_resource",
+        "line": 3,
+        "to": "res://scenes/ui/V073SampleGameScreen.tscn"
+      },
+      {
+        "from": "res://scenes/ui/V073SampleGameScreen.tscn",
+        "kind": "inline_node",
+        "line": 507,
+        "to": "inline OverlayLayer"
+      }
+    ],
+    "main_ext_resource_lines": {
+      "bootstrap": 3,
+      "game_screen": 5,
+      "runtime_composition": 4
+    },
+    "main_scene": "res://scenes/main.tscn",
+    "main_scene_line": 18,
+    "menu_root_lobby_present": true,
+    "menu_root_lobby_production_reachable": true,
+    "orphaned_menu_asset_count": 4,
+    "project_main_scene": "res://scenes/main.tscn",
+    "project_main_scene_line": 18,
+    "project_root": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice",
+    "read_only": true,
+    "schema_version": "space_syndicate.product_continuity_audit.v1",
+    "standalone_menu_superseded_by_embedded_start": "UNRESOLVED",
+    "status": "PASS_STATIC",
+    "summary": {
+      "failure_count": 0,
+      "reachable_count": 12,
+      "support_file_count": 14,
+      "unreachable_count": 4
+    },
+    "supporting_files": [
+      {
+        "exists": true,
+        "path": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd"
+      },
+      {
+        "exists": true,
+        "path": "res://scripts/runtime/setup_application_flow_controller.gd"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/OverlayLayer.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/MenuOverlay.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/MenuQuickNavigation.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/MenuRootLobby.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/CommercialSettingsSurface.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/NewGameSetupPage.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/NewGameSetupLobby.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/v075/V075SampleGameScreen.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/v074/V074SampleGameScreen.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/V073SampleGameScreen.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/runtime/V075RuntimeComposition.tscn"
+      },
+      {
+        "exists": true,
+        "path": "res://project.godot"
+      }
+    ],
+    "surface_reachability": [
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          }
+        ],
+        "exists": true,
+        "path": "res://scenes/main.tscn",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 3,
+            "to": "res://scripts/v075_runtime/v075_application_bootstrap.gd"
+          }
+        ],
+        "exists": true,
+        "path": "res://scripts/v075_runtime/v075_application_bootstrap.gd",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 4,
+            "to": "res://scenes/runtime/V075RuntimeComposition.tscn"
+          }
+        ],
+        "exists": true,
+        "path": "res://scenes/runtime/V075RuntimeComposition.tscn",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 5,
+            "to": "res://scenes/ui/v075/V075SampleGameScreen.tscn"
+          }
+        ],
+        "exists": true,
+        "path": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 5,
+            "to": "res://scenes/ui/v075/V075SampleGameScreen.tscn"
+          },
+          {
+            "from": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+            "kind": "ext_resource",
+            "line": 3,
+            "to": "res://scenes/ui/v074/V074SampleGameScreen.tscn"
+          }
+        ],
+        "exists": true,
+        "path": "res://scenes/ui/v074/V074SampleGameScreen.tscn",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 5,
+            "to": "res://scenes/ui/v075/V075SampleGameScreen.tscn"
+          },
+          {
+            "from": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+            "kind": "ext_resource",
+            "line": 3,
+            "to": "res://scenes/ui/v074/V074SampleGameScreen.tscn"
+          },
+          {
+            "from": "res://scenes/ui/v074/V074SampleGameScreen.tscn",
+            "kind": "ext_resource",
+            "line": 3,
+            "to": "res://scenes/ui/V073SampleGameScreen.tscn"
+          },
+          {
+            "from": "res://scenes/ui/V073SampleGameScreen.tscn",
+            "kind": "inline_node",
+            "line": 507,
+            "to": "inline OverlayLayer"
+          }
+        ],
+        "exists": true,
+        "path": "res://scenes/ui/V073SampleGameScreen.tscn",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 6,
+            "to": "res://scenes/ui/v075/V075NewGameLoadingOverlay.tscn"
+          }
+        ],
+        "exists": true,
+        "path": "res://scenes/ui/v075/V075NewGameLoadingOverlay.tscn",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 5,
+            "to": "res://scenes/ui/v075/V075SampleGameScreen.tscn"
+          },
+          {
+            "from": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+            "kind": "ext_resource",
+            "line": 8,
+            "to": "res://scenes/ui/MenuOverlay.tscn"
+          }
+        ],
+        "exists": true,
+        "path": "res://scenes/ui/MenuOverlay.tscn",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 5,
+            "to": "res://scenes/ui/v075/V075SampleGameScreen.tscn"
+          },
+          {
+            "from": "res://scenes/ui/v075/V075SampleGameScreen.tscn",
+            "kind": "ext_resource",
+            "line": 8,
+            "to": "res://scenes/ui/MenuOverlay.tscn"
+          },
+          {
+            "from": "res://scenes/ui/MenuOverlay.tscn",
+            "kind": "ext_resource",
+            "line": 5,
+            "to": "res://scenes/ui/MenuQuickNavigation.tscn"
+          }
+        ],
+        "exists": true,
+        "path": "res://scenes/ui/MenuQuickNavigation.tscn",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 7,
+            "to": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn"
+          },
+          {
+            "from": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+            "kind": "ext_resource",
+            "line": 3,
+            "to": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd"
+          },
+          {
+            "from": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+            "kind": "script_load",
+            "line": 10,
+            "to": "res://scenes/ui/MenuRootLobby.tscn"
+          }
+        ],
+        "exists": true,
+        "path": "res://scenes/ui/MenuRootLobby.tscn",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 7,
+            "to": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn"
+          },
+          {
+            "from": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+            "kind": "ext_resource",
+            "line": 3,
+            "to": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd"
+          }
+        ],
+        "exists": true,
+        "path": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "chain": [
+          {
+            "from": "project.godot",
+            "kind": "project_main_scene",
+            "line": 18,
+            "to": "res://scenes/main.tscn"
+          },
+          {
+            "from": "res://scenes/main.tscn",
+            "kind": "ext_resource",
+            "line": 7,
+            "to": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn"
+          },
+          {
+            "from": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+            "kind": "ext_resource",
+            "line": 3,
+            "to": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd"
+          },
+          {
+            "from": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+            "kind": "script_load",
+            "line": 13,
+            "to": "res://scenes/ui/CommercialSettingsSurface.tscn"
+          }
+        ],
+        "exists": true,
+        "path": "res://scenes/ui/CommercialSettingsSurface.tscn",
+        "status": "REACHABLE_FROM_CURRENT_MAIN"
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/OverlayLayer.tscn",
+        "status": "UNREACHABLE_FROM_CURRENT_MAIN",
+        "supporting_referrers": [
+          {
+            "from": "res://scenes/ui/GameScreen.tscn",
+            "kind": "ext_resource",
+            "line": 10,
+            "referrer_reachable": false
+          },
+          {
+            "from": "res://scenes/ui/TemporaryDecisionOverlayPreview.tscn",
+            "kind": "ext_resource",
+            "line": 5,
+            "referrer_reachable": false
+          },
+          {
+            "from": "res://tests/transient_gameplay_windows_v06_test.gd",
+            "kind": "script_load",
+            "line": 3,
+            "referrer_reachable": false
+          }
+        ]
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/NewGameSetupPage.tscn",
+        "status": "UNREACHABLE_FROM_CURRENT_MAIN",
+        "supporting_referrers": [
+          {
+            "from": "res://scripts/runtime/setup_application_flow_controller.gd",
+            "kind": "script_load",
+            "line": 4,
+            "referrer_reachable": false
+          }
+        ]
+      },
+      {
+        "exists": true,
+        "path": "res://scenes/ui/NewGameSetupLobby.tscn",
+        "status": "UNREACHABLE_FROM_CURRENT_MAIN",
+        "supporting_referrers": [
+          {
+            "from": "res://scenes/ui/NewGameSetupPage.tscn",
+            "kind": "ext_resource",
+            "line": 5,
+            "referrer_reachable": false
+          }
+        ]
+      },
+      {
+        "exists": true,
+        "path": "res://scripts/runtime/setup_application_flow_controller.gd",
+        "status": "UNREACHABLE_FROM_CURRENT_MAIN",
+        "supporting_referrers": [
+          {
+            "from": "res://scenes/runtime/SetupApplicationFlowController.tscn",
+            "kind": "ext_resource",
+            "line": 3,
+            "referrer_reachable": false
+          }
+        ]
+      }
+    ],
+    "tree_sha": "2bbe98154e343bbe2e90c21514c9a606f17ff521",
+    "unclassified_present_asset_count": 0
+  },
+  "read_only": true,
+  "registry_id": "space-syndicate-product-continuity-20260825",
+  "retired_goal_count": 3,
+  "silent_active_capability_loss_count": 0,
+  "silent_production_surface_loss_count": 0,
+  "status": "PASS_STATIC",
+  "superseded_goal_count": 0,
+  "unclassified_capability_count": 0,
+  "unclassified_present_asset_count": 0,
+  "v076_reuse_point_inertia_gate_retained": true,
+  "version_continuity_registry_implementation_count": 1,
+  "version_record_count": 4
+}

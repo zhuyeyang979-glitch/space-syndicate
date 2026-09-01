@@ -1,0 +1,88 @@
+name: Space Syndicate Asset Registry and License Gate
+run-name: Space Syndicate Asset Registry and License Gate
+
+"on":
+  pull_request:
+    paths:
+      - ".github/workflows/space-syndicate-asset-registry-license-gate.yml"
+      - "assets/**"
+      - "docs/licenses/**"
+      - "docs/third_party/selected_commercial_asset_manifest.json"
+      - "tools/art_pipeline/source_pack_registry.json"
+      - "docs/product/SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.json"
+      - "docs/product/SPACE_SYNDICATE_ASSET_REFERENCE_REGISTRY.json"
+      - "docs/product/SPACE_SYNDICATE_ASSET_REFERENCE_REGISTRY.md"
+      - "docs/product/SPACE_SYNDICATE_ASSET_REFERENCE_GALLERY.md"
+      - "THIRD_PARTY_NOTICES.generated.md"
+      - "scenes/main.tscn"
+      - "scenes/ui/v075/V075SampleGameScreen.tscn"
+      - "scenes/ui/v075/V075NewGameLoadingOverlay.tscn"
+      - "resources/cards/runtime/card_runtime_catalog_v06.tres"
+      - "scripts/v075/cards/v075_card_definition_registry.gd"
+      - "scripts/presentation/v074/v074_planet_presentation_adapter_v1.gd"
+      - "scripts/ui/map/planet_city_marker.gd"
+      - "scripts/v07_semantic/v07_unified_card_track_core.gd"
+      - "scripts/ui/v074/v074_sample_game_screen.gd"
+      - "scripts/ui/v075/v075_sample_game_screen.gd"
+      - "scripts/v076/simulation/v076_deterministic_kernel.gd"
+      - "scripts/v076/direct_action/v076_private_direct_action_input_owner_v1.gd"
+      - "scripts/v07_semantic/v07_solar_victory_core.gd"
+      - "scripts/ui/v075/v075_new_game_loading_overlay.gd"
+      - "data/art/alpha01_product_art_manifest.json"
+      - "data/art/card_illustration_manifest_v06.json"
+      - "data/art/monster_body_art_manifest.json"
+      - "tools/assets/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  asset-registry-license-gate:
+    name: Space Syndicate Asset Registry and License Gate
+    runs-on: windows-2022
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Checkout exact source SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source identity
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $expectedHead = if ("${{ github.event_name }}" -eq "pull_request") {
+            "${{ github.event.pull_request.head.sha }}"
+          } else {
+            "${{ github.sha }}"
+          }
+          $actualHead = (git rev-parse HEAD).Trim()
+          if ($actualHead -cne $expectedHead) {
+            throw "Checkout mismatch: expected=$expectedHead actual=$actualHead"
+          }
+
+      - name: Run static registry, provenance, license, and query gate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $before = (& git status --porcelain=v1 -uall | Out-String).Trim()
+          python .\tools\assets\asset_registry_gate_selftest.py
+          if ($LASTEXITCODE -ne 0) {
+            throw "Asset registry gate self-test failed."
+          }
+          python .\tools\assets\run_asset_registry_gate.py
+          if ($LASTEXITCODE -ne 0) {
+            throw "Asset registry and license gate failed."
+          }
+          $after = (& git status --porcelain=v1 -uall | Out-String).Trim()
+          if ($after -cne $before) {
+            throw "Static asset gate mutated the checkout."
+          }
+          Write-Output "ASSET_GATE_PRODUCT_EXECUTION_COUNT=0"
+          Write-Output "ASSET_GATE_FULL_WORLD_REPROOF_COUNT=0"

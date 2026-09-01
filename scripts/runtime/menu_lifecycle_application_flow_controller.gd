@@ -10,6 +10,27 @@ class_name MenuLifecycleApplicationFlowController
 const ROOT_LOBBY_SCENE := preload("res://scenes/ui/MenuRootLobby.tscn")
 const PAUSE_SUMMARY_SCENE := preload("res://scenes/ui/PauseMenuSummaryBoard.tscn")
 const COMMERCIAL_CREDITS_SCENE := preload("res://scenes/ui/CommercialCreditsSurface.tscn")
+const SETTINGS_SCENE := preload("res://scenes/ui/CommercialSettingsSurface.tscn")
+const RULES_BOARD_SCENE := preload("res://scenes/ui/RulesQuickReferenceBoard.tscn")
+const RULES_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
+const COMPENDIUM_HUB_SNAPSHOT := preload("res://scripts/viewmodels/compendium_hub_snapshot.gd")
+const PRESENTATION_WINDOW_MODES := ["windowed", "fullscreen"]
+const PRESENTATION_RESOLUTIONS := ["1366x768", "1600x960", "1920x1080"]
+const PRESENTATION_LANGUAGES := ["zh-Hans", "en"]
+const DEFAULT_PRESENTATION_SETTINGS := {
+	"master_volume": 1.0,
+	"music_volume": 0.75,
+	"sfx_volume": 0.85,
+	"window_mode": "windowed",
+	"resolution": "1600x960",
+	"language": "zh-Hans",
+	"reduced_motion": false,
+	"screen_shake": true,
+	"tooltip_delay_ms": 420,
+}
+
+signal new_game_requested
+signal presentation_settings_changed(snapshot: Dictionary)
 
 @export var menu_overlay_path: NodePath
 @export var coordinator_path: NodePath
@@ -17,6 +38,7 @@ const COMMERCIAL_CREDITS_SCENE := preload("res://scenes/ui/CommercialCreditsSurf
 @export var application_flow_port_path: NodePath
 @export var codex_navigation_owner_path: NodePath
 @export var game_screen_path: NodePath
+@export var v075_application_flow_path: NodePath
 @export var open_root_on_ready := true
 
 var _root_open_count := 0
@@ -27,10 +49,27 @@ var _close_count := 0
 var _load_request_count := 0
 var _load_run_button: Button
 var _last_shell_kind: StringName = &""
+var _v075_saved_pace_multiplier := 1
+var _v075_pause_depth := 0
+var _settings_surface: Control
+var _presentation_settings_snapshot: Dictionary = (
+	DEFAULT_PRESENTATION_SETTINGS.duplicate(true)
+)
+var _presentation_settings_revision := 1
+var _presentation_settings_change_count := 0
+var _presentation_settings_rejection_count := 0
+var _presentation_settings_surface_load_count := 0
+var _last_presentation_settings_reason := "session_defaults"
+var _menu_input_response_count := 0
+var _menu_input_response_last_ms := 0.0
+var _menu_input_response_max_ms := 0.0
 
 
 func _ready() -> void:
-	if open_root_on_ready and not Engine.is_editor_hint():
+	if Engine.is_editor_hint():
+		return
+	call_deferred("_propagate_presentation_settings_to_game_screen")
+	if open_root_on_ready:
 		call_deferred("open_root_menu")
 
 
@@ -94,6 +133,8 @@ func close_to_table() -> bool:
 		var coordinator := _coordinator()
 		if coordinator != null:
 			coordinator.resume_session()
+		else:
+			_resume_v075_pacing()
 	_request_full_refresh()
 	_close_count += 1
 	_last_shell_kind = &"table"
@@ -105,6 +146,11 @@ func is_menu_visible() -> bool:
 	return overlay != null and overlay.visible
 
 
+func get_presentation_settings_snapshot() -> Dictionary:
+	"""Return the session-only presentation settings owned by this controller."""
+	return _presentation_settings_snapshot.duplicate(true)
+
+
 func handle_key_request(keycode: Key) -> bool:
 	match keycode:
 		KEY_ESCAPE:
@@ -112,8 +158,8 @@ func handle_key_request(keycode: Key) -> bool:
 				close_to_table()
 			else:
 				var screen := _game_screen()
-				if screen != null:
-					screen.request_pause_menu()
+				if screen != null and screen.has_method("request_pause_menu"):
+					screen.call("request_pause_menu")
 			return true
 		KEY_ENTER:
 			if is_menu_visible():
@@ -128,9 +174,31 @@ func handle_key_request(keycode: Key) -> bool:
 	return false
 
 
+func handle_application_intent(intent: Dictionary) -> void:
+	"""Release the shell before a real embedded New Game intent reaches Flow.
+
+	The menu remains the single presentation owner.  This bridge only changes
+	which presentation surface receives input; it never submits or rewrites the
+	authoritative intent.
+	"""
+	if str(intent.get("intent_kind", "")) != "new_game.start":
+		return
+	if is_menu_visible():
+		close_to_embedded_new_game()
+
+
 func toggle_table_pause() -> bool:
 	var coordinator := _coordinator()
-	if coordinator == null or coordinator.session_is_finished():
+	if coordinator == null:
+		var flow := _v075_application_flow()
+		if flow == null or _session_finished():
+			return false
+		if _v075_pause_depth > 0:
+			_resume_v075_pacing()
+		else:
+			_pause_v075_pacing()
+		return true
+	if coordinator.session_is_finished():
 		return false
 	if coordinator.session_is_paused():
 		coordinator.resume_session()
@@ -151,6 +219,33 @@ func debug_snapshot() -> Dictionary:
 		"load_request_count": _load_request_count,
 		"last_shell_kind": String(_last_shell_kind),
 		"menu_visible": is_menu_visible(),
+		"v075_application_flow_bound": _v075_application_flow() != null,
+		"v075_pause_depth": _v075_pause_depth,
+		"settings_surface_reachable": is_instance_valid(_settings_surface),
+		"presentation_settings": get_presentation_settings_snapshot(),
+		"presentation_settings_field_count": (
+			_presentation_settings_snapshot.size()
+		),
+		"presentation_settings_revision": _presentation_settings_revision,
+		"presentation_settings_change_count": (
+			_presentation_settings_change_count
+		),
+		"presentation_settings_rejection_count": (
+			_presentation_settings_rejection_count
+		),
+		"presentation_settings_surface_load_count": (
+			_presentation_settings_surface_load_count
+		),
+		"last_presentation_settings_reason": (
+			_last_presentation_settings_reason
+		),
+		"menu_input_response_count": _menu_input_response_count,
+		"menu_input_response_last_ms": _menu_input_response_last_ms,
+		"menu_input_response_max_ms": _menu_input_response_max_ms,
+		"presentation_settings_owner_count": 1,
+		"presentation_settings_session_only": true,
+		"instant_test_mode_production_ui_reachable": false,
+		"single_menu_owner": true,
 		"owns_gameplay_state": false,
 		"owns_world_clock": false,
 		"owns_page_snapshots": false,
@@ -194,6 +289,9 @@ func _pause_for_application_surface() -> void:
 	var coordinator := _coordinator()
 	if coordinator != null:
 		coordinator.pause_session()
+	else:
+		if _v075_pause_depth == 0:
+			_pause_v075_pacing()
 	var navigation := _codex_navigation_owner()
 	if navigation != null:
 		navigation.set_catalog_mode("")
@@ -213,9 +311,9 @@ func _attach_root_lobby() -> void:
 		return
 	host.add_child(lobby)
 	lobby.action_requested.connect(_on_root_lobby_action_requested)
-	lobby.setup_requested.connect(_submit_application_action.bind("setup"))
-	lobby.rules_requested.connect(_submit_application_action.bind("rules"))
-	lobby.compendium_requested.connect(_submit_application_action.bind("compendium"))
+	lobby.setup_requested.connect(_on_root_setup_requested)
+	lobby.rules_requested.connect(_on_root_rules_requested)
+	lobby.compendium_requested.connect(_on_root_compendium_requested)
 	lobby.set_lobby(_root_lobby_snapshot())
 	_load_run_button = lobby.get_load_run_button()
 	_refresh_run_save_state()
@@ -236,6 +334,7 @@ func _attach_pause_summary() -> void:
 
 
 func _on_root_lobby_action_requested(action_id: String) -> void:
+	var started_usec := Time.get_ticks_usec()
 	match action_id:
 		"continue":
 			close_to_table()
@@ -243,8 +342,64 @@ func _on_root_lobby_action_requested(action_id: String) -> void:
 			_load_run_from_menu()
 		"credits":
 			_open_credits()
+		"settings":
+			_open_settings()
+		"rules":
+			_on_root_rules_requested()
+		"compendium":
+			_on_root_compendium_requested()
+		"setup":
+			_on_root_setup_requested()
 		"quit":
 			get_tree().quit()
+	_record_menu_input_response(started_usec)
+
+
+func _record_menu_input_response(started_usec: int) -> void:
+	var elapsed_ms := maxf(
+		0.0,
+		float(Time.get_ticks_usec() - started_usec) / 1000.0
+	)
+	_menu_input_response_count += 1
+	_menu_input_response_last_ms = elapsed_ms
+	_menu_input_response_max_ms = maxf(
+		_menu_input_response_max_ms,
+		elapsed_ms
+	)
+	var screen := _game_screen()
+	if (
+		screen != null
+		and screen.has_method("record_presentation_input_response")
+	):
+		screen.call(
+			"record_presentation_input_response",
+			"menu",
+			elapsed_ms
+		)
+
+
+func _on_root_setup_requested() -> void:
+	if _application_flow_port() != null:
+		_submit_application_action("setup")
+		return
+	# Candidate 5 keeps the already-proven embedded New Game surface as the
+	# setup owner.  The shell only closes itself and hands input back to it.
+	new_game_requested.emit()
+	close_to_embedded_new_game()
+
+
+func _on_root_rules_requested() -> void:
+	if _application_flow_port() != null:
+		_submit_application_action("rules")
+		return
+	_open_static_rules()
+
+
+func _on_root_compendium_requested() -> void:
+	if _application_flow_port() != null:
+		_submit_application_action("compendium")
+		return
+	_open_static_compendium()
 
 
 func _submit_application_action(action_id: String) -> void:
@@ -273,6 +428,10 @@ func _open_credits() -> void:
 func _load_run_from_menu() -> void:
 	var coordinator := _coordinator()
 	if coordinator == null:
+		_load_request_count += 1
+		var overlay := _menu_overlay()
+		if overlay != null:
+			overlay.set_run_save_summary("读取局面：当前 Alpha 0.7 为 New Game Only，暂无可用存档。")
 		return
 	_load_request_count += 1
 	var result := coordinator.request_run_load("")
@@ -290,7 +449,12 @@ func _load_run_from_menu() -> void:
 func _refresh_run_save_state() -> void:
 	var overlay := _menu_overlay()
 	var coordinator := _coordinator()
-	if overlay == null or coordinator == null:
+	if overlay == null:
+		return
+	if coordinator == null:
+		if _load_run_button != null:
+			_load_run_button.disabled = true
+		overlay.set_run_save_summary("存档：当前 Alpha 0.7 为 New Game Only，Continue 保持 Disabled。")
 		return
 	var inspection := coordinator.inspect_run_save("")
 	var has_save := bool(inspection.get("ok", false)) and bool(inspection.get("applied", false))
@@ -305,14 +469,282 @@ func _request_full_refresh() -> void:
 		coordinator.request_table_presentation_refresh(&"full", &"application_menu_state_changed")
 
 
+func close_to_embedded_new_game() -> void:
+	var overlay := _menu_overlay()
+	if overlay != null:
+		overlay.visible = false
+		overlay.clear_preview()
+	_resume_v075_pacing()
+	var screen := _game_screen()
+	if screen == null:
+		return
+	var start_overlay := screen.get_node_or_null("OverlayLayer/StartOverlay") as Control
+	if start_overlay != null:
+		start_overlay.visible = true
+
+
+func _open_static_rules() -> void:
+	if not _present_shell("游戏规则", "当前牌桌规则速览。", false, false, false):
+		return
+	var overlay := _menu_overlay()
+	if overlay == null:
+		return
+	var host := overlay.get_preview_host()
+	if host == null:
+		return
+	overlay.clear_preview()
+	host.visible = true
+	var board := RULES_BOARD_SCENE.instantiate() as Control
+	if board == null or not board.has_method("set_board"):
+		return
+	host.add_child(board)
+	board.call("set_board", RULES_SNAPSHOT_SCRIPT.compose(_available_width(overlay)))
+	_last_shell_kind = &"rules"
+
+
+func _open_static_compendium() -> void:
+	if not _present_shell("资料库", "角色、卡牌、商品、区域与怪兽生态。", false, false, false):
+		return
+	var overlay := _menu_overlay()
+	if overlay == null or not overlay.has_method("present_codex_page"):
+		return
+	var page := {
+		"mode": "compendium",
+		"view": "browser",
+		"hub": COMPENDIUM_HUB_SNAPSHOT.compose(_available_width(overlay)),
+		"navigation": {"back_visible": true, "back_text": "返回大厅"},
+	}
+	if overlay.call("present_codex_page", page):
+		_last_shell_kind = &"compendium"
+
+
+func _open_settings() -> void:
+	if not _present_shell("设置", "调整声音、窗口、语言和可访问性。", false, false, true):
+		return
+	var overlay := _menu_overlay()
+	if overlay == null:
+		return
+	overlay.clear_preview()
+	var host := overlay.get_preview_host()
+	if host == null:
+		return
+	host.visible = true
+	_settings_surface = SETTINGS_SCENE.instantiate() as Control
+	if _settings_surface != null:
+		if _settings_surface.has_method("load_settings_snapshot"):
+			var loaded := _settings_surface.call(
+				"load_settings_snapshot",
+				get_presentation_settings_snapshot()
+			) as Dictionary
+			if bool(loaded.get("accepted", false)):
+				_presentation_settings_surface_load_count += 1
+			else:
+				_presentation_settings_rejection_count += 1
+				_last_presentation_settings_reason = str(loaded.get(
+					"reason_code",
+					"presentation_settings_surface_load_rejected"
+				))
+		var callback := Callable(
+			self,
+			"_on_commercial_settings_changed"
+		)
+		if (
+			_settings_surface.has_signal("settings_changed")
+			and not _settings_surface.is_connected(
+				"settings_changed",
+				callback
+			)
+		):
+			_settings_surface.connect("settings_changed", callback)
+		host.add_child(_settings_surface)
+	_last_shell_kind = &"settings"
+
+
+func _on_commercial_settings_changed(snapshot: Dictionary) -> void:
+	if snapshot.has("instant_test_mode"):
+		_presentation_settings_rejection_count += 1
+		_last_presentation_settings_reason = (
+			"instant_test_mode_production_unreachable"
+		)
+		return
+	_presentation_settings_snapshot = _normalized_presentation_settings(
+		snapshot,
+		_presentation_settings_snapshot
+	)
+	_presentation_settings_revision += 1
+	_presentation_settings_change_count += 1
+	_last_presentation_settings_reason = "presentation_settings_applied"
+	_propagate_presentation_settings_to_game_screen()
+	presentation_settings_changed.emit(
+		get_presentation_settings_snapshot()
+	)
+
+
+func _propagate_presentation_settings_to_game_screen() -> bool:
+	var screen := _game_screen()
+	if screen == null or not screen.has_method("apply_presentation_settings"):
+		return false
+	screen.call(
+		"apply_presentation_settings",
+		get_presentation_settings_snapshot()
+	)
+	return true
+
+
+func _normalized_presentation_settings(
+	source: Dictionary,
+	fallback: Dictionary
+) -> Dictionary:
+	var normalized := DEFAULT_PRESENTATION_SETTINGS.duplicate(true)
+	for key_variant in DEFAULT_PRESENTATION_SETTINGS.keys():
+		var key := str(key_variant)
+		if fallback.has(key):
+			normalized[key] = fallback.get(key)
+	normalized["master_volume"] = _normalized_presentation_float(
+		source,
+		"master_volume",
+		float(normalized.get("master_volume", 1.0))
+	)
+	normalized["music_volume"] = _normalized_presentation_float(
+		source,
+		"music_volume",
+		float(normalized.get("music_volume", 0.75))
+	)
+	normalized["sfx_volume"] = _normalized_presentation_float(
+		source,
+		"sfx_volume",
+		float(normalized.get("sfx_volume", 0.85))
+	)
+	normalized["window_mode"] = _normalized_presentation_string(
+		source,
+		"window_mode",
+		str(normalized.get("window_mode", "windowed")),
+		PRESENTATION_WINDOW_MODES
+	)
+	normalized["resolution"] = _normalized_presentation_string(
+		source,
+		"resolution",
+		str(normalized.get("resolution", "1600x960")),
+		PRESENTATION_RESOLUTIONS
+	)
+	normalized["language"] = _normalized_presentation_string(
+		source,
+		"language",
+		str(normalized.get("language", "zh-Hans")),
+		PRESENTATION_LANGUAGES
+	)
+	normalized["reduced_motion"] = _normalized_presentation_bool(
+		source,
+		"reduced_motion",
+		bool(normalized.get("reduced_motion", false))
+	)
+	normalized["screen_shake"] = _normalized_presentation_bool(
+		source,
+		"screen_shake",
+		bool(normalized.get("screen_shake", true))
+	)
+	var tooltip_value: Variant = source.get(
+		"tooltip_delay_ms",
+		source.get("tooltip_delay", normalized.get("tooltip_delay_ms", 420))
+	)
+	if typeof(tooltip_value) in [TYPE_INT, TYPE_FLOAT]:
+		normalized["tooltip_delay_ms"] = clampi(
+			int(tooltip_value),
+			0,
+			1200
+		)
+	return normalized
+
+
+func _normalized_presentation_float(
+	source: Dictionary,
+	key: String,
+	fallback: float
+) -> float:
+	var value: Variant = source.get(key, fallback)
+	if typeof(value) not in [TYPE_INT, TYPE_FLOAT]:
+		return fallback
+	return clampf(float(value), 0.0, 1.0)
+
+
+func _normalized_presentation_bool(
+	source: Dictionary,
+	key: String,
+	fallback: bool
+) -> bool:
+	var value: Variant = source.get(key, fallback)
+	return bool(value) if typeof(value) == TYPE_BOOL else fallback
+
+
+func _normalized_presentation_string(
+	source: Dictionary,
+	key: String,
+	fallback: String,
+	allowed: Array
+) -> String:
+	var value: Variant = source.get(key, fallback)
+	if typeof(value) != TYPE_STRING:
+		return fallback
+	var normalized := str(value)
+	return normalized if allowed.has(normalized) else fallback
+
+
+func _available_width(overlay: Node) -> float:
+	if overlay != null and overlay.has_method("available_content_width"):
+		return float(overlay.call("available_content_width"))
+	return 640.0
+
+
+func _pause_v075_pacing() -> void:
+	var flow := _v075_application_flow()
+	if flow == null or not flow.has_method("issue_intent") or not flow.has_method("submit_intent"):
+		return
+	if _v075_pause_depth == 0 and flow.has_method("pacing_snapshot"):
+		_v075_saved_pace_multiplier = int((flow.call("pacing_snapshot") as Dictionary).get("effective_multiplier", 1))
+		if _v075_saved_pace_multiplier < 1:
+			_v075_saved_pace_multiplier = 1
+	var intent := flow.call("issue_intent", "ui.pacing.set", {"multiplier": 0}) as Dictionary
+	flow.call("submit_intent", intent)
+	_v075_pause_depth += 1
+
+
+func _resume_v075_pacing() -> void:
+	var flow := _v075_application_flow()
+	if flow == null or not flow.has_method("issue_intent") or not flow.has_method("submit_intent"):
+		return
+	if _v075_pause_depth > 0:
+		_v075_pause_depth -= 1
+	if _v075_pause_depth > 0:
+		return
+	var intent := flow.call("issue_intent", "ui.pacing.set", {"multiplier": _v075_saved_pace_multiplier}) as Dictionary
+	flow.call("submit_intent", intent)
+
+
+func _v075_application_flow() -> Node:
+	if v075_application_flow_path.is_empty():
+		return null
+	return get_node_or_null(v075_application_flow_path)
+
+
 func _has_active_table() -> bool:
 	var world := _world_session_state()
-	return world != null and not world.players.is_empty()
+	if world != null:
+		return not world.players.is_empty()
+	var flow := _v075_application_flow()
+	if flow != null and flow.has_method("local_snapshot"):
+		return bool((flow.call("local_snapshot") as Dictionary).get("match_started", false))
+	return false
 
 
 func _session_finished() -> bool:
 	var coordinator := _coordinator()
-	return coordinator == null or coordinator.session_is_finished()
+	if coordinator != null:
+		return coordinator.session_is_finished()
+	var flow := _v075_application_flow()
+	if flow != null and flow.has_method("human_decision_snapshot"):
+		return bool((flow.call("pacing_snapshot") as Dictionary).get("human_decision_reason_code", "") == "match_terminal") \
+			or bool((flow.call("local_snapshot") as Dictionary).get("terminal", false))
+	return true
 
 
 func _root_lobby_snapshot() -> Dictionary:
@@ -343,6 +775,7 @@ func _root_lobby_snapshot() -> Dictionary:
 		"utilities": [
 			{"id": "continue", "label": "继续牌桌" if can_continue else "暂无牌桌", "tooltip": "回到当前星球" if can_continue else "先开新一桌。", "accent": Color("#22c55e"), "disabled": not can_continue},
 			{"id": "rules", "label": "游戏规则", "accent": Color("#93c5fd")},
+			{"id": "settings", "label": "设置", "accent": Color("#a78bfa")},
 			{"id": "load_run", "label": "读取局面", "accent": Color("#94a3b8")},
 			{"id": "credits", "label": "Credits", "accent": Color("#35d0c5")},
 			{"id": "quit", "label": "退出游戏", "accent": Color("#fb7185")},
@@ -408,5 +841,13 @@ func _codex_navigation_owner() -> CodexNavigationRuntimeController:
 	return get_node_or_null(codex_navigation_owner_path) as CodexNavigationRuntimeController if not codex_navigation_owner_path.is_empty() else null
 
 
-func _game_screen() -> SpaceSyndicateGameScreen:
-	return get_node_or_null(game_screen_path) as SpaceSyndicateGameScreen if not game_screen_path.is_empty() else null
+func _game_screen() -> Node:
+	# The current production V075 screen is a separate Control lineage from the
+	# historical SpaceSyndicateGameScreen.  Resolve the configured composition
+	# node without narrowing it to the retired class, then use guarded public
+	# methods at each presentation-only call site.
+	return (
+		get_node_or_null(game_screen_path)
+		if not game_screen_path.is_empty()
+		else null
+	)

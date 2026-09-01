@@ -1,0 +1,75 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/v076/v076_shared_half_edge_partition_bench.gd" id="1_bench"]
+
+[sub_resource type="Environment" id="Environment_debug"]
+background_mode = 1
+background_color = Color(0.008, 0.014, 0.035, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.23, 0.34, 0.56, 1)
+ambient_light_energy = 0.72
+
+[node name="V076SharedHalfEdgePartitionBench" type="Node3D"]
+script = ExtResource("1_bench")
+
+[node name="PlanetRoot" type="Node3D" parent="."]
+unique_name_in_owner = true
+
+[node name="RegionSurface" type="MeshInstance3D" parent="PlanetRoot"]
+unique_name_in_owner = true
+
+[node name="SharedBoundaryRender" type="MeshInstance3D" parent="PlanetRoot"]
+unique_name_in_owner = true
+
+[node name="SelectionHighlight" type="MeshInstance3D" parent="PlanetRoot"]
+unique_name_in_owner = true
+visible = false
+
+[node name="DebugCamera" type="Camera3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.2)
+current = true
+fov = 42.0
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-38, -32, 0)
+light_color = Color(0.72, 0.86, 1, 1)
+light_energy = 1.35
+shadow_enabled = true
+
+[node name="RimLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(28, 146, 0)
+light_color = Color(1, 0.42, 0.18, 1)
+light_energy = 0.72
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_debug")
+
+[node name="DebugHud" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="PanelContainer" parent="DebugHud"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 1040.0
+offset_bottom = 158.0
+
+[node name="Margin" type="MarginContainer" parent="DebugHud/Panel"]
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="Rows" type="VBoxContainer" parent="DebugHud/Panel/Margin"]
+theme_override_constants/separation = 7
+
+[node name="Title" type="Label" parent="DebugHud/Panel/Margin/Rows"]
+text = "V0.7.6  Terrain + Shape Complexity Debug Sphere"
+theme_override_font_sizes/font_size = 22
+
+[node name="AuthorityStatus" type="Label" parent="DebugHud/Panel/Margin/Rows"]
+unique_name_in_owner = true
+text = "Authority topology, terrain and feature audit loading…"
+
+[node name="InteractionStatus" type="Label" parent="DebugHud/Panel/Margin/Rows"]
+unique_name_in_owner = true
+text = "Drag to rotate · Wheel to zoom · Click a region"

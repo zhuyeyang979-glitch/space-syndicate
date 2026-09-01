@@ -150,17 +150,56 @@ def _registry_retired_identifiers(mechanics: list[dict[str, object]]) -> tuple[s
     return tuple(identifiers)
 
 
+CURRENT_NON_RETIRED_IDENTIFIER_EXCEPTIONS = {
+    "_authorized_timer_contract_rejected",
+    "combat_telemetry_contract_rejected",
+    "domain_handler_purity_contract_rejected",
+}
+
+
+def _identifier_occurs(text: str, identifier: str) -> bool:
+    """Keep fail-closed substring detection with three exact token exceptions.
+
+    Prefixes and suffixes can be deliberate retired-mechanic revivals, so
+    identifier-shaped markers must not be weakened to whole-symbol matching.
+    The only current collision is ``contract_reject`` inside three exact
+    ``*_contract_rejected`` status/reason tokens.  Ignore only that occurrence;
+    another retired marker on the same line must still be reported.
+    """
+    if not identifier:
+        return False
+    folded_text = text.casefold()
+    folded_identifier = identifier.casefold()
+    offset = 0
+    while True:
+        hit = folded_text.find(folded_identifier, offset)
+        if hit < 0:
+            return False
+        end = hit + len(folded_identifier)
+        if folded_identifier == "contract_reject":
+            token_start = hit
+            while token_start > 0 and re.match(r"[A-Za-z0-9_]", text[token_start - 1]):
+                token_start -= 1
+            token_end = end
+            while token_end < len(text) and re.match(r"[A-Za-z0-9_]", text[token_end]):
+                token_end += 1
+            if text[token_start:token_end].casefold() in CURRENT_NON_RETIRED_IDENTIFIER_EXCEPTIONS:
+                offset = end
+                continue
+        return True
+
+
 def _concatenated_literal_hits(text: str, retired_identifiers: tuple[str, ...]) -> list[dict[str, object]]:
     hits: list[dict[str, object]] = []
-    folded_identifiers = [(identifier, identifier.casefold()) for identifier in retired_identifiers]
     for match in CONCATENATED_LITERAL_CHAIN.finditer(text):
         fragments = [fragment.group("body") for fragment in STRING_LITERAL_CAPTURE.finditer(match.group(0))]
         if len(fragments) < 2:
             continue
-        combined = "".join(fragments).casefold()
-        folded_fragments = [fragment.casefold() for fragment in fragments]
-        for identifier, folded in folded_identifiers:
-            if folded and folded in combined and not any(folded in fragment for fragment in folded_fragments):
+        combined = "".join(fragments)
+        for identifier in retired_identifiers:
+            if _identifier_occurs(combined, identifier) and not any(
+                _identifier_occurs(fragment, identifier) for fragment in fragments
+            ):
                 hits.append({"line": _line_number(text, match.start()), "identifier": identifier, "pattern": "concatenated_string_literals"})
     return hits
 
@@ -174,13 +213,14 @@ def _source_splitting_hits(text: str, retired_identifiers: tuple[str, ...]) -> l
 
 
 def _self_test() -> int:
-    retired = ("contract_response", "合同回应", "area_trade_contract")
+    retired = ("contract_response", "ContractResponse", "contract_reject", "合同回应", "area_trade_contract")
     evasions = [
         '"contract_" + "response"',
         '"contract_" +\n "response"',
         '"con" + "tract_res" + "ponse"',
         '"合同" +\n "回应"',
         '"area" + "_trade" + "_contract"',
+        '"contract_" + "reject_handler"',
         '"interaction_domain":\n "contract"',
         'DOMAINS = {\n "counter": 1,\n "contract": 2\n}',
     ]
@@ -192,7 +232,30 @@ def _self_test() -> int:
     ]
     failures = [sample for sample in evasions if not _source_splitting_hits(sample, retired)]
     failures += [sample for sample in controls if _source_splitting_hits(sample, retired)]
-    report = {"status": "PASS" if not failures else "FAIL", "case_count": len(evasions) + len(controls), "failures": failures}
+    identifier_cases = [
+        ("contract_reject", "contract_reject", True),
+        ("_contract_reject", "contract_reject", True),
+        ("handle_contract_reject", "contract_reject", True),
+        ("contract_reject_handler", "contract_reject", True),
+        ("_contract_response_state", "contract_response", True),
+        ("LegacyContractResponseController", "ContractResponse", True),
+        ("_authorized_timer_contract_rejected", "contract_reject", False),
+        ("combat_telemetry_contract_rejected", "contract_reject", False),
+        ("domain_handler_purity_contract_rejected", "contract_reject", False),
+        ("_authorized_timer_contract_rejected contract_reject", "contract_reject", True),
+        ("CONTRACT_REJECT", "contract_reject", True),
+        ("合同回应窗口", "合同回应", True),
+    ]
+    failures += [
+        f"identifier_boundary:{text}:{identifier}:{expected}"
+        for text, identifier, expected in identifier_cases
+        if _identifier_occurs(text, identifier) is not expected
+    ]
+    report = {
+        "status": "PASS" if not failures else "FAIL",
+        "case_count": len(evasions) + len(controls) + len(identifier_cases),
+        "failures": failures,
+    }
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0 if not failures else 1
 
@@ -232,9 +295,8 @@ def main() -> int:
         text = path.read_text(encoding="utf-8", errors="replace")
         category = category_for(rel)
         for line_number, line in enumerate(text.splitlines(), 1):
-            folded_line = line.casefold()
             for identifier in retired_identifiers:
-                if identifier.casefold() in folded_line:
+                if _identifier_occurs(line, identifier):
                     hit = {"path": rel, "line": line_number, "identifier": identifier}
                     if category:
                         hit["category"] = category

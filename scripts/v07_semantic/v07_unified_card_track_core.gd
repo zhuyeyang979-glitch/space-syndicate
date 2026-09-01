@@ -10,6 +10,9 @@ const V074CardDefinitions := preload(
 const V075CardDefinitions := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
+const CARD_RUNTIME_CATALOG_V06 := preload(
+	"res://resources/cards/runtime/card_runtime_catalog_v06.tres"
+)
 
 const SCHEMA_VERSION := 2
 const STATE_VERSION := 5
@@ -497,7 +500,9 @@ func start_match(roster_ids: Array, seed: int, config: Dictionary = {}) -> Dicti
 	var commodity_supply := _new_definition_supply(
 		"commodity_card",
 		normalized_seed,
-		"unified_track_commodity_draw"
+		"unified_track_commodity_draw",
+		CardDefinitions,
+		config.get("commodity_definition_ids", []) as Array
 	)
 	var projection_revisions: Dictionary = {}
 	for actor_id in roster:
@@ -734,6 +739,25 @@ func core_authority_v1() -> Dictionary:
 		"core_fingerprint": fingerprint(_state),
 	}
 	return result.duplicate(true)
+
+
+## Cheap read-only edge probe for production pacing instrumentation.
+##
+## `core_authority_v1()` intentionally returns a deep, fingerprinted authority
+## envelope and is therefore unsuitable for a per-frame latency measurement.
+## This method exposes only the already-owned monotonic track sequence; it does
+## not mutate state, reveal a projection, consume RNG, or create another owner.
+func authority_scroll_sequence_v1() -> int:
+	if not is_configured():
+		return -1
+	return int((
+		_state.get("track_state", {}) as Dictionary
+	).get("scroll_sequence", -1))
+
+
+## Backward-compatible spelling used by the production readiness probe.
+func authoritative_scroll_sequence_v1() -> int:
+	return authority_scroll_sequence_v1()
 
 
 func core_snapshot() -> Dictionary:
@@ -2134,7 +2158,12 @@ func _draw_supply_card(claimable_from_scroll_sequence: int = -1) -> Dictionary:
 		else "commodity_supply_state",
 		{}
 	) as Dictionary
-	var card_definition_id := _draw_definition(definition_supply)
+	var card_definition_id := (
+		_draw_catalog_commodity_definition(definition_supply, primary_color)
+		if card_kind == "commodity_card"
+			and _definition_supply_is_catalog_backed(definition_supply)
+		else _draw_definition(definition_supply)
+	)
 	if card_kind == "normal_card":
 		var definition_registry: Variant = _active_card_definitions()
 		var drawn_definition: Dictionary = definition_registry.definition(
@@ -2208,11 +2237,14 @@ static func _new_definition_supply(
 	card_kind: String,
 	seed: int,
 	stream_id: String,
-	definition_registry: Variant = CardDefinitions
+	definition_registry: Variant = CardDefinitions,
+	template_override: Array = []
 ) -> Dictionary:
 	var templates: Array = []
 	if card_kind == "normal_card":
 		templates.assign(definition_registry.track_spawn_definition_ids())
+	elif not template_override.is_empty():
+		templates.assign(template_override)
 	else:
 		for index in range(12):
 			templates.append("%s.reference.%02d" % [card_kind, index])
@@ -2228,6 +2260,51 @@ static func _new_definition_supply(
 	}
 	_refill_definition_bag(supply)
 	return supply
+
+
+func _draw_catalog_commodity_definition(
+	supply: Dictionary,
+	primary_color: String
+) -> String:
+	# The shared colour cycle remains the colour authority.  Select one of the
+	# existing Catalog definitions that belongs to that colour while consuming
+	# exactly one definition position.  Swapping inside the already-shuffled bag
+	# adds no RNG draw and preserves deterministic replay.
+	for attempt in range(2):
+		var bag := supply.get("bag", []) as Array
+		var cursor := int(supply.get("cursor", 0))
+		if cursor >= bag.size():
+			_refill_definition_bag(supply)
+			bag = supply.get("bag", []) as Array
+			cursor = int(supply.get("cursor", 0))
+		for index in range(cursor, bag.size()):
+			var definition_id := str(bag[index])
+			if _catalog_definition_industry(definition_id) != primary_color:
+				continue
+			var selected: Variant = bag[index]
+			bag[index] = bag[cursor]
+			bag[cursor] = selected
+			supply["bag"] = bag
+			supply["cursor"] = cursor + 1
+			return str(selected)
+		_refill_definition_bag(supply)
+	# A validated production config has two definitions for every colour, so
+	# this fallback is unreachable there.  Keep the generic core fail-safe for
+	# historical synthetic configurations.
+	return _draw_definition(supply)
+
+
+static func _definition_supply_is_catalog_backed(supply: Dictionary) -> bool:
+	var templates := supply.get("templates", []) as Array
+	return not templates.is_empty() \
+		and str(templates[0]).begins_with("commodity.") \
+		and str(templates[0]).ends_with(".rank_1")
+
+
+static func _catalog_definition_industry(definition_id: String) -> String:
+	var definition := CARD_RUNTIME_CATALOG_V06.card_snapshot(definition_id)
+	var machine := definition.get("machine", {}) as Dictionary
+	return str(machine.get("industry_id", ""))
 
 
 static func _refill_type_bag(supply: Dictionary) -> void:
@@ -3636,6 +3713,7 @@ static func _config_error(config: Dictionary) -> String:
 			"color_cycle_batches",
 			"match_instance_id",
 			"card_definition_registry_id",
+			"commodity_definition_ids",
 		]
 	):
 		return "config_fields_invalid"
@@ -3645,6 +3723,40 @@ static func _config_error(config: Dictionary) -> String:
 	))
 	if _definition_registry_for_id(registry_id) == null:
 		return "card_definition_registry_invalid"
+	var commodity_definition_ids_variant: Variant = config.get(
+		"commodity_definition_ids",
+		[]
+	)
+	if not (commodity_definition_ids_variant is Array):
+		return "commodity_definition_ids_invalid"
+	var commodity_definition_ids := commodity_definition_ids_variant as Array
+	if not commodity_definition_ids.is_empty():
+		if commodity_definition_ids.size() != 12:
+			return "commodity_definition_count_invalid"
+		var seen_commodity_definitions: Dictionary = {}
+		var color_counts: Dictionary = {}
+		for definition_id_variant in commodity_definition_ids:
+			var definition_id := str(definition_id_variant)
+			if not _is_stable_id(definition_id) \
+					or seen_commodity_definitions.has(definition_id):
+				return "commodity_definition_identity_invalid"
+			seen_commodity_definitions[definition_id] = true
+			var definition := CARD_RUNTIME_CATALOG_V06.card_snapshot(definition_id)
+			var machine := definition.get("machine", {}) as Dictionary
+			var color_id := str(machine.get("industry_id", ""))
+			if (
+				str(machine.get("card_id", "")) != definition_id
+				or str(machine.get("category_id", "")) != "commodity"
+				or str(machine.get("acquisition_kind", ""))
+					!= "commodity_belt_free"
+				or int(machine.get("rank", 0)) != 1
+				or color_id not in COLOR_IDS
+			):
+				return "commodity_definition_catalog_binding_invalid"
+			color_counts[color_id] = int(color_counts.get(color_id, 0)) + 1
+		for color_id in COLOR_IDS:
+			if int(color_counts.get(color_id, 0)) != 2:
+				return "commodity_definition_color_coverage_invalid"
 	if str(config.get("balance_profile_id", BALANCE_PROFILE_ID)) \
 			!= BALANCE_PROFILE_ID:
 		return "balance_profile_id_invalid"

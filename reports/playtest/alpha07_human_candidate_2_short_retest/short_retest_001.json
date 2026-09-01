@@ -1,0 +1,83 @@
+{
+  "schema": "space_syndicate.v076.alpha07.human_candidate_2_short_retest.v1",
+  "append_only": true,
+  "recorded_at_utc": "2026-08-24T03:14:52.9936875Z",
+  "session_id": "v076-alpha07-1787540860-db7006b993",
+  "candidate": "Alpha 0.7 Living Planet - Human Candidate 2",
+  "candidate_head_sha": "3bf9e9b2468e4a279af47cd3be36d0660abcfe91",
+  "candidate_tree_sha": "f6590ff3cfd27ea0b1361f7d36dfbe48a4baa251",
+  "production_scene": "res://scenes/main.tscn",
+  "player_configuration": {
+    "human_count": 1,
+    "ai_count": 3,
+    "fixture_state_injection_count": 0,
+    "agent_input_event_count": 0
+  },
+  "overall_status": "PRE_GOLDEN_PRODUCT_USABILITY_BLOCKED",
+  "human_executed_observed": true,
+  "human_confirmed": false,
+  "human_green": false,
+  "production_green": false,
+  "step13_status": "PENDING",
+  "short_test_results": {
+    "01_normal_new_game": {
+      "status": "PARTIAL",
+      "note": "可正常进入，但真人报告进入等待时间很长；当前没有可见 loading/progress 反馈。"
+    },
+    "02_no_vertical_drag_or_table_scroll": {
+      "status": "PASS"
+    },
+    "03_tutorial_steps_1_2": {
+      "status": "PASS"
+    },
+    "04_coach_step_3_pointer_and_next_stability": {
+      "status": "PASS"
+    },
+    "05_shared_track_card_acquisition": {
+      "status": "FAIL",
+      "note": "无法正常拿牌；手牌已是 5 张满手，且共享寿司牌轨未呈现可完成的正常滚动/拿牌路径。"
+    },
+    "06_legal_hand_card_play": {
+      "status": "FAIL",
+      "note": "无法正常拖拽并打出手牌；右侧小框有汇总，但缺少中央结算期间的公开牌排列与可悬停查看演出。"
+    },
+    "07_human_and_ai_action_feedback": {
+      "status": "PARTIAL",
+      "note": "右侧行动小框汇总可见且内容基本正确，但中央公开行动排列/身份读序缺失，导致实际行动不可直观理解。"
+    },
+    "08_pace_1x_2x_4x": {
+      "status": "PASS",
+      "note": "1x/2x/4x 可切换；真人认为 2x 合适。"
+    },
+    "09_normal_exit": {
+      "status": "PASS",
+      "note": "通过正常路径退出；Godot 进程随后为 0。"
+    }
+  },
+  "new_blockers": [
+    "LONG_NEW_GAME_STARTUP_WITHOUT_LOADING_FEEDBACK",
+    "SHARED_TRACK_ACQUISITION_AND_REPLENISHMENT_NOT_HUMAN_COMPLETABLE",
+    "CENTRAL_PUBLIC_BATCH_CARD_ARRANGEMENT_AND_HAND_PLAY_PATH_MISSING"
+  ],
+  "verbatim_human_feedback": "关于在窗口中完成的九项短测的结果：我一项一项说明，1。可以正常进入new game, 但是进入时间很长，是不是应该做一个loading条，或者看看有没有办法能够缩短进入游戏的时间，二现在确实不需要上下拖动或分隔主桌滚动。3教程可以顺利跳过或完成。4成功。5，没法正常拿牌，因为没法正常出牌，手牌是5张满的，然后寿司轨道似乎也没有正常滚动。6没法打出，因为现在玩家行动在右侧有一个小框，汇总是对的，但是因为游戏的结算规则是30秒内所有玩家打出牌进入一个排列，它需要有一个动画，就是玩家的牌在这个游戏画面的中央形成一个排列。然后它像一个Hoover一样，玩家可以在这30秒内随时查看。现在就没有这个动画，所以看不出谁打了什么牌，然后视觉上很不直观，然后我也没法正常拖拽卡牌，然后打出这一点，还没做到6，没法打出7能看到8，正常，9，正常，但是8和9不重要",
+  "runtime_telemetry_snapshot": {
+    "telemetry_build_sha": "unknown-local",
+    "telemetry_human_executed_flag": false,
+    "telemetry_human_green_flag": false,
+    "actions_submitted_total": 0,
+    "zero_action_batch_count": 1,
+    "track_normal_purchase_count": 0,
+    "track_commodity_claim_count": 0,
+    "time_to_first_card_select_seconds": 34.074,
+    "final_settlement_count": 0,
+    "source": "C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加/playtests/v076_alpha07/v076-alpha07-1787540860-db7006b993"
+  },
+  "not_claimed": [
+    "human_golden_run_pass",
+    "human_green",
+    "step13_golden_pass",
+    "step14_final_settlement_human_pass",
+    "step15_feedback_clean_stop_human_pass",
+    "full_alpha07_production_green"
+  ]
+}

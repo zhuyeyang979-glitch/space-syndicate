@@ -420,6 +420,51 @@ After editing:
 4. Update `docs/development_log.md`.
 5. Commit or push only when explicitly assigned and the shared-worktree coordinator confirms ownership.
 
+## V0.7.6 Reuse and Point-Inertia Merge Ratchet
+
+PR #93 and every V0.7.6 descendant use one mandatory current-Head check:
+
+```text
+V076 Reuse and Point-Inertia Gate
+```
+
+Before an agent marks PR #93 Ready, merges it, creates a V0.7.6 release tag,
+or performs a production cutover, the agent must:
+
+1. Read the live PR Head and live status-check rollup from GitHub in the same
+   preflight. A success attached only to an older Head is invalid.
+2. Require the latest current-Head result named
+   `V076 Reuse and Point-Inertia Gate` to be completed `SUCCESS`. Historical
+   duplicate runs are allowed only when the latest identified run is green (or,
+   when run IDs are unavailable, every current-Head row is green); any newer
+   pending, skipped, neutral, cancelled, or failed row fails closed.
+3. Pass that freshly captured check list through the Gate validator's
+   `merge-ratchet --checks-json <temp-path> --expected-head-sha <live-head>`
+   command.
+4. Use an action-specific state precondition: `READY` requires an open Draft;
+   `MERGE` requires an open non-Draft PR; `TAG` and `CUTOVER` require the PR to
+   be merged. Perform none of the guarded actions if any precondition is not
+   satisfied. A documentation claim is never a substitute for the live check.
+
+The Gate history root is the immutable activation Head
+`f6fe547e1e1db57a8bb3a12eab1d9225d4abdca5`. Every check walks every committed
+transition from that root to the current Head; neither an edited PR body nor a
+Head-owned ledger field may redefine or shorten the reviewed history.
+
+The Gate implementation itself is a `TOOLING_ONLY` plus `DOCS_ONLY` exception
+to the production Godot workflow. When its exact synchronize delta contains
+only the allowlisted Gate files and the focused validator confirms zero product
+or rule changes, run only the Gate self-test, reused static scanners, JSON/schema
+validation, and PR-body comparison. Do not start Godot or MCP, execute gameplay,
+or run a full product/release reproof for that delta. Any path outside the exact
+Gate allowlist restores the normal production checks.
+
+```text
+AGENT_MERGE_REQUIRES_REUSE_GATE=true
+READY_TRANSITION_WITHOUT_GATE_COUNT=0
+MERGE_WITHOUT_GATE_COUNT=0
+```
+
 ## Definition of Done
 
 A change is done when:

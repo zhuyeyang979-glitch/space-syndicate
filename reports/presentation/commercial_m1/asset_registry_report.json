@@ -1,0 +1,36 @@
+{
+  "schema": "SpaceSyndicateCommercialM1AssetRegistryReportV1",
+  "generated_at_utc": "2026-08-26T03:46:17.642979+00:00",
+  "registry": "docs/product/SPACE_SYNDICATE_ASSET_REFERENCE_REGISTRY.json",
+  "implementation_count": 1,
+  "entry_count": 61,
+  "internal_asset_entry_count": 11,
+  "external_reference_entry_count": 16,
+  "external_reference_only_entry_count": 16,
+  "style_reference_entry_count": 4,
+  "imported_external_entry_count": 30,
+  "production_entry_count": 41,
+  "reference_only_entry_count": 20,
+  "direct_commercial_use_verified_count": 35,
+  "license_review_required_count": 0,
+  "attribution_required_entry_count": 9,
+  "license_counts": {
+    "COMMERCIAL_USE_WITH_ATTRIBUTION": 6,
+    "DIRECT_COMMERCIAL_USE_VERIFIED": 35,
+    "REFERENCE_ONLY": 20
+  },
+  "unregistered_production_asset_count": 0,
+  "unknown_license_production_use_count": 0,
+  "reference_only_production_import_count": 0,
+  "attribution_required_but_missing_count": 0,
+  "asset_registry_query_selftest": "PASS",
+  "asset_license_gate": "PASS",
+  "fabricated_reference_count": 0,
+  "unverified_reference_used_as_production_asset_count": 0,
+  "source_manifests": [
+    "docs/third_party/selected_commercial_asset_manifest.json",
+    "tools/art_pipeline/source_pack_registry.json",
+    "docs/product/SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.json"
+  ],
+  "policy": "External projects are reference-only unless a selected local package has sealed commercial license and provenance evidence."
+}

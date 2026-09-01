@@ -1,0 +1,74 @@
+{
+  "schema": "space_syndicate.v076.alpha07_human_playability_root_cause.v1",
+  "task_id": "V076_ALPHA07_HUMAN_PLAYABILITY_BLOCKER_REPAIR_SINGLE_SCREEN_CARD_FLOW_ACTION_VISIBILITY_PACING_AND_COACHMARK",
+  "base_candidate_head": "04cc8f94de909b2467bef29d74ad83a153d65955",
+  "human_candidate_1_disposition": "PRE_GOLDEN_HUMAN_PLAYABILITY_BLOCKED",
+  "classification": "PRE_GOLDEN_PRODUCT_USABILITY_BLOCKED",
+  "human_feedback_preserved_verbatim": true,
+  "previous_production_receipt_mutation_count": 0,
+  "previous_golden_evidence_overwrite_count": 0,
+  "blockers": [
+    {
+      "blocker_id": "BLOCKER_01",
+      "name": "MAIN_TABLE_VERTICAL_SPLIT_OR_VERTICAL_DRAG_REQUIRED",
+      "root_cause_class": "PRODUCTION_LAYOUT_BUDGET_AND_STALE_SCROLL_ORACLE",
+      "owner_path": "scripts/ui/v075/v075_sample_game_screen.gd",
+      "signal_path": "V075SampleGameScreen._apply_responsive_layout -> inherited VBox minimum negotiation -> RootMargin ScrollContainer",
+      "affected_scene": "scenes/ui/v075/V075SampleGameScreen.tscn",
+      "affected_script": "scripts/ui/v075/v075_sample_game_screen.gd",
+      "minimal_repair_scope": "Keep the existing Game Screen, move combat and public feed into one right sidebar, keep marker and virtual target rail in the existing CanvasLayer, disable root scrolling, and bind combat height to the single-table budget."
+    },
+    {
+      "blocker_id": "BLOCKER_02",
+      "name": "CARD_ACQUISITION_UNAVAILABLE",
+      "root_cause_class": "STALE_AUTHORIZED_RECEIPT_CONSUMER_SHAPE",
+      "owner_path": "scripts/v07_semantic/v07_dbg_deck_core.gd",
+      "signal_path": "Track card gui_input -> V075SampleGameScreen track.acquire intent -> V075ApplicationFlow -> V075RuntimeOwner -> V07TrackAcquisitionAuthorityPort -> V07DbgDeckCore receipt consumption",
+      "affected_scene": "scenes/ui/v075/V075SampleGameScreen.tscn",
+      "affected_script": "scripts/v07_semantic/v07_dbg_deck_core.gd",
+      "minimal_repair_scope": "Accept the existing shared_scroll_vacancy public facts with replacement_count=0, a positive vacancy count, the vacated path position, and unchanged receipt fingerprint checks; do not refill or advance supply RNG."
+    },
+    {
+      "blocker_id": "BLOCKER_03",
+      "name": "CARD_PLAY_UNAVAILABLE",
+      "root_cause_class": "VALIDATED_TYPED_TARGET_BINDING_REPLACED_BEFORE_COMMIT",
+      "owner_path": "scripts/ui/v075/v075_sample_game_screen.gd",
+      "signal_path": "Hand card gui_input -> existing Target Query -> map or virtual target -> V075ApplicationFlow.resolve_map_target -> typed binding -> fixed confirm -> card.queue",
+      "affected_scene": "scenes/ui/v075/V075SampleGameScreen.tscn",
+      "affected_script": "scripts/ui/v075/v075_sample_game_screen.gd",
+      "minimal_repair_scope": "Retain the existing typed binding through confirmation and submit it through the existing card.queue or Private Direct Action path; create no second target system."
+    },
+    {
+      "blocker_id": "BLOCKER_04",
+      "name": "PUBLIC_ACTION_VISIBILITY_MISSING",
+      "root_cause_class": "PUBLIC_RECEIPT_PROJECTION_NOT_COMPOSED_IN_FIXED_VIEWPORT",
+      "owner_path": "scripts/ui/v075/v075_sample_game_screen.gd",
+      "signal_path": "V075RuntimeOwner public_history plus combat_public_history -> V075ApplicationFlow projection_changed/public receipt -> V075SampleGameScreen fixed Action Feed",
+      "affected_scene": "scenes/ui/v075/V075SampleGameScreen.tscn",
+      "affected_script": "scripts/ui/v075/v075_sample_game_screen.gd",
+      "minimal_repair_scope": "Consume existing public presentation receipts in one deduplicated fixed feed, use authorized anonymous placeholders, and never read rival hand, private plan, exact cash, or private card instance identity."
+    },
+    {
+      "blocker_id": "BLOCKER_05",
+      "name": "GAMEPLAY_PACING_TOO_SLOW",
+      "root_cause_class": "NO_HUMAN_VISIBLE_WORLD_EFFECTIVE_PACE_CONTROL",
+      "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "signal_path": "V075SampleGameScreen PAUSE/1x/2x/4x -> V075ApplicationFlow ui.pacing.set -> existing V075 runtime clock plus V076 Kernel elapsed-us input",
+      "affected_scene": "scenes/ui/v075/V075SampleGameScreen.tscn",
+      "affected_script": "scripts/v075_runtime/v075_application_flow.gd",
+      "minimal_repair_scope": "Expose PAUSE, 1x, 2x, and 4x with default 2x through the existing clock owner; keep Kernel at 20 Hz and preserve Tick order, Authority Sequence, RNG order, and rule durations."
+    },
+    {
+      "blocker_id": "BLOCKER_06",
+      "name": "COACHMARK_STEP3_POINTER_EVASION_NEXT_UNCLICKABLE",
+      "root_cause_class": "POINTER_DEPENDENT_PER_FRAME_PLACEMENT",
+      "owner_path": "scripts/ui/v073/v073_playtest_coach_marks.gd",
+      "signal_path": "Coach step or viewport or target geometry change -> deterministic safe placement; pointer entry and motion -> no placement recomputation",
+      "affected_scene": "scenes/ui/v073/V073PlaytestCoachMarks.tscn",
+      "affected_script": "scripts/ui/v073/v073_playtest_coach_marks.gd",
+      "minimal_repair_scope": "Remove pointer avoidance and per-frame candidate selection, recompute only for step/viewport/real target geometry changes, and keep Next, Skip, Close, Enter, Space, and Escape reachable."
+    }
+  ],
+  "full_world_reproof_required": false,
+  "human_green_claimed": false
+}

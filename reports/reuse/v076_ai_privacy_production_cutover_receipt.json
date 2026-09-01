@@ -1,0 +1,164 @@
+{
+  "schema_version": "space_syndicate.v076.production_cutover_receipt.v1",
+  "receipt_id": "v076-alpha07-step12-ai-privacy-production-cutover-20260824",
+  "recorded_on": "2026-08-24",
+  "status": "PASS",
+  "candidate_head_sha": "e458525fe579b7d552daeb64129b3d002ed3fa35",
+  "candidate_tree_sha": "dddd7834240c296c84578ef2cccdb5627b9a3fd5",
+  "implementation_commits": [
+    "e458525fe579b7d552daeb64129b3d002ed3fa35"
+  ],
+  "atomic_cutover": true,
+  "cumulative_cutover_receipt": true,
+  "previous_cutover_receipt": {
+    "path": "reports/reuse/v076_asset_consequence_production_cutover_receipt.json",
+    "sha256": "f9b988d487e1f3753c0394328903cac1560467fa03a694ab512c7b7103d0c8de",
+    "candidate_head_sha": "1488399c4b3df2694c96c68c2a163d5dfb2e8c1a",
+    "status": "PASS"
+  },
+  "golden_production_execution_receipt": {
+    "path": "reports/reuse/v076_step12_golden_production_execution_receipt.json",
+    "sha256": "3f27f497c467390014456e18a79f6a614fd6166e023c9f33736bd69fddc44dd9",
+    "step_id": "STEP12",
+    "status": "PASS"
+  },
+  "current_candidate_revalidations": [
+    {
+      "step_id": "STEP09",
+      "path": "reports/reuse/v076_step09_step12_candidate_production_revalidation_receipt.json",
+      "sha256": "679b3a6c7eef7fe300a467e87e4c2d6d81526a8e81127bd9d5ed65096d1e407f",
+      "status": "PASS"
+    },
+    {
+      "step_id": "STEP11",
+      "path": "reports/reuse/v076_step11_step12_candidate_production_revalidation_receipt.json",
+      "sha256": "29d55a57b4a8a903c9c00a74f43c89e2d3f97be7db6a74feccecef78ccfb0f33",
+      "status": "PASS"
+    }
+  ],
+  "production_scene_path": "scenes/main.tscn",
+  "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06378343e698866cf2a",
+  "runtime_composition_path": "scenes/runtime/V075RuntimeComposition.tscn",
+  "runtime_composition_sha256": "d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9",
+  "production_screen_path": "scenes/ui/v075/V075SampleGameScreen.tscn",
+  "production_screen_sha256": "f26411c764be999ef0fb8133b49a8bf90728f5548016ef253096fd6a24a91892",
+  "affected_owners": [
+    "component.current.v075_runtime_owner"
+  ],
+  "reused_consumers": [
+    "V075CombatAIAdapter",
+    "V075CombatProjectionAdapter",
+    "V075ApplicationFlow",
+    "V075SampleGameScreen"
+  ],
+  "composition_counts": {
+    "v075_runtime_owner_count": 1,
+    "production_ai_owner_count": 1,
+    "viewer_projection_owner_count": 1,
+    "new_ai_owner_count": 0,
+    "new_projection_owner_count": 0,
+    "new_privacy_owner_count": 0,
+    "new_rng_owner_count": 0,
+    "parallel_production_owner_count": 0,
+    "dual_write_count": 0,
+    "fallback_count": 0
+  },
+  "focused_production_gate": {
+    "test": "tests/v076_production_ai_privacy_test.gd",
+    "runner": "tools/invoke_godot_test.ps1",
+    "runner_run_id": "20260823-152832-450-v076_production_ai_privacy_test-f8bdebed",
+    "status": "PASS",
+    "checks": "57/57",
+    "stdout_sha256": "5934b1c0642214fd50ff5715bed076a208c5ee02327abba9f33a4a4d02890450",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "natural_production_ai_execution": true,
+    "production_ai_action_legal": true,
+    "production_ai_submission_locked": true,
+    "ai_observation_actor_scoped": true,
+    "viewer_scoped_projection_count": 2,
+    "rival_private_card_disclosure_count": 0,
+    "ai_private_plan_disclosure_count": 0,
+    "ai_exact_cash_disclosure_count": 0,
+    "public_private_binding_field_count": 0,
+    "combat_hidden_info_violation_count": 0,
+    "ai_invalid_target_count": 0,
+    "ai_hidden_info_reader_count": 0,
+    "ai_rng_draw_count": 0,
+    "hand_cash_target_result_injection_count": 0,
+    "script_error_count": 0,
+    "diagnostic_count": 0,
+    "remaining_project_runtime_process_count": 0
+  },
+  "direct_regressions": [
+    {
+      "test": "v075_combat_ai_test",
+      "status": "PASS",
+      "checks": "77/77",
+      "runner_run_id": "20260823-152918-657-v075_combat_ai_test-4b61fd01"
+    },
+    {
+      "test": "v075_combat_ai_runtime_policy_test",
+      "status": "PASS",
+      "checks": "28/28",
+      "runner_run_id": "20260823-152956-756-v075_combat_ai_runtime_policy_test-fab0eac5"
+    },
+    {
+      "test": "v075_combat_ai_natural_acquisition_test",
+      "status": "PASS",
+      "checks": "56/56",
+      "runner_run_id": "20260823-152958-608-v075_combat_ai_natural_acquisition_test-94a4da70"
+    },
+    {
+      "test": "v075_combat_public_private_projection_test",
+      "status": "PASS",
+      "checks": "69/69",
+      "runner_run_id": "20260823-153001-837-v075_combat_public_private_projection_test-8b2bd73b"
+    },
+    {
+      "test": "v075_application_composition_test",
+      "status": "PASS",
+      "checks": "111/111",
+      "runner_run_id": "20260823-153050-061-v075_application_composition_test-2ae64aba"
+    },
+    {
+      "test": "v076_production_military_composition_test",
+      "status": "PASS",
+      "checks": "86/86",
+      "runner_run_id": "20260823-153055-209-v076_production_military_composition_test-2a1bcdf8"
+    }
+  ],
+  "legacy_oracle_disclosure": {
+    "test": "tests/player_facing_privacy_boundary_test.gd",
+    "status": "STALE_V06_ORACLE_PRECONDITION",
+    "failed_before_privacy_assertions": true,
+    "step12_changed_file_count_in_oracle_dependency": 0,
+    "claimed_as_green": false
+  },
+  "godot_mcp_main_runtime": {
+    "scene": "res://scenes/main.tscn",
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "renderer": "Vulkan Forward+",
+    "device": "NVIDIA GeForce RTX 4080 SUPER",
+    "changed_file_warning_count": 0,
+    "changed_file_warning_semantics": "EXTERNAL_CHANGED_FILE_NOTIFICATION",
+    "repository_preexisting_gdscript_warnings_present": true,
+    "task_introduced_gdscript_warning_count": 0,
+    "hard_runtime_error_count": 0,
+    "untracked_uid_count": 0,
+    "remaining_project_runtime_process_count": 0,
+    "stop_result": "Godot project stopped"
+  },
+  "claim_limits": {
+    "golden_step_12_status": "PRODUCTION_GREEN",
+    "golden_isolated_green_count": 5,
+    "golden_production_green_count": 3,
+    "golden_human_green_count": 0,
+    "production_green": false,
+    "human_green": false,
+    "human_executed": false,
+    "human_confirmed": false,
+    "alpha07_certified_card_count": 0,
+    "full_world_reproof_performed": false,
+    "next_stage": "V076_ALPHA07_PRODUCTION_GOLDEN_STEP13_VICTORY_AUDIT"
+  }
+}

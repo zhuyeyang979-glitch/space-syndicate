@@ -1,0 +1,422 @@
+{
+  "schema": "V076CommercialPresentationCaptureRunnerReportV1",
+  "status": "AUTOMATION_GREEN_PENDING_VISUAL_REVIEW",
+  "preflight_status": "PREFLIGHT_GREEN_DIRTY_WORKTREE",
+  "fixture_class": "PRESENTATION_FIXTURE",
+  "natural_gameplay": false,
+  "gameplay_green": false,
+  "human_green": false,
+  "production_green": false,
+  "human_retest_deferred": true,
+  "step13_status": "PENDING",
+  "captured_at_utc": "2026-08-26T08:17:03.6371759Z",
+  "head_sha": "12019fdf5ff78733a36b3f0e889fecd1fcfb227c",
+  "head_tree_sha": "c5710c978fee111b33b265b2e5ad4ea6cebcba38",
+  "dirty_worktree_preserved": true,
+  "runner_result_path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\runner\\20260826-081646-474-showcase_frame_capture-5963edd5\\result.json",
+  "runner_result_sha256": "ea4b426f10189b6a71b4a9615be6bf9f0b5de8bb233ecac2065a272109d34d6e",
+  "runner_archive_path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\runner\\20260826-081646-474-showcase_frame_capture-5963edd5",
+  "runner_archive_excludes_isolated_user_data": true,
+  "runner_archive_files": [
+    {
+      "name": "result.json",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\runner\\20260826-081646-474-showcase_frame_capture-5963edd5\\result.json",
+      "byte_length": 12545,
+      "sha256": "ea4b426f10189b6a71b4a9615be6bf9f0b5de8bb233ecac2065a272109d34d6e"
+    },
+    {
+      "name": "stdout.log",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\runner\\20260826-081646-474-showcase_frame_capture-5963edd5\\stdout.log",
+      "byte_length": 24113,
+      "sha256": "4de90178b7d9e555601d792dcb6a81a4eab999db5ede3cf855bde4545491ce1b"
+    },
+    {
+      "name": "stderr.log",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\runner\\20260826-081646-474-showcase_frame_capture-5963edd5\\stderr.log",
+      "byte_length": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "godot.log",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\runner\\20260826-081646-474-showcase_frame_capture-5963edd5\\godot.log",
+      "byte_length": 23646,
+      "sha256": "c68569129b580096ebe81673798cdd10d202b58f99553b9d70d07b8c418fb163"
+    },
+    {
+      "name": "stdout.raw.bin",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\runner\\20260826-081646-474-showcase_frame_capture-5963edd5\\stdout.raw.bin",
+      "byte_length": 24113,
+      "sha256": "4de90178b7d9e555601d792dcb6a81a4eab999db5ede3cf855bde4545491ce1b"
+    },
+    {
+      "name": "stderr.raw.bin",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\runner\\20260826-081646-474-showcase_frame_capture-5963edd5\\stderr.raw.bin",
+      "byte_length": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "window-ready.json",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\runner\\20260826-081646-474-showcase_frame_capture-5963edd5\\window-ready.json",
+      "byte_length": 597,
+      "sha256": "bd21d2dedb0bc6f9139482e0033721be6a32ee0982a6c50c042a2eb74b571da7"
+    },
+    {
+      "name": "window-ack.json",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\runner\\20260826-081646-474-showcase_frame_capture-5963edd5\\window-ack.json",
+      "byte_length": 1709,
+      "sha256": "63a411ab27523cefec264494051d0aa3f9aaff3e59fc2ee9f3d23bd6e3011aaa"
+    }
+  ],
+  "headed_client_capture": {
+    "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\showcase_headed_client_final.png",
+    "width": 1600,
+    "height": 960,
+    "byte_length": 68353,
+    "sha256": "771ebca6ce8aea4de5c61612d0103fbc91d0b6fecb8db8a6479ba647dbfb77da"
+  },
+  "episode_count": 13,
+  "frame_count": 39,
+  "frames": [
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\menu_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 75689,
+      "sha256": "235b5af5c2617ddb7d8cccb00d6138786ab4efaf88a22dc7875b95ce394ac2f2"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\menu_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 72274,
+      "sha256": "cf1963b4ef929abe141e20a33906fa73ddca7d791c03e877611d77916428cefd"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\menu_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 70123,
+      "sha256": "e8e8bd140d69e622d5a77b998f15d858750457425d7f440644a532d47ad4fa67"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\loading_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 81064,
+      "sha256": "22f5639b06708ff36ab7810af1a0b90440486bc63a3ab46cb4eba16b0a0e09c8"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\loading_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 80716,
+      "sha256": "b88e6ad3118c3cd0bc1a3bf059fc6fb665b3b715decbf2003b92296d55358e5a"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\loading_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 78722,
+      "sha256": "cac0fbc6c335cce787e3e4532424235411d963a4548714e1db7517a52593e2ea"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\deck_acquire_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 105939,
+      "sha256": "b629b2db80c8b1cfe6a40dc32c50c780ce999337dd926abf74f6052e3ec1863b"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\deck_acquire_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 106904,
+      "sha256": "a65cf38510c4b8ea01a9362cf3477f2f374d1ded782454337d946c3e7dec18ef"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\deck_acquire_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 104373,
+      "sha256": "9b20d9715371c7eaefe5485b665bdda35573aa6205249af0dd211f11b5203444"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\shuffle_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 96363,
+      "sha256": "292fc61eca521d52aceaf0a8603a97ff530c54f62e5f3615be2c1d02e6c4998f"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\shuffle_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 93622,
+      "sha256": "81c6c3d245618f3f35bf48e2d6b5d0ef3672e66998de15ea6b74bb9a90aa6184"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\shuffle_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 99371,
+      "sha256": "8ca369a605336fa70cb451ff8727a27bbcad158e20f9a085f4a06bb35c097b57"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\draw_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 101021,
+      "sha256": "c8ef8cde693f0936a845963e94ecd832ee107886539978f047f4ffac10331a78"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\draw_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 101497,
+      "sha256": "8cc598c8b6e59499f6b90330c7b29e9c5ce7350227c22a81827bfa7a5d0610bc"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\draw_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 104208,
+      "sha256": "1366256a6f2ccb56f10bedb66d1efccd56522da02b4ae32485892d658ab44ae0"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\hand_hover_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 116651,
+      "sha256": "1552385a02c202e8d46adb622c433511d9aee3a6e72ddcefc9c9a8a6a79d72ee"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\hand_hover_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 117008,
+      "sha256": "ba81a14366259076627af7dcc3f417326d248765af373f48b821f4d87ed39496"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\hand_hover_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 117043,
+      "sha256": "10a01139bcc0772dec51b697980a31b233ad6fd2f49834490e8cdd2fd5caa58c"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\card_play_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 97232,
+      "sha256": "fc5811dac7622d207f1dd92707484c67d6ce4d0a28e32c4867d118c31c453ac9"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\card_play_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 97185,
+      "sha256": "b3924dc5336ed2beb362a3fef7dd94919bbe2414b99ba0e08da84882305b2689"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\card_play_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 97029,
+      "sha256": "590315ba65c12b72f06942c9d53ac5f5b704c2f13dda3bb9e7e666aacd510fdf"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\public_resolution_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 107191,
+      "sha256": "747c7083081fe877772808cbc94923ba7b9978eb1262c71547f4a7002fa385c5"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\public_resolution_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 108154,
+      "sha256": "d3d9331b941b280c5e526958b1a628458ea1091fe1c03744cb6925bd5e399ddd"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\public_resolution_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 105415,
+      "sha256": "dd578e57fbbd336a5656649b6a5f2e74d58e480344baeb3d416ac01245e369fc"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\facility_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 122672,
+      "sha256": "8c50faa49ab813bb98eb1d96074ec3520a8cc14aae265f6457da065289d03d74"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\facility_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 122718,
+      "sha256": "d707c611b58ed33ec54697100e2b6b302bbb935931029cecf961091b5987917c"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\facility_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 122293,
+      "sha256": "305fcc04653dc3f3d87754e0095af10d4f731a51dfdefd74f8b27dcd7bd58509"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\monster_combat_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 96821,
+      "sha256": "286bb1d3e23c6f502965340ac6980517aafe86929cd8572a4dd4207998eaaa15"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\monster_combat_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 103327,
+      "sha256": "ac67d99fda84a32df38e049545124b2fad21c8da8e2303da66d8400aade330d3"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\monster_combat_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 95819,
+      "sha256": "241eff368dbcf997ca23072ecba783d7be5ffce5c43810931f062bce64842f75"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\military_combat_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 120973,
+      "sha256": "4d65ba0cca67ab1a2b4cd16adaef5809d07740eff53d84008355caed6e22bd05"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\military_combat_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 122962,
+      "sha256": "f5138a95dcd0df96577d7378f8e44ce0f04b15c99e12b022203cf32de61f6397"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\military_combat_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 125139,
+      "sha256": "5777ca1e5113b54a76ed290ffe0bce21a23065b66a39b28a727ecf3610fdaffa"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\sushi_track_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 89964,
+      "sha256": "a01df4a653e865f290a688b51fc48e337789d6ab14122e2f281a0fe8d8b0cc02"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\sushi_track_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 95853,
+      "sha256": "3bfd8517826f6f99fc544556bd8c77253822924d61d89d797e32d5e4ed2267c3"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\sushi_track_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 89241,
+      "sha256": "76418707754dbf411f6a82bb31a249e2f25bc74df29be21dac5464ac050e549e"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\final_settlement_capture\\start.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 65671,
+      "sha256": "c06109ae9e3ed4fc2e524e04ef316840bad8591b93defbd03952abf8e34f8003"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\final_settlement_capture\\mid.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 68415,
+      "sha256": "d8301f5ca56a2bef2cdf537b80e952866ff9f3ea20e51f9ae4ca9145d4fa0f75"
+    },
+    {
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\final_settlement_capture\\end.png",
+      "width": 1600,
+      "height": 960,
+      "byte_length": 68071,
+      "sha256": "04ecffb9f1944f8b535ca4111a841499e91d0711a15c625352dea3bee82a6a69"
+    }
+  ],
+  "episode_evidence": [
+    {
+      "episode_id": "main_menu",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\menu_capture\\evidence.json",
+      "sha256": "0186ad12df0f4c00c4b6ac1886fcf4c51f3c75b8650b6731de26496f1b4f3063"
+    },
+    {
+      "episode_id": "loading",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\loading_capture\\evidence.json",
+      "sha256": "22628dac444e46ae01117bf5d6cd8532f984b4cd34f53e655fd63ea5a2d3c86d"
+    },
+    {
+      "episode_id": "acquire_to_deck",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\deck_acquire_capture\\evidence.json",
+      "sha256": "d888bd31ac515ffb273166204eb83884442ed121fe41e4c549a68dd185145288"
+    },
+    {
+      "episode_id": "shuffle",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\shuffle_capture\\evidence.json",
+      "sha256": "d5149d9c059585570f81d85bb742ec8d2d045584d1954abdac355676f9f36f66"
+    },
+    {
+      "episode_id": "draw",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\draw_capture\\evidence.json",
+      "sha256": "c9c021e86e0adaddd95bb412974334d1b188a721f21667e2808f1061bf587e49"
+    },
+    {
+      "episode_id": "hand_hover",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\hand_hover_capture\\evidence.json",
+      "sha256": "c54694c8638462561d9657c085df7b733b4086a54e75e0e4bff33f272588a416"
+    },
+    {
+      "episode_id": "public_play",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\card_play_capture\\evidence.json",
+      "sha256": "57aa11441a63cd081d3669f4259c35a84f13277217c8b8edda16ecc668c64477"
+    },
+    {
+      "episode_id": "public_resolution",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\public_resolution_capture\\evidence.json",
+      "sha256": "4eb8814ae95f961b7dc8efd8bf92a901d938e70f6768a43b631b64ddae588844"
+    },
+    {
+      "episode_id": "facility",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\facility_capture\\evidence.json",
+      "sha256": "ab19afaf26ea9a070a09caf3cd91ed1cc408cbb86684afd3df8a689338dc5f39"
+    },
+    {
+      "episode_id": "monster",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\monster_combat_capture\\evidence.json",
+      "sha256": "f810268a54838847a8ab54dae6f3b9c5f9e77c277edd5cc83555cbfcba82dc42"
+    },
+    {
+      "episode_id": "military",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\military_combat_capture\\evidence.json",
+      "sha256": "fcdfc795c789fa8b3fa49e3118e2d359f017222c37ecb33039a19dac2f085fdc"
+    },
+    {
+      "episode_id": "track_handoff",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\sushi_track_capture\\evidence.json",
+      "sha256": "937e25de842eb50e614bbbb096cdc24d5d67b6820ca50a53503ef6e27b3a89d5"
+    },
+    {
+      "episode_id": "final_settlement",
+      "path": "D:\\SpaceSyndicateWorktrees\\v076\\770d741f\\continuous-playable-vertical-slice\\reports\\presentation\\commercial_m1\\showcase_headed_finality\\20260826-081645-855-ae71c1dc5841\\final_settlement_capture\\evidence.json",
+      "sha256": "73a0bda93f90313acc47a309ba16ef275f7be02a389a4974c3c7aba8a6113080"
+    }
+  ],
+  "remaining_project_runtime_process_ids": []
+}

@@ -17,6 +17,12 @@ const V074CardDefinitions := preload(
 const V075CardDefinitions := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
+const CARD_RUNTIME_CATALOG_V06 := preload(
+	"res://resources/cards/runtime/card_runtime_catalog_v06.tres"
+)
+const PRESENTATION_ASSET_CATALOG := preload(
+	"res://resources/presentation/alpha01_card_illustration_catalog.tres"
+)
 
 const SCHEMA_VERSION := 3
 const STATE_VERSION := 3
@@ -89,6 +95,8 @@ const PHASE_BATCH := "batch_active"
 const PHASE_MAINTENANCE := "hand_maintenance"
 
 const ACTION_PLAY_CARD := "play_card"
+const ACTION_RESERVE_CARD_SUBMISSION := "reserve_card_submission"
+const ACTION_RELEASE_CARD_SUBMISSION := "release_card_submission"
 const ACTION_ACCEPT_PURCHASE := "accept_purchase"
 const ACTION_COMPLETE_BATCH := "complete_batch"
 const ACTION_MERGE_CARDS := "merge_cards"
@@ -112,6 +120,8 @@ const COLORS := [
 const CARD_TYPES := ["factory", "market"]
 const ACTION_KINDS := [
 	ACTION_PLAY_CARD,
+	ACTION_RESERVE_CARD_SUBMISSION,
+	ACTION_RELEASE_CARD_SUBMISSION,
 	ACTION_ACCEPT_PURCHASE,
 	ACTION_COMPLETE_BATCH,
 	ACTION_MERGE_CARDS,
@@ -141,7 +151,12 @@ const CARD_FIELDS := [
 	"locked",
 ]
 const CARD_SPEC_FIELDS := CardDefinitions.DEFINITION_FIELDS
-const PROJECTED_CARD_FIELDS := CARD_FIELDS + ["asset_cost"]
+const PROJECTED_CARD_FIELDS := CARD_FIELDS + [
+	"asset_cost",
+	"authority_zone",
+	"projection_role",
+	"source_receipt_id",
+]
 const AI_PROJECTED_CARD_FIELDS := PROJECTED_CARD_FIELDS + ["legal_targets"]
 const LEGAL_TARGET_INPUT_INTERFACE_ID := (
 	"v072.personal_dbg.legal_target_input.v1"
@@ -172,10 +187,28 @@ const COMMODITY_CARD_FIELDS := [
 const PROJECTED_COMMODITY_CARD_FIELDS := [
 	"instance_id",
 	"commodity_id",
+	"card_definition_id",
+	"family_id",
+	"product_id",
+	"name",
+	"card_type",
+	"industry_id",
 	"primary_color",
 	"level",
+	"rank",
+	"cost",
+	"short_effect",
+	"effect",
+	"target",
+	"legal_action_summary",
+	"legality_state",
 	"locked",
 	"available_from_batch_id",
+	"illustration_key",
+	"source_receipt_id",
+	"source_track_instance_id",
+	"authority_zone",
+	"projection_role",
 ]
 const TRACK_CLAIM_RECEIPT_SCHEMA_ID := TrackCore.RECEIPT_INTERFACE_ID
 const TRACK_CLAIM_INTENT_SCHEMA_ID := TrackCore.INTENT_INTERFACE_ID
@@ -377,6 +410,14 @@ const TRACK_ACQUISITION_PUBLIC_FACT_FIELDS := [
 	"replacement_count",
 	"track_revision",
 ]
+const TRACK_SHARED_SCROLL_ACQUISITION_PUBLIC_FACT_FIELDS := [
+	"track_item_removed",
+	"replacement_count",
+	"vacancy_count",
+	"vacated_path_position",
+	"refill_mode_id",
+	"track_revision",
+]
 const BOUND_SOURCE_STATE_FIELDS := [
 	"schema_version",
 	"contract_id",
@@ -536,6 +577,7 @@ const VIEWER_FACT_FIELDS := [
 	"draw_pile_count",
 	"discard",
 	"discard_count",
+	"committed_escrow",
 	"committed_escrow_count",
 	"merge_history_count",
 	"eligible_merge_pairs",
@@ -679,7 +721,6 @@ const PRIVATE_PROJECTION_KEYS := [
 	"root_seed",
 	"draw_pile",
 	"discard_order",
-	"committed_escrow",
 	"starter_rng",
 	"reshuffle_rng",
 	"seed",
@@ -1385,12 +1426,25 @@ func authoritative_card_action_binding_v1(
 		or str(_state.get("phase", "")) != PHASE_BATCH
 	):
 		return {}
-	var hand := _state.get("hand", []) as Array
-	var card_index := _card_index(hand, card_instance_id)
-	if card_index < 0:
+	var authoritative_zone := ""
+	var card: Dictionary = {}
+	for zone_name in ["hand", "committed_escrow"]:
+		var zone := _state.get(zone_name, []) as Array
+		var card_index := _card_index(zone, card_instance_id)
+		if card_index < 0:
+			continue
+		authoritative_zone = zone_name
+		card = (zone[card_index] as Dictionary).duplicate(true)
+		break
+	if card.is_empty():
 		return {}
-	var card := hand[card_index] as Dictionary
-	if bool(card.get("locked", false)):
+	if (
+		(authoritative_zone == "hand" and bool(card.get("locked", false)))
+		or (
+			authoritative_zone == "committed_escrow"
+			and not bool(card.get("locked", false))
+		)
+	):
 		return {}
 	var owner_player_id := str(_state.get("owner_player_id", ""))
 	var card_definition_id := str(card.get("definition_id", ""))
@@ -1443,7 +1497,7 @@ func authoritative_card_action_binding_v1(
 		"authority_lineage_fingerprint": lineage_fingerprint,
 		"owner_player_id": owner_player_id,
 		"immutable_identity_fingerprint": immutable_identity_fingerprint,
-		"authoritative_zone": "hand",
+		"authoritative_zone": authoritative_zone,
 		"zone_revision": zone_revision,
 		"expected_action_lifecycle": expected_action_lifecycle,
 	})
@@ -1456,7 +1510,7 @@ func authoritative_card_action_binding_v1(
 		"card_instance_id": card_instance_id,
 		"card_definition_id": card_definition_id,
 		"immutable_identity_fingerprint": immutable_identity_fingerprint,
-		"authoritative_zone": "hand",
+		"authoritative_zone": authoritative_zone,
 		"zone_revision": zone_revision,
 		"lifecycle_evidence_fingerprint": lifecycle_evidence_fingerprint,
 		"expected_action_lifecycle": expected_action_lifecycle,
@@ -1482,7 +1536,9 @@ func validate_card_action_binding_v1(
 		or candidate_binding.get("schema_version") != 1
 		or candidate_binding.get("authority_domain_id") != DOMAIN_ID
 		or candidate_binding.get("owner_player_id") != actor_player_id
-		or candidate_binding.get("authoritative_zone") != "hand"
+		or str(candidate_binding.get("authoritative_zone", "")) not in [
+			"hand", "committed_escrow",
+		]
 		or candidate_binding.get("expected_action_lifecycle")
 			!= expected_action_lifecycle
 		or not _positive_int(candidate_binding.get("zone_revision"))
@@ -2547,10 +2603,26 @@ static func _track_claim_receipt_reason(receipt: Dictionary) -> String:
 			or inventory_commit.get("destination_zone") != "commodity_inventory":
 		return "track_claim_capability_binding_invalid"
 	var public_facts := receipt.get("public_facts", {}) as Dictionary
-	if not _exact_fields(public_facts, TRACK_ACQUISITION_PUBLIC_FACT_FIELDS) \
-			or public_facts.get("track_item_removed") != true \
-			or public_facts.get("replacement_count") != 1 \
-			or not _positive_int(public_facts.get("track_revision")):
+	var legacy_public_facts_valid: bool = (
+		_exact_fields(public_facts, TRACK_ACQUISITION_PUBLIC_FACT_FIELDS)
+		and public_facts.get("track_item_removed") == true
+		and public_facts.get("replacement_count") == 1
+		and _positive_int(public_facts.get("track_revision"))
+	)
+	var shared_scroll_public_facts_valid: bool = (
+		_exact_fields(
+			public_facts,
+			TRACK_SHARED_SCROLL_ACQUISITION_PUBLIC_FACT_FIELDS
+		)
+		and public_facts.get("track_item_removed") == true
+		and public_facts.get("replacement_count") == 0
+		and _positive_int(public_facts.get("vacancy_count"))
+		and _nonnegative_int(public_facts.get("vacated_path_position"))
+		and str(public_facts.get("refill_mode_id", ""))
+			== "shared_scroll_vacancy"
+		and _positive_int(public_facts.get("track_revision"))
+	)
+	if not legacy_public_facts_valid and not shared_scroll_public_facts_valid:
 		return "track_claim_receipt_public_facts_invalid"
 	if not _fingerprint_string(receipt.get("receipt_fingerprint")) \
 			or receipt.get("receipt_fingerprint") \
@@ -2657,25 +2729,30 @@ static func _viewer_facts_reason(
 			)) != int(facts.get("batch_index", 0)):
 		return "projection_fact_local_queue_state_invalid"
 	var hand_variant: Variant = facts.get("hand")
+	var escrow_variant: Variant = facts.get("committed_escrow")
 	var discard_variant: Variant = facts.get("discard")
-	if not (hand_variant is Array) or not (discard_variant is Array):
+	if not (hand_variant is Array) \
+			or not (escrow_variant is Array) \
+			or not (discard_variant is Array):
 		return "projection_fact_zones_invalid"
 	var hand := hand_variant as Array
+	var escrow := escrow_variant as Array
 	var discard := discard_variant as Array
 	if hand.size() > HAND_LIMIT \
 			or facts.get("hand_count") != hand.size() \
-			or facts.get("discard_count") != discard.size():
+			or facts.get("discard_count") != discard.size() \
+			or facts.get("committed_escrow_count") != escrow.size():
 		return "projection_fact_zone_counts_invalid"
 	if int(facts.get("normal_deck_total_card_count", 0)) != (
 		hand.size()
 		+ discard.size()
 		+ int(facts.get("draw_pile_count", 0))
-		+ int(facts.get("committed_escrow_count", 0))
+		+ escrow.size()
 	):
 		return "projection_fact_normal_deck_total_invalid"
 	var seen_ids: Array[String] = []
 	var ai_projection := expected_schema_id == AI_OBSERVATION_SCHEMA_ID
-	for card_variant in hand + discard:
+	for card_variant in hand + escrow + discard:
 		if not (card_variant is Dictionary) \
 				or not _projected_card_valid(
 					card_variant as Dictionary,
@@ -2736,6 +2813,10 @@ func _dispatch_intent(intent: Dictionary) -> Dictionary:
 	match action_kind:
 		ACTION_PLAY_CARD:
 			return _apply_play_card(intent)
+		ACTION_RESERVE_CARD_SUBMISSION:
+			return _apply_reserve_card_submission(intent)
+		ACTION_RELEASE_CARD_SUBMISSION:
+			return _apply_release_card_submission(intent)
 		ACTION_ACCEPT_PURCHASE:
 			return _apply_purchase(intent)
 		ACTION_COMPLETE_BATCH:
@@ -2762,16 +2843,96 @@ func _apply_play_card(intent: Dictionary) -> Dictionary:
 	if not _exact_fields(arguments, ["instance_id"]):
 		return _result(false, "play_arguments_invalid")
 	var instance_id := str(arguments.get("instance_id", ""))
+	var source_zone := "committed_escrow"
+	var source := _state.get(source_zone, []) as Array
+	var index := _card_index(source, instance_id)
+	if index < 0:
+		# Retain the direct core action for historical, non-queued semantic tests.
+		# Production public submissions reserve into escrow before this boundary.
+		source_zone = "hand"
+		source = _state.get(source_zone, []) as Array
+		index = _card_index(source, instance_id)
+	if index < 0:
+		return _result(false, "play_card_not_in_authoritative_source_zone")
+	var card := (source[index] as Dictionary).duplicate(true)
+	if source_zone == "hand" and bool(card.get("locked", false)):
+		return _result(false, "play_card_locked")
+	if source_zone == "committed_escrow" and not bool(card.get("locked", false)):
+		return _result(false, "play_card_escrow_not_locked")
+	source.remove_at(index)
+	card["locked"] = false
+	(_state.get("discard", []) as Array).append(card)
+	return _result(
+		true,
+		"card_resolved_from_escrow_to_discard"
+		if source_zone == "committed_escrow"
+		else "card_played_to_discard",
+		[instance_id],
+		"",
+		"discard"
+	)
+
+
+func _apply_reserve_card_submission(intent: Dictionary) -> Dictionary:
+	if str(_state.get("phase", "")) != PHASE_BATCH:
+		return _result(false, "card_reservation_outside_batch")
+	if str(intent.get("decision_mode", "")) != DECISION_AUTHORITY:
+		return _result(false, "card_reservation_requires_authority")
+	var arguments := intent.get("arguments", {}) as Dictionary
+	if not _exact_fields(arguments, ["instance_id"]):
+		return _result(false, "card_reservation_arguments_invalid")
+	var instance_id := str(arguments.get("instance_id", ""))
 	var hand := _state.get("hand", []) as Array
 	var index := _card_index(hand, instance_id)
 	if index < 0:
-		return _result(false, "play_card_not_in_hand")
-	var card := hand[index] as Dictionary
+		return _result(false, "card_reservation_not_in_hand")
+	var card := (hand[index] as Dictionary).duplicate(true)
 	if bool(card.get("locked", false)):
-		return _result(false, "play_card_locked")
+		return _result(false, "card_reservation_already_locked")
 	hand.remove_at(index)
-	(_state.get("discard", []) as Array).append(card.duplicate(true))
-	return _result(true, "card_played_to_discard", [instance_id], "", "discard")
+	card["locked"] = true
+	(_state.get("committed_escrow", []) as Array).append(card)
+	return _result(
+		true,
+		"card_reserved_in_committed_escrow",
+		[instance_id],
+		"",
+		"committed_escrow"
+	)
+
+
+func _apply_release_card_submission(intent: Dictionary) -> Dictionary:
+	if str(_state.get("phase", "")) != PHASE_BATCH:
+		return _result(false, "card_release_outside_batch")
+	if str(intent.get("decision_mode", "")) != DECISION_AUTHORITY:
+		return _result(false, "card_release_requires_authority")
+	var queue_state := _state.get("local_queue_state", {}) as Dictionary
+	if bool(queue_state.get("locked", false)):
+		return _result(false, "card_release_after_queue_lock")
+	var arguments := intent.get("arguments", {}) as Dictionary
+	if not _exact_fields(arguments, ["instance_id"]):
+		return _result(false, "card_release_arguments_invalid")
+	var instance_id := str(arguments.get("instance_id", ""))
+	var escrow := _state.get("committed_escrow", []) as Array
+	var index := _card_index(escrow, instance_id)
+	if index < 0:
+		return _result(false, "card_release_not_in_committed_escrow")
+	var hand := _state.get("hand", []) as Array
+	if hand.size() >= HAND_LIMIT:
+		return _result(false, "card_release_hand_full")
+	var card := (escrow[index] as Dictionary).duplicate(true)
+	if not bool(card.get("locked", false)):
+		return _result(false, "card_release_escrow_not_locked")
+	escrow.remove_at(index)
+	card["locked"] = false
+	hand.append(card)
+	return _result(
+		true,
+		"card_released_from_escrow_to_hand",
+		[instance_id],
+		"",
+		"hand"
+	)
 
 
 func _apply_purchase(intent: Dictionary) -> Dictionary:
@@ -3234,8 +3395,29 @@ func _viewer_private_facts(
 				legal_targets_by_card.get(
 					str(card.get("instance_id", "")),
 					[]
-				) as Array
-			) if include_legal_targets else _project_card(card)
+				) as Array,
+				"hand",
+				"general_hand"
+			) if include_legal_targets else _project_card(
+				card,
+				"hand",
+				"general_hand"
+			)
+		)
+	var escrow_projection: Array = []
+	for card_variant in _state.get("committed_escrow", []) as Array:
+		var card := card_variant as Dictionary
+		escrow_projection.append(
+			_project_ai_card(
+				card,
+				[],
+				"committed_escrow",
+				"pending_public_submission"
+			) if include_legal_targets else _project_card(
+				card,
+				"committed_escrow",
+				"pending_public_submission"
+			)
 		)
 	var discard_projection: Array = []
 	for card_variant in _state.get("discard", []) as Array:
@@ -3246,8 +3428,14 @@ func _viewer_private_facts(
 				legal_targets_by_card.get(
 					str(card.get("instance_id", "")),
 					[]
-				) as Array
-			) if include_legal_targets else _project_card(card)
+				) as Array,
+				"discard",
+				"owner_discard"
+			) if include_legal_targets else _project_card(
+				card,
+				"discard",
+				"owner_discard"
+			)
 		)
 	var commodity_projection: Array = []
 	for commodity_variant in _state.get("commodity_inventory", []) as Array:
@@ -3272,9 +3460,8 @@ func _viewer_private_facts(
 		"draw_pile_count": (_state.get("draw_pile", []) as Array).size(),
 		"discard": discard_projection,
 		"discard_count": discard_projection.size(),
-		"committed_escrow_count": (
-			_state.get("committed_escrow", []) as Array
-		).size(),
+		"committed_escrow": escrow_projection,
+		"committed_escrow_count": escrow_projection.size(),
 		"merge_history_count": (_state.get("merge_history", []) as Array).size(),
 		"eligible_merge_pairs": _eligible_merge_pairs(),
 		"commodity_inventory": commodity_projection,
@@ -3289,29 +3476,106 @@ func _viewer_private_facts(
 	}
 
 
-static func _project_card(card: Dictionary) -> Dictionary:
+func _project_card(
+	card: Dictionary,
+	authority_zone: String,
+	projection_role: String
+) -> Dictionary:
 	var projected := card.duplicate(true)
 	projected["asset_cost"] = int(card.get("primary_asset_cost", -1))
+	projected["authority_zone"] = authority_zone
+	projected["projection_role"] = projection_role
+	projected["source_receipt_id"] = "dbg.revision.%d" % int(
+		_state.get("revision", 0)
+	)
 	return projected
 
 
-static func _project_ai_card(
+func _project_ai_card(
 	card: Dictionary,
-	legal_targets: Array
+	legal_targets: Array,
+	authority_zone: String,
+	projection_role: String
 ) -> Dictionary:
-	var projected := _project_card(card)
+	var projected := _project_card(card, authority_zone, projection_role)
 	projected["legal_targets"] = legal_targets.duplicate(true)
 	return projected
 
 
-static func _project_commodity(commodity: Dictionary) -> Dictionary:
+func _project_commodity(commodity: Dictionary) -> Dictionary:
+	var source_definition_id := str(commodity.get("commodity_id", ""))
+	var source_definition := CARD_RUNTIME_CATALOG_V06.card_snapshot(
+		source_definition_id
+	)
+	var source_machine := source_definition.get("machine", {}) as Dictionary
+	var family_id := str(source_machine.get(
+		"family_id",
+		source_definition_id
+	))
+	var level := int(commodity.get("level", 1))
+	var card_definition_id := (
+		"%s.rank_%d" % [family_id, level]
+		if family_id.begins_with("commodity.")
+		else source_definition_id
+	)
+	var definition := CARD_RUNTIME_CATALOG_V06.card_snapshot(card_definition_id)
+	if definition.is_empty():
+		definition = source_definition
+	var machine := definition.get("machine", {}) as Dictionary
+	var player := definition.get("player", {}) as Dictionary
+	var effect_payload := machine.get("effect_payload", {}) as Dictionary
+	var claim_receipts := commodity.get("claim_receipt_ids", []) as Array
+	var source_tracks := commodity.get("source_track_instance_ids", []) as Array
+	var product_id := str(effect_payload.get(
+		"product_id",
+		player.get("name", source_definition_id)
+	))
+	var name := str(player.get("name", product_id))
+	var short_effect := str(player.get(
+		"short_effect",
+		"可参与既有商品操作与合成。"
+	))
+	var effect := str(player.get("effect", short_effect))
+	var target := str(player.get("target", "同色工厂或市场"))
+	var available := not bool(commodity.get("locked", false)) \
+		and int(commodity.get("available_from_batch_id", 0)) \
+			<= int(_state.get("batch_index", 0))
 	return {
 		"instance_id": str(commodity.get("instance_id", "")),
-		"commodity_id": str(commodity.get("commodity_id", "")),
+		"commodity_id": source_definition_id,
+		"card_definition_id": card_definition_id,
+		"family_id": family_id,
+		"product_id": product_id,
+		"name": name,
+		"card_type": str(player.get("type", "商品牌")),
+		"industry_id": str(machine.get(
+			"industry_id",
+			commodity.get("primary_color", "")
+		)),
 		"primary_color": str(commodity.get("primary_color", "")),
-		"level": int(commodity.get("level", 0)),
+		"level": level,
+		"rank": str(player.get("rank", "L%d" % level)),
+		"cost": str(player.get("cost", "免费")),
+		"short_effect": short_effect,
+		"effect": effect,
+		"target": target,
+		"legal_action_summary": str(player.get("next_step", target)),
+		"legality_state": "available" if available else "locked",
 		"locked": bool(commodity.get("locked", false)),
 		"available_from_batch_id": int(commodity.get("available_from_batch_id", 0)),
+		"illustration_key": str(
+			PRESENTATION_ASSET_CATALOG.presentation_key_for_card(
+				card_definition_id
+			)
+		),
+		"source_receipt_id": str(
+			claim_receipts.back() if not claim_receipts.is_empty() else "none"
+		),
+		"source_track_instance_id": str(
+			source_tracks.back() if not source_tracks.is_empty() else "none"
+		),
+		"authority_zone": "commodity_inventory",
+		"projection_role": "commodity_hand",
 	}
 
 
@@ -3705,7 +3969,14 @@ static func _projected_card_valid(
 	var expected_fields := AI_PROJECTED_CARD_FIELDS \
 		if legal_targets_required else PROJECTED_CARD_FIELDS
 	if not _exact_fields(card, expected_fields) \
-			or not _nonnegative_int(card.get("asset_cost")):
+			or not _nonnegative_int(card.get("asset_cost")) \
+			or str(card.get("authority_zone", "")) not in [
+				"hand", "committed_escrow", "discard",
+			] \
+			or str(card.get("projection_role", "")) not in [
+				"general_hand", "pending_public_submission", "owner_discard",
+			] \
+			or not _stable_id(card.get("source_receipt_id")):
 		return false
 	if legal_targets_required:
 		if not (card.get("legal_targets") is Array):
@@ -3719,6 +3990,9 @@ static func _projected_card_valid(
 	var authority_card := card.duplicate(true)
 	authority_card.erase("asset_cost")
 	authority_card.erase("legal_targets")
+	authority_card.erase("authority_zone")
+	authority_card.erase("projection_role")
+	authority_card.erase("source_receipt_id")
 	return int(card.get("asset_cost", -1)) \
 		== int(authority_card.get("primary_asset_cost", -2)) \
 		and _card_valid(authority_card)
@@ -3869,11 +4143,29 @@ static func _projected_commodity_valid(commodity: Dictionary) -> bool:
 	return _exact_fields(commodity, PROJECTED_COMMODITY_CARD_FIELDS) \
 		and _stable_id(commodity.get("instance_id")) \
 		and _stable_id(commodity.get("commodity_id")) \
+		and _stable_id(commodity.get("card_definition_id")) \
+		and _stable_id(commodity.get("family_id")) \
+		and not str(commodity.get("product_id", "")).is_empty() \
+		and not str(commodity.get("name", "")).is_empty() \
+		and not str(commodity.get("card_type", "")).is_empty() \
+		and str(commodity.get("industry_id", "")) in COLORS \
 		and str(commodity.get("primary_color", "")) in COLORS \
 		and _positive_int(commodity.get("level")) \
 		and int(commodity.get("level", 0)) <= MAX_COMMODITY_LEVEL \
+		and not str(commodity.get("rank", "")).is_empty() \
+		and not str(commodity.get("cost", "")).is_empty() \
+		and not str(commodity.get("short_effect", "")).is_empty() \
+		and not str(commodity.get("effect", "")).is_empty() \
+		and not str(commodity.get("target", "")).is_empty() \
+		and not str(commodity.get("legal_action_summary", "")).is_empty() \
+		and str(commodity.get("legality_state", "")) in ["available", "locked"] \
 		and commodity.get("locked") is bool \
-		and _positive_int(commodity.get("available_from_batch_id"))
+		and _positive_int(commodity.get("available_from_batch_id")) \
+		and commodity.get("illustration_key") is String \
+		and _stable_id(commodity.get("source_receipt_id")) \
+		and _stable_id(commodity.get("source_track_instance_id")) \
+		and commodity.get("authority_zone") == "commodity_inventory" \
+		and commodity.get("projection_role") == "commodity_hand"
 
 
 static func _commodity_card_valid(

@@ -29,6 +29,18 @@ const MONSTER_SKILL_SETTLEMENT_INTENT_ID := (
 	"V075MonsterSkillAssetSettlementIntentV1"
 )
 const MONSTER_SKILL_RESERVATION_PREFIX := "reservation.monster.skill."
+const PRIVATE_DIRECT_ACTION_RESERVATION_REQUEST_ID := (
+	"V076PrivateDirectActionAssetReservationRequestV1"
+)
+const PRIVATE_DIRECT_ACTION_RESERVATION_RECEIPT_ID := (
+	"V076PrivateDirectActionAssetReservationReceiptV1"
+)
+const PRIVATE_DIRECT_ACTION_SETTLEMENT_INTENT_ID := (
+	"V076PrivateDirectActionAssetSettlementIntentV1"
+)
+const PRIVATE_DIRECT_ACTION_RESERVATION_PREFIX := (
+	"reservation.private.direct.action."
+)
 
 const BATCH_CORE_AUTHORITY_ID := "v072.card_batch.core_authority.v3"
 const BATCH_AI_OBSERVATION_ID := "v072.card_batch.ai_observation.v3"
@@ -1279,6 +1291,215 @@ static func _settle_monster_skill_asset_reservation(
 		reservation_id,
 		"assets_debited" if committed else "assets_released",
 		str(settlement_intent.get("settlement_intent_id", "")),
+		settlement_fingerprint
+	)
+	(next.get("receipts") as Array).append(receipt)
+	return {
+		"accepted": true,
+		"replayed": false,
+		"reason_code": reason_code,
+		"state": next,
+		"receipt": receipt,
+		"asset_debit_count": 1 if committed else 0,
+		"full_reservation_release": not committed,
+	}
+
+
+## Private Direct Action assets reuse this existing six-color authority and
+## its reservation state. The separate typed envelope prevents a military
+## action from masquerading as a V075 monster skill while preserving one
+## balance, one reservation map, one revision, and one receipt journal.
+static func prepare_private_direct_action_asset_reservation(
+	state: Dictionary,
+	request: Dictionary
+) -> Dictionary:
+	if not _state_error(state).is_empty():
+		return _private_direct_action_asset_failure(state, "state_invalid")
+	var request_error := _private_direct_action_reservation_request_error(request)
+	if not request_error.is_empty():
+		return _private_direct_action_asset_failure(state, request_error)
+	var reservation_id := str(request.get("reservation_id", ""))
+	var request_fingerprint := str(request.get(
+		"reservation_request_fingerprint", ""
+	))
+	var prior := _monster_skill_operation_receipt(
+		state,
+		reservation_id,
+		["reserve_private_direct_action_assets"]
+	)
+	if not prior.is_empty():
+		if str(prior.get("intent_fingerprint", "")) != request_fingerprint:
+			return _private_direct_action_asset_failure(
+				state,
+				"private_direct_action_reservation_id_collision"
+			)
+		return {
+			"accepted": true,
+			"replayed": true,
+			"reason_code": str(prior.get("reason_code", "")),
+			"state": state.duplicate(true),
+			"receipt": prior,
+			"reservation_receipt": _private_direct_action_reservation_receipt(
+				request,
+				true,
+				str(prior.get("reason_code", "")),
+				int(prior.get("state_revision", 0))
+			),
+		}
+	var owner_id := str(request.get("owner_player_id", ""))
+	if not (state.get("player_ids") as Array).has(owner_id):
+		return _private_direct_action_reservation_rejection(
+			state, request, "private_direct_action_asset_owner_invalid"
+		)
+	if int(request.get("asset_snapshot_revision", -1)) \
+			!= int(state.get("revision", 0)):
+		return _private_direct_action_reservation_rejection(
+			state, request, "private_direct_action_asset_snapshot_changed"
+		)
+	var player := (state.get("players") as Dictionary).get(owner_id) as Dictionary
+	if (player.get("reservations") as Dictionary).has(reservation_id):
+		return _private_direct_action_asset_failure(
+			state, "private_direct_action_reservation_unjournaled_collision"
+		)
+	var cost := request.get("asset_cost_by_color") as Dictionary
+	for color in COLORS:
+		var available := int((player.get("assets") as Dictionary).get(color, 0)) \
+			- int((player.get("reserved_totals") as Dictionary).get(color, 0))
+		if int(cost.get(color, 0)) > available:
+			return _private_direct_action_reservation_rejection(
+				state, request, "available_unreserved_assets_insufficient"
+			)
+	var next := state.duplicate(true)
+	var next_player := (next.get("players") as Dictionary).get(owner_id) as Dictionary
+	(next_player.get("reservations") as Dictionary)[reservation_id] = cost.duplicate(true)
+	_recalculate_reserved_totals(next_player)
+	_increment_revision(next)
+	var receipt := _receipt(
+		next,
+		"reserve_private_direct_action_assets",
+		true,
+		"private_direct_action_assets_reserved",
+		owner_id,
+		reservation_id,
+		"reserved",
+		str(request.get("request_id", "")),
+		request_fingerprint
+	)
+	(next.get("receipts") as Array).append(receipt)
+	return {
+		"accepted": true,
+		"replayed": false,
+		"reason_code": "private_direct_action_assets_reserved",
+		"state": next,
+		"receipt": receipt,
+		"reservation_receipt": _private_direct_action_reservation_receipt(
+			request, true, "private_direct_action_assets_reserved",
+			int(next.get("revision", 0))
+		),
+	}
+
+
+static func commit_private_direct_action_asset_reservation(
+	state: Dictionary,
+	intent: Dictionary
+) -> Dictionary:
+	return _settle_private_direct_action_asset_reservation(
+		state, intent, "commit"
+	)
+
+
+static func release_private_direct_action_asset_reservation(
+	state: Dictionary,
+	intent: Dictionary
+) -> Dictionary:
+	return _settle_private_direct_action_asset_reservation(
+		state, intent, "release"
+	)
+
+
+static func _settle_private_direct_action_asset_reservation(
+	state: Dictionary,
+	intent: Dictionary,
+	expected_action: String
+) -> Dictionary:
+	if not _state_error(state).is_empty():
+		return _private_direct_action_asset_failure(state, "state_invalid")
+	var intent_error := _private_direct_action_settlement_intent_error(intent)
+	if not intent_error.is_empty():
+		return _private_direct_action_asset_failure(state, intent_error)
+	if str(intent.get("action", "")) != expected_action:
+		return _private_direct_action_asset_failure(
+			state, "private_direct_action_asset_settlement_action_mismatch"
+		)
+	var reservation_id := str(intent.get("reservation_id", ""))
+	var settlement_fingerprint := str(intent.get("settlement_fingerprint", ""))
+	var operation_id := (
+		"commit_private_direct_action_assets"
+		if expected_action == "commit"
+		else "release_private_direct_action_assets"
+	)
+	var prior := _monster_skill_operation_receipt(
+		state,
+		reservation_id,
+		[
+			"commit_private_direct_action_assets",
+			"release_private_direct_action_assets",
+		]
+	)
+	if not prior.is_empty():
+		if str(prior.get("operation_id", "")) != operation_id \
+				or str(prior.get("intent_fingerprint", "")) \
+				!= settlement_fingerprint:
+			return _private_direct_action_asset_failure(
+				state, "private_direct_action_asset_settlement_collision"
+			)
+		return {
+			"accepted": true,
+			"replayed": true,
+			"reason_code": str(prior.get("reason_code", "")),
+			"state": state.duplicate(true),
+			"receipt": prior,
+		}
+	var owner_id := str(intent.get("owner_player_id", ""))
+	if not (state.get("player_ids") as Array).has(owner_id):
+		return _private_direct_action_asset_failure(
+			state, "private_direct_action_asset_owner_invalid"
+		)
+	var player := (state.get("players") as Dictionary).get(owner_id) as Dictionary
+	var reservations := player.get("reservations") as Dictionary
+	if not reservations.has(reservation_id):
+		return _private_direct_action_asset_failure(
+			state, "private_direct_action_asset_reservation_missing"
+		)
+	var cost := intent.get("asset_cost_by_color") as Dictionary
+	if reservations.get(reservation_id) != cost:
+		return _private_direct_action_asset_failure(
+			state, "private_direct_action_asset_reservation_cost_changed"
+		)
+	var next := state.duplicate(true)
+	var next_player := (next.get("players") as Dictionary).get(owner_id) as Dictionary
+	if expected_action == "commit":
+		var assets := next_player.get("assets") as Dictionary
+		for color in COLORS:
+			assets[color] = int(assets.get(color, 0)) - int(cost.get(color, 0))
+	(next_player.get("reservations") as Dictionary).erase(reservation_id)
+	_recalculate_reserved_totals(next_player)
+	_increment_revision(next)
+	var committed := expected_action == "commit"
+	var reason_code := (
+		"private_direct_action_assets_committed"
+		if committed
+		else "private_direct_action_assets_released"
+	)
+	var receipt := _receipt(
+		next,
+		operation_id,
+		true,
+		reason_code,
+		owner_id,
+		reservation_id,
+		"assets_debited" if committed else "assets_released",
+		str(intent.get("settlement_intent_id", "")),
 		settlement_fingerprint
 	)
 	(next.get("receipts") as Array).append(receipt)
@@ -3496,7 +3717,8 @@ static func _player_error(value: Variant, conversion: int) -> String:
 		player.get("reservations") as Dictionary
 	).keys():
 		var reservation_id := str(reservation_id_variant)
-		if _is_monster_skill_reservation_id(reservation_id):
+		if _is_monster_skill_reservation_id(reservation_id) \
+				or _is_private_direct_action_reservation_id(reservation_id):
 			expected_reservation_ids.append(reservation_id)
 	if not _exact_keys(player.get("reservations") as Dictionary, expected_reservation_ids):
 		return "player_reservations_invalid"
@@ -3518,7 +3740,8 @@ static func _player_error(value: Variant, conversion: int) -> String:
 		player.get("reservations") as Dictionary
 	).keys():
 		var reservation_id := str(reservation_id_variant)
-		if not _is_monster_skill_reservation_id(reservation_id):
+		if not _is_monster_skill_reservation_id(reservation_id) \
+				and not _is_private_direct_action_reservation_id(reservation_id):
 			continue
 		var private_reservation_variant: Variant = (
 			player.get("reservations") as Dictionary
@@ -3528,7 +3751,7 @@ static func _player_error(value: Variant, conversion: int) -> String:
 			0,
 			ASSET_CAP
 		):
-			return "monster_skill_asset_reservation_invalid"
+			return "private_asset_reservation_invalid"
 		for color in COLORS:
 			calculated_totals[color] = int(
 				calculated_totals.get(color, 0)
@@ -3752,6 +3975,36 @@ static func _state_receipt_binding_error(
 				or not _receipt_resolution_detail_is_empty(receipt)
 			):
 				return "state_receipt_monster_skill_settlement_invalid"
+		"reserve_private_direct_action_assets":
+			if (
+				receipt.get("reason_code") \
+				!= "private_direct_action_assets_reserved"
+				or outcome_id != "reserved"
+				or not player_ids.has(actor_id)
+				or not _is_private_direct_action_reservation_id(action_id)
+				or not _stable_id(intent_id)
+				or not _fingerprint_valid(intent_fingerprint)
+				or not _receipt_resolution_detail_is_empty(receipt)
+			):
+				return "state_receipt_private_direct_action_reserve_invalid"
+		"commit_private_direct_action_assets", "release_private_direct_action_assets":
+			var committed := operation_id == "commit_private_direct_action_assets"
+			if (
+				receipt.get("reason_code") != (
+					"private_direct_action_assets_committed"
+					if committed
+					else "private_direct_action_assets_released"
+				)
+				or outcome_id != (
+					"assets_debited" if committed else "assets_released"
+				)
+				or not player_ids.has(actor_id)
+				or not _is_private_direct_action_reservation_id(action_id)
+				or not _stable_id(intent_id)
+				or not _fingerprint_valid(intent_fingerprint)
+				or not _receipt_resolution_detail_is_empty(receipt)
+			):
+				return "state_receipt_private_direct_action_settlement_invalid"
 		"refresh_assets_after_batch":
 			if receipt.get("reason_code") != "frozen_snapshot_applied" \
 					or outcome_id != "assets_refreshed" \
@@ -3993,13 +4246,19 @@ static func _monster_skill_reservation_history_error(
 			"reserve_monster_skill_assets",
 			"commit_monster_skill_assets",
 			"release_monster_skill_assets",
+			"reserve_private_direct_action_assets",
+			"commit_private_direct_action_assets",
+			"release_private_direct_action_assets",
 		]:
 			continue
 		var reservation_id := str(receipt.get("action_id", ""))
 		var owner_id := str(receipt.get("actor_id", ""))
 		if not player_ids.has(owner_id):
 			return "monster_skill_reservation_history_owner_invalid"
-		if operation_id == "reserve_monster_skill_assets":
+		if operation_id in [
+			"reserve_monster_skill_assets",
+			"reserve_private_direct_action_assets",
+		]:
 			if history.has(reservation_id):
 				return "monster_skill_reservation_history_duplicate"
 			history[reservation_id] = {
@@ -4025,7 +4284,10 @@ static func _monster_skill_reservation_history_error(
 			player.get("reservations") as Dictionary
 		).keys():
 			var reservation_id := str(reservation_id_variant)
-			if not _is_monster_skill_reservation_id(reservation_id):
+			if not _is_monster_skill_reservation_id(reservation_id) \
+					and not _is_private_direct_action_reservation_id(
+						reservation_id
+					):
 				continue
 			if active.has(reservation_id):
 				return "monster_skill_reservation_active_owner_duplicate"
@@ -4242,6 +4504,160 @@ static func _monster_skill_reservation_rejection(
 
 
 static func _monster_skill_asset_failure(
+	state: Variant,
+	reason_code: String
+) -> Dictionary:
+	return {
+		"accepted": false,
+		"replayed": false,
+		"reason_code": reason_code,
+		"state": (
+			(state as Dictionary).duplicate(true)
+			if state is Dictionary
+			else {}
+		),
+		"receipt": {},
+		"reservation_receipt": {},
+	}
+
+
+static func _private_direct_action_reservation_request_error(
+	value: Variant
+) -> String:
+	if not (value is Dictionary) or not _is_pure_data(value):
+		return "private_direct_action_reservation_request_not_pure_data"
+	var request := value as Dictionary
+	var fields := [
+		"schema_version", "contract_id", "reservation_id", "request_id",
+		"owner_player_id", "source_instance_id", "source_generation",
+		"asset_snapshot_revision", "asset_cost_by_color", "purpose",
+		"request_fingerprint", "reservation_request_fingerprint",
+	]
+	if not _exact_fields(request, fields):
+		return "private_direct_action_reservation_request_fields_invalid"
+	if request.get("schema_version") != SCHEMA_VERSION \
+			or str(request.get("contract_id", "")) \
+			!= PRIVATE_DIRECT_ACTION_RESERVATION_REQUEST_ID \
+			or not _is_private_direct_action_reservation_id(str(request.get(
+				"reservation_id", ""
+			))) \
+			or not _stable_id(request.get("request_id")) \
+			or not _stable_id(request.get("owner_player_id")) \
+			or not _stable_id(request.get("source_instance_id")) \
+			or not _positive_integer(request.get("source_generation")) \
+			or not _nonnegative_integer(request.get("asset_snapshot_revision")) \
+			or not _color_map_valid(request.get("asset_cost_by_color"), 0, ASSET_CAP) \
+			or str(request.get("purpose", "")) != "private_direct_action" \
+			or not _fingerprint_valid(request.get("request_fingerprint")):
+		return "private_direct_action_reservation_request_invalid"
+	var fingerprint := str(request.get("reservation_request_fingerprint", ""))
+	var unsealed := request.duplicate(true)
+	unsealed.erase("reservation_request_fingerprint")
+	if not _fingerprint_valid(fingerprint) or _fingerprint(unsealed) != fingerprint:
+		return "private_direct_action_reservation_request_fingerprint_invalid"
+	return ""
+
+
+static func _private_direct_action_settlement_intent_error(
+	value: Variant
+) -> String:
+	if not (value is Dictionary) or not _is_pure_data(value):
+		return "private_direct_action_settlement_intent_not_pure_data"
+	var intent := value as Dictionary
+	var fields := [
+		"schema_version", "contract_id", "settlement_intent_id",
+		"reservation_id", "request_id", "owner_player_id",
+		"source_instance_id", "action", "asset_cost_by_color",
+		"full_reservation_release", "effect_receipt_id",
+		"settlement_fingerprint",
+	]
+	if not _exact_fields(intent, fields):
+		return "private_direct_action_settlement_intent_fields_invalid"
+	var action := str(intent.get("action", ""))
+	if intent.get("schema_version") != SCHEMA_VERSION \
+			or str(intent.get("contract_id", "")) \
+			!= PRIVATE_DIRECT_ACTION_SETTLEMENT_INTENT_ID \
+			or not _stable_id(intent.get("settlement_intent_id")) \
+			or not _is_private_direct_action_reservation_id(str(intent.get(
+				"reservation_id", ""
+			))) \
+			or not _stable_id(intent.get("request_id")) \
+			or not _stable_id(intent.get("owner_player_id")) \
+			or not _stable_id(intent.get("source_instance_id")) \
+			or action not in ["commit", "release"] \
+			or not _color_map_valid(intent.get("asset_cost_by_color"), 0, ASSET_CAP) \
+			or not (intent.get("full_reservation_release") is bool) \
+			or bool(intent.get("full_reservation_release", false)) != (action == "release") \
+			or not _stable_id(intent.get("effect_receipt_id")):
+		return "private_direct_action_settlement_intent_invalid"
+	var fingerprint := str(intent.get("settlement_fingerprint", ""))
+	var unsealed := intent.duplicate(true)
+	unsealed.erase("settlement_fingerprint")
+	if not _fingerprint_valid(fingerprint) or _fingerprint(unsealed) != fingerprint:
+		return "private_direct_action_settlement_intent_fingerprint_invalid"
+	return ""
+
+
+static func _is_private_direct_action_reservation_id(value: String) -> bool:
+	return value.begins_with(PRIVATE_DIRECT_ACTION_RESERVATION_PREFIX) \
+		and _stable_id(value)
+
+
+static func _private_direct_action_reservation_receipt(
+	request: Dictionary,
+	accepted: bool,
+	reason_code: String,
+	committed_asset_revision: int
+) -> Dictionary:
+	if not _private_direct_action_reservation_request_error(request).is_empty() \
+			or not _stable_id(reason_code) \
+			or not _nonnegative_integer(committed_asset_revision):
+		return {}
+	return _seal({
+		"schema_version": SCHEMA_VERSION,
+		"contract_id": PRIVATE_DIRECT_ACTION_RESERVATION_RECEIPT_ID,
+		"receipt_id": "receipt.asset.private.direct.%s" % (
+			"%s|%s|%s|%d" % [
+				request.get("reservation_id"),
+				"accepted" if accepted else "rejected",
+				reason_code,
+				committed_asset_revision,
+			]
+		).sha256_text().substr(0, 24),
+		"reservation_id": request.get("reservation_id"),
+		"request_id": request.get("request_id"),
+		"owner_player_id": request.get("owner_player_id"),
+		"source_instance_id": request.get("source_instance_id"),
+		"accepted": accepted,
+		"reason_code": reason_code,
+		"committed_asset_revision": committed_asset_revision,
+		"reserved_asset_cost_by_color": (
+			request.get("asset_cost_by_color") as Dictionary
+		).duplicate(true),
+		"reservation_request_fingerprint": request.get(
+			"reservation_request_fingerprint"
+		),
+	}, "receipt_fingerprint")
+
+
+static func _private_direct_action_reservation_rejection(
+	state: Dictionary,
+	request: Dictionary,
+	reason_code: String
+) -> Dictionary:
+	return {
+		"accepted": false,
+		"replayed": false,
+		"reason_code": reason_code,
+		"state": state.duplicate(true),
+		"receipt": {},
+		"reservation_receipt": _private_direct_action_reservation_receipt(
+			request, false, reason_code, int(state.get("revision", 0))
+		),
+	}
+
+
+static func _private_direct_action_asset_failure(
 	state: Variant,
 	reason_code: String
 ) -> Dictionary:

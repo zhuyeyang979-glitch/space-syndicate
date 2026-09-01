@@ -1,0 +1,52 @@
+{
+  "schema_version": "space_syndicate.v076.production_cutover_revalidation_pending_manifest.v1",
+  "manifest_id": "v076-production-cutover-revalidation-pending-9f8659c8",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "recorded_at_utc": "2026-08-26T19:30:45.914Z",
+  "subject_head_sha": "9f8659c8e3745c4f0c6bc398030c289e4291db31",
+  "subject_tree_sha": "7a5f976fd09c4d4d69cf70b806760b7b2242ffff",
+  "production_cutover": false,
+  "production_cutover_authorized": false,
+  "status": "PENDING_CURRENT_SUBJECT_REVALIDATION",
+  "reason": "The prior cutover receipt is bound to an older subject and remains immutable; no current-subject cutover receipt has been produced.",
+  "current_subject_boundary": {
+    "main_scene_path": "scenes/main.tscn",
+    "main_scene_sha256": "aabe4e7f5dce63af558d22c2b77b0cffcfad03a763a7c6d11c4003e90e8e79f3",
+    "runtime_composition_path": "scenes/runtime/V075RuntimeComposition.tscn",
+    "runtime_composition_sha256": "d64ce37daa3634a97ce6fb3cfb5d4b40182839832d62922c7999441762f9f0b9",
+    "production_screen_path": "scenes/ui/v075/V075SampleGameScreen.tscn",
+    "production_screen_sha256": "1e3461fe385f64e5ef830ce96f64a0e5ab8cf6faf1832fd8cbf3baa17acb3e19",
+    "runtime_owner_script_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+    "runtime_owner_script_sha256": "eb8007777b35c4566df86a7b10264f105942d8bb27cbb8d1fb972a7b65441dc3",
+    "application_bootstrap_script_path": "scripts/v075_runtime/v075_application_bootstrap.gd",
+    "application_bootstrap_script_sha256": "20876238878ae34d6cc4c26060ae441a6c980f72102b12280fa76f9d36d9c958",
+    "runtime_owner": "component.current.v075_runtime_owner",
+    "required_atomic_cutover": true,
+    "dual_write_count_required": 0,
+    "fallback_count_required": 0,
+    "old_owner_production_reachability_required": 0,
+    "new_owner_production_reachability_required": 1
+  },
+  "prior_cutover_evidence": {
+    "receipt_path": "reports/reuse/v076_narrow_viewport_production_cutover_revalidation_receipt.json",
+    "receipt_sha256": "70b48b833ac9a2ff7b0d8555552f66611eed69d93abd67a55761214608fb0cf5",
+    "bound_head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
+    "bound_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+    "retained_immutable": true
+  },
+  "required_before_claim": [
+    "current-subject MCP main.tscn runtime receipt",
+    "exact current-subject cutover receipt",
+    "consumer inventory and supersession binding",
+    "zero dual writes",
+    "zero fallbacks",
+    "production_green remains false until all current-subject evidence is complete",
+    "human_green remains false"
+  ],
+  "invalidation": {
+    "subject_change_requires_new_manifest": true,
+    "touching_main_scene_or_runtime_owner_requires_revalidation": true,
+    "historical_receipt_mutation_count": 0
+  }
+}

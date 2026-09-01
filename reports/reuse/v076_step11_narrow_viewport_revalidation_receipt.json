@@ -1,0 +1,28 @@
+{
+  "schema_version": "space_syndicate.v076.golden_production_execution_receipt.v1",
+  "evidence_type": "V076_GOLDEN_PRODUCTION_EXECUTION",
+  "receipt_id": "v076-alpha07-step11-narrow-viewport-revalidation-20260824",
+  "recorded_on": "2026-08-24",
+  "candidate_head_sha": "f8340207d785e7b35ea7451048e5d71d0325232c",
+  "candidate_tree_sha": "3a142247c5cabd75a8ad92fbee6210ace5a7c9e5",
+  "step_id": "STEP11",
+  "status": "PASS",
+  "execution_mode": "PRODUCTION_COMPOSITION",
+  "diagnostic_only": false,
+  "fixture_only": false,
+  "production_scene_path": "scenes/main.tscn",
+  "production_scene_sha256": "1eaaf3b538a0b9a5411095c2cbdeb050ed93aa856b16c06343e698866cf2a",
+  "pass_count": 1,
+  "focused_execution": {
+    "test": "tests/v075_responsive_viewport_matrix_test.gd",
+    "status": "PASS",
+    "checks": "144/144",
+    "runner_run_id": "local-20260824-v075-responsive-matrix-7x7",
+    "diagnostic_count": 0,
+    "script_error_count": 0,
+    "remaining_project_runtime_process_count": 0
+  },
+  "previous_revalidation_receipt": "reports/reuse/v076_step11_human_playability_repair_revalidation_receipt.json",
+  "revalidation_scope": "Existing STEP11 asset, route, and presentation Owner evidence retained; this append-only receipt rebinds the unchanged production composition after the narrow viewport layout repair.",
+  "claim_limits": {"human_executed": false, "human_confirmed": false, "human_green": false, "full_world_reproof_performed": false}
+}

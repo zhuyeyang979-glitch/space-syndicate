@@ -232,13 +232,19 @@ func debug_snapshot() -> Dictionary:
 		"direct_inventory_mutation_count": 0,
 		"direct_track_mutation_count": 0,
 		"cards_are_stationary": true,
-		"belt_decoration_moves": true,
+		# Authority-owned phase movement is rendered by V074SampleGameScreen.
+		# This legacy decorative belt must never imply a gameplay scroll.
+		"belt_decoration_moves": false,
+		"decorative_wobble_amplitude_px": 0.0,
+		"presentation_reads_authoritative_phase": true,
 		"clear_all_rebuild_count": 0,
 	}
 
 
 func _process(delta: float) -> void:
-	_belt_motion = fmod(_belt_motion + maxf(0.0, delta) * 18.0, 24.0)
+	# Keep the belt markers static.  Real movement is driven only by the shared
+	# track owner's scroll_sequence/phase projection and its presentation tween.
+	_belt_motion = 0.0
 	queue_redraw()
 
 
@@ -301,7 +307,7 @@ func _input(event: InputEvent) -> void:
 func _draw() -> void:
 	var y := size.y - 17.0
 	draw_line(Vector2(10.0, y), Vector2(size.x - 10.0, y), Color("#38bdf8", 0.22), 2.0)
-	var x := -24.0 + _belt_motion
+	var x := -24.0
 	while x < size.x:
 		draw_line(Vector2(x, y - 4.0), Vector2(x + 10.0, y + 4.0), Color("#f8fafc", 0.16), 2.0)
 		x += 24.0

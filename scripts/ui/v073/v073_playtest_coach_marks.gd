@@ -4,6 +4,10 @@ class_name V073PlaytestCoachMarks
 
 signal coach_mark_shown(mark_id: String)
 signal coach_mark_skipped(mark_id: String, skip_all: bool)
+## Emitted only when the whole coach surface changes lifecycle state.  The
+## presentation owner uses this edge (rather than every mark) to gate the
+## authoritative playtest pace.
+signal coach_activity_changed(active: bool, reason_code: String)
 
 const SAFE_MARGIN := 12.0
 const HEADER_SAFE_TOP := 64.0
@@ -31,6 +35,7 @@ const MARKS := [
 @onready var _body_label: Label = %CoachBody
 @onready var _next_button: Button = %CoachNext
 @onready var _skip_button: Button = %CoachSkipAll
+@onready var _close_button: Button = %CoachClose
 
 var _anchors: Dictionary = {}
 var _index := -1
@@ -42,17 +47,42 @@ var _offscreen_count := 0
 var _target_occlusion_count := 0
 var _primary_input_block_count := 0
 var _map_center_occlusion_count := 0
+var _placement_signature := ""
+var _last_viewport_size := Vector2.ZERO
+var _last_callout_position := Vector2.ZERO
+var _position_recompute_count := 0
+var _pointer_entry_recompute_count := 0
+var _step3_pointer_entry_position_delta_px := 0.0
+var _step3_next_click_advance_count := 0
+var _step3_duplicate_advance_count := 0
+var _step3_mouse_event_loss_count := 0
+var _pointer_motion_count := 0
+var _step3_pointer_motion_count := 0
+var _step3_panel_move_on_pointer_count := 0
+var _missing_target_count := 0
+var _target_available := false
+var _last_advance_frame := -1
+var _close_sample_msec: Array[int] = []
+var _close_white_frame_count := 0
+var _close_input_loss_count := 0
+var _close_duplicate_signal_count := 0
+var _close_generation := 0
 
 
 func _ready() -> void:
-	_next_button.pressed.connect(_advance)
+	_next_button.pressed.connect(_on_next_pressed)
 	_skip_button.pressed.connect(_skip_all)
+	_close_button.pressed.connect(_close)
 	_root.visible = false
+	get_viewport().size_changed.connect(_on_viewport_size_changed)
+	set_process_unhandled_key_input(true)
+	set_process_input(true)
 	set_process(true)
 
 
 func bind_anchors(anchors: Dictionary) -> void:
 	_anchors = anchors.duplicate()
+	_invalidate_placement()
 
 
 func apply_public_context(context: Dictionary) -> void:
@@ -64,6 +94,7 @@ func restart_from_settings() -> void:
 	_completed = false
 	_active = true
 	_index = 0
+	coach_activity_changed.emit(true, "started")
 	_show_current()
 
 
@@ -94,23 +125,98 @@ func debug_snapshot() -> Dictionary:
 		"target_occlusion_count": _target_occlusion_count if contributes_layout else 0,
 		"primary_input_block_count": _primary_input_block_count if contributes_layout else 0,
 		"map_center_occlusion_count": _map_center_occlusion_count if contributes_layout else 0,
+		"position_recompute_count": _position_recompute_count,
+		"pointer_entry_recompute_count": _pointer_entry_recompute_count,
+		"step3_pointer_entry_position_delta_px": (
+			_step3_pointer_entry_position_delta_px
+		),
+		"step3_next_button_visible": _next_button.is_visible_in_tree(),
+		"step3_next_button_enabled": not _next_button.disabled,
+		"step3_next_click_advance_count": _step3_next_click_advance_count,
+		"step3_duplicate_advance_count": _step3_duplicate_advance_count,
+		"step3_mouse_event_loss_count": _step3_mouse_event_loss_count,
+		"pointer_motion_count": _pointer_motion_count,
+		"step3_pointer_motion_count": _step3_pointer_motion_count,
+		"step3_panel_move_on_pointer_count": (
+			_step3_panel_move_on_pointer_count
+		),
+		"missing_target_count": _missing_target_count,
+		"target_available": _target_available,
+		"coachmark_close_sample_count": _close_sample_msec.size(),
+		"coachmark_close_p95_ms": _close_p95_msec(),
+		"coachmark_close_max_ms": _close_sample_msec.max() if not _close_sample_msec.is_empty() else 0,
+		"coachmark_close_white_frame_count": _close_white_frame_count,
+		"coachmark_close_input_loss_count": _close_input_loss_count,
+		"coachmark_close_duplicate_signal_count": _close_duplicate_signal_count,
+		"suspended": _suspended,
+		"callout_position": _callout.position,
 		"gameplay_value_change_count": 0,
 		"hidden_info_disclosure_count": 0,
 	}
 
 
 func _process(_delta: float) -> void:
-	if _root.visible:
-		_position_callout()
+	if not _root.visible:
+		return
+	var available := _current_anchor_available()
+	if _target_available and not available:
+		_position_callout("target_disappeared")
+		return
+	_target_available = available
+	var safe_rect := _safe_rect()
+	var current_rect := Rect2(
+		_callout.position,
+		_callout.get_combined_minimum_size().max(_callout.size)
+	)
+	if not safe_rect.encloses(current_rect):
+		_position_callout("safe_zone")
+
+
+func _input(event: InputEvent) -> void:
+	if not _active or _suspended or not _root.visible:
+		return
+	if event is InputEventMouseMotion:
+		_pointer_motion_count += 1
+		if _index == 2:
+			_step3_pointer_motion_count += 1
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not _active or _suspended or not _root.visible:
+		return
+	if not (event is InputEventKey):
+		return
+	var key_event := event as InputEventKey
+	if not key_event.is_pressed() or key_event.is_echo():
+		return
+	if key_event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
+		_advance()
+		get_viewport().set_input_as_handled()
+	elif key_event.keycode == KEY_ESCAPE:
+		_close()
+		get_viewport().set_input_as_handled()
+
+
+func _on_next_pressed() -> void:
+	if _index == 2:
+		_step3_next_click_advance_count += 1
+	_advance()
 
 
 func _advance() -> void:
 	if not _active:
 		return
+	var frame := Engine.get_process_frames()
+	if frame == _last_advance_frame:
+		if _index == 2:
+			_step3_duplicate_advance_count += 1
+		return
+	_last_advance_frame = frame
 	if _index >= MARKS.size() - 1:
 		_active = false
 		_completed = true
 		_root.visible = false
+		coach_activity_changed.emit(false, "completed")
 		return
 	_index += 1
 	_show_current()
@@ -124,6 +230,48 @@ func _skip_all() -> void:
 	_active = false
 	_completed = true
 	_root.visible = false
+	coach_activity_changed.emit(false, "skipped_all")
+
+
+func _close() -> void:
+	if not _active:
+		_close_duplicate_signal_count += 1
+		return
+	_close_generation += 1
+	var close_generation := _close_generation
+	var close_started_msec := Time.get_ticks_msec()
+	var mark_id := str((MARKS[_index] as Dictionary).get("id", "unknown"))
+	coach_mark_skipped.emit(mark_id, false)
+	_active = false
+	_root.visible = false
+	coach_activity_changed.emit(false, "closed")
+	call_deferred("_record_close_response", close_generation, close_started_msec)
+
+
+func _record_close_response(generation: int, started_msec: int) -> void:
+	# Two normal frames cover the presentation fence used by V075 when it
+	# restores pacing.  This is a diagnostic sample only; it does not own pace
+	# or gameplay state.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if generation != _close_generation:
+		return
+	if _root.visible or _active:
+		_close_white_frame_count += 1
+		_close_input_loss_count += 1
+		return
+	_close_sample_msec.append(maxi(0, Time.get_ticks_msec() - started_msec))
+	if _close_sample_msec.size() > 64:
+		_close_sample_msec.pop_front()
+
+
+func _close_p95_msec() -> int:
+	if _close_sample_msec.is_empty():
+		return 0
+	var values := _close_sample_msec.duplicate()
+	values.sort()
+	var index := clampi(int(ceil(float(values.size()) * 0.95)) - 1, 0, values.size() - 1)
+	return int(values[index])
 
 
 func _show_current() -> void:
@@ -132,8 +280,12 @@ func _show_current() -> void:
 	var mark := MARKS[_index] as Dictionary
 	_step_label.text = "%d / %d" % [_index + 1, MARKS.size()]
 	_body_label.text = str(mark.get("text", ""))
+	_target_available = _current_anchor_available()
 	_next_button.text = "完成" if _index == MARKS.size() - 1 else "下一条"
 	_refresh_visibility()
+	_invalidate_placement()
+	call_deferred("_position_callout", "step")
+	_next_button.grab_focus()
 	coach_mark_shown.emit(str(mark.get("id", "unknown")))
 
 
@@ -141,22 +293,40 @@ func _refresh_visibility() -> void:
 	_root.visible = _active and not _suspended
 
 
-func _position_callout() -> void:
+func _position_callout(_reason := "geometry") -> void:
 	if _index < 0 or _index >= MARKS.size():
 		return
 	var mark := MARKS[_index] as Dictionary
 	var anchor := _anchors.get(str(mark.get("anchor", ""))) as Control
-	if anchor == null or not is_instance_valid(anchor):
-		return
-	var viewport_size := _root.get_viewport_rect().size
-	var callout_size := _callout.get_combined_minimum_size().max(_callout.size)
-	var safe_rect := Rect2(
-		Vector2(SAFE_MARGIN, HEADER_SAFE_TOP),
-		Vector2(
-			maxf(1.0, viewport_size.x - SAFE_MARGIN * 2.0),
-			maxf(1.0, viewport_size.y - HEADER_SAFE_TOP - SAFE_MARGIN)
+	if (
+		anchor == null
+		or not is_instance_valid(anchor)
+		or not anchor.is_visible_in_tree()
+	):
+		_target_available = false
+		_missing_target_count += 1
+		var fallback_safe := _safe_rect()
+		var fallback_size := _callout.get_combined_minimum_size().max(
+			_callout.size
 		)
+		_callout.position = Vector2(
+			maxf(fallback_safe.position.x, fallback_safe.end.x - fallback_size.x),
+			fallback_safe.position.y
+		)
+		_placement_direction = "safe_top_right_missing_target"
+		_body_label.text = "%s\n目标暂不可用，可跳过或关闭。" % str(
+			mark.get("text", "")
+		)
+		_placement_signature = _placement_geometry_signature()
+		return
+	_target_available = true
+	_body_label.text = str(mark.get("text", ""))
+	var viewport_size := _root.get_viewport_rect().size
+	var callout_size := _callout.get_combined_minimum_size().max(
+		Vector2(320.0, 110.0)
 	)
+	_callout.size = callout_size
+	var safe_rect := _safe_rect()
 	var anchor_rect := anchor.get_global_rect()
 	var candidates := _placement_candidates(anchor_rect, callout_size)
 	var best_rect := _clamp_to_safe(candidates[0].get("rect", Rect2()), safe_rect)
@@ -170,13 +340,79 @@ func _position_callout() -> void:
 			best_score = score
 			best_rect = candidate_rect
 			best_direction = str(candidate.get("direction", "top"))
+	var previous_position := _callout.position
 	_callout.position = best_rect.position
+	_last_callout_position = _callout.position
+	_position_recompute_count += 1
+	if _index == 2 and _reason == "pointer_entry":
+		_pointer_entry_recompute_count += 1
+		_step3_pointer_entry_position_delta_px = maxf(
+			_step3_pointer_entry_position_delta_px,
+			previous_position.distance_to(_callout.position)
+		)
 	_placement_direction = best_direction
 	_offscreen_count = 0 if safe_rect.encloses(best_rect) else 1
 	_target_occlusion_count = 1 if best_rect.intersects(anchor_rect) else 0
-	_primary_input_block_count = 1 if best_rect.has_point(_root.get_viewport().get_mouse_position()) else 0
+	_primary_input_block_count = 0
 	var map_center := _map_center_rect()
 	_map_center_occlusion_count = 1 if map_center.has_area() and best_rect.intersects(map_center) else 0
+	_last_viewport_size = viewport_size
+	_placement_signature = _placement_geometry_signature()
+
+
+func _invalidate_placement() -> void:
+	_placement_signature = ""
+
+
+func _on_viewport_size_changed() -> void:
+	_invalidate_placement()
+	call_deferred("_position_callout", "viewport")
+
+
+func _safe_rect() -> Rect2:
+	var viewport_size := _root.get_viewport_rect().size
+	return Rect2(
+		Vector2(SAFE_MARGIN, HEADER_SAFE_TOP),
+		Vector2(
+			maxf(1.0, viewport_size.x - SAFE_MARGIN * 2.0),
+			maxf(1.0, viewport_size.y - HEADER_SAFE_TOP - SAFE_MARGIN)
+		)
+	)
+
+
+func _current_anchor_available() -> bool:
+	if _index < 0 or _index >= MARKS.size():
+		return false
+	var mark := MARKS[_index] as Dictionary
+	var anchor := _anchors.get(str(mark.get("anchor", ""))) as Control
+	return anchor != null and is_instance_valid(anchor) and anchor.is_visible_in_tree()
+
+
+func _placement_geometry_signature() -> String:
+	if _index < 0 or _index >= MARKS.size():
+		return "inactive"
+	var mark := MARKS[_index] as Dictionary
+	var anchor := _anchors.get(str(mark.get("anchor", ""))) as Control
+	var anchor_rect := Rect2()
+	var anchor_valid := anchor != null and is_instance_valid(anchor)
+	if anchor_valid:
+		anchor_rect = anchor.get_global_rect()
+	var viewport_size := _root.get_viewport_rect().size
+	var callout_size := _callout.get_combined_minimum_size().max(
+		Vector2(320.0, 110.0)
+	)
+	return "%d|%s|%.2f,%.2f|%.2f,%.2f,%.2f,%.2f|%.2f,%.2f" % [
+		_index,
+		str(anchor_valid),
+		viewport_size.x,
+		viewport_size.y,
+		anchor_rect.position.x,
+		anchor_rect.position.y,
+		anchor_rect.size.x,
+		anchor_rect.size.y,
+		callout_size.x,
+		callout_size.y,
+	]
 
 
 func _placement_candidates(anchor_rect: Rect2, callout_size: Vector2) -> Array:
@@ -208,15 +444,19 @@ func _clamp_to_safe(rect: Rect2, safe_rect: Rect2) -> Rect2:
 
 func _placement_score(candidate: Rect2, anchor_rect: Rect2) -> float:
 	var score := _intersection_area(candidate, anchor_rect) * 1000.0
-	var pointer_rect := Rect2(_root.get_viewport().get_mouse_position() - Vector2(22.0, 22.0), Vector2(44.0, 44.0))
-	score += _intersection_area(candidate, pointer_rect) * 200.0
 	var map_center := _map_center_rect()
 	if map_center.has_area():
 		score += _intersection_area(candidate, map_center) * 80.0
+	var target_panel := _anchors.get("target_panel") as Control
+	if target_panel != null and is_instance_valid(target_panel):
+		score += _intersection_area(
+			candidate,
+			target_panel.get_global_rect()
+		) * 1200.0
 	var marker := _anchors.get("marker") as Control
 	if marker != null and is_instance_valid(marker) and marker.visible:
 		score += _intersection_area(candidate, marker.get_global_rect()) * 120.0
-	for key in ["track", "hand", "lock", "target_panel", "roster"]:
+	for key in ["track", "hand", "lock", "roster"]:
 		var control := _anchors.get(key) as Control
 		if control != null and is_instance_valid(control) and control != _anchors.get(str((MARKS[_index] as Dictionary).get("anchor", ""))):
 			var weight := 320.0 if key == "roster" else (1200.0 if key == "target_panel" else 4.0)

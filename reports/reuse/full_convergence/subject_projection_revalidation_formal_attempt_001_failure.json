@@ -1,0 +1,111 @@
+{
+  "schema_version": "space_syndicate.v076.subject_projection_revalidation.formal_attempt_failure_receipt.v1",
+  "receipt_id": "V076-SPR-FORMAL-ATTEMPT-001-FAILURE",
+  "task_id": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1",
+  "authorization_id": "USER_AUTHORIZATION_V076_REUSE_FULL_CONVERGENCE_AND_MCP_ONLY_20260827",
+  "attempt_number": 1,
+  "status": "CONSUMED_FAILURE",
+  "append_only": true,
+  "history_rewrite_allowed": false,
+  "exact_stage_allowlist": [
+    "reports/reuse/full_convergence/subject_projection_revalidation_formal_attempt_001_failure.json",
+    "reports/reuse/full_convergence/subject_projection_revalidation_formal_attempt_001_failure.md"
+  ],
+  "excluded_from_staging": [
+    "docs/architecture/reuse_corrections/v2/.v076-spr-stage-932dca6ae7d92f14209512b9c9a3ddfb/",
+    "reports/reuse/full_convergence/local_baseline_gate.json",
+    "reports/reuse/full_convergence/local_baseline_gate.md",
+    "reports/reuse/full_convergence/local_v2_baseline.json",
+    "reports/reuse/full_convergence/local_v2_baseline.md"
+  ],
+  "retry_policy": {
+    "same_head_retry_allowed": false,
+    "new_head_required": true,
+    "formal_write_attempts_on_bound_head_after_failure": 0
+  },
+  "evaluated_binding": {
+    "head_sha": "903af55e4e99331c7ab58b87c79538ecca53ca9b",
+    "tree_sha": "028d7688319296acd047d56e173264277c8c71a8",
+    "branch": "codex/v076-reuse-current-delta-repair-7b2bd08a-001",
+    "formal_root": "docs/architecture/reuse_corrections/v2/subject_projection_revalidation/",
+    "formal_exists": false,
+    "formal_record_count": 0
+  },
+  "observed_write": {
+    "mode": "WRITE",
+    "exit_code": 1,
+    "top_level_error": "private staging cleanup failed",
+    "builder_path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076_subject_projection_revalidation_builder.py",
+    "builder_sha256": "274cdcfd51b669a0fd52b7ef258dac29bce4a2c5ec17184673ca877c8ddfccae",
+    "promotion_reached": false,
+    "detached_probe": {
+      "worktree": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/spr-write-probe-274cdc",
+      "binding_head_sha": "903af55e4e99331c7ab58b87c79538ecca53ca9b",
+      "observed_error": "FileNotFoundError while resolving a temporary record path under records",
+      "raw_stderr_persisted": false
+    }
+  },
+  "retained_failure_staging": {
+    "path": "docs/architecture/reuse_corrections/v2/.v076-spr-stage-932dca6ae7d92f14209512b9c9a3ddfb/",
+    "manifest_sha256": "2809490a991347c56a88819ce1a2963cd41175e65e280f4424e9747f94e36463",
+    "manifest_size_bytes": 92644,
+    "manifest_binding_head_sha": "903af55e4e99331c7ab58b87c79538ecca53ca9b",
+    "manifest_binding_tree_sha": "028d7688319296acd047d56e173264277c8c71a8",
+    "manifest_record_count": 82,
+    "records_file_count": 0,
+    "formal_authority_path": false,
+    "retained_as_frozen_evidence": true,
+    "must_not_be_promoted_or_staged": true
+  },
+  "external_lock_evidence": {
+    "lock_path": "%TEMP%/space-syndicate-v076-formal-locks/7a8ab2b761c9163fb8bcbddfeb0fdf55.lock",
+    "lock_sha256": "93dd6eeeb10542df6926f948ae2851ea320d6d8c05c0d415aeec2a06d6b0f0b6",
+    "recorded_pid": 7084,
+    "recorded_pid_present_at_audit": false,
+    "matching_builder_process_count_at_audit": 0,
+    "retained_for_failure_forensics": true
+  },
+  "replacement_candidate": {
+    "builder_path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076_subject_projection_revalidation_builder.py",
+    "builder_sha256": "15649ded167667742e01eb29e808d35efa15dc0dd0057232f750dd37331a4bd3",
+    "py_compile": "PASS",
+    "detached_real_write_proof": "PASS",
+    "detached_second_write_idempotence": "PASS",
+    "detached_fault_probe_audit": "PASS_WITH_FAIL_CLOSED_RESIDUE_CASES",
+    "candidate_head_for_formal_use": "NEW_DESCENDANT_REQUIRED"
+  },
+  "product_scope": {
+    "godot_product_file_change_count": 0,
+    "direct_filesystem_product_edit_count": 0,
+    "product_reimplementation_count": 0,
+    "formal_successor_records_created_by_attempt": 0
+  },
+  "protected_untracked_baselines": [
+    {
+      "path": "reports/reuse/full_convergence/local_baseline_gate.json",
+      "sha256": "be8c806ffb4a49bee997292cb46225511f21b6aad55d65fc36ed2ab15a8ef37f"
+    },
+    {
+      "path": "reports/reuse/full_convergence/local_baseline_gate.md",
+      "sha256": "79094be1517998487b4038624c43a8c21cc1535c4e899ae7627fca865a7ea28a"
+    },
+    {
+      "path": "reports/reuse/full_convergence/local_v2_baseline.json",
+      "sha256": "cfd6a0c4c52f27ca0d287d748e68b8b2782da4560a2ae6eddbda73e163c2dd3a"
+    },
+    {
+      "path": "reports/reuse/full_convergence/local_v2_baseline.md",
+      "sha256": "932bbbd44f3c33cbaa0cf10c5bb303e3c2cf9ec6f295df3aa8cf5f35ed660d38"
+    }
+  ],
+  "classification": {
+    "historical_failure_identity": "FORMAL_WRITER_ATOMICITY_RACE_ON_OLD_BUILDER",
+    "failure_visibility_preserved": true,
+    "history_rewrite_count": 0,
+    "scanner_weakening_count": 0,
+    "wildcard_correction_count": 0,
+    "future_failure_auto_correction_count": 0
+  },
+  "created_at_utc": "2026-08-28T13:50:03Z",
+  "creator": "V076_REUSE_GATE_FULL_CONVERGENCE_MCP_ONLY_PRODUCT_LANDING_AND_COMMERCIAL_SPRINT_RESUME_V1"
+}

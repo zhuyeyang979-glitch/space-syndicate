@@ -1,0 +1,72 @@
+{
+  "schema": "MCPProductLandingReceiptV1",
+  "task_id": "V076_CURRENT_SUBJECT_MCP_REVALIDATION_REUSE_FULL_CONVERGENCE_AND_DECK_PRESENTATION_RESUME_V2",
+  "authorization_id": "USER_AUTHORIZATION_V076_CURRENT_SUBJECT_CONVERGENCE_AND_COMMERCIAL_RESUME_20260830",
+  "worktree": "D:/SpaceSyndicateWorktrees/v076/770d741f/current-subject-mcp-cache-repair-f94685ce-001",
+  "base_head": "f94685cefb4f56b0305508699f9741e878354f5d",
+  "base_tree": "5e2eed5b0398d48707c8e4c766206e61fcb19056",
+  "product_subject_head_before": "3fe2f1fee5577dd7f3dd7260137d130f8c0f9f55",
+  "product_subject_tree_before": "1905bc00e72ccc1095bf67cd14c8438ddb5341fe",
+  "product_paths_changed": [
+    {
+      "path": "scripts/v075_runtime/v075_runtime_owner.gd",
+      "before_sha256": "eb8007777b35c4566df86a7b10264f105942d8bb27cbb8d1fb972a7b65441dc3",
+      "after_sha256": "07d370d44035f54af8c9cd150149769b5880c8dfcb403a0cb7f2259d7fc9e7f8",
+      "mcp_tool": "edit_script",
+      "mcp_operation": "snippet_replace via full-content MCP edit_script",
+      "edit": "invalidate V075 snapshot caches before military asset consequence projection reads player_snapshot",
+      "validate_operation": "validate_script",
+      "validate_result": "PASS diagnostic_count=0",
+      "real_scene_validation": "PASS res://scenes/main.tscn through MCP; runtime view captured 1600x960; clean stop",
+      "direct_filesystem_edit_count": 0
+    },
+    {
+      "path": "tests/v076_production_military_composition_test.gd",
+      "before_sha256": "47333b15a3db73ce197006e87b675983874bf1a192d30b2a5bd2c312cb3724a2",
+      "after_sha256": "f0907d9b9a33b7dad526154753e9297ae7aa924c72f4c83db2c7395e5da6bb49",
+      "mcp_tool": "edit_script",
+      "mcp_operation": "full-content MCP edit_script",
+      "edit": "invalidate V075 snapshot caches after direct fixture state replacement at region and monster probes",
+      "validate_operation": "validate_script",
+      "validate_result": "PASS diagnostic_count=0",
+      "real_scene_validation": "PASS focused production military composition run against the same production composition",
+      "direct_filesystem_edit_count": 0
+    }
+  ],
+  "godot_binary": {
+    "path": "C:/Users/Administrator/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe/Godot_v4.7-stable_win64.exe",
+    "version": "4.7.stable.official.5b4e0cb0f"
+  },
+  "project_godot_sha256": "849e8c9458b1f6f4431a00073a8d50119937e64a995303874354fb34da4fb06b",
+  "main_tscn_sha256": "aabe4e7f5dce63af558d22c2b77b0cffcfad03a763a7c6d11c4003e90e8e79f3",
+  "mcp": {
+    "endpoint": "http://127.0.0.1:8895/",
+    "tool_profile": "core",
+    "session_start_utc": "2026-08-30T04:29:57.4893129Z",
+    "runtime_start_observed": "2026-08-30T04:35:26",
+    "runtime_view_capture": "PASS user://v076_current_subject_main_runtime.png 1600x960",
+    "scene_path": "res://scenes/main.tscn",
+    "runtime_bridge_stream_id": "1788064526-8926480-40483423705",
+    "runtime_process_cleanup": "PASS is_playing_scene=false after MCP exit_play_mode",
+    "port_cleanup": "PASS MCP endpoint was stopped after evidence capture"
+  },
+  "focused_production_military_composition": {
+    "run_id": "20260830-043404-937-v076_production_military_composition_test-1b19ab68",
+    "status": "PASS",
+    "passed": 57,
+    "total": 57,
+    "script_error_count": 0,
+    "task_introduced_error_count": 0,
+    "remaining_project_runtime_process_ids": []
+  },
+  "supporting_regression": {
+    "ui_text_smoke_test": "PASS",
+    "visual_snapshot": "PASS",
+    "smoke_test": "FAIL pre-existing stale oracle: save_coordinator path absent before Main enters tree; no task-introduced error in changed files"
+  },
+  "mcp_product_file_mutation_count": 1,
+  "mcp_product_file_mutation_coverage_percent": 100,
+  "mcp_post_edit_validation_coverage_percent": 100,
+  "direct_filesystem_product_edit_count": 0,
+  "result_fingerprint": "production post-settlement snapshot invalidation repaired; focused 57/57 PASS"
+}
