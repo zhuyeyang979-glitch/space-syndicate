@@ -1,0 +1,13 @@
+{
+  "captured_at_utc": "2026-09-01T15:03:48.9957946Z",
+  "crash_time_capacity_snapshot": false,
+  "total_physical_bytes": 34197966848,
+  "available_physical_bytes": 19397808128,
+  "total_virtual_bytes": 39835111424,
+  "available_commit_headroom_bytes": 10240647168,
+  "pagefile_allocated_bytes": 5637144576,
+  "pagefile_current_usage_bytes": 428867584,
+  "pagefile_peak_usage_bytes_since_boot": 2282749952,
+  "qualification_minimum_headroom_bytes_from_generation8_observation": 5133809664,
+  "threshold_satisfied": true
+}

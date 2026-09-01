@@ -1,0 +1,293 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_third_party_import_scope_audit.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "generated_at_utc": "2026-09-01T15:03:53.7383291Z",
+  "registry": {
+    "path": "docs/product/SPACE_SYNDICATE_ASSET_REFERENCE_REGISTRY.json",
+    "sha256": "ab4017032d8e6fa1eb0dda08fd6d9dd61d86aed20e6d731684a97c4d0ea1f9e2",
+    "registry_id": "space-syndicate-asset-reference-20260826"
+  },
+  "product_continuity_registry": {
+    "path": "docs/product/SPACE_SYNDICATE_PRODUCT_CONTINUITY_REGISTRY.json",
+    "sha256": "4ecf5eabaf32bd55e6b150f2b9c67ac33acbc76a8fc94c5d6f3d6a5b8452b95e"
+  },
+  "affected_asset_count": 6,
+  "assets": [
+    {
+      "asset_id": "quaternius.animated_mech",
+      "path": "res://assets/third_party/commercial/models/quaternius/animated_mech",
+      "classification": "ACTIVE_PRODUCTION",
+      "registry_status": "USED",
+      "license_status": "VERIFIED",
+      "license_name": "CC0-1.0",
+      "production_reference_count": 4,
+      "test_reference_count": 2,
+      "scene_reference_count": 4,
+      "script_reference_count": 0,
+      "resource_reference_count": 0,
+      "runtime_dynamic_reference_count": 0,
+      "runtime_dynamic_reference_count_basis": "No dynamic path construction found; direct production scene/resource references and registry production paths are sufficient to make exclusion illegal.",
+      "registry_production_path_count": 4,
+      "source_file_count": 9,
+      "source_size_bytes": 24596341,
+      "estimated_import_size_bytes": 2402762,
+      "observed_peak_memory_delta_bytes": null,
+      "observed_peak_memory_delta_scope": "Only aggregate Generation 8 process memory was captured; no per-asset attribution is claimed.",
+      "importer_type": "Texture2D/GLTFDocument",
+      "last_import_status": "FAILED_DURING_GENERATION8_PLATFORM_OOM",
+      "generation8_error_path_count": 4,
+      "generation8_error_paths": [
+        "res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png",
+        "res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png",
+        "res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png",
+        "res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png"
+      ],
+      "production_reference_paths": [
+        "scenes/tools/commercial_art/components/models/MilitaryTier1.tscn",
+        "scenes/tools/commercial_art/components/models/MilitaryTier2.tscn",
+        "scenes/tools/commercial_art/components/models/MilitaryTier3.tscn",
+        "scenes/tools/commercial_art/components/models/MilitaryTier4.tscn"
+      ],
+      "test_reference_paths": [
+        "tests/commercial_art/commercial_model_asset_contract_test.gd",
+        "tests/commercial_art/commercial_third_party_manifest_test.gd"
+      ],
+      "gdignore_present": false,
+      "excluded_from_import": false,
+      "exclusion_allowed": false
+    },
+    {
+      "asset_id": "quaternius.modular_scifi_megakit",
+      "path": "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit",
+      "classification": "ACTIVE_PRODUCTION",
+      "registry_status": "USED",
+      "license_status": "VERIFIED",
+      "license_name": "CC0-1.0",
+      "production_reference_count": 4,
+      "test_reference_count": 2,
+      "scene_reference_count": 4,
+      "script_reference_count": 0,
+      "resource_reference_count": 0,
+      "runtime_dynamic_reference_count": 0,
+      "runtime_dynamic_reference_count_basis": "No dynamic path construction found; direct production scene/resource references and registry production paths are sufficient to make exclusion illegal.",
+      "registry_production_path_count": 12,
+      "source_file_count": 38,
+      "source_size_bytes": 24574996,
+      "estimated_import_size_bytes": 2254980,
+      "observed_peak_memory_delta_bytes": null,
+      "observed_peak_memory_delta_scope": "Only aggregate Generation 8 process memory was captured; no per-asset attribution is claimed.",
+      "importer_type": "Texture2D/GLTFDocument",
+      "last_import_status": "FAILED_DURING_GENERATION8_PLATFORM_OOM",
+      "generation8_error_path_count": 12,
+      "generation8_error_paths": [
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png",
+        "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png"
+      ],
+      "production_reference_paths": [
+        "scenes/tools/commercial_art/components/models/FacilityFactoryBase.tscn",
+        "scenes/tools/commercial_art/components/models/FacilityMarketBase.tscn",
+        "scenes/tools/commercial_art/components/models/FacilityStarportBase.tscn",
+        "scenes/tools/commercial_art/components/models/FacilityWarehouseBase.tscn"
+      ],
+      "test_reference_paths": [
+        "tests/commercial_art/commercial_model_asset_contract_test.gd",
+        "tests/commercial_art/commercial_third_party_manifest_test.gd"
+      ],
+      "gdignore_present": false,
+      "excluded_from_import": false,
+      "exclusion_allowed": false
+    },
+    {
+      "asset_id": "quaternius.scifi_essentials",
+      "path": "res://assets/third_party/commercial/models/quaternius/scifi_essentials",
+      "classification": "ACTIVE_PRODUCTION",
+      "registry_status": "USED",
+      "license_status": "VERIFIED",
+      "license_name": "CC0-1.0",
+      "production_reference_count": 4,
+      "test_reference_count": 2,
+      "scene_reference_count": 4,
+      "script_reference_count": 0,
+      "resource_reference_count": 0,
+      "runtime_dynamic_reference_count": 0,
+      "runtime_dynamic_reference_count_basis": "No dynamic path construction found; direct production scene/resource references and registry production paths are sufficient to make exclusion illegal.",
+      "registry_production_path_count": 6,
+      "source_file_count": 29,
+      "source_size_bytes": 50329164,
+      "estimated_import_size_bytes": 1462958,
+      "observed_peak_memory_delta_bytes": null,
+      "observed_peak_memory_delta_scope": "Only aggregate Generation 8 process memory was captured; no per-asset attribution is claimed.",
+      "importer_type": "Texture2D/GLTFDocument",
+      "last_import_status": "FAILED_DURING_GENERATION8_PLATFORM_OOM",
+      "generation8_error_path_count": 15,
+      "generation8_error_paths": [
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png",
+        "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png"
+      ],
+      "production_reference_paths": [
+        "scenes/tools/commercial_art/components/models/FacilityFactoryBase.tscn",
+        "scenes/tools/commercial_art/components/models/FacilityMarketBase.tscn",
+        "scenes/tools/commercial_art/components/models/FacilityStarportBase.tscn",
+        "scenes/tools/commercial_art/components/models/FacilityWarehouseBase.tscn"
+      ],
+      "test_reference_paths": [
+        "tests/commercial_art/commercial_model_asset_contract_test.gd",
+        "tests/commercial_art/commercial_third_party_manifest_test.gd"
+      ],
+      "gdignore_present": false,
+      "excluded_from_import": false,
+      "exclusion_allowed": false
+    },
+    {
+      "asset_id": "quaternius.ultimate_monsters",
+      "path": "res://assets/third_party/commercial/models/quaternius/ultimate_monsters",
+      "classification": "ACTIVE_PRODUCTION",
+      "registry_status": "USED",
+      "license_status": "VERIFIED",
+      "license_name": "CC0-1.0",
+      "production_reference_count": 6,
+      "test_reference_count": 2,
+      "scene_reference_count": 6,
+      "script_reference_count": 0,
+      "resource_reference_count": 0,
+      "runtime_dynamic_reference_count": 0,
+      "runtime_dynamic_reference_count_basis": "No dynamic path construction found; direct production scene/resource references and registry production paths are sufficient to make exclusion illegal.",
+      "registry_production_path_count": 6,
+      "source_file_count": 13,
+      "source_size_bytes": 5376435,
+      "estimated_import_size_bytes": 2244014,
+      "observed_peak_memory_delta_bytes": null,
+      "observed_peak_memory_delta_scope": "Only aggregate Generation 8 process memory was captured; no per-asset attribution is claimed.",
+      "importer_type": "Texture2D/GLTFDocument",
+      "last_import_status": "FAILED_DURING_GENERATION8_PLATFORM_OOM",
+      "generation8_error_path_count": 2,
+      "generation8_error_paths": [
+        "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png",
+        "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png"
+      ],
+      "production_reference_paths": [
+        "scenes/tools/commercial_art/components/models/MonsterCommerce.tscn",
+        "scenes/tools/commercial_art/components/models/MonsterEnergy.tscn",
+        "scenes/tools/commercial_art/components/models/MonsterIndustry.tscn",
+        "scenes/tools/commercial_art/components/models/MonsterLife.tscn",
+        "scenes/tools/commercial_art/components/models/MonsterShipping.tscn",
+        "scenes/tools/commercial_art/components/models/MonsterTechnology.tscn"
+      ],
+      "test_reference_paths": [
+        "tests/commercial_art/commercial_model_asset_contract_test.gd",
+        "tests/commercial_art/commercial_third_party_manifest_test.gd"
+      ],
+      "gdignore_present": false,
+      "excluded_from_import": false,
+      "exclusion_allowed": false
+    },
+    {
+      "asset_id": "quaternius.ultimate_spaceships",
+      "path": "res://assets/third_party/commercial/models/quaternius/ultimate_spaceships",
+      "classification": "ACTIVE_PRODUCTION",
+      "registry_status": "USED",
+      "license_status": "VERIFIED",
+      "license_name": "CC0-1.0",
+      "production_reference_count": 4,
+      "test_reference_count": 2,
+      "scene_reference_count": 4,
+      "script_reference_count": 0,
+      "resource_reference_count": 0,
+      "runtime_dynamic_reference_count": 0,
+      "runtime_dynamic_reference_count_basis": "No dynamic path construction found; direct production scene/resource references and registry production paths are sufficient to make exclusion illegal.",
+      "registry_production_path_count": 3,
+      "source_file_count": 7,
+      "source_size_bytes": 20260607,
+      "estimated_import_size_bytes": 626428,
+      "observed_peak_memory_delta_bytes": null,
+      "observed_peak_memory_delta_scope": "Only aggregate Generation 8 process memory was captured; no per-asset attribution is claimed.",
+      "importer_type": "Texture2D/GLTFDocument",
+      "last_import_status": "FAILED_DURING_GENERATION8_PLATFORM_OOM",
+      "generation8_error_path_count": 3,
+      "generation8_error_paths": [
+        "res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png",
+        "res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png",
+        "res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png"
+      ],
+      "production_reference_paths": [
+        "scenes/tools/commercial_art/components/models/FacilityStarportBase.tscn",
+        "scenes/tools/commercial_art/components/models/ShippingConvoy.tscn",
+        "scenes/tools/commercial_art/components/models/ShippingRouteMarker.tscn",
+        "scenes/tools/commercial_art/components/models/ShippingStarportShowcase.tscn"
+      ],
+      "test_reference_paths": [
+        "tests/commercial_art/commercial_model_asset_contract_test.gd",
+        "tests/commercial_art/commercial_third_party_manifest_test.gd"
+      ],
+      "gdignore_present": false,
+      "excluded_from_import": false,
+      "exclusion_allowed": false
+    },
+    {
+      "asset_id": "ambientcg.night_sky_hdri_001",
+      "path": "res://assets/third_party/commercial/materials/ambientcg/NightSkyHDRI001",
+      "classification": "ACTIVE_PRODUCTION",
+      "registry_status": "USED",
+      "license_status": "VERIFIED",
+      "license_name": "CC0-1.0",
+      "production_reference_count": 2,
+      "test_reference_count": 1,
+      "scene_reference_count": 1,
+      "script_reference_count": 0,
+      "resource_reference_count": 1,
+      "runtime_dynamic_reference_count": 0,
+      "runtime_dynamic_reference_count_basis": "No dynamic path construction found; direct production scene/resource references and registry production paths are sufficient to make exclusion illegal.",
+      "registry_production_path_count": 2,
+      "source_file_count": 2,
+      "source_size_bytes": 7101587,
+      "estimated_import_size_bytes": 33554536,
+      "observed_peak_memory_delta_bytes": null,
+      "observed_peak_memory_delta_scope": "Only aggregate Generation 8 process memory was captured; no per-asset attribution is claimed.",
+      "importer_type": "Texture2D/HDRI",
+      "last_import_status": "CONFIGURED_BEFORE_GENERATION8_PLATFORM_OOM",
+      "generation8_error_path_count": 0,
+      "generation8_error_paths": [],
+      "production_reference_paths": [
+        "resources/presentation/alpha01_card_illustration_catalog.tres",
+        "scenes/tools/commercial_art/components/planet/CommercialPlanetReviewComponent.tscn"
+      ],
+      "test_reference_paths": [
+        "tests/commercial_art/commercial_planet_asset_contract_test.gd"
+      ],
+      "gdignore_present": false,
+      "excluded_from_import": false,
+      "exclusion_allowed": false
+    }
+  ],
+  "policy_result": {
+    "status": "PASS_NO_EXCLUSION_ALLOWED_OR_APPLIED",
+    "production_asset_excluded_from_import_count": 0,
+    "unknown_asset_auto_excluded_count": 0,
+    "demo_asset_exclusion_without_reachability_proof_count": 0,
+    "gdignore_change_count": 0,
+    "rationale": "Every affected package is registry-verified, USED, licensed for direct commercial use, and referenced by production scenes or resources. Canonical import must include all of them."
+  }
+}

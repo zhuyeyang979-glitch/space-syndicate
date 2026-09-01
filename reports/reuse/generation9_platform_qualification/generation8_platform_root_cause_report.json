@@ -1,0 +1,297 @@
+{
+  "schema_version": "space_syndicate.v076.generation8_platform_root_cause_report.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "generated_at_utc": "2026-09-01T15:03:49.0098039Z",
+  "source_generation_id": 8,
+  "source_formal_attempt_id": "formal-attempt-001",
+  "immutable_source_status": {
+    "generation8_formal_execution_count": 1,
+    "generation8_automatic_retry_count": 0,
+    "generation8_receipt_status": "BLOCKED",
+    "generation8_product_failure_attested": false,
+    "generation8_rerun_count": 0,
+    "generation7_rerun_count": 0
+  },
+  "subject": {
+    "product_subject_head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+    "product_subject_tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d",
+    "execution_head_sha": "dd768bad754bd905db89fa0dbdd1067ff7d4e4ae",
+    "execution_tree_sha": "ac18a27ba39a079b4db13f86172b492b8fef5d1c",
+    "selected_seed": 917592522,
+    "production_scene_path": "res://scenes/main.tscn"
+  },
+  "conclusion": {
+    "root_cause_class": "L",
+    "root_cause_name": "MULTIPLE",
+    "supported_components": [
+      "A",
+      "C",
+      "E",
+      "G"
+    ],
+    "failure_code": "FORMAL_MCP_EDITOR_OOM_CONTROL_PLANE_LOSS",
+    "product_failure_attested": false,
+    "explanation": "Generation 8 started its formal MCP editor/runtime while first-time production third-party texture imports were still being configured. Allocation failures, copy-on-write fatals, RenderingDevice creation failure, asset import errors, loss of the editor-owned MCP listener, and Windows crash events establish a platform/import concurrency failure rather than a STEP11 product assertion failure."
+  },
+  "classification_matrix": [
+    {
+      "code": "A",
+      "name": "FORMAL_STARTED_BEFORE_CANONICAL_IMPORT_COMPLETED",
+      "status": "SUPPORTED",
+      "evidence": "43 tracked .import and 295 generated .uid files were written during the formal session; no prior sealed canonical import existed."
+    },
+    {
+      "code": "B",
+      "name": "THIRD_PARTY_DEMO_OR_UNUSED_ASSET_IMPORT_OVERLOAD",
+      "status": "REJECTED",
+      "evidence": "Affected packages are USED and production-reachable in the unique asset registry."
+    },
+    {
+      "code": "C",
+      "name": "PRODUCTION_ASSET_IMPORT_MEMORY_EXHAUSTION",
+      "status": "SUPPORTED",
+      "evidence": "mem null=40, mem_new null=40, COW fatal=2, game private bytes exceeded 3.24 GiB, and import errors followed."
+    },
+    {
+      "code": "D",
+      "name": "MULTIPLE_GODOT_INSTANCE_MEMORY_CONTENTION",
+      "status": "NOT_ATTESTED",
+      "evidence": "No crash-time process inventory proves a second unrelated Godot project instance."
+    },
+    {
+      "code": "E",
+      "name": "MCP_EDITOR_STARTUP_AND_IMPORT_CONCURRENCY",
+      "status": "SUPPORTED",
+      "evidence": "The MCP editor PID died and its dynamic listener disappeared while the MCP-started production game remained alive."
+    },
+    {
+      "code": "F",
+      "name": "PAGEFILE_OR_SYSTEM_COMMIT_EXHAUSTION",
+      "status": "NOT_ATTESTED",
+      "evidence": "Crash-time Available Commit and pagefile counters were not captured; current counters are qualification-only and cannot backfill the failure."
+    },
+    {
+      "code": "G",
+      "name": "GODOT_IMPORTER_SPECIFIC_ASSET_FAILURE",
+      "status": "SUPPORTED_CONTRIBUTOR",
+      "evidence": "Texture importer failures center on Quaternius production textures and local RenderingDevice creation."
+    },
+    {
+      "code": "H",
+      "name": "SEED_INPUT_CONTROL_NOT_FOCUSED",
+      "status": "NOT_SUPPORTED",
+      "evidence": "The exact visible editable SeedInput node was found and the center-point tap reported success."
+    },
+    {
+      "code": "I",
+      "name": "SEED_TEXT_ENTERED_BUT_NOT_COMMITTED",
+      "status": "UNRESOLVED",
+      "evidence": "No Start request was issued before the control-plane failure."
+    },
+    {
+      "code": "J",
+      "name": "SEED_VIEW_TEXT_EMPTY_BUT_REQUEST_PAYLOAD_VALID",
+      "status": "OBSERVED_REQUIRES_PROBE",
+      "evidence": "All backspace and digit input events reported success, but immediate readback was empty."
+    },
+    {
+      "code": "K",
+      "name": "SEED_INPUT_PATH_WRONG_CONTROL",
+      "status": "NOT_SUPPORTED",
+      "evidence": "Query returned the intended V075GameScreen StartOverlay SeedInput LineEdit path."
+    },
+    {
+      "code": "L",
+      "name": "MULTIPLE",
+      "status": "ROOT_CAUSE",
+      "evidence": "A, C, E, and G are jointly supported."
+    },
+    {
+      "code": "M",
+      "name": "UNRESOLVED",
+      "status": "NOT_SELECTED",
+      "evidence": "The platform failure class is sufficiently resolved for qualification work."
+    }
+  ],
+  "process_and_control_plane": {
+    "godot_editor_pid": 9016,
+    "godot_editor_alive_at_failure_observation": false,
+    "godot_game_pid": 20776,
+    "godot_game_alive_at_failure_observation": true,
+    "godot_console_wrapper_pid": null,
+    "mcp_endpoint": "http://127.0.0.1:8942/",
+    "mcp_listener_owner_pid": 9016,
+    "mcp_listener_owner_basis": "session id and editor-owned Funplay MCP lifecycle; crash-time listener count was zero",
+    "process_parent_chain": [],
+    "process_parent_chain_captured": false,
+    "connection_failure": "MCP_ENDPOINT_CONNECTION_REFUSED",
+    "cleanup": {
+      "editor_pid_after": 0,
+      "game_forced_stop": false,
+      "game_normal_close_requested": true,
+      "game_pid_after": 0,
+      "listener_count_after": 0,
+      "stop_role_godot_mcp": "PASS"
+    }
+  },
+  "memory_at_failure_observation": {
+    "game_working_set_bytes": 1479991296,
+    "game_private_bytes": 3248054272,
+    "game_commit_size_bytes": null,
+    "system_available_physical_bytes": 14923575296,
+    "system_available_commit_bytes": null,
+    "pagefile_usage_bytes": null,
+    "handle_count": null,
+    "thread_count": null
+  },
+  "editor_log": {
+    "relative_path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/editor-godot-20260901-205825.log",
+    "sha256": "1a6a208de624906eb7ad2f22078a0d9c9b6a362f88983565d5fcdce167674700",
+    "size_bytes": 40733,
+    "third_party_configuration_event_count": 61,
+    "third_party_import_error_count": 36,
+    "memory_allocation_mem_null_count": 40,
+    "memory_allocation_mem_new_null_count": 40,
+    "fatal_copy_on_write_count": 2,
+    "unable_to_create_local_rendering_device_count": 1,
+    "first_fatal_import_path": "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png",
+    "failing_asset_paths": [
+      "res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png",
+      "res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png",
+      "res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png",
+      "res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png",
+      "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png",
+      "res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png",
+      "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png",
+      "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png",
+      "res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png",
+      "res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png",
+      "res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png"
+    ]
+  },
+  "seed_ui_observation": {
+    "requested_seed": 917592522,
+    "node_found": true,
+    "node_path": "/root/Main/V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/SeedRow/SeedInput",
+    "node_type": "LineEdit",
+    "node_visible": true,
+    "node_editable": true,
+    "text_before": "900626424",
+    "focus_event_success": true,
+    "input_event_count": 25,
+    "successful_input_event_count": 25,
+    "text_after": "",
+    "new_game_intent_created": false,
+    "runtime_seed_confirmed": false
+  },
+  "windows_crash_evidence": {
+    "godot_application_error": {
+      "time_created": "2026-09-01T20:59:52.5437765+09:00",
+      "event_id": 1000,
+      "exception_code": "0x40000015",
+      "fault_offset": "0x55590c0",
+      "fault_pid": 9016
+    },
+    "dwm_application_error": {
+      "time_created": "2026-09-01T20:59:51.4860185+09:00",
+      "event_id": 1000,
+      "exception_code": "0xc00001ad",
+      "fault_module": "dwmcore.dll"
+    }
+  },
+  "current_capacity_snapshot": {
+    "captured_at_utc": "2026-09-01T15:03:48.9957946Z",
+    "crash_time_capacity_snapshot": false,
+    "total_physical_bytes": 34197966848,
+    "available_physical_bytes": 19397808128,
+    "total_virtual_bytes": 39835111424,
+    "available_commit_headroom_bytes": 10240647168,
+    "pagefile_allocated_bytes": 5637144576,
+    "pagefile_current_usage_bytes": 428867584,
+    "pagefile_peak_usage_bytes_since_boot": 2282749952,
+    "qualification_minimum_headroom_bytes_from_generation8_observation": 5133809664,
+    "threshold_satisfied": true
+  },
+  "evidence_sources": [
+    {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/execution-start.json",
+      "size_bytes": 1366,
+      "sha256": "b2a34a12096421f46c858f0ba0ce4b8545d365f63fb9c0ed2a1afabc800792b1"
+    },
+    {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/summary.json",
+      "size_bytes": 1074,
+      "sha256": "8ec0f24315481198e296cd1676d32c7cf83da595a62f963a3a3c6fa73cb51421"
+    },
+    {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/receipts/step11_receipt.json",
+      "size_bytes": 4508,
+      "sha256": "2ec7f2180558b9ab5402d9bb6b244d14089757fb6a968360500fa17d36272444"
+    },
+    {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-platform-failure-diagnostic.json",
+      "size_bytes": 2027,
+      "sha256": "74bc4876882b0899f9f4cd1e3de16ef451dd6bcea047311a3ecaeeb43553f628"
+    },
+    {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/mcp_runtime_evidence.json",
+      "size_bytes": 3931,
+      "sha256": "8955e6fe287acbb9c0aa3b1c4bf6174bec877d83d018ca895e5325adbc0c07a2"
+    },
+    {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/editor-godot-20260901-205825.log",
+      "size_bytes": 40733,
+      "sha256": "1a6a208de624906eb7ad2f22078a0d9c9b6a362f88983565d5fcdce167674700"
+    },
+    {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-9800002-query-seed-input.jsonrpc.json",
+      "size_bytes": 3453,
+      "sha256": "b7d689dee929f7c3ea581b1d50590c45218b716abf73b0d3c25402a34e1ff54d"
+    },
+    {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-9800003-focus-seed-input.jsonrpc.json",
+      "size_bytes": 1627,
+      "sha256": "9e8193a5699db0e315ba17e69e2a5439edb578c22db7cd120a8310ed3c036477"
+    },
+    {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-9800004-enter-seed-real-ui.jsonrpc.json",
+      "size_bytes": 13965,
+      "sha256": "ede0d5bc445e2ad2ddce48f8c2b71dbb9a6a19620f7a3a6f1c1254cf2e97cff4"
+    },
+    {
+      "path": "reports/reuse/full_convergence/generation-008/formal-attempt-001/evidence/raw/formal-9800005-readback-seed.jsonrpc.json",
+      "size_bytes": 2951,
+      "sha256": "8d36b7b6a195bc0f8a2bc466dcddfc04acc4839c59ae0e4df335df84c2c2807f"
+    }
+  ],
+  "evidence_gaps": [
+    "Crash-time Godot console wrapper PID was not captured.",
+    "Crash-time process parent chain, handle count, thread count, process commit size, system Available Commit, and pagefile usage were not captured.",
+    "Seed input had no Start-button commit event before control-plane loss; qualification probes must distinguish I from J."
+  ]
+}
