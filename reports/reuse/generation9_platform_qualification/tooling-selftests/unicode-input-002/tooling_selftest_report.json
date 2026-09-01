@@ -1,0 +1,89 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_tooling_selftest_report.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "selftest_id": "unicode-input-002",
+  "append_only": true,
+  "formal_generation": false,
+  "generation9_formal_execution_count": 0,
+  "generation9_automatic_retry_count": 0,
+  "generated_at_utc": "2026-09-01T16:00:32.8959282Z",
+  "status": "PASS",
+  "overall_classification": "NONFORMAL_TOOLING_SELFTEST_PASS",
+  "product_failure_attested": false,
+  "platform_capacity_hard_stop_attested": false,
+  "platform_qualification_gate_green": false,
+  "predecessor_failed_selftest": {
+    "selftest_id": "unicode-input-001",
+    "raw_evidence_root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-20\\qu\\outputs\\v076-generation9-platform-qualification\\tooling-selftests\\unicode-input-001",
+    "raw_evidence_file_count": 140,
+    "status": "FAIL_CLOSED",
+    "failure_class": "WINDOW_COORDINATE_SCALE_MISMATCH",
+    "disposition": "Preserved append-only. A nonformal random-seed game was started while calibrating the real Windows focus coordinate; it was normally stopped and did not consume Generation 9."
+  },
+  "exact_clone_identity": {
+    "path": "D:\\ss-v076-generation9-platform-qualification-7a2e10c7-001",
+    "head_sha": "3dc17308e71406ecbeb5d7d301dd35ed999bcd04",
+    "tree_sha": "b5385216b7d6fe79c68881755b5fb9c967b4952e",
+    "branch": "codex/v076-generation9-platform-qualification-7a2e10c7-001",
+    "index_delta_count": 0,
+    "tracked_tooling_delta_count": 2,
+    "untracked_uid_count": 295,
+    "staged_uid_count": 0
+  },
+  "tooling_identity": {
+    "mcp_tool_profile": "full",
+    "mcp_port": 23207,
+    "editor_pid": 19192,
+    "renderer": "compatibility",
+    "godot_version": "4.7-stable (official)",
+    "launcher_path": "tools/launch_role_godot_mcp.ps1",
+    "launcher_sha256": "ae61c920a2a1b4c6d0c2e25d46a754d8d077ed145c0cfbe152c29c4566bc58ba",
+    "bridge_path": "addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd",
+    "bridge_sha256": "f3bbc4acc290bffbd596695b4962fabda85d3da764be91e50eb9f4fba2352990",
+    "direct_filesystem_godot_product_edit_count": 0,
+    "bridge_mcp_patch_count": 1
+  },
+  "validation": {
+    "validate_script_status": "PASS",
+    "validate_script_diagnostic_count": 0,
+    "get_script_errors_status": "PASS",
+    "get_script_errors_error_count": 0,
+    "runtime_bridge_ready": true,
+    "real_main_tscn_running": true
+  },
+  "seed_input_unicode": {
+    "status": "PASS",
+    "selected_seed": 917592522,
+    "seed_control_path": "/root/Main/V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/SeedRow/SeedInput",
+    "initial_visible_text": "900626424",
+    "visible_text_after_mcp_backspace": "",
+    "final_visible_text": "917592522",
+    "clear_event_count": 12,
+    "printable_key_event_count": 9,
+    "all_mcp_input_events_success": true,
+    "returned_unicode_codepoints": [57, 49, 55, 53, 57, 50, 53, 50, 50],
+    "expected_unicode_codepoints": [57, 49, 55, 53, 57, 50, 53, 50, 50],
+    "unicode_codepoint_parity": true,
+    "visible_text_match": true,
+    "windows_focus_click_count": 1,
+    "windows_text_entry_count": 0,
+    "direct_runtime_seed_injection_count": 0,
+    "tooling_character_entry_sample_count": 1,
+    "four_layer_seed_binding_sample_count": 0,
+    "platform_qualification_sample_count_contribution": 0
+  },
+  "shutdown": {
+    "status": "PASS",
+    "normal_close_requested": true,
+    "forced_stop": false,
+    "scoped_godot_process_count_after": 0,
+    "mcp_listener_count_after": 0
+  },
+  "raw_evidence": {
+    "root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-20\\qu\\outputs\\v076-generation9-platform-qualification\\tooling-selftests\\unicode-input-002",
+    "manifest_path": "reports/reuse/generation9_platform_qualification/tooling-selftests/unicode-input-002/raw_evidence_manifest.json",
+    "manifest_sha256": "3a8eb25a7d4f86b9c8d2744f5de0f9926d2d5138a5e1390d4d722f752fcc7e11",
+    "file_count": 16
+  },
+  "next_atomic_step": "COMMIT_TOOLING_FIX_AND_SELFTEST_THEN_EXECUTE_PLATFORM_PROBE_002"
+}

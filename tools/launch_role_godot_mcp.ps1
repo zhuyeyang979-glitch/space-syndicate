@@ -14,6 +14,9 @@ param(
     [ValidateSet("compatibility", "forward_plus")]
     [string]$Renderer = "compatibility",
 
+    [ValidateSet("core", "full")]
+    [string]$ToolProfile = "core",
+
     [ValidateRange(640, 7680)]
     [int]$ResolutionWidth = 1600,
 
@@ -108,7 +111,7 @@ $settingsText = @"
 enabled=true
 port=$Port
 auth_token="$token"
-tool_profile="core"
+tool_profile="$ToolProfile"
 debug_logging_enabled=false
 execute_code_safety_checks_enabled=true
 
@@ -223,6 +226,10 @@ try {
     }
     if ($projectInfo -eq $null) {
         throw "Funplay MCP did not become ready at $endpoint. Godot PID: $($process.Id); log: $logPath"
+    }
+
+    if ([string]$projectInfo.tool_profile -cne $ToolProfile) {
+        throw "Funplay MCP tool profile mismatch: requested $ToolProfile, reported $($projectInfo.tool_profile)."
     }
 
     $reportedRoot = ([string]$projectInfo.project_root).Replace("/", "\").TrimEnd("\")

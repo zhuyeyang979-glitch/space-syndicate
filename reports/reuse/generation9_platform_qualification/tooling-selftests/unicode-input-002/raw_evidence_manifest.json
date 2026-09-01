@@ -1,0 +1,93 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_tooling_selftest_raw_evidence_manifest.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "selftest_id": "unicode-input-002",
+  "append_only": true,
+  "formal_generation": false,
+  "generation9_formal_execution_count": 0,
+  "raw_evidence_root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-20\\qu\\outputs\\v076-generation9-platform-qualification\\tooling-selftests\\unicode-input-002",
+  "generated_at_utc": "2026-09-01T16:00:32.8959282Z",
+  "file_count": 16,
+  "files": [
+    {
+      "path": "mcp-bridge-script-errors.json",
+      "size_bytes": 742,
+      "sha256": "09becc60ab472e3c58880a004353c95646c1445408f89d9498e7ebd8134a8e4f"
+    },
+    {
+      "path": "mcp-clear-seed-after-real-window-focus.json",
+      "size_bytes": 8287,
+      "sha256": "cabb2066f7d5ce60557a11c2326695b573296c8ff2ed051dd9bbf00b4cbeb23b"
+    },
+    {
+      "path": "mcp-console-logs-before-clean-exit.json",
+      "size_bytes": 848,
+      "sha256": "8256bbd7d0b13cdd6f907b64f529adfa023bc93dd82f1e81eeaac77bdd897dd6"
+    },
+    {
+      "path": "mcp-enter-seed-unicode.json",
+      "size_bytes": 6303,
+      "sha256": "1e960e9972e5ef66f3c4be0158932273f6967d022d9c74c00d3e83f3a92453bd"
+    },
+    {
+      "path": "mcp-exit-play-mode.json",
+      "size_bytes": 117,
+      "sha256": "2e7a614beec760a27bfec5ecea74c6f71b8b621a0baf09ff763812bda8f4cfc1"
+    },
+    {
+      "path": "mcp-get-project-info.json",
+      "size_bytes": 2780,
+      "sha256": "8ec7f5cdefa78f628a0be352ec4e9bc68cb639a18488e21fa4380973c8f5b8fa"
+    },
+    {
+      "path": "mcp-play-main-scene.json",
+      "size_bytes": 114,
+      "sha256": "bd0876dc640d6d3fbc0fa000ee164c5c64b1a20beed34e9558cf6d075ef958c8"
+    },
+    {
+      "path": "mcp-runtime-status-01.json",
+      "size_bytes": 186282,
+      "sha256": "4b2ebbd5177b327e9cdd6f8a02379683019ea458e5c035a755145f89a8c1098f"
+    },
+    {
+      "path": "mcp-runtime-status-02.json",
+      "size_bytes": 124216,
+      "sha256": "731aeb480188ee42e617a20f05a43cb86ebb70aa675f4de0e7fc0e17cf4903ae"
+    },
+    {
+      "path": "mcp-runtime-status-03.json",
+      "size_bytes": 128047,
+      "sha256": "1aca5fee1c5b930120c068666a024164b85743cfe10a21168fc1679b9162aa66"
+    },
+    {
+      "path": "mcp-runtime-status-04.json",
+      "size_bytes": 128049,
+      "sha256": "635f6b6a9de14a4b3a01ae615d11207dd8c7d56a6d5a335324a1ebfce45523b0"
+    },
+    {
+      "path": "mcp-runtime-status-05.json",
+      "size_bytes": 128047,
+      "sha256": "02194480fdd3a7a5efd1dda70d1d4502d6ea254d4b561f74b537233c9b8d5f00"
+    },
+    {
+      "path": "mcp-runtime-view-seed-match.json",
+      "size_bytes": 1461,
+      "sha256": "8081e6e42c56acfff12a7f3fd273499c9a3490a67c9686a133a5d8d9fe274216"
+    },
+    {
+      "path": "mcp-seed-after-clear.json",
+      "size_bytes": 2949,
+      "sha256": "94a4248b4e5c232dd91942825d3514078d59bea25d9ee4cce62a7808ca65fa43"
+    },
+    {
+      "path": "mcp-seed-after-entry.json",
+      "size_bytes": 2985,
+      "sha256": "e0ce05509d107a2d3c59d26e6833895b60be43b235fc8819d5a63521e659d026"
+    },
+    {
+      "path": "mcp-validate-bridge.json",
+      "size_bytes": 1167,
+      "sha256": "8a607342233668c0719efb695d8eaf7da4658e1cd5dc3c3ea21e119e68e9b882"
+    }
+  ]
+}

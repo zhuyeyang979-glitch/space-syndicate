@@ -373,6 +373,7 @@ func _runtime_key_event(arguments: Dictionary) -> Dictionary:
 	var mode: String = str(arguments.get("mode", "tap")).strip_edges().to_lower()
 	if not _is_input_mode(mode):
 		return {"success": false, "type": "key", "error": "'mode' must be press, release, or tap."}
+	var unicode_codepoint: int = keycode if keycode >= 32 and keycode <= 126 else 0
 	if mode == "press" or mode == "tap":
 		var press_event := InputEventKey.new()
 		press_event.pressed = true
@@ -380,6 +381,8 @@ func _runtime_key_event(arguments: Dictionary) -> Dictionary:
 			press_event.keycode = keycode
 		if physical_keycode != 0:
 			press_event.physical_keycode = physical_keycode
+		if unicode_codepoint != 0:
+			press_event.unicode = unicode_codepoint
 		Input.parse_input_event(press_event)
 	if mode == "release" or mode == "tap":
 		var release_event := InputEventKey.new()
@@ -388,6 +391,8 @@ func _runtime_key_event(arguments: Dictionary) -> Dictionary:
 			release_event.keycode = keycode
 		if physical_keycode != 0:
 			release_event.physical_keycode = physical_keycode
+		if unicode_codepoint != 0:
+			release_event.unicode = unicode_codepoint
 		Input.parse_input_event(release_event)
 	return {
 		"success": true,
@@ -395,6 +400,7 @@ func _runtime_key_event(arguments: Dictionary) -> Dictionary:
 		"mode": mode,
 		"keycode": keycode,
 		"physical_keycode": physical_keycode,
+		"unicode": unicode_codepoint,
 	}
 
 
