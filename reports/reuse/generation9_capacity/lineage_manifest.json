@@ -1,0 +1,40 @@
+{
+  "schema_version": "v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "generated_at_utc": "2026-09-01T22:31:09.3270903Z",
+  "status": "UNAMBIGUOUS_SEPARATE_LINEAGES",
+  "pr93_product_development_line": {
+    "head_sha": "8b7f029db03a9cd18be72f5b5f8ed8cb233d255b",
+    "tree_sha": "92770263e94ce9d14ec2cd523b8a6df403aba021",
+    "state": "OPEN",
+    "draft": true,
+    "head_ref": "codex/v076-continuous-playable-vertical-slice-770d741f",
+    "base_ref": "codex/v075-monster-military-combat-bd0af5c"
+  },
+  "generation8_9_product_candidate_line": {
+    "head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+    "tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d",
+    "generation8_status": "BLOCKED",
+    "generation8_product_failure_attested": false,
+    "generation9_formal_execution_count": 0
+  },
+  "platform_evidence_line": {
+    "branch": "codex/v076-generation9-platform-qualification-7a2e10c7-001",
+    "head_sha": "8d74e3e94c59f9425ee0abab7036c8b0689e9b54",
+    "tree_sha": "be104fde508bd0b66c707b11ba33724f1260cd83",
+    "remote_head_sha": "8d74e3e94c59f9425ee0abab7036c8b0689e9b54",
+    "tooling_commit_sha": "31497a77cc9457694a6adcfed748aee727054553",
+    "capacity_stop_commit_sha": "8d74e3e94c59f9425ee0abab7036c8b0689e9b54"
+  },
+  "ancestry": {
+    "product_candidate_is_ancestor_of_pr93": true,
+    "product_candidate_is_ancestor_of_platform_evidence": true,
+    "pr93_is_ancestor_of_platform_evidence": true
+  },
+  "platform_evidence_changed_path_count_from_pr93": 105,
+  "platform_evidence_product_path_change_count": 1,
+  "platform_evidence_product_paths": [
+    "addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd"
+  ],
+  "interpretation": "The product candidate is an ancestor of both PR #93 and the append-only platform evidence line. PR #93 remains the product PR; platform evidence must not replace or force-push it."
+}

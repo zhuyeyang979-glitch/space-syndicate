@@ -1,0 +1,304 @@
+{
+  "schema_version": "v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "generated_at_utc": "2026-09-01T22:33:52.7216888Z",
+  "started_at_utc": "2026-09-01T22:33:11.7036025Z",
+  "finished_at_utc": "2026-09-01T22:33:52.7224653Z",
+  "duration_seconds": 30,
+  "sample_count": 31,
+  "target_available_commit_at_probe_start_bytes": 8589934592,
+  "idle_committed_bytes_min": 14286237696.0,
+  "idle_committed_bytes_max": 14312480768.0,
+  "idle_commit_limit_bytes_min": 41177288704.0,
+  "idle_available_commit_bytes_min": 26864807936.0,
+  "idle_available_commit_bytes_max": 26891051008.0,
+  "idle_available_physical_bytes_min": 22140055552.0,
+  "idle_pagefile_usage_bytes_max": 0.0,
+  "idle_background_task_owned_process_count_max": 0.0,
+  "task_godot_process_count_before": 0,
+  "task_godot_process_count_after": 0,
+  "port_23207_listener_count_before": 0,
+  "port_23207_listener_count_after": 0,
+  "status": "PASS",
+  "samples": [
+    {
+      "captured_at_utc": "2026-09-01T22:33:12.1895290Z",
+      "committed_bytes": 14286237696,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26891051008,
+      "available_physical_bytes": 22167179264,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:13.5209038Z",
+      "committed_bytes": 14295732224,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26881556480,
+      "available_physical_bytes": 22163324928,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:14.8805602Z",
+      "committed_bytes": 14297698304,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26879590400,
+      "available_physical_bytes": 22158381056,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:16.2205914Z",
+      "committed_bytes": 14303514624,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26873774080,
+      "available_physical_bytes": 22152155136,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:17.5733145Z",
+      "committed_bytes": 14303772672,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26873516032,
+      "available_physical_bytes": 22151880704,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:18.9349678Z",
+      "committed_bytes": 14303293440,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26873995264,
+      "available_physical_bytes": 22150840320,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:20.2919714Z",
+      "committed_bytes": 14303842304,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26873446400,
+      "available_physical_bytes": 22150168576,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:21.6337954Z",
+      "committed_bytes": 14303367168,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26873921536,
+      "available_physical_bytes": 22149939200,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:23.0113002Z",
+      "committed_bytes": 14302539776,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26874748928,
+      "available_physical_bytes": 22148919296,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:24.3594453Z",
+      "committed_bytes": 14301667328,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26875621376,
+      "available_physical_bytes": 22151122944,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:25.7092772Z",
+      "committed_bytes": 14302306304,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26874982400,
+      "available_physical_bytes": 22150553600,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:27.0569655Z",
+      "committed_bytes": 14303240192,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26874048512,
+      "available_physical_bytes": 22150139904,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:28.4259124Z",
+      "committed_bytes": 14303780864,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26873507840,
+      "available_physical_bytes": 22149607424,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:29.7722054Z",
+      "committed_bytes": 14303760384,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26873528320,
+      "available_physical_bytes": 22149873664,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:31.1243484Z",
+      "committed_bytes": 14302982144,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26874306560,
+      "available_physical_bytes": 22149505024,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:32.4582095Z",
+      "committed_bytes": 14301626368,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26875662336,
+      "available_physical_bytes": 22151274496,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:33.7874601Z",
+      "committed_bytes": 14306033664,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26871255040,
+      "available_physical_bytes": 22150008832,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:35.1497216Z",
+      "committed_bytes": 14303924224,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26873364480,
+      "available_physical_bytes": 22150520832,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:36.5024051Z",
+      "committed_bytes": 14303698944,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26873589760,
+      "available_physical_bytes": 22150168576,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:37.8456594Z",
+      "committed_bytes": 14302683136,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26874605568,
+      "available_physical_bytes": 22150098944,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:39.1693813Z",
+      "committed_bytes": 14300917760,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26876370944,
+      "available_physical_bytes": 22150836224,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:40.5139343Z",
+      "committed_bytes": 14304043008,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26873245696,
+      "available_physical_bytes": 22150418432,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:41.8283030Z",
+      "committed_bytes": 14312480768,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26864807936,
+      "available_physical_bytes": 22140194816,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:43.1532562Z",
+      "committed_bytes": 14310719488,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26866569216,
+      "available_physical_bytes": 22140055552,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:44.5034291Z",
+      "committed_bytes": 14301052928,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26876235776,
+      "available_physical_bytes": 22147047424,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:45.8526091Z",
+      "committed_bytes": 14309883904,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26867404800,
+      "available_physical_bytes": 22140563456,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:47.1883075Z",
+      "committed_bytes": 14309998592,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26867290112,
+      "available_physical_bytes": 22140854272,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:48.5329494Z",
+      "committed_bytes": 14311448576,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26865840128,
+      "available_physical_bytes": 22140649472,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:49.8939373Z",
+      "committed_bytes": 14308581376,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26868707328,
+      "available_physical_bytes": 22140436480,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:51.2409213Z",
+      "committed_bytes": 14309638144,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26867650560,
+      "available_physical_bytes": 22140321792,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    },
+    {
+      "captured_at_utc": "2026-09-01T22:33:52.5976091Z",
+      "committed_bytes": 14311239680,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 26866049024,
+      "available_physical_bytes": 22140129280,
+      "pagefile_usage_bytes": 0,
+      "background_task_owned_process_count": 0
+    }
+  ]
+}

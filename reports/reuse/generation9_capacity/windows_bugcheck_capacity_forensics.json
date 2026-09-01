@@ -1,0 +1,39 @@
+{
+  "schema_version": "v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "generated_at_utc": "2026-09-01T22:31:11.4705430Z",
+  "windows_bugcheck_root_cause_class": "H",
+  "contributing_classes": [
+    "G_CRITICAL_PROCESS_FAILURE_WITH_COMMIT_PRESSURE",
+    "I_INSUFFICIENT_DUMP_EVIDENCE"
+  ],
+  "conclusion": "Probe 2 directly observed near-total commit depletion before control-plane loss. Windows later recorded bugcheck 0xEF for a critical svchost process. The dump exists but is not readable in the current non-elevated context and no debugger is installed, so evidence does not support claiming Godot directly caused the bugcheck or excluding another kernel cause.",
+  "known_probe2_capacity_evidence": {
+    "peak_private_bytes": 4272857088,
+    "probe_start_available_commit_bytes": 3832803328,
+    "minimum_available_commit_bytes": 4243456,
+    "required_commit_headroom_bytes": 6383826944
+  },
+  "event_evidence": {
+    "bugcheck_0xef_event_present": true,
+    "bugcheck_event_record_id": 95665,
+    "kernel_power_41_present": true,
+    "kernel_power_record_id": 95601,
+    "unexpected_shutdown_6008_present": true,
+    "dump_written_event_present": true,
+    "resource_exhaustion_detector_event_count": 0,
+    "storage_or_filesystem_error_count_near_bugcheck": 0,
+    "wer_bucket": "0xEF_svchost.exe_BUGCHECK_CRITICAL_PROCESS_c00000fd_svchost.exe!unknown_function"
+  },
+  "dump_evidence": {
+    "minidump_available": true,
+    "minidump_size_bytes": 6113980,
+    "minidump_sha256": null,
+    "minidump_readable": false,
+    "memory_dmp_available": false,
+    "debugger_available": false
+  },
+  "non_memory_system_repair_required": false,
+  "godot_direct_bugcheck_cause_attested": false,
+  "high_load_probe_allowed_after_capacity_qualification": true
+}

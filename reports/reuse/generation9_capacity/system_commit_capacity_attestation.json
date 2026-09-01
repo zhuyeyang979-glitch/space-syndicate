@@ -1,0 +1,109 @@
+{
+  "schema_version": "v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "generated_at_utc": "2026-09-01T22:31:10.9543198Z",
+  "target_available_commit_at_probe_start_bytes": 8589934592,
+  "known_required_commit_headroom_bytes": 6383826944,
+  "before_task_cleanup": {
+    "captured_at_utc": "2026-09-01T22:31:10.1994397Z",
+    "boot_time_utc": "2026-09-01T16:12:11.5000000Z",
+    "physical_memory_bytes": 34197966848,
+    "committed_bytes": 14463647744,
+    "commit_limit_bytes": 41177288704,
+    "available_commit_bytes": 26713640960,
+    "available_physical_bytes": 21981216768,
+    "system_managed_pagefile": true,
+    "pagefile_usage": [
+      {
+        "path": "D:\\pagefile.sys",
+        "allocated_bytes": 6979321856,
+        "current_usage_bytes": 0,
+        "peak_usage_bytes": 0
+      }
+    ],
+    "pagefile_settings": [],
+    "fixed_disk_free_space": [
+      {
+        "volume": "C:",
+        "free_bytes": 9120874496,
+        "size_bytes": 214750457856
+      },
+      {
+        "volume": "D:",
+        "free_bytes": 15965843456,
+        "size_bytes": 760995639296
+      },
+      {
+        "volume": "E:",
+        "free_bytes": 36616257536,
+        "size_bytes": 1000187359232
+      }
+    ],
+    "crash_dump_configuration": {
+      "debug_info_type": 3,
+      "debug_file_path": "%SystemRoot%\\MEMORY.DMP",
+      "mini_dump_directory": "%SystemRoot%\\Minidump",
+      "auto_reboot": true,
+      "write_debug_info": true,
+      "write_to_system_log": true
+    }
+  },
+  "task_owned_process_identified_count": 0,
+  "task_owned_processes": [],
+  "task_owned_process_graceful_close_count": 0,
+  "task_owned_process_force_kill_count": 0,
+  "unrelated_process_termination_count": 0,
+  "shared_mcp_process_count": 1,
+  "shared_mcp_disposition": "PRESERVED_NOT_TASK_OWNED",
+  "task_port_23207_listener_count": 0,
+  "after_task_cleanup": {
+    "captured_at_utc": "2026-09-01T22:31:10.9521486Z",
+    "boot_time_utc": "2026-09-01T16:12:11.5000000Z",
+    "physical_memory_bytes": 34197966848,
+    "committed_bytes": 14359867392,
+    "commit_limit_bytes": 41177288704,
+    "available_commit_bytes": 26817421312,
+    "available_physical_bytes": 22081089536,
+    "system_managed_pagefile": true,
+    "pagefile_usage": [
+      {
+        "path": "D:\\pagefile.sys",
+        "allocated_bytes": 6979321856,
+        "current_usage_bytes": 0,
+        "peak_usage_bytes": 0
+      }
+    ],
+    "pagefile_settings": [],
+    "fixed_disk_free_space": [
+      {
+        "volume": "C:",
+        "free_bytes": 9120874496,
+        "size_bytes": 214750457856
+      },
+      {
+        "volume": "D:",
+        "free_bytes": 15965986816,
+        "size_bytes": 760995639296
+      },
+      {
+        "volume": "E:",
+        "free_bytes": 36616257536,
+        "size_bytes": 1000187359232
+      }
+    ],
+    "crash_dump_configuration": {
+      "debug_info_type": 3,
+      "debug_file_path": "%SystemRoot%\\MEMORY.DMP",
+      "mini_dump_directory": "%SystemRoot%\\Minidump",
+      "auto_reboot": true,
+      "write_debug_info": true,
+      "write_to_system_log": true
+    }
+  },
+  "minimum_additional_commit_limit_bytes": 0,
+  "pagefile_configuration_change_count": 0,
+  "pagefile_disposition": "PRESERVE_SYSTEM_MANAGED_CAPACITY_ALREADY_QUALIFIED",
+  "planned_reboot_count": 0,
+  "qualification_status": "PASS",
+  "reversal_instructions": "No configuration change was made; no reversal is required."
+}
