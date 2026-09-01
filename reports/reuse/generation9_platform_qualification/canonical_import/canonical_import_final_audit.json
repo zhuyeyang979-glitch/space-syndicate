@@ -1,0 +1,70 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_canonical_import_final_audit.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "generated_at_utc": "2026-09-01T15:10:16.8027053Z",
+  "exact_clone_path": "D:\\ss-v076-generation9-platform-qualification-7a2e10c7-001",
+  "exact_clone_head_sha": "91cb33cec2bbe6d43be6b98c604e21df8cf1358b",
+  "exact_clone_tree_sha": "0f5471af58827712fe17d6a8bc1966989402c04e",
+  "status": "PASS",
+  "canonical_import_execution_count": 2,
+  "canonical_import_pass_count": 2,
+  "canonical_import_timeout_count": 0,
+  "canonical_import_process_crash_count": 0,
+  "canonical_import_tracked_delta_count": 0,
+  "canonical_import_pass1_pass2_path_parity": true,
+  "canonical_import_pass1_pass2_hash_parity": true,
+  "imported_file_count": 1330,
+  "imported_manifest_fingerprint_sha256": "b45c769d7a88439cafc20d5062dbe623c3f15a3234fa7dd89da49387d4dad76a",
+  "class_cache_present": true,
+  "class_cache_sha256": "f35abc2d252fa772468528f561dd52344ec0c3b09bd0a9b58ebfaf3d54c2ea01",
+  "formal_import_pending_count": 0,
+  "formal_import_event_count": null,
+  "pass_reports": [
+    {
+      "pass_id": "pass-001",
+      "path": "reports/reuse/generation9_platform_qualification/canonical_import/pass-001/canonical_import_report.json",
+      "sha256": "5dd1a39c4af3f1cd9167590c762a3e2775532dc54031331f54841fcbab5c8c8c",
+      "status": "PASS",
+      "clean_exit": true,
+      "imported_file_count": 1330,
+      "memory_values_usable_for_capacity_math": false,
+      "correction_path": "reports/reuse/generation9_platform_qualification/canonical_import/pass-001/monitoring_correction.json",
+      "correction_sha256": "f94fef98a0b7c814f663efa56b9a2f537feb4a58f0ad717e202de33db48a2b58"
+    },
+    {
+      "pass_id": "pass-002",
+      "path": "reports/reuse/generation9_platform_qualification/canonical_import/pass-002/canonical_import_report.json",
+      "sha256": "32626e52407f1df197eac6be11133585e5b499313d0b8f0f13a6cef95f1df286",
+      "status": "PASS",
+      "clean_exit": true,
+      "imported_file_count": 1330,
+      "memory_values_usable_for_capacity_math": false,
+      "correction_path": "reports/reuse/generation9_platform_qualification/canonical_import/pass-002/monitoring_correction.json",
+      "correction_sha256": "810442e6adf8b0dc7087fdc3a9a3782f5a792a4a27c8073944eeb8980fa7a460"
+    }
+  ],
+  "tracked_import_metadata_classification": {
+    "frozen_generation8_tracked_import_count": 43,
+    "exact_clone_canonical_import_tracked_import_count": 0,
+    "classification": "DIRTY_WORKTREE_IMPORT_NOISE",
+    "deterministic_import_metadata_delta_count": 0,
+    "unstable_tracked_import_metadata_count": 0,
+    "tracked_import_noise_stage_count": 0
+  },
+  "generated_uid_state": {
+    "untracked_uid_count": 295,
+    "staged_uid_count": 0,
+    "disposition": "KEEP_UNTRACKED_IN_EXACT_CLONE_FOR_CACHE_CONTINUITY;DO_NOT_STAGE"
+  },
+  "process_cleanup": {
+    "exact_clone_bound_godot_process_count": 0,
+    "exact_clone_bound_listener_count": 0,
+    "status": "PASS"
+  },
+  "monitoring_disposition": {
+    "canonical_import_engine_memory_attested": false,
+    "canonical_import_execution_and_cache_attested": true,
+    "platform_capacity_math_source": "WARM_PROBE_COMPLETE_PROCESS_TREE_ONLY",
+    "explanation": "Both Windows launch paths used by the import wrapper spawned a child Godot engine. The append-only corrections exclude wrapper-only memory values without invalidating exit, cache, import-queue, error, or parity evidence."
+  }
+}

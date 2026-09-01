@@ -1,0 +1,24 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_canonical_import_monitoring_correction.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "pass_id": "pass-001",
+  "original_report_path": "reports/reuse/generation9_platform_qualification/canonical_import/pass-001/canonical_import_report.json",
+  "original_report_sha256": "5dd1a39c4af3f1cd9167590c762a3e2775532dc54031331f54841fcbab5c8c8c",
+  "correction_kind": "PROCESS_IDENTITY_SCOPE",
+  "original_sampled_process_kind": "WINDOWS_CMD_LAUNCHER",
+  "original_sampled_process_path": "C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe\\godot.cmd",
+  "godot_engine_process_memory_attested": false,
+  "import_execution_attested": true,
+  "import_execution_basis": {
+    "process_exit_code": 0,
+    "clean_exit": true,
+    "import_queue_final_pending_count": 0,
+    "imported_file_count": 1330,
+    "class_cache_present": true,
+    "memory_allocation_error_count": 0,
+    "fatal_copy_on_write_count": 0,
+    "import_error_count": 0
+  },
+  "disposition": "KEEP_PASS1_AS_CANONICAL_IMPORT_EXECUTION;_EXCLUDE_WRAPPER_MEMORY_VALUES_FROM_PLATFORM_CAPACITY_MATH;BIND_PASS2_AND_ALL_PROBES_TO_REAL_GODOT_EXE",
+  "automatic_retry_count": 0
+}
