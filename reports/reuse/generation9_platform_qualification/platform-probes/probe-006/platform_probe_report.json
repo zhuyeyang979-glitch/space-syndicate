@@ -1,0 +1,196 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_report.v3",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "probe_id": "probe-006",
+  "probe_execution_index": 6,
+  "successor_probe_execution_index": 3,
+  "authorized_successor_nonformal_probe_count": 4,
+  "append_only": true,
+  "formal_generation": false,
+  "generation9_formal_execution_count": 0,
+  "generation9_consumed": false,
+  "generated_at_utc": "2026-09-01T23:20:59.7753255Z",
+  "started_at_utc": "09/01/2026 23:04:45",
+  "finished_at_utc": "09/01/2026 23:07:11",
+  "status": "FAIL_RECOVERABLE_BUDGET_CHECKPOINT",
+  "overall_classification": "NONFORMAL_PLATFORM_PROBE_TOOLING_FAILURE",
+  "failure_class": "TOOLING_FAILURE",
+  "failure_stage": "EXTERNAL_WINDOWS_FOCUS_WITNESS_TIMEOUT_WITH_OCCLUDED_SEED_INPUT",
+  "failure_detail": "External Windows focus witness was not supplied before timeout.",
+  "root_cause": "The runner required an external Windows focus witness but still requested SeedInput before clicking the visible commercial Start New Game action. StartOverlay was locally visible, but the simultaneously visible MenuModalOverlay covered it, so no valid visible-field witness was supplied before the bounded timeout.",
+  "product_failure_attested": false,
+  "platform_capacity_failure_attested": false,
+  "exact_clone_identity": {
+    "path_token": "GENERATION9_EXACT_CLONE",
+    "branch": "codex/v076-generation9-platform-qualification-7a2e10c7-001",
+    "head_sha": "b083cdb5ca53423271eceec84a17700015c8d257",
+    "tree_sha": "25d690610601716a64c774185c044ac1c3192b7e",
+    "product_candidate_head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+    "product_candidate_tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d",
+    "tracked_delta_count": 0,
+    "index_delta_count": 0,
+    "untracked_uid_count": 295
+  },
+  "mcp_control_plane": {
+    "status": "CONTROL_PLANE_PASS_PRODUCT_PROOF_NOT_REACHED",
+    "runner_recorded_milestone_pass_count": 10,
+    "observed_milestone_pass_count": 12,
+    "milestone_required_count": 12,
+    "milestones": [
+      {
+        "id": "M0",
+        "name": "Exact Candidate Identity",
+        "status": "PASS"
+      },
+      {
+        "id": "M1",
+        "name": "Godot Process Created",
+        "status": "PASS"
+      },
+      {
+        "id": "M2",
+        "name": "GUI Engine Identified",
+        "status": "PASS"
+      },
+      {
+        "id": "M3",
+        "name": "MCP Listener Bound",
+        "status": "PASS"
+      },
+      {
+        "id": "M4",
+        "name": "Endpoint Owner Matches GUI Engine",
+        "status": "PASS"
+      },
+      {
+        "id": "M5",
+        "name": "First JSON-RPC Request Sent",
+        "status": "PASS"
+      },
+      {
+        "id": "M6",
+        "name": "First JSON-RPC Response Received",
+        "status": "PASS"
+      },
+      {
+        "id": "M7",
+        "name": "Runtime Bootstrap Received",
+        "status": "PASS"
+      },
+      {
+        "id": "M8",
+        "name": "Ready Witness Persisted",
+        "status": "PASS"
+      },
+      {
+        "id": "M9",
+        "name": "Main Scene Loaded",
+        "status": "PASS"
+      },
+      {
+        "id": "M10",
+        "name": "Normal Exit Requested",
+        "status": "PASS",
+        "source": "cleanup_after_failure"
+      },
+      {
+        "id": "M11",
+        "name": "Godot MCP And Port Zero",
+        "status": "PASS",
+        "source": "cleanup_after_failure"
+      }
+    ]
+  },
+  "runtime_visibility_witness": {
+    "source_file": "m8-ready-poll-002.jsonrpc.json",
+    "source_sha256": "847c5b44ee9d68bbb680b0fc6cf982731a97cba1832b7b41ca1b14939912d7d0",
+    "start_overlay_found": true,
+    "start_overlay_visible": true,
+    "commercial_shell_found": true,
+    "commercial_shell_visible": true,
+    "menu_modal_overlay_found": true,
+    "menu_modal_overlay_visible": true
+  },
+  "seed_binding": {
+    "status": "NOT_ENTERED_EXTERNAL_FOCUS_WITNESS_TIMEOUT",
+    "selected_seed": 917592522,
+    "pre_entry_visible_text": "900626424",
+    "config_model_value": null,
+    "new_game_intent_seed": null,
+    "runtime_match_seed": null,
+    "empty_readback_count": 0,
+    "fallback_randomization_count": 0,
+    "direct_runtime_injection_count": 0,
+    "four_layer_match": false,
+    "external_windows_focus_request_written": true,
+    "external_windows_focus_completion_written": false
+  },
+  "memory_observation": {
+    "status": "PASS",
+    "sample_count": 277,
+    "available_commit_at_probe_start_bytes": 26271547392,
+    "minimum_available_commit_bytes": 21279510528,
+    "minimum_available_physical_bytes": 18416283648,
+    "capacity_guard_bytes": 1073741824,
+    "capacity_guard_triggered": false
+  },
+  "import_observation": {
+    "status": "PASS_ZERO_GROWTH",
+    "maximum_import_queue_length": 0,
+    "import_event_count_first": 57,
+    "import_event_count_last": 57,
+    "import_event_growth": 0
+  },
+  "cleanup": {
+    "status": "PASS",
+    "identity_verified": true,
+    "normal_close_requested": true,
+    "forced_stop": false,
+    "process_count_after": 0,
+    "endpoint_count_after": 0,
+    "unrelated_process_termination_count": 0
+  },
+  "corrective_action": {
+    "status": "OFFLINE_REPAIRED_PENDING_NEW_AUTHORIZATION",
+    "runner_sha256_after_offline_repair": "5e7502c4c1acb4b8fff567b6d74425b899a34b2fae550d6e1bba1cf5250a190c",
+    "commercial_button_discovery": "recursive query_runtime_node discovery by exact Button text",
+    "commercial_button_text": "开始新局",
+    "start_overlay_visibility_required_before_seed_query": true,
+    "commercial_menu_overlay_closed_required_before_seed_query": true,
+    "exact_windows_window_title": "太空辛迪加 (DEBUG)",
+    "external_window_match_count_required": 1,
+    "external_window_activation_count_required": 1,
+    "external_seed_field_click_count_required": 1,
+    "mcp_seed_character_entry_preserved": true,
+    "direct_runtime_seed_injection_allowed": false,
+    "probe_006_overwrite_allowed": false
+  },
+  "frozen_evidence_preservation": {
+    "frozen_probe2_modification_count": 0,
+    "frozen_generation8_modification_count": 0,
+    "frozen_capacity_stop_commit_modification_count": 0,
+    "user_dirty_file_mutation_count": 0,
+    "user_dirty_file_stage_count": 0,
+    "user_dirty_file_delete_count": 0,
+    "unknown_file_delete_count": 0
+  },
+  "qualification_disposition": {
+    "successor_probe_execution_count": 3,
+    "successor_probe_budget_remaining": 1,
+    "consecutive_platform_pass_count_after": 0,
+    "two_consecutive_passes_reachable_with_current_budget": false,
+    "additional_successor_probe_authorization_minimum": 2,
+    "additional_successor_probe_authorization_recommended": 3,
+    "generation9_authorization_status": "NOT_SEALED",
+    "generation9_formal_execution_count": 0,
+    "step11_generation9_receipt_status": "NOT_RUN",
+    "commercial_sprint_resumed": false,
+    "status": "PLATFORM_BUDGET_CHECKPOINT_WITH_ALL_WORK_PRESERVED"
+  },
+  "raw_evidence": {
+    "root_token": "TASK_OUTPUT/platform-probes/probe-006",
+    "manifest_path": "reports/reuse/generation9_platform_qualification/platform-probes/probe-006/raw_evidence_manifest.json",
+    "file_count": 17
+  },
+  "next_atomic_step": "AUTHORIZE_AT_LEAST_TWO_ADDITIONAL_SUCCESSOR_NONFORMAL_PLATFORM_PROBES_THEN_RUN_REPAIRED_IDENTICAL_PROBE_TWICE_TO_CONSECUTIVE_PASS"
+}

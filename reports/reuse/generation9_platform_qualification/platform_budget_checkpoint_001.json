@@ -1,0 +1,128 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_budget_checkpoint.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "generated_at_utc": "2026-09-01T23:20:59.7753255Z",
+  "status": "PLATFORM_BUDGET_CHECKPOINT_WITH_ALL_WORK_PRESERVED",
+  "pr93": {
+    "number": 93,
+    "state": "OPEN",
+    "draft": true,
+    "head_sha": "8b7f029db03a9cd18be72f5b5f8ed8cb233d255b",
+    "untouched_by_platform_branch": true
+  },
+  "platform_evidence_line": {
+    "branch": "codex/v076-generation9-platform-qualification-7a2e10c7-001",
+    "checkpoint_parent_head_sha": "b083cdb5ca53423271eceec84a17700015c8d257",
+    "checkpoint_parent_tree_sha": "25d690610601716a64c774185c044ac1c3192b7e",
+    "product_candidate_head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+    "product_candidate_tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d"
+  },
+  "capacity_qualification": {
+    "status": "PASS",
+    "pagefile_configuration_change_count": 0,
+    "planned_reboot_count": 0,
+    "target_available_commit_at_probe_start_bytes": 8589934592,
+    "probe_005_minimum_available_commit_bytes": 21873463296,
+    "probe_006_minimum_available_commit_bytes": 21279510528,
+    "capacity_guard_trigger_count": 0,
+    "bugcheck_or_unplanned_restart_count_during_successor_probes": 0
+  },
+  "successor_probe_budget": {
+    "authorized_launched_execution_count": 4,
+    "launched_execution_count": 3,
+    "launched_probe_ids": [
+      "probe-003",
+      "probe-005",
+      "probe-006"
+    ],
+    "preflight_blocked_unlaunched_probe_ids": [
+      "probe-004"
+    ],
+    "remaining_launched_execution_count": 1,
+    "required_consecutive_pass_count": 2,
+    "current_consecutive_pass_count": 0,
+    "attainable_under_current_budget": false,
+    "additional_successor_probe_authorization_minimum": 2,
+    "additional_successor_probe_authorization_recommended": 3,
+    "recommended_margin_reason": "Three additional executions allow two required consecutive passes plus one tooling margin."
+  },
+  "probe_outcomes": [
+    {
+      "probe_id": "probe-003",
+      "launched": true,
+      "status": "TOOLING_FAILURE",
+      "generation9_consumed": false
+    },
+    {
+      "probe_id": "probe-004",
+      "launched": false,
+      "status": "PRE_EXECUTION_BLOCKED_TOOLING_FAILURE",
+      "generation9_consumed": false
+    },
+    {
+      "probe_id": "probe-005",
+      "launched": true,
+      "status": "TOOLING_FAILURE_OCCLUDED_START_OVERLAY",
+      "minimum_available_commit_bytes": 21873463296,
+      "import_event_growth": 0,
+      "normal_cleanup": true,
+      "generation9_consumed": false
+    },
+    {
+      "probe_id": "probe-006",
+      "launched": true,
+      "status": "TOOLING_FAILURE_EXTERNAL_FOCUS_TIMEOUT_OCCLUDED_START_OVERLAY",
+      "minimum_available_commit_bytes": 21279510528,
+      "import_event_growth": 0,
+      "normal_cleanup": true,
+      "generation9_consumed": false
+    }
+  ],
+  "offline_runner_repair": {
+    "status": "COMPLETE_STATIC_VALIDATION_PENDING_NEW_AUTHORIZED_RUNTIME_PROBE",
+    "path": "tools/v076_generation9_platform_probe.ps1",
+    "sha256": "5e7502c4c1acb4b8fff567b6d74425b899a34b2fae550d6e1bba1cf5250a190c",
+    "repair_commit_sha": "81f05501bb5d159a882a89ada9715c594af38806",
+    "static_self_test_path": "reports/reuse/generation9_platform_qualification/platform_probe_runner_static_self_test.json",
+    "static_self_test_status": "PASS",
+    "godot_launch_count_for_repair_validation": 0,
+    "product_file_mutation_count": 0,
+    "direct_filesystem_product_edit_count": 0,
+    "commercial_start_button_discovery": "recursive live tree discovery by exact text",
+    "start_overlay_unoccluded_visibility_gate": true,
+    "commercial_menu_overlay_closed_gate": true,
+    "external_exact_window_title": "太空辛迪加 (DEBUG)",
+    "mcp_only_seed_character_entry": true,
+    "direct_runtime_seed_injection_count": 0
+  },
+  "preservation": {
+    "generation7_rerun_count": 0,
+    "generation8_rerun_count": 0,
+    "generation9_formal_execution_count": 0,
+    "generation9_automatic_retry_count": 0,
+    "preserved_untracked_uid_count": 295,
+    "staged_uid_count": 0,
+    "frozen_probe2_modification_count": 0,
+    "frozen_generation8_modification_count": 0,
+    "frozen_capacity_stop_commit_modification_count": 0,
+    "unrelated_process_termination_count": 0
+  },
+  "downstream_gates": {
+    "generation9_authorization_status": "NOT_SEALED",
+    "step11_generation9_receipt_status": "NOT_RUN",
+    "v076_reuse_point_inertia_gate": "NOT_RUN",
+    "commercial_sprint_resumed": false,
+    "human_retest_deferred": true,
+    "human_green": false,
+    "step13_status": "PENDING",
+    "step14_status": "PENDING",
+    "step15_status": "PENDING"
+  },
+  "exact_remediation_requirement": {
+    "authorization_required": true,
+    "additional_successor_nonformal_platform_probe_count_minimum": 2,
+    "additional_successor_nonformal_platform_probe_count_recommended": 3,
+    "reason": "Only one launched execution remains, so two consecutive PASS probes cannot be obtained under the current authorization."
+  },
+  "next_task": "AUTHORIZE_AT_LEAST_TWO_ADDITIONAL_SUCCESSOR_NONFORMAL_PLATFORM_PROBES_THEN_RUN_THE_OFFLINE_REPAIRED_PROBE_TO_TWO_CONSECUTIVE_PASS_RESULTS"
+}

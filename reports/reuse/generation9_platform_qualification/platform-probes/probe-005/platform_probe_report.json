@@ -1,0 +1,189 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_report.v3",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "probe_id": "probe-005",
+  "probe_execution_index": 5,
+  "successor_probe_execution_index": 2,
+  "authorized_successor_nonformal_probe_count": 4,
+  "append_only": true,
+  "formal_generation": false,
+  "generation9_formal_execution_count": 0,
+  "generation9_consumed": false,
+  "generated_at_utc": "2026-09-01T23:20:59.7753255Z",
+  "started_at_utc": "09/01/2026 23:01:25",
+  "finished_at_utc": "09/01/2026 23:01:52",
+  "status": "FAIL_RECOVERABLE",
+  "overall_classification": "NONFORMAL_PLATFORM_PROBE_TOOLING_FAILURE",
+  "failure_class": "TOOLING_FAILURE",
+  "failure_stage": "OCCLUDED_START_OVERLAY_INPUT_TARGETING",
+  "failure_detail": "Seed visible readback mismatch: 900626424",
+  "root_cause": "The runner queried and clicked SeedInput without first using the visible commercial Start New Game action. StartOverlay and SeedInput reported local visible=true, but the simultaneously visible MenuModalOverlay covered the setup surface, so MCP click and key events did not change the field.",
+  "product_failure_attested": false,
+  "platform_capacity_failure_attested": false,
+  "exact_clone_identity": {
+    "path_token": "GENERATION9_EXACT_CLONE",
+    "branch": "codex/v076-generation9-platform-qualification-7a2e10c7-001",
+    "head_sha": "602a4f2f4cdb699f3b3d96c67be7530a040781a7",
+    "tree_sha": "fe1a19a9d18756d1ca2b0b00dfbc88bf849d9b45",
+    "product_candidate_head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+    "product_candidate_tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d",
+    "tracked_delta_count": 0,
+    "index_delta_count": 0,
+    "untracked_uid_count": 295
+  },
+  "mcp_control_plane": {
+    "status": "CONTROL_PLANE_PASS_PRODUCT_PROOF_NOT_REACHED",
+    "runner_recorded_milestone_pass_count": 10,
+    "observed_milestone_pass_count": 12,
+    "milestone_required_count": 12,
+    "milestones": [
+      {
+        "id": "M0",
+        "name": "Exact Candidate Identity",
+        "status": "PASS"
+      },
+      {
+        "id": "M1",
+        "name": "Godot Process Created",
+        "status": "PASS"
+      },
+      {
+        "id": "M2",
+        "name": "GUI Engine Identified",
+        "status": "PASS"
+      },
+      {
+        "id": "M3",
+        "name": "MCP Listener Bound",
+        "status": "PASS"
+      },
+      {
+        "id": "M4",
+        "name": "Endpoint Owner Matches GUI Engine",
+        "status": "PASS"
+      },
+      {
+        "id": "M5",
+        "name": "First JSON-RPC Request Sent",
+        "status": "PASS"
+      },
+      {
+        "id": "M6",
+        "name": "First JSON-RPC Response Received",
+        "status": "PASS"
+      },
+      {
+        "id": "M7",
+        "name": "Runtime Bootstrap Received",
+        "status": "PASS"
+      },
+      {
+        "id": "M8",
+        "name": "Ready Witness Persisted",
+        "status": "PASS"
+      },
+      {
+        "id": "M9",
+        "name": "Main Scene Loaded",
+        "status": "PASS"
+      },
+      {
+        "id": "M10",
+        "name": "Normal Exit Requested",
+        "status": "PASS",
+        "source": "cleanup_after_failure"
+      },
+      {
+        "id": "M11",
+        "name": "Godot MCP And Port Zero",
+        "status": "PASS",
+        "source": "cleanup_after_failure"
+      }
+    ]
+  },
+  "runtime_visibility_witness": {
+    "source_file": "m8-ready-poll-019.jsonrpc.json",
+    "source_sha256": "7fbcb772e04d7fcf3394191d161fc5e44b247d187785189bc57aaa723bc3264e",
+    "start_overlay_found": true,
+    "start_overlay_visible": true,
+    "commercial_shell_found": true,
+    "commercial_shell_visible": true,
+    "menu_modal_overlay_found": true,
+    "menu_modal_overlay_visible": true
+  },
+  "seed_binding": {
+    "status": "FAIL_NO_VISIBLE_FIELD_MUTATION",
+    "selected_seed": 917592522,
+    "visible_text": "900626424",
+    "default_text_remained": true,
+    "config_model_value": null,
+    "new_game_intent_seed": null,
+    "runtime_match_seed": null,
+    "empty_readback_count": 0,
+    "fallback_randomization_count": 0,
+    "direct_runtime_injection_count": 0,
+    "four_layer_match": false,
+    "external_windows_focus_required_by_this_runner_head": false
+  },
+  "memory_observation": {
+    "status": "PASS",
+    "sample_count": 51,
+    "available_commit_at_probe_start_bytes": 26396225536,
+    "minimum_available_commit_bytes": 21873463296,
+    "minimum_available_physical_bytes": 18640568320,
+    "capacity_guard_bytes": 1073741824,
+    "capacity_guard_triggered": false
+  },
+  "import_observation": {
+    "status": "PASS_ZERO_GROWTH",
+    "maximum_import_queue_length": 0,
+    "import_event_count_first": 57,
+    "import_event_count_last": 57,
+    "import_event_growth": 0
+  },
+  "cleanup": {
+    "status": "PASS",
+    "identity_verified": true,
+    "normal_close_requested": true,
+    "forced_stop": false,
+    "process_count_after": 0,
+    "endpoint_count_after": 0,
+    "unrelated_process_termination_count": 0
+  },
+  "corrective_action": {
+    "status": "SUPERSEDED_BY_OFFLINE_RUNNER_REPAIR",
+    "required_sequence": [
+      "discover and click visible commercial Start New Game button",
+      "poll StartOverlay until visible and MenuModalOverlay until closed",
+      "activate the unique exact debug window and click visible SeedInput once",
+      "send seed characters only through MCP",
+      "require four-layer parity"
+    ],
+    "runner_sha256_after_offline_repair": "5e7502c4c1acb4b8fff567b6d74425b899a34b2fae550d6e1bba1cf5250a190c",
+    "probe_005_overwrite_allowed": false
+  },
+  "frozen_evidence_preservation": {
+    "frozen_probe2_modification_count": 0,
+    "frozen_generation8_modification_count": 0,
+    "frozen_capacity_stop_commit_modification_count": 0,
+    "user_dirty_file_mutation_count": 0,
+    "user_dirty_file_stage_count": 0,
+    "user_dirty_file_delete_count": 0,
+    "unknown_file_delete_count": 0
+  },
+  "qualification_disposition": {
+    "successor_probe_execution_count": 2,
+    "successor_probe_budget_remaining": 2,
+    "consecutive_platform_pass_count_after": 0,
+    "two_consecutive_passes_still_reachable": true,
+    "generation9_authorization_status": "NOT_SEALED",
+    "step11_generation9_receipt_status": "NOT_RUN",
+    "commercial_sprint_resumed": false
+  },
+  "raw_evidence": {
+    "root_token": "TASK_OUTPUT/platform-probes/probe-005",
+    "manifest_path": "reports/reuse/generation9_platform_qualification/platform-probes/probe-005/raw_evidence_manifest.json",
+    "file_count": 37
+  },
+  "next_atomic_step": "RUN_PROBE_006_WITH_REAL_WINDOWS_FOCUS_WITNESS_BEFORE_MCP_SEED_ENTRY"
+}
