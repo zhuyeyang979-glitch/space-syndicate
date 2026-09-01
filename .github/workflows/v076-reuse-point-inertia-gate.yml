@@ -257,15 +257,15 @@ jobs:
           if (
             $selftestExit -ne 0 -or
             [string]$receipt.RECEIPT_CONTRACT_SELFTEST_STATUS -cne "PASS" -or
-            $caseCount -ne 132 -or
+            $caseCount -ne 140 -or
             $passCount -ne $caseCount -or
             $null -eq $negativeCaseCountProperty -or
             $negativeCaseCountProperty.Value -isnot [long] -or
-            [long]$negativeCaseCountProperty.Value -ne 112 -or
+            [long]$negativeCaseCountProperty.Value -ne 118 -or
             $null -eq $executedNegativeSetMatchProperty -or
             $executedNegativeSetMatchProperty.Value -isnot [bool] -or
             $executedNegativeSetMatchProperty.Value -ne $true -or
-            [string]$receipt.NEGATIVE_FIXTURE_CATALOG_SHA256 -cne "3f2152db36028a12ed79e22b49d2291f84cff0e291075f954b3840ebd2b55a2a" -or
+            [string]$receipt.NEGATIVE_FIXTURE_CATALOG_SHA256 -cne "26129c2720bf6c252bc219127ba47c420a7672912135082da0c28c3c8a02797a" -or
             [long]$receipt.FALSE_GREEN_COUNT -ne 0 -or
             [long]$receipt.VALID_RECEIPT_FALSE_REJECT_COUNT -ne 0 -or
             $invalidClassifiedFalseGreenFields.Count -ne 0
@@ -322,18 +322,49 @@ jobs:
           "Full-convergence explicit input set: COMPLETE ($($inputs.Count)/$($inputs.Count)); directory discovery: disabled." |
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
 
-      - name: Consume Generation 7 current-subject receipts (fail closed)
+      - name: Consume current authorized receipt generation (fail closed)
         id: current_subject_receipt_consumer
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           $reportPath = Join-Path $env:RUNNER_TEMP "v076-current-subject-receipt-validation.json"
+          $generation8ManifestRelative = "reports/reuse/full_convergence/generation8/generation8_authorization_manifest.json"
+          $generation8ManifestPath = Join-Path $env:GITHUB_WORKSPACE $generation8ManifestRelative
           $global:LASTEXITCODE = 0
-          & python tools/v076/v076_current_subject_revalidation_receipt.py validate `
-            --project $env:GITHUB_WORKSPACE `
-            --subject-manifest "${{ steps.full_convergence_inputs.outputs.current_subject_manifest_relative }}" `
-            --expected-consumer-head "${{ steps.pr_context.outputs.head }}" `
-            --report-json $reportPath
+          if (Test-Path -LiteralPath $generation8ManifestPath -PathType Leaf) {
+            try {
+              $generation8Authorization = Get-Content -LiteralPath $generation8ManifestPath -Raw | ConvertFrom-Json
+            } catch {
+              throw "Generation 8 authorization manifest is invalid JSON: $($_.Exception.Message)"
+            }
+            $generationProperty = $generation8Authorization.PSObject.Properties["generation_id"]
+            $evidenceProperty = $generation8Authorization.PSObject.Properties["new_evidence_id"]
+            if ([string]$generation8Authorization.status -cne "SEALED" -or
+                $null -eq $generationProperty -or $generationProperty.Value -isnot [long] -or
+                [long]$generationProperty.Value -ne 8 -or
+                $null -eq $evidenceProperty -or $evidenceProperty.Value -isnot [long] -or
+                [long]$evidenceProperty.Value -le 9631) {
+              throw "Generation 8 authorization manifest identity is not sealed or monotonic."
+            }
+            $expectedGenerationId = [long]$generationProperty.Value
+            $expectedEvidenceId = [long]$evidenceProperty.Value
+            $expectedReceiptCount = 1
+            $expectedValidationMode = "GENERATION8_SUCCESSOR"
+            & python tools/v076/v076_current_subject_revalidation_receipt.py validate-generation8 `
+              --project $env:GITHUB_WORKSPACE `
+              --expected-consumer-head "${{ steps.pr_context.outputs.head }}" `
+              --report-json $reportPath
+          } else {
+            $expectedGenerationId = 7
+            $expectedEvidenceId = 9631
+            $expectedReceiptCount = 3
+            $expectedValidationMode = "GENERATION7_LEGACY"
+            & python tools/v076/v076_current_subject_revalidation_receipt.py validate `
+              --project $env:GITHUB_WORKSPACE `
+              --subject-manifest "${{ steps.full_convergence_inputs.outputs.current_subject_manifest_relative }}" `
+              --expected-consumer-head "${{ steps.pr_context.outputs.head }}" `
+              --report-json $reportPath
+          }
           $validatorExit = $LASTEXITCODE
           $global:LASTEXITCODE = 0
           if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) {
@@ -347,6 +378,14 @@ jobs:
           $failureCodes = @($report.failure_codes)
           "exit_code=$validatorExit" |
             Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "expected_generation_id=$expectedGenerationId" |
+            Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "expected_evidence_id=$expectedEvidenceId" |
+            Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "expected_receipt_count=$expectedReceiptCount" |
+            Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "expected_validation_mode=$expectedValidationMode" |
+            Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           if ($validatorExit -lt 0 -or $validatorExit -ge 2) {
             throw "Current-subject receipt validator tooling error: exit=$validatorExit"
           }
@@ -355,11 +394,11 @@ jobs:
             throw "Current-subject receipt validator exit/report mismatch: exit=$validatorExit status=$($report.validator_status)"
           }
           if ($validatorExit -eq 0) {
-            "Current-subject Generation 7 receipts: validator PASS; final Effective Gate will enforce the complete structured report." |
+            "Current authorized receipts: validator PASS ($expectedValidationMode); final Effective Gate will enforce the complete structured report." |
               Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
           } else {
             $stableCodes = ($failureCodes | Sort-Object -Unique) -join ","
-            "Current-subject Generation 7 receipts: validator FAIL; downstream reuse enforcement blocked; codes=$stableCodes." |
+            "Current authorized receipts: validator FAIL ($expectedValidationMode); downstream reuse enforcement blocked; codes=$stableCodes." |
               Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
           }
 
@@ -612,19 +651,35 @@ jobs:
           $receiptFailureCodes = @($receiptReport.failure_codes)
           $receiptBindings = @($receiptReport.receipt_bindings)
           $expectedHead = "${{ steps.pr_context.outputs.head }}"
+          $expectedGenerationText = "${{ steps.current_subject_receipt_consumer.outputs.expected_generation_id }}"
+          $expectedEvidenceText = "${{ steps.current_subject_receipt_consumer.outputs.expected_evidence_id }}"
+          $expectedReceiptCountText = "${{ steps.current_subject_receipt_consumer.outputs.expected_receipt_count }}"
+          $expectedValidationMode = "${{ steps.current_subject_receipt_consumer.outputs.expected_validation_mode }}"
+          if ($expectedGenerationText -notmatch '^[0-9]+$' -or
+              $expectedEvidenceText -notmatch '^[0-9]+$' -or
+              $expectedReceiptCountText -notmatch '^[0-9]+$' -or
+              $expectedValidationMode -notin @("GENERATION7_LEGACY", "GENERATION8_SUCCESSOR")) {
+            throw "Effective Gate received invalid dynamic receipt expectations."
+          }
+          $expectedGenerationId = [long]$expectedGenerationText
+          $expectedEvidenceId = [long]$expectedEvidenceText
+          $expectedReceiptCount = [long]$expectedReceiptCountText
           if ($receiptExitText -ne "0") {
             $stableCodes = ($receiptFailureCodes | Sort-Object -Unique) -join ","
             throw "CURRENT_SUBJECT_RECEIPT_VALIDATION_FAILED:exit=$receiptExitText status=$($receiptReport.validator_status) receipts=$($receiptReport.validated_receipt_count)/$($receiptReport.receipt_count) codes=$stableCodes"
           }
           if ([string]$receiptReport.expected_consumer_head_sha -cne $expectedHead -or
-              [long]$receiptReport.generation_id -ne 7 -or
-              [long]$receiptReport.resume_evidence_id -ne 9631 -or
+              [long]$receiptReport.generation_id -ne $expectedGenerationId -or
+              [long]$receiptReport.resume_evidence_id -ne $expectedEvidenceId -or
+              [string]$receiptReport.validation_mode -cne $expectedValidationMode -or
               [string]$receiptReport.required_check_context -cne "V076 Reuse and Point-Inertia Gate" -or
               $receiptReport.required_gate_consumer_fail_closed -ne $true -or
-              [long]$receiptReport.receipt_count -ne 3 -or
-              [long]$receiptReport.validated_receipt_count -ne 3 -or
+              [long]$receiptReport.receipt_count -ne $expectedReceiptCount -or
+              [long]$receiptReport.validated_receipt_count -ne $expectedReceiptCount -or
               $receiptFailureCodes.Count -ne 0 -or
-              $receiptBindings.Count -ne 3) {
+              $receiptBindings.Count -ne $expectedReceiptCount -or
+              ($expectedGenerationId -eq 8 -and
+                [string]$receiptReport.generation7_step11_receipt_status -cne "BLOCKED")) {
             throw "Effective Gate receipt contract mismatch: expected_head=$expectedHead actual_head=$($receiptReport.expected_consumer_head_sha) receipts=$($receiptReport.validated_receipt_count)/$($receiptReport.receipt_count) bindings=$($receiptBindings.Count)"
           }
           if ($rawOutcome -cne "success" -or $v2Outcome -cne "success") {

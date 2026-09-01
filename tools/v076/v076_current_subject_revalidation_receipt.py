@@ -220,11 +220,117 @@ FAILURE_CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
 NEGATIVE_CASE_ID_RE = re.compile(
     rb'\bnegative\(\s*"([A-Z][A-Z0-9_]{2,127})"'
 )
+GENERATION8_NEGATIVE_CASE_ID_RE = re.compile(
+    rb'\b(?:negative|generation8_negative)\(\s*"([A-Z][A-Z0-9_]{2,127})"'
+)
 REQUIRED_NEGATIVE_CASE_COUNT = 112
 REQUIRED_NEGATIVE_CASE_ID_SET_SHA256 = (
     "3f2152db36028a12ed79e22b49d2291f84cff0e291075f954b3840ebd2b55a2a"
 )
 REQUIRED_SELFTEST_CASE_COUNT = 132
+
+GENERATION8_AUTHORIZATION_ID = (
+    "USER_AUTHORIZATION_V076_STEP11_REACHABILITY_AND_GENERATION8_20260831"
+)
+GENERATION8_ID = 8
+GENERATION8_PARENT_ID = 7
+GENERATION8_PARENT_EVIDENCE_ID = 9631
+GENERATION7_ARTIFACT_HEAD_SHA = (
+    "aecb487d34e34c8a9580e27771c70ecd261d413e"
+)
+GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP = {
+    "STEP09": "f3e5c3434606fea5c16543b6ff0778a74330c217c7bf7d697f2103461c339ea9",
+    "STEP11": "bccce99c1954bed877fd81a4046c7ddc06c3f983a1707e9bba330b230cde3233",
+    "STEP12": "d8092c41d347aa3480d1117dbdc5899bdd023dee06fa150713415cf84773aba0",
+}
+GENERATION7_FROZEN_RECEIPT_STATUS_BY_STEP = {
+    "STEP09": "PASS",
+    "STEP11": "BLOCKED",
+    "STEP12": "PASS",
+}
+GENERATION7_SUMMARY_DERIVATION = "CANONICAL_RECEIPT_CHAIN_V1"
+GENERATION8_EVIDENCE_ID_DERIVATION = "MAX_REGISTERED_EVIDENCE_ID_PLUS_ONE_V1"
+GENERATION8_AUTHORIZATION_SCHEMA_VERSION = (
+    "space_syndicate.v076.generation8_authorization_manifest.v1"
+)
+GENERATION8_TOOLING_SEAL_SCHEMA_VERSION = (
+    "space_syndicate.v076.generation8_receipt_tooling_seal.v1"
+)
+GENERATION8_RUNTIME_EVIDENCE_SCHEMA_VERSION = (
+    "space_syndicate.v076.generation8_step11_mcp_runtime_evidence.v1"
+)
+GENERATION8_EXECUTION_START_SCHEMA_VERSION = (
+    "space_syndicate.v076.generation8_execution_start.v1"
+)
+GENERATION8_PROGRESS_SCHEMA_VERSION = (
+    "space_syndicate.v076.generation8_progress.v1"
+)
+GENERATION8_SUMMARY_SCHEMA_VERSION = (
+    "space_syndicate.v076.generation8_summary.v1"
+)
+GENERATION8_EVIDENCE_MANIFEST_SCHEMA_VERSION = (
+    "space_syndicate.v076.generation8_step11_evidence_manifest.v1"
+)
+GENERATION8_AUTHORIZATION_ROOT = (
+    "reports/reuse/full_convergence/generation8"
+)
+GENERATION8_AUTHORIZATION_MANIFEST_PATH = (
+    f"{GENERATION8_AUTHORIZATION_ROOT}/generation8_authorization_manifest.json"
+)
+GENERATION8_AUTHORIZATION_SIDECAR_PATH = (
+    f"{GENERATION8_AUTHORIZATION_ROOT}/generation8_authorization_manifest.sha256"
+)
+GENERATION8_TOOLING_SEAL_PATH = (
+    f"{GENERATION8_AUTHORIZATION_ROOT}/generation8_tooling_seal.json"
+)
+GENERATION8_CHARACTERIZATION_PATH = (
+    f"{GENERATION8_AUTHORIZATION_ROOT}/step11_natural_assault_region_characterization.json"
+)
+GENERATION8_FOCUSED_TEST_REPORT_PATH = (
+    f"{GENERATION8_AUTHORIZATION_ROOT}/generation8_focused_test_report.json"
+)
+GENERATION8_NEGATIVE_FIXTURE_CATALOG_PATH = (
+    f"{GENERATION8_AUTHORIZATION_ROOT}/generation8_negative_fixture_catalog.json"
+)
+GENERATION8_MAJOR_ROUND_CONTRACT_PATH = (
+    f"{GENERATION8_AUTHORIZATION_ROOT}/major_round_contract.json"
+)
+GENERATION8_PRODUCT_PATH_MANIFEST_PATH = (
+    f"{GENERATION8_AUTHORIZATION_ROOT}/generation8_product_path_manifest.json"
+)
+GENERATION8_MCP_LANDING_MANIFEST_PATH = (
+    "reports/development/mcp_landing/step11_reachability_repair.json"
+)
+GENERATION8_FORMAL_ROOT = (
+    "reports/reuse/full_convergence/generation-008/formal-attempt-001"
+)
+GENERATION8_EXECUTION_START_PATH = f"{GENERATION8_FORMAL_ROOT}/execution-start.json"
+GENERATION8_PROGRESS_PATH = f"{GENERATION8_FORMAL_ROOT}/progress.json"
+GENERATION8_STEP11_RECEIPT_PATH = (
+    f"{GENERATION8_FORMAL_ROOT}/receipts/step11_receipt.json"
+)
+GENERATION8_STEP11_EVIDENCE_MANIFEST_PATH = (
+    f"{GENERATION8_FORMAL_ROOT}/evidence/step11_evidence_manifest.json"
+)
+GENERATION8_RUNTIME_EVIDENCE_PATH = (
+    f"{GENERATION8_FORMAL_ROOT}/evidence/mcp_runtime_evidence.json"
+)
+GENERATION8_SOURCE_EVIDENCE_INDEX_PATH = (
+    f"{GENERATION8_FORMAL_ROOT}/evidence/source_evidence_index.json"
+)
+GENERATION8_SUMMARY_PATH = f"{GENERATION8_FORMAL_ROOT}/summary.json"
+GENERATION8_REGISTRY_INDEX_PATHS = tuple(
+    f"{RECEIPT_ROOT}/evidence/{step}/source_evidence_index.json"
+    for step in ("step09", "step11", "step12")
+)
+GENERATION8_REQUIRED_NEGATIVE_CASE_COUNT = 118
+GENERATION8_REQUIRED_SELFTEST_CASE_COUNT = 140
+# Filled from the complete 118-case append-only declaration set.  The focused
+# self-test and workflow pin this value; the Generation 7 catalog constants
+# above intentionally remain frozen at 112 cases.
+GENERATION8_REQUIRED_NEGATIVE_CASE_ID_SET_SHA256 = (
+    "26129c2720bf6c252bc219127ba47c420a7672912135082da0c28c3c8a02797a"
+)
 
 
 class StrictJsonError(ValueError):
@@ -516,6 +622,41 @@ STEP11_PROOF_FIELDS = frozenset(
         "asset_projection_failure_count",
     }
 )
+GENERATION8_STEP11_POSITIVE_PROOF_FIELDS = frozenset(
+    {
+        "asset_authority_receipt_count",
+        "before_after_quantity_receipt_count",
+        "committed_revision_receipt_count",
+        "asset_delta_projection_count",
+        "asset_consequence_binding_count",
+        "exact_once_binding_count",
+        "assault_region_root_command_count",
+        "military_direct_action_accepted_count",
+        "military_eta_created_count",
+        "military_eta_positive_count",
+        "military_arrival_count",
+        "assault_region_resolution_count",
+        "military_withdrawal_count",
+    }
+)
+GENERATION8_STEP11_ZERO_PROOF_FIELDS = frozenset(
+    {
+        "duplicate_binding_count",
+        "duplicate_asset_debit_count",
+        "asset_negative_value_count",
+        "ui_gameplay_mutation_count",
+        "presentation_gameplay_mutation_count",
+        "opponent_private_asset_disclosure_count",
+        "private_information_leak_count",
+        "asset_projection_failure_count",
+        "old_military_writer_count",
+        "terminal_before_assault_region_count",
+    }
+)
+GENERATION8_STEP11_PROOF_FIELDS = (
+    GENERATION8_STEP11_POSITIVE_PROOF_FIELDS
+    | GENERATION8_STEP11_ZERO_PROOF_FIELDS
+)
 STEP12_PROOF_FIELDS = frozenset(
     {
         "persisted_ai_observation_envelope_count",
@@ -792,6 +933,270 @@ MCP_LANDING_MUTATION_FIELDS = frozenset(
         "validation_status",
     }
 )
+GENERATION8_AUTHORIZATION_FIELDS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "authorization_id",
+        "generation_id",
+        "parent_generation_id",
+        "parent_generation7_summary_sha256",
+        "parent_generation7_summary_derivation",
+        "parent_step09_receipt_sha256",
+        "parent_step11_blocked_receipt_sha256",
+        "parent_step12_receipt_sha256",
+        "parent_evidence_id",
+        "evidence_registry_index_paths",
+        "evidence_registry_index_sha256s",
+        "evidence_registry_max_evidence_id",
+        "new_evidence_id",
+        "evidence_id_derivation",
+        "product_subject_head_sha",
+        "product_subject_tree_sha",
+        "live_pr_head_sha",
+        "live_pr_tree_sha",
+        "selected_seed",
+        "player_count",
+        "new_game_profile",
+        "major_round_contract_path",
+        "major_round_contract_sha256",
+        "product_path_manifest_path",
+        "product_path_manifest_sha256",
+        "mcp_landing_manifest_sha256",
+        "receipt_schema_path",
+        "receipt_schema_sha256",
+        "receipt_validator_path",
+        "receipt_validator_sha256",
+        "required_workflow_path",
+        "required_workflow_sha256",
+        "receipt_selftest_path",
+        "receipt_selftest_sha256",
+        "focused_test_report_path",
+        "focused_test_report_sha256",
+        "characterization_report_path",
+        "characterization_report_sha256",
+        "generation8_tooling_seal_path",
+        "generation8_tooling_seal_sha256",
+        "formal_execution_count",
+        "automatic_retry",
+        "created_at_utc",
+        "canonical_payload_sha256",
+    }
+)
+GENERATION8_TOOLING_SEAL_FIELDS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "authorization_id",
+        "generation_id",
+        "base_head_sha",
+        "base_tree_sha",
+        "receipt_schema_path",
+        "receipt_schema_sha256",
+        "receipt_validator_path",
+        "receipt_validator_sha256",
+        "receipt_selftest_path",
+        "receipt_selftest_sha256",
+        "required_workflow_path",
+        "required_workflow_sha256",
+        "negative_fixture_catalog_path",
+        "negative_fixture_catalog_sha256",
+        "focused_test_report_path",
+        "focused_test_report_sha256",
+        "characterization_report_path",
+        "characterization_report_sha256",
+        "major_round_contract_path",
+        "major_round_contract_sha256",
+        "product_file_change_count",
+        "direct_filesystem_product_edit_count",
+        "post_seal_input_mutation_count",
+        "canonical_payload_sha256",
+    }
+)
+GENERATION8_RUNTIME_EVIDENCE_FIELDS = frozenset(
+    {
+        "schema_version",
+        "step_id",
+        "generation_id",
+        "resume_evidence_id",
+        "authorization_manifest_sha256",
+        "subject_head_sha",
+        "subject_tree_sha",
+        "execution_head_sha",
+        "execution_tree_sha",
+        "production_scene_path",
+        "execution_mode",
+        "diagnostic_only",
+        "fixture_only",
+        "mcp_tool_identity",
+        "mcp_protocol_version",
+        "mcp_session_id",
+        "godot_binary_sha256",
+        "project_godot_sha256",
+        "main_tscn_sha256",
+        "runtime_composition_sha256",
+        "production_screen_sha256",
+        "session_started_at_utc",
+        "session_ended_at_utc",
+        "scene_started_via_mcp",
+        "mcp_real_runtime_observed",
+        "selected_seed",
+        "player_count",
+        "new_game_profile",
+        "mission_kind",
+        "target_region_id",
+        "asset_authority_witness",
+        "military_lifecycle_witness",
+        "injection_counters",
+        "proof",
+        "canonical_payload_sha256",
+    }
+)
+GENERATION8_ASSET_WITNESS_FIELDS = frozenset(
+    {
+        "schema",
+        "reservation_id",
+        "owner_player_id",
+        "action",
+        "outcome",
+        "asset_revision_before",
+        "asset_revision_after",
+        "asset_quantities_before",
+        "asset_quantities_after",
+        "asset_delta_by_color",
+        "reserved_asset_cost_by_color",
+        "reservation_receipt_id",
+        "reservation_receipt_fingerprint",
+        "settlement_receipt_id",
+        "settlement_receipt_fingerprint",
+        "mission_receipt_fingerprint",
+        "asset_debit_count",
+        "consequence_bound",
+        "projection_count_before",
+        "projection_count_after",
+        "projection_failure_count",
+        "presentation_count",
+        "witness_fingerprint",
+    }
+)
+GENERATION8_MILITARY_WITNESS_FIELDS = frozenset(
+    {
+        "submission_id",
+        "command_id",
+        "mission_kind",
+        "target_region_id",
+        "eta_ticks",
+        "arrival_tick",
+        "submission_count",
+        "intake_settlement_count",
+        "resolution_count",
+        "withdrawal_count",
+        "collision_count",
+        "public_batch_entry_count",
+        "shared_sushi_track_resolution_count",
+        "consequence_presentation_count",
+        "complete_major_round_barrier_observed",
+    }
+)
+GENERATION8_INJECTION_COUNTER_FIELDS = frozenset(
+    {
+        "fixture_card_injection_count",
+        "fixture_asset_injection_count",
+        "fixture_target_injection_count",
+        "fixture_action_injection_count",
+        "fixture_eta_injection_count",
+        "direct_action_internal_method_as_ui_proof_count",
+    }
+)
+GENERATION8_EXECUTION_START_FIELDS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "authorization_id",
+        "authorization_manifest_sha256",
+        "generation_id",
+        "parent_generation_id",
+        "parent_evidence_id",
+        "new_evidence_id",
+        "formal_attempt_id",
+        "formal_execution_count",
+        "automatic_retry_count",
+        "execution_head_sha",
+        "execution_tree_sha",
+        "product_subject_head_sha",
+        "product_subject_tree_sha",
+        "selected_seed",
+        "player_count",
+        "new_game_profile",
+        "production_scene_path",
+        "execution_mode",
+        "injection_counters",
+        "started_at_utc",
+        "canonical_payload_sha256",
+    }
+)
+GENERATION8_PROGRESS_FIELDS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "generation_id",
+        "new_evidence_id",
+        "formal_attempt_id",
+        "formal_execution_count",
+        "automatic_retry_count",
+        "current_step",
+        "step11_status",
+        "accepted_action_drain_status",
+        "process_cleanup_status",
+        "started_at_utc",
+        "completed_at_utc",
+        "canonical_payload_sha256",
+    }
+)
+GENERATION8_SUMMARY_FIELDS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "generation_id",
+        "parent_generation_id",
+        "parent_evidence_id",
+        "new_evidence_id",
+        "authorization_manifest_sha256",
+        "formal_attempt_id",
+        "formal_execution_count",
+        "automatic_retry_count",
+        "step11_receipt_path",
+        "step11_receipt_sha256",
+        "step11_receipt_status",
+        "step11_required_positive_field_count",
+        "step11_required_positive_field_pass_count",
+        "step11_required_zero_field_count",
+        "step11_required_zero_field_pass_count",
+        "generation7_step11_receipt_status",
+        "generation7_modification_count",
+        "generation7_rerun_count",
+        "process_cleanup_status",
+        "completed_at_utc",
+        "canonical_payload_sha256",
+    }
+)
+GENERATION8_SOURCE_EVIDENCE_INDEX_FIELDS = frozenset(
+    {
+        "schema_version",
+        "append_only",
+        "generation_id",
+        "new_evidence_id",
+        "formal_attempt_id",
+        "formal_execution_count",
+        "automatic_retry_count",
+        "source_artifact_count",
+        "source_artifacts",
+        "canonical_payload_sha256",
+    }
+)
+GENERATION8_SOURCE_EVIDENCE_ARTIFACT_FIELDS = frozenset(
+    {"path", "sha256", "size_bytes"}
+)
 PRODUCT_SUFFIXES = (
     ".gd",
     ".tscn",
@@ -822,6 +1227,14 @@ def is_product_path(path: str) -> bool:
         return True
     return lowered.endswith(".json") and (
         lowered.startswith("data/") or lowered.startswith("resources/")
+    )
+
+
+def is_generation8_mcp_mutation_path(path: str) -> bool:
+    """Generation 8 binds every changed Godot source, including focused tests."""
+    lowered = path.lower()
+    return is_product_path(path) or (
+        lowered.startswith("tests/") and lowered.endswith(".gd")
     )
 
 
@@ -929,6 +1342,13 @@ class GitCommittedProject:
         data = self.git("show", f"{head}:{normalized}", text=False)
         assert isinstance(data, bytes)
         return data
+
+    def regular_file_exists(self, head: str, path: str) -> bool:
+        try:
+            self.read_regular_file(head, path)
+        except (ValueError, CommittedPathError):
+            return False
+        return True
 
     def list_paths(self, head: str, prefix: str) -> list[str]:
         normalized = normalize_repo_relative_path(prefix)
@@ -1072,6 +1492,10 @@ class ValidationReport:
     artifact_head_sha: str | None = None
     execution_head_sha: str | None = None
     execution_tree_sha: str | None = None
+    generation_id: int = AUTHORIZED_GENERATION_ID
+    resume_evidence_id: int = AUTHORIZED_RESUME_EVIDENCE_ID
+    validation_mode: str = "GENERATION7_LEGACY"
+    generation7_step11_receipt_status: str | None = None
 
     def __post_init__(self) -> None:
         for name in (
@@ -1122,8 +1546,12 @@ class ValidationReport:
             "artifact_head_sha": self.artifact_head_sha,
             "execution_head_sha": self.execution_head_sha,
             "execution_tree_sha": self.execution_tree_sha,
-            "generation_id": AUTHORIZED_GENERATION_ID,
-            "resume_evidence_id": AUTHORIZED_RESUME_EVIDENCE_ID,
+            "generation_id": self.generation_id,
+            "resume_evidence_id": self.resume_evidence_id,
+            "validation_mode": self.validation_mode,
+            "generation7_step11_receipt_status": (
+                self.generation7_step11_receipt_status
+            ),
             "required_check_context": REQUIRED_CHECK_CONTEXT,
             "required_gate_consumer_fail_closed": True,
         }
@@ -1154,7 +1582,20 @@ def _compare_exact_keys(
 
 
 def _validate_receipt_schema(
-    report: ValidationReport, value: Any, label: str
+    report: ValidationReport,
+    value: Any,
+    label: str,
+    *,
+    expected_authorization_id: str = AUTHORIZATION_ID,
+    expected_generation_id: int = AUTHORIZED_GENERATION_ID,
+    expected_evidence_id: int = AUTHORIZED_RESUME_EVIDENCE_ID,
+    expected_subject_head_sha: str = CURRENT_SUBJECT_HEAD_SHA,
+    expected_subject_tree_sha: str = CURRENT_SUBJECT_TREE_SHA,
+    expected_product_manifest_path: str = CURRENT_SUBJECT_MANIFEST_PATH,
+    expected_product_manifest_sha256: str = CURRENT_SUBJECT_MANIFEST_SHA256,
+    expected_tooling_seal_path: str = TOOLING_SEAL_PATH,
+    expected_authorization_manifest_path: str = RESUME_AUTHORIZATION_MANIFEST_PATH,
+    expected_proof_fields: frozenset[str] | None = None,
 ) -> V076CurrentSubjectProductionRevalidationReceiptV1 | None:
     if not _compare_exact_keys(
         report,
@@ -1175,35 +1616,35 @@ def _validate_receipt_schema(
     exact_strings = {
         "schema_version": SCHEMA_VERSION,
         "receipt_kind": RECEIPT_KIND,
-        "authorization_id": AUTHORIZATION_ID,
+        "authorization_id": expected_authorization_id,
         "required_check_context": REQUIRED_CHECK_CONTEXT,
         "schema_authority_path": SCHEMA_AUTHORITY_PATH,
         "validator_path": VALIDATOR_PATH,
         "producer_script_path": PRODUCER_SCRIPT_PATH,
         "workflow_path": WORKFLOW_PATH,
-        "product_path_manifest_path": CURRENT_SUBJECT_MANIFEST_PATH,
-        "product_path_manifest_sha256": CURRENT_SUBJECT_MANIFEST_SHA256,
-        "tooling_seal_path": TOOLING_SEAL_PATH,
-        "resume_authorization_manifest_path": RESUME_AUTHORIZATION_MANIFEST_PATH,
+        "product_path_manifest_path": expected_product_manifest_path,
+        "product_path_manifest_sha256": expected_product_manifest_sha256,
+        "tooling_seal_path": expected_tooling_seal_path,
+        "resume_authorization_manifest_path": expected_authorization_manifest_path,
         "hard_stop_record_sha256": AUTHORIZED_HARD_STOP_SHA256,
         "existing_generation7_evidence_inventory_sha256": (
             FROZEN_EVIDENCE_INVENTORY_SHA256
         ),
-        "subject_head_sha": CURRENT_SUBJECT_HEAD_SHA,
-        "subject_tree_sha": CURRENT_SUBJECT_TREE_SHA,
+        "subject_head_sha": expected_subject_head_sha,
+        "subject_tree_sha": expected_subject_tree_sha,
     }
     for field, expected in exact_strings.items():
         if value.get(field) != expected:
             field_failure(field, f"EXPECTED:{expected}:ACTUAL:{value.get(field)!r}")
 
-    if value.get("generation_id") != AUTHORIZED_GENERATION_ID or not _is_exact_int(
+    if value.get("generation_id") != expected_generation_id or not _is_exact_int(
         value.get("generation_id")
     ):
-        field_failure("generation_id", "MUST_BE_INTEGER_7")
-    if value.get("resume_evidence_id") != AUTHORIZED_RESUME_EVIDENCE_ID or not _is_exact_int(
+        field_failure("generation_id", f"MUST_BE_INTEGER_{expected_generation_id}")
+    if value.get("resume_evidence_id") != expected_evidence_id or not _is_exact_int(
         value.get("resume_evidence_id")
     ):
-        field_failure("resume_evidence_id", "MUST_BE_INTEGER_9631")
+        field_failure("resume_evidence_id", f"MUST_BE_INTEGER_{expected_evidence_id}")
 
     step_id = value.get("step_id")
     if step_id not in REQUIRED_RECEIPT_PATH_BY_STEP:
@@ -1303,7 +1744,11 @@ def _validate_receipt_schema(
         failure_count = value["failure_count"]
         if check_count <= 0:
             field_failure("check_count", "MUST_BE_POSITIVE")
-        expected_check_count = EXPECTED_CHECK_COUNT_BY_STEP.get(step_id)
+        expected_check_count = (
+            len(expected_proof_fields)
+            if expected_proof_fields is not None
+            else EXPECTED_CHECK_COUNT_BY_STEP.get(step_id)
+        )
         if expected_check_count is not None and check_count != expected_check_count:
             field_failure(
                 "check_count", f"STEP_EXACT_COUNT:{expected_check_count}"
@@ -2224,6 +2669,103 @@ def _negative_case_ids_from_selftest_bytes(data: bytes) -> list[str]:
 def _negative_case_id_set_sha256(case_ids: Sequence[str]) -> str:
     payload = "".join(f"{case_id}\n" for case_id in case_ids).encode("utf-8")
     return sha256_bytes(payload)
+
+
+def _generation8_negative_case_ids_from_selftest_bytes(data: bytes) -> list[str]:
+    try:
+        data.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"SELFTEST_SOURCE_INVALID_UTF8:{exc.start}") from exc
+    case_ids = [
+        match.decode("ascii") for match in GENERATION8_NEGATIVE_CASE_ID_RE.findall(data)
+    ]
+    if len(case_ids) != len(set(case_ids)):
+        raise ValueError("GENERATION8_SELFTEST_NEGATIVE_CASE_ID_DUPLICATE")
+    ordered = sorted(case_ids)
+    actual_set_hash = _negative_case_id_set_sha256(ordered)
+    if len(ordered) != GENERATION8_REQUIRED_NEGATIVE_CASE_COUNT:
+        raise ValueError(
+            "GENERATION8_SELFTEST_NEGATIVE_CASE_COUNT_MISMATCH:"
+            f"expected={GENERATION8_REQUIRED_NEGATIVE_CASE_COUNT}:actual={len(ordered)}"
+        )
+    if actual_set_hash != GENERATION8_REQUIRED_NEGATIVE_CASE_ID_SET_SHA256:
+        raise ValueError(
+            "GENERATION8_SELFTEST_NEGATIVE_CASE_SET_MISMATCH:"
+            f"expected={GENERATION8_REQUIRED_NEGATIVE_CASE_ID_SET_SHA256}:"
+            f"actual={actual_set_hash}"
+        )
+    return ordered
+
+
+def _generation8_executed_negative_case_ids_match(
+    executed_case_ids: Sequence[str], selftest_bytes: bytes
+) -> bool:
+    if (
+        len(executed_case_ids) != GENERATION8_REQUIRED_NEGATIVE_CASE_COUNT
+        or any(not isinstance(case_id, str) for case_id in executed_case_ids)
+        or len(executed_case_ids) != len(set(executed_case_ids))
+    ):
+        return False
+    try:
+        declared = _generation8_negative_case_ids_from_selftest_bytes(selftest_bytes)
+    except ValueError:
+        return False
+    ordered = sorted(executed_case_ids)
+    return (
+        ordered == declared
+        and _negative_case_id_set_sha256(ordered)
+        == GENERATION8_REQUIRED_NEGATIVE_CASE_ID_SET_SHA256
+    )
+
+
+def _validate_generation8_negative_fixture_catalog(
+    value: Any,
+    selftest_bytes: bytes,
+    report: ValidationReport,
+    label: str,
+) -> None:
+    if not _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_NEGATIVE_FIXTURE_CATALOG_FIELD_SET_MISMATCH",
+        label,
+        value,
+        NEGATIVE_FIXTURE_CATALOG_FIELDS,
+    ):
+        return
+    assert isinstance(value, dict)
+    try:
+        expected_case_ids = _generation8_negative_case_ids_from_selftest_bytes(
+            selftest_bytes
+        )
+    except ValueError as exc:
+        report.add(
+            "schema_failures", "GENERATION8_SELFTEST_NEGATIVE_CASE_SCAN_FAILED", str(exc)
+        )
+        return
+    expected = {
+        "schema_version": "space_syndicate.v076.generation8_negative_fixture_catalog.v1",
+        "status": "PASS",
+        "case_ids": expected_case_ids,
+        "case_count": len(expected_case_ids),
+        "pass_count": len(expected_case_ids),
+        "false_green_count": 0,
+        "case_id_set_sha256": _negative_case_id_set_sha256(expected_case_ids),
+    }
+    for field, expected_value in expected.items():
+        actual = value.get(field)
+        if actual != expected_value:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_NEGATIVE_FIXTURE_CATALOG_IDENTITY_MISMATCH",
+                f"{label}.{field}:expected={expected_value!r}:actual={actual!r}",
+            )
+    if value.get("canonical_payload_sha256") != canonical_payload_sha256(value):
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_NEGATIVE_FIXTURE_CATALOG_CANONICAL_SHA256_MISMATCH",
+            label,
+        )
 
 
 def _executed_negative_case_ids_match(
@@ -3257,6 +3799,2024 @@ def _validate_seal_documents(
         )
 
 
+def _generation7_receipt_chain_projection(
+    receipt_rows: Sequence[tuple[str, str, str, str]],
+) -> dict[str, Any]:
+    return {
+        "derivation": GENERATION7_SUMMARY_DERIVATION,
+        "generation_id": AUTHORIZED_GENERATION_ID,
+        "resume_evidence_id": AUTHORIZED_RESUME_EVIDENCE_ID,
+        "receipts": [
+            {"step_id": step_id, "path": path, "sha256": digest, "status": status}
+            for step_id, path, digest, status in receipt_rows
+        ],
+    }
+
+
+def _validate_generation7_frozen_receipt_chain(
+    project: GitCommittedProject,
+    head: str,
+    report: ValidationReport,
+) -> tuple[str | None, list[tuple[str, str, str, str]]]:
+    rows: list[tuple[str, str, str, str]] = []
+    previous_raw: bytes | None = None
+    for step_id, path in REQUIRED_RECEIPT_SPECS:
+        value, raw = _load_committed_json(
+            project,
+            head,
+            path,
+            report,
+            f"generation7_frozen.{step_id}.receipt",
+            require_canonical_bytes=True,
+        )
+        if not isinstance(value, dict) or raw is None:
+            continue
+        actual_sha = sha256_bytes(raw)
+        expected_sha = GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP[step_id]
+        if actual_sha != expected_sha:
+            report.add(
+                "hash_mismatches",
+                "GENERATION7_FROZEN_RECEIPT_SHA256_MISMATCH",
+                f"{step_id}:expected={expected_sha}:actual={actual_sha}",
+            )
+        expected_status = GENERATION7_FROZEN_RECEIPT_STATUS_BY_STEP[step_id]
+        if value.get("status") != expected_status:
+            report.add(
+                "identity_mismatches",
+                "GENERATION7_FROZEN_RECEIPT_STATUS_MISMATCH",
+                f"{step_id}:expected={expected_status}:actual={value.get('status')!r}",
+            )
+        if value.get("generation_id") != AUTHORIZED_GENERATION_ID:
+            report.add(
+                "identity_mismatches",
+                "GENERATION7_FROZEN_RECEIPT_GENERATION_MISMATCH",
+                step_id,
+            )
+        if value.get("resume_evidence_id") != AUTHORIZED_RESUME_EVIDENCE_ID:
+            report.add(
+                "identity_mismatches",
+                "GENERATION7_FROZEN_RECEIPT_EVIDENCE_ID_MISMATCH",
+                step_id,
+            )
+        expected_previous = None if previous_raw is None else sha256_bytes(previous_raw)
+        if value.get("previous_receipt_sha256") != expected_previous:
+            report.add(
+                "hash_mismatches",
+                "GENERATION7_FROZEN_RECEIPT_CHAIN_MISMATCH",
+                f"{step_id}:expected={expected_previous}:actual={value.get('previous_receipt_sha256')}",
+            )
+        previous_raw = raw
+        rows.append((step_id, path, actual_sha, str(value.get("status"))))
+    if len(rows) != len(REQUIRED_RECEIPT_SPECS):
+        report.add(
+            "field_mismatches",
+            "GENERATION7_FROZEN_RECEIPT_COUNT_MISMATCH",
+            f"expected={len(REQUIRED_RECEIPT_SPECS)}:actual={len(rows)}",
+        )
+        return None, rows
+    projection = _generation7_receipt_chain_projection(rows)
+    report.generation7_step11_receipt_status = rows[1][3]
+    return sha256_bytes(canonical_json_bytes(projection)), rows
+
+
+def _load_generation8_registry_state(
+    project: GitCommittedProject,
+    head: str,
+    report: ValidationReport,
+) -> tuple[list[str], int | None]:
+    index_sha256s: list[str] = []
+    evidence_ids: list[int] = []
+    for path in GENERATION8_REGISTRY_INDEX_PATHS:
+        value, raw = _load_committed_json(
+            project,
+            head,
+            path,
+            report,
+            f"generation8.registry.{path}",
+            require_canonical_bytes=True,
+        )
+        if not isinstance(value, dict) or raw is None:
+            continue
+        index_sha256s.append(sha256_bytes(raw))
+        if value.get("generation_id") != GENERATION8_PARENT_ID:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_REGISTRY_PARENT_GENERATION_MISMATCH",
+                path,
+            )
+        if value.get("resume_evidence_id") != GENERATION8_PARENT_EVIDENCE_ID:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_REGISTRY_PARENT_EVIDENCE_ID_MISMATCH",
+                path,
+            )
+        if value.get("append_only") is not True or not _is_exact_bool(
+            value.get("append_only")
+        ):
+            report.add(
+                "identity_mismatches", "GENERATION8_REGISTRY_NOT_APPEND_ONLY", path
+            )
+        if value.get("canonical_payload_sha256") != canonical_payload_sha256(value):
+            report.add(
+                "hash_mismatches", "GENERATION8_REGISTRY_CANONICAL_SHA_MISMATCH", path
+            )
+        artifacts = value.get("source_artifacts")
+        if not isinstance(artifacts, list) or not artifacts:
+            report.add(
+                "schema_failures", "GENERATION8_REGISTRY_ARTIFACTS_INVALID", path
+            )
+            continue
+        if value.get("source_artifact_count") != len(artifacts) or not _is_exact_int(
+            value.get("source_artifact_count")
+        ):
+            report.add(
+                "field_mismatches", "GENERATION8_REGISTRY_COUNT_MISMATCH", path
+            )
+        for artifact in artifacts:
+            if not isinstance(artifact, dict) or not _is_exact_int(
+                artifact.get("evidence_id")
+            ):
+                report.add(
+                    "schema_failures", "GENERATION8_REGISTRY_EVIDENCE_ID_INVALID", path
+                )
+                continue
+            evidence_ids.append(artifact["evidence_id"])
+    if len(index_sha256s) != len(GENERATION8_REGISTRY_INDEX_PATHS) or not evidence_ids:
+        return index_sha256s, None
+    return index_sha256s, max(evidence_ids)
+
+
+def _validate_generation8_authorization_value(
+    value: Any,
+    report: ValidationReport,
+    *,
+    parent_summary_sha256: str,
+    registry_sha256s: Sequence[str],
+    registry_max_evidence_id: int,
+    tooling_head_sha: str,
+    tooling_tree_sha: str,
+    product_subject_head_sha: str,
+    product_subject_tree_sha: str,
+) -> dict[str, Any] | None:
+    label = "generation8.authorization_manifest"
+    if not _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_AUTHORIZATION_FIELD_SET_MISMATCH",
+        label,
+        value,
+        GENERATION8_AUTHORIZATION_FIELDS,
+    ):
+        return None
+    assert isinstance(value, dict)
+    expected = {
+        "schema_version": GENERATION8_AUTHORIZATION_SCHEMA_VERSION,
+        "status": "SEALED",
+        "authorization_id": GENERATION8_AUTHORIZATION_ID,
+        "generation_id": GENERATION8_ID,
+        "parent_generation_id": GENERATION8_PARENT_ID,
+        "parent_generation7_summary_sha256": parent_summary_sha256,
+        "parent_generation7_summary_derivation": GENERATION7_SUMMARY_DERIVATION,
+        "parent_step09_receipt_sha256": GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP["STEP09"],
+        "parent_step11_blocked_receipt_sha256": GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP["STEP11"],
+        "parent_step12_receipt_sha256": GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP["STEP12"],
+        "parent_evidence_id": GENERATION8_PARENT_EVIDENCE_ID,
+        "evidence_registry_index_paths": list(GENERATION8_REGISTRY_INDEX_PATHS),
+        "evidence_registry_index_sha256s": list(registry_sha256s),
+        "evidence_registry_max_evidence_id": registry_max_evidence_id,
+        "new_evidence_id": registry_max_evidence_id + 1,
+        "evidence_id_derivation": GENERATION8_EVIDENCE_ID_DERIVATION,
+        # Commit P owns only the MCP-landed Godot product/test delta. Commit A
+        # owns tooling and pre-formal evidence, and is the exact parent of the
+        # authorization-only Commit B. Keep those identities independent so
+        # neither an authorization manifest nor an MCP landing attestation has
+        # to claim the SHA of the commit that contains itself.
+        "product_subject_head_sha": product_subject_head_sha,
+        "product_subject_tree_sha": product_subject_tree_sha,
+        "live_pr_head_sha": tooling_head_sha,
+        "live_pr_tree_sha": tooling_tree_sha,
+        "player_count": 4,
+        "new_game_profile": {
+            "geography_complexity": "STANDARD",
+            "land_ocean_profile": "BALANCED",
+            "region_count": 16,
+        },
+        "major_round_contract_path": GENERATION8_MAJOR_ROUND_CONTRACT_PATH,
+        "product_path_manifest_path": GENERATION8_PRODUCT_PATH_MANIFEST_PATH,
+        "receipt_schema_path": SCHEMA_AUTHORITY_PATH,
+        "receipt_validator_path": VALIDATOR_PATH,
+        "required_workflow_path": WORKFLOW_PATH,
+        "receipt_selftest_path": SELFTEST_PATH,
+        "focused_test_report_path": GENERATION8_FOCUSED_TEST_REPORT_PATH,
+        "characterization_report_path": GENERATION8_CHARACTERIZATION_PATH,
+        "generation8_tooling_seal_path": GENERATION8_TOOLING_SEAL_PATH,
+        "formal_execution_count": 1,
+        "automatic_retry": False,
+    }
+    for field, expected_value in expected.items():
+        actual = value.get(field)
+        if actual != expected_value:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_AUTHORIZATION_IDENTITY_MISMATCH",
+                f"{field}:expected={expected_value!r}:actual={actual!r}",
+            )
+    for field in (
+        "generation_id",
+        "parent_generation_id",
+        "parent_evidence_id",
+        "evidence_registry_max_evidence_id",
+        "new_evidence_id",
+        "selected_seed",
+        "player_count",
+        "formal_execution_count",
+    ):
+        if not _is_exact_int(value.get(field)):
+            report.add(
+                "schema_failures", "GENERATION8_AUTHORIZATION_INTEGER_INVALID", field
+            )
+    if not _is_exact_bool(value.get("automatic_retry")):
+        report.add(
+            "schema_failures",
+            "GENERATION8_AUTHORIZATION_BOOLEAN_INVALID",
+            "automatic_retry",
+        )
+    if not _is_exact_int(value.get("selected_seed")) or value.get("selected_seed", 0) <= 0:
+        report.add(
+            "field_mismatches", "GENERATION8_AUTHORIZATION_SEED_INVALID", repr(value.get("selected_seed"))
+        )
+    for field in (
+        "parent_generation7_summary_sha256",
+        "parent_step09_receipt_sha256",
+        "parent_step11_blocked_receipt_sha256",
+        "parent_step12_receipt_sha256",
+        "product_path_manifest_sha256",
+        "mcp_landing_manifest_sha256",
+        "major_round_contract_sha256",
+        "receipt_schema_sha256",
+        "receipt_validator_sha256",
+        "required_workflow_sha256",
+        "receipt_selftest_sha256",
+        "focused_test_report_sha256",
+        "characterization_report_sha256",
+        "generation8_tooling_seal_sha256",
+        "canonical_payload_sha256",
+    ):
+        if not _is_sha256(value.get(field)):
+            report.add(
+                "schema_failures", "GENERATION8_AUTHORIZATION_SHA256_INVALID", field
+            )
+    if value.get("receipt_schema_sha256") != value.get("receipt_validator_sha256"):
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_SCHEMA_VALIDATOR_AUTHORITY_SPLIT",
+            "receipt schema and validator hashes differ",
+        )
+    try:
+        parse_rfc3339_utc(value.get("created_at_utc"))
+    except ValueError:
+        report.add(
+            "schema_failures",
+            "GENERATION8_AUTHORIZATION_TIMESTAMP_INVALID",
+            repr(value.get("created_at_utc")),
+        )
+    if value.get("canonical_payload_sha256") != canonical_payload_sha256(value):
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_AUTHORIZATION_CANONICAL_SHA256_MISMATCH",
+            label,
+        )
+    return value
+
+
+def _validate_generation8_tooling_seal(
+    project: GitCommittedProject,
+    tooling_head: str,
+    product_subject_head: str,
+    manifest: Mapping[str, Any],
+    report: ValidationReport,
+) -> None:
+    value, raw = _load_committed_json(
+        project,
+        tooling_head,
+        GENERATION8_TOOLING_SEAL_PATH,
+        report,
+        "generation8.tooling_seal",
+        require_canonical_bytes=True,
+    )
+    if raw is None:
+        return
+    if sha256_bytes(raw) != manifest.get("generation8_tooling_seal_sha256"):
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_TOOLING_SEAL_SHA256_MISMATCH",
+            GENERATION8_TOOLING_SEAL_PATH,
+        )
+    if not _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_TOOLING_SEAL_FIELD_SET_MISMATCH",
+        "generation8.tooling_seal",
+        value,
+        GENERATION8_TOOLING_SEAL_FIELDS,
+    ):
+        return
+    assert isinstance(value, dict)
+    generation8_mcp_delta = [
+        path
+        for _status, path in project.changed_entries(
+            GENERATION7_ARTIFACT_HEAD_SHA, product_subject_head
+        )
+        if is_generation8_mcp_mutation_path(path)
+    ]
+    expected = {
+        "schema_version": GENERATION8_TOOLING_SEAL_SCHEMA_VERSION,
+        "status": "SEALED",
+        "authorization_id": GENERATION8_AUTHORIZATION_ID,
+        "generation_id": GENERATION8_ID,
+        "base_head_sha": GENERATION7_ARTIFACT_HEAD_SHA,
+        "base_tree_sha": project.tree(GENERATION7_ARTIFACT_HEAD_SHA),
+        "receipt_schema_path": SCHEMA_AUTHORITY_PATH,
+        "receipt_schema_sha256": manifest.get("receipt_schema_sha256"),
+        "receipt_validator_path": VALIDATOR_PATH,
+        "receipt_validator_sha256": manifest.get("receipt_validator_sha256"),
+        "receipt_selftest_path": SELFTEST_PATH,
+        "receipt_selftest_sha256": manifest.get("receipt_selftest_sha256"),
+        "required_workflow_path": WORKFLOW_PATH,
+        "required_workflow_sha256": manifest.get("required_workflow_sha256"),
+        "negative_fixture_catalog_path": GENERATION8_NEGATIVE_FIXTURE_CATALOG_PATH,
+        "focused_test_report_path": GENERATION8_FOCUSED_TEST_REPORT_PATH,
+        "focused_test_report_sha256": manifest.get("focused_test_report_sha256"),
+        "characterization_report_path": GENERATION8_CHARACTERIZATION_PATH,
+        "characterization_report_sha256": manifest.get("characterization_report_sha256"),
+        "major_round_contract_path": GENERATION8_MAJOR_ROUND_CONTRACT_PATH,
+        "major_round_contract_sha256": manifest.get("major_round_contract_sha256"),
+        "product_file_change_count": len(generation8_mcp_delta),
+        "direct_filesystem_product_edit_count": 0,
+        "post_seal_input_mutation_count": 0,
+    }
+    for field, expected_value in expected.items():
+        if value.get(field) != expected_value:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_TOOLING_SEAL_IDENTITY_MISMATCH",
+                f"{field}:expected={expected_value!r}:actual={value.get(field)!r}",
+            )
+    for path_field, sha_field in (
+        ("receipt_schema_path", "receipt_schema_sha256"),
+        ("receipt_validator_path", "receipt_validator_sha256"),
+        ("receipt_selftest_path", "receipt_selftest_sha256"),
+        ("required_workflow_path", "required_workflow_sha256"),
+        ("negative_fixture_catalog_path", "negative_fixture_catalog_sha256"),
+        ("focused_test_report_path", "focused_test_report_sha256"),
+        ("characterization_report_path", "characterization_report_sha256"),
+        ("major_round_contract_path", "major_round_contract_sha256"),
+    ):
+        path = value.get(path_field)
+        claimed = value.get(sha_field)
+        if isinstance(path, str) and _is_sha256(claimed):
+            _validate_supporting_binding(
+                project,
+                tooling_head,
+                path,
+                claimed,
+                report,
+                f"generation8.tooling_seal.{sha_field}",
+            )
+        else:
+            report.add(
+                "schema_failures",
+                "GENERATION8_TOOLING_SEAL_BINDING_INVALID",
+                f"{path_field}/{sha_field}",
+            )
+    if value.get("canonical_payload_sha256") != canonical_payload_sha256(value):
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_TOOLING_SEAL_CANONICAL_SHA256_MISMATCH",
+            GENERATION8_TOOLING_SEAL_PATH,
+        )
+
+
+def _validate_generation8_mcp_landing(
+    project: GitCommittedProject,
+    tooling_head: str,
+    product_subject_head: str,
+    manifest: Mapping[str, Any],
+    report: ValidationReport,
+) -> set[str]:
+    landing, raw = _load_committed_json(
+        project,
+        tooling_head,
+        GENERATION8_MCP_LANDING_MANIFEST_PATH,
+        report,
+        "generation8.mcp_landing_manifest",
+        require_canonical_bytes=True,
+    )
+    if not isinstance(landing, dict) or raw is None:
+        return set()
+    if sha256_bytes(raw) != manifest.get("mcp_landing_manifest_sha256"):
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_MCP_LANDING_SHA256_MISMATCH",
+            GENERATION8_MCP_LANDING_MANIFEST_PATH,
+        )
+    if not _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_MCP_LANDING_FIELD_SET_MISMATCH",
+        "generation8.mcp_landing_manifest",
+        landing,
+        MCP_LANDING_FIELDS,
+    ):
+        return set()
+    expected = {
+        "schema_version": "space_syndicate.v076.mcp_product_landing_attestation.v1",
+        "generation_id": GENERATION8_ID,
+        "resume_evidence_id": manifest.get("new_evidence_id"),
+        "subject_head_sha": GENERATION7_ARTIFACT_HEAD_SHA,
+        "subject_tree_sha": project.tree(GENERATION7_ARTIFACT_HEAD_SHA),
+        "execution_head_sha": product_subject_head,
+        "execution_tree_sha": project.tree(product_subject_head),
+        "mcp_tool_identity": REQUIRED_MCP_TOOL_IDENTITY,
+        "mcp_protocol_version": REQUIRED_MCP_PROTOCOL_VERSION,
+        "production_scene_path": "res://scenes/main.tscn",
+        "real_main_tscn_validation": "PASS_RUNTIME_OBSERVED",
+        "direct_filesystem_product_edit_count": 0,
+        "mcp_product_file_mutation_coverage_percent": 100,
+        "mcp_post_edit_validation_coverage_percent": 100,
+    }
+    for field, expected_value in expected.items():
+        if landing.get(field) != expected_value:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_MCP_LANDING_IDENTITY_MISMATCH",
+                f"{field}:expected={expected_value!r}:actual={landing.get(field)!r}",
+            )
+    mutations = landing.get("product_file_mutations")
+    if not isinstance(mutations, list):
+        report.add(
+            "schema_failures",
+            "GENERATION8_MCP_LANDING_MUTATIONS_NOT_ARRAY",
+            GENERATION8_MCP_LANDING_MANIFEST_PATH,
+        )
+        return set()
+    for field in (
+        "product_file_change_count",
+        "mcp_product_file_mutation_count",
+        "mcp_post_edit_validation_count",
+    ):
+        if not _is_exact_int(landing.get(field)) or landing[field] != len(mutations):
+            report.add(
+                "field_mismatches",
+                "GENERATION8_MCP_LANDING_COUNT_MISMATCH",
+                f"{field}:{landing.get(field)!r}:{len(mutations)}",
+            )
+    changed_status = {
+        path: status
+        for status, path in project.changed_entries(
+            GENERATION7_ARTIFACT_HEAD_SHA, product_subject_head
+        )
+        if is_generation8_mcp_mutation_path(path)
+    }
+    mutation_paths: list[str] = []
+    for index, mutation in enumerate(mutations):
+        label = f"generation8.mcp_landing.product_file_mutations[{index}]"
+        if not _compare_exact_keys(
+            report,
+            "schema_failures",
+            "GENERATION8_MCP_LANDING_MUTATION_FIELD_SET_MISMATCH",
+            label,
+            mutation,
+            MCP_LANDING_MUTATION_FIELDS,
+        ):
+            continue
+        assert isinstance(mutation, dict)
+        try:
+            path = normalize_repo_relative_path(mutation.get("path"))
+        except ValueError as exc:
+            report.add(
+                "path_failures",
+                "GENERATION8_MCP_LANDING_PATH_INVALID",
+                f"{label}:{exc}",
+            )
+            continue
+        if not is_generation8_mcp_mutation_path(path):
+            report.add(
+                "path_failures", "GENERATION8_MCP_LANDING_NON_GODOT_PATH", path
+            )
+            continue
+        mutation_paths.append(path)
+        change_type = mutation.get("change_type")
+        if change_type not in {"A", "M", "D"} or changed_status.get(path) != change_type:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_MCP_LANDING_CHANGE_TYPE_MISMATCH",
+                f"{path}:declared={change_type}:actual={changed_status.get(path)}",
+            )
+        before = mutation.get("before_sha256")
+        after = mutation.get("after_sha256")
+        if change_type == "A":
+            hashes_valid = before is None and _is_sha256(after)
+        elif change_type == "D":
+            hashes_valid = _is_sha256(before) and after is None
+        else:
+            hashes_valid = _is_sha256(before) and _is_sha256(after)
+        if not hashes_valid:
+            report.add(
+                "schema_failures", "GENERATION8_MCP_LANDING_HASH_INVALID", path
+            )
+        if change_type in {"M", "D"} and _is_sha256(before):
+            try:
+                if sha256_bytes(project.read_regular_file(
+                    GENERATION7_ARTIFACT_HEAD_SHA, path
+                )) != before:
+                    report.add(
+                        "hash_mismatches",
+                        "GENERATION8_MCP_LANDING_BEFORE_HASH_MISMATCH",
+                        path,
+                    )
+            except (ValueError, CommittedPathError) as exc:
+                report.add(
+                    "path_failures",
+                    "GENERATION8_MCP_LANDING_BEFORE_FILE_UNAVAILABLE",
+                    f"{path}:{exc}",
+                )
+        if change_type in {"A", "M"} and _is_sha256(after):
+            try:
+                if sha256_bytes(
+                    project.read_regular_file(product_subject_head, path)
+                ) != after:
+                    report.add(
+                        "hash_mismatches",
+                        "GENERATION8_MCP_LANDING_AFTER_HASH_MISMATCH",
+                        path,
+                    )
+            except (ValueError, CommittedPathError) as exc:
+                report.add(
+                    "path_failures",
+                    "GENERATION8_MCP_LANDING_AFTER_FILE_UNAVAILABLE",
+                    f"{path}:{exc}",
+                )
+        if not isinstance(mutation.get("mcp_operation_id"), str) or not str(
+            mutation.get("mcp_operation_id", "")
+        ).strip():
+            report.add(
+                "schema_failures",
+                "GENERATION8_MCP_LANDING_OPERATION_ID_MISSING",
+                path,
+            )
+        if mutation.get("validation_status") != "PASS":
+            report.add(
+                "field_mismatches",
+                "GENERATION8_MCP_LANDING_VALIDATION_NOT_PASS",
+                path,
+            )
+    if mutation_paths != sorted(mutation_paths) or len(mutation_paths) != len(
+        set(mutation_paths)
+    ):
+        report.add(
+            "schema_failures",
+            "GENERATION8_MCP_LANDING_PATH_SET_NOT_SORTED_UNIQUE",
+            repr(mutation_paths),
+        )
+    if mutation_paths != sorted(changed_status):
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_MCP_LANDING_PRODUCT_DELTA_MISMATCH",
+            f"declared={mutation_paths}:actual={sorted(changed_status)}",
+        )
+    if landing.get("canonical_payload_sha256") != canonical_payload_sha256(landing):
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_MCP_LANDING_CANONICAL_SHA256_MISMATCH",
+            GENERATION8_MCP_LANDING_MANIFEST_PATH,
+        )
+    return set(mutation_paths)
+
+
+def _validate_generation8_receipt_schema(
+    report: ValidationReport,
+    value: Any,
+    label: str,
+    manifest: Mapping[str, Any],
+) -> V076CurrentSubjectProductionRevalidationReceiptV1 | None:
+    return _validate_receipt_schema(
+        report,
+        value,
+        label,
+        expected_authorization_id=GENERATION8_AUTHORIZATION_ID,
+        expected_generation_id=GENERATION8_ID,
+        expected_evidence_id=(
+            manifest.get("new_evidence_id")
+            if _is_exact_int(manifest.get("new_evidence_id"))
+            else -1
+        ),
+        expected_subject_head_sha=str(manifest.get("product_subject_head_sha", "")),
+        expected_subject_tree_sha=str(manifest.get("product_subject_tree_sha", "")),
+        expected_product_manifest_path=str(
+            manifest.get("product_path_manifest_path", "")
+        ),
+        expected_product_manifest_sha256=str(
+            manifest.get("product_path_manifest_sha256", "")
+        ),
+        expected_tooling_seal_path=GENERATION8_TOOLING_SEAL_PATH,
+        expected_authorization_manifest_path=GENERATION8_AUTHORIZATION_MANIFEST_PATH,
+        expected_proof_fields=GENERATION8_STEP11_PROOF_FIELDS,
+    )
+
+
+def _validate_generation8_parent_receipt_binding(
+    receipt: V076CurrentSubjectProductionRevalidationReceiptV1,
+    report: ValidationReport,
+) -> None:
+    expected = GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP["STEP11"]
+    if receipt.previous_receipt_sha256 != expected:
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_PARENT_RECEIPT_CHAIN_MISMATCH",
+            f"expected={expected}:actual={receipt.previous_receipt_sha256}",
+        )
+
+
+def _validate_generation8_evidence_manifest(
+    project: GitCommittedProject,
+    head: str,
+    receipt: V076CurrentSubjectProductionRevalidationReceiptV1,
+    manifest: Mapping[str, Any],
+    report: ValidationReport,
+) -> set[str]:
+    allowlist = {GENERATION8_STEP11_EVIDENCE_MANIFEST_PATH}
+    value, raw = _load_committed_json(
+        project,
+        head,
+        GENERATION8_STEP11_EVIDENCE_MANIFEST_PATH,
+        report,
+        "generation8.step11.evidence_manifest",
+        require_canonical_bytes=True,
+    )
+    if raw is None or not isinstance(value, dict):
+        return allowlist
+    if receipt.evidence_manifest_path != GENERATION8_STEP11_EVIDENCE_MANIFEST_PATH:
+        report.add(
+            "path_failures",
+            "GENERATION8_EVIDENCE_MANIFEST_PATH_MISMATCH",
+            receipt.evidence_manifest_path,
+        )
+    if receipt.evidence_manifest_sha256 != sha256_bytes(raw):
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_EVIDENCE_MANIFEST_SHA256_MISMATCH",
+            GENERATION8_STEP11_EVIDENCE_MANIFEST_PATH,
+        )
+    if not _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_EVIDENCE_MANIFEST_FIELD_SET_MISMATCH",
+        "generation8.step11.evidence_manifest",
+        value,
+        EVIDENCE_MANIFEST_FIELDS,
+    ):
+        return allowlist
+    expected = {
+        "schema_version": GENERATION8_EVIDENCE_MANIFEST_SCHEMA_VERSION,
+        "generation_id": GENERATION8_ID,
+        "resume_evidence_id": manifest.get("new_evidence_id"),
+        "receipt_id": receipt.receipt_id,
+        "evidence_root": f"{GENERATION8_FORMAL_ROOT}/evidence",
+    }
+    for field, expected_value in expected.items():
+        if value.get(field) != expected_value:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_EVIDENCE_MANIFEST_IDENTITY_MISMATCH",
+                f"{field}:expected={expected_value!r}:actual={value.get(field)!r}",
+            )
+    artifacts = value.get("artifacts")
+    if not isinstance(artifacts, list) or not artifacts:
+        report.add(
+            "schema_failures",
+            "GENERATION8_EVIDENCE_ARTIFACT_SET_EMPTY",
+            GENERATION8_STEP11_EVIDENCE_MANIFEST_PATH,
+        )
+        artifacts = []
+    if value.get("artifact_count") != len(artifacts) or not _is_exact_int(
+        value.get("artifact_count")
+    ):
+        report.add(
+            "field_mismatches",
+            "GENERATION8_EVIDENCE_ARTIFACT_COUNT_MISMATCH",
+            repr(value.get("artifact_count")),
+        )
+    paths: list[str] = []
+    evidence_root = f"{GENERATION8_FORMAL_ROOT}/evidence"
+    for index, artifact in enumerate(artifacts):
+        label = f"generation8.step11.evidence_manifest.artifacts[{index}]"
+        if not _compare_exact_keys(
+            report,
+            "schema_failures",
+            "GENERATION8_EVIDENCE_ARTIFACT_FIELD_SET_MISMATCH",
+            label,
+            artifact,
+            EVIDENCE_ARTIFACT_FIELDS,
+        ):
+            continue
+        assert isinstance(artifact, dict)
+        try:
+            path = normalize_repo_relative_path(artifact.get("path"))
+        except ValueError as exc:
+            report.add("path_failures", "GENERATION8_EVIDENCE_PATH_INVALID", f"{label}:{exc}")
+            continue
+        if not path.startswith(evidence_root + "/"):
+            report.add(
+                "path_failures",
+                "GENERATION8_EVIDENCE_PATH_OUTSIDE_ROOT",
+                path,
+            )
+            continue
+        paths.append(path)
+        allowlist.add(path)
+        if not _is_sha256(artifact.get("sha256")) or not _is_exact_int(
+            artifact.get("size_bytes")
+        ) or artifact.get("size_bytes", -1) < 0:
+            report.add(
+                "schema_failures", "GENERATION8_EVIDENCE_ARTIFACT_BINDING_INVALID", label
+            )
+            continue
+        try:
+            data = project.read_regular_file(head, path)
+        except (ValueError, CommittedPathError) as exc:
+            report.add("path_failures", "GENERATION8_EVIDENCE_FILE_UNAVAILABLE", f"{label}:{exc}")
+            continue
+        if sha256_bytes(data) != artifact["sha256"]:
+            report.add("hash_mismatches", "GENERATION8_EVIDENCE_FILE_SHA256_MISMATCH", path)
+        if len(data) != artifact["size_bytes"]:
+            report.add("field_mismatches", "GENERATION8_EVIDENCE_FILE_SIZE_MISMATCH", path)
+    if paths != sorted(paths) or len(paths) != len(set(paths)):
+        report.add(
+            "schema_failures",
+            "GENERATION8_EVIDENCE_PATH_SET_NOT_SORTED_UNIQUE",
+            repr(paths),
+        )
+    for required_path in (
+        GENERATION8_RUNTIME_EVIDENCE_PATH,
+        GENERATION8_SOURCE_EVIDENCE_INDEX_PATH,
+    ):
+        if required_path not in allowlist:
+            report.add(
+                "path_failures", "GENERATION8_REQUIRED_EVIDENCE_NOT_MANIFESTED", required_path
+            )
+    if value.get("canonical_payload_sha256") != canonical_payload_sha256(value):
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_EVIDENCE_MANIFEST_CANONICAL_SHA256_MISMATCH",
+            GENERATION8_STEP11_EVIDENCE_MANIFEST_PATH,
+        )
+    return allowlist
+
+
+def _validate_generation8_source_evidence_index(
+    project: GitCommittedProject,
+    head: str,
+    manifest: Mapping[str, Any],
+    evidence_allowlist: set[str],
+    report: ValidationReport,
+) -> None:
+    value, _raw = _load_committed_json(
+        project,
+        head,
+        GENERATION8_SOURCE_EVIDENCE_INDEX_PATH,
+        report,
+        "generation8.source_evidence_index",
+        require_canonical_bytes=True,
+    )
+    if not _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_SOURCE_INDEX_FIELD_SET_MISMATCH",
+        "generation8.source_evidence_index",
+        value,
+        GENERATION8_SOURCE_EVIDENCE_INDEX_FIELDS,
+    ):
+        return
+    assert isinstance(value, dict)
+    expected = {
+        "schema_version": "space_syndicate.v076.generation8_source_evidence_index.v1",
+        "append_only": True,
+        "generation_id": GENERATION8_ID,
+        "new_evidence_id": manifest.get("new_evidence_id"),
+        "formal_attempt_id": "formal-attempt-001",
+        "formal_execution_count": 1,
+        "automatic_retry_count": 0,
+    }
+    for field, expected_value in expected.items():
+        if value.get(field) != expected_value:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_SOURCE_INDEX_IDENTITY_MISMATCH",
+                f"{field}:expected={expected_value!r}:actual={value.get(field)!r}",
+            )
+    artifacts = value.get("source_artifacts")
+    if not isinstance(artifacts, list) or not artifacts:
+        report.add("schema_failures", "GENERATION8_SOURCE_ARTIFACT_SET_EMPTY", repr(artifacts))
+        artifacts = []
+    if value.get("source_artifact_count") != len(artifacts) or not _is_exact_int(
+        value.get("source_artifact_count")
+    ):
+        report.add("field_mismatches", "GENERATION8_SOURCE_ARTIFACT_COUNT_MISMATCH", repr(value.get("source_artifact_count")))
+    paths: list[str] = []
+    for index, artifact in enumerate(artifacts):
+        label = f"generation8.source_artifacts[{index}]"
+        if not _compare_exact_keys(
+            report,
+            "schema_failures",
+            "GENERATION8_SOURCE_ARTIFACT_FIELD_SET_MISMATCH",
+            label,
+            artifact,
+            GENERATION8_SOURCE_EVIDENCE_ARTIFACT_FIELDS,
+        ):
+            continue
+        assert isinstance(artifact, dict)
+        path = artifact.get("path")
+        if not isinstance(path, str) or path not in evidence_allowlist:
+            report.add("path_failures", "GENERATION8_SOURCE_ARTIFACT_NOT_MANIFESTED", repr(path))
+            continue
+        if path in {GENERATION8_RUNTIME_EVIDENCE_PATH, GENERATION8_SOURCE_EVIDENCE_INDEX_PATH}:
+            report.add("path_failures", "GENERATION8_SOURCE_ARTIFACT_NOT_RAW", path)
+        paths.append(path)
+        if not _is_sha256(artifact.get("sha256")) or not _is_exact_int(artifact.get("size_bytes")):
+            report.add("schema_failures", "GENERATION8_SOURCE_ARTIFACT_BINDING_INVALID", label)
+            continue
+        data = _validate_supporting_binding(
+            project,
+            head,
+            path,
+            artifact["sha256"],
+            report,
+            label,
+        )
+        if data is not None and len(data) != artifact["size_bytes"]:
+            report.add("field_mismatches", "GENERATION8_SOURCE_ARTIFACT_SIZE_MISMATCH", path)
+    if paths != sorted(paths) or len(paths) != len(set(paths)):
+        report.add("schema_failures", "GENERATION8_SOURCE_ARTIFACT_PATHS_NOT_SORTED_UNIQUE", repr(paths))
+    if value.get("canonical_payload_sha256") != canonical_payload_sha256(value):
+        report.add("hash_mismatches", "GENERATION8_SOURCE_INDEX_CANONICAL_SHA256_MISMATCH", GENERATION8_SOURCE_EVIDENCE_INDEX_PATH)
+
+
+def _generation8_witness_fingerprint(value: Mapping[str, Any]) -> str:
+    payload = dict(value)
+    payload.pop("witness_fingerprint", None)
+    return sha256_bytes(canonical_json_bytes(payload))
+
+
+def _validate_generation8_runtime_evidence(
+    project: GitCommittedProject,
+    head: str,
+    receipt: V076CurrentSubjectProductionRevalidationReceiptV1,
+    manifest: Mapping[str, Any],
+    authorization_sha256: str,
+    runtime_binding_sha256: Mapping[str, str],
+    evidence_allowlist: set[str],
+    report: ValidationReport,
+) -> None:
+    if receipt.mcp_runtime_evidence_path != GENERATION8_RUNTIME_EVIDENCE_PATH:
+        report.add(
+            "path_failures",
+            "GENERATION8_RUNTIME_EVIDENCE_PATH_MISMATCH",
+            repr(receipt.mcp_runtime_evidence_path),
+        )
+    if GENERATION8_RUNTIME_EVIDENCE_PATH not in evidence_allowlist:
+        report.add(
+            "path_failures",
+            "GENERATION8_RUNTIME_EVIDENCE_NOT_MANIFESTED",
+            GENERATION8_RUNTIME_EVIDENCE_PATH,
+        )
+    value, raw = _load_committed_json(
+        project,
+        head,
+        GENERATION8_RUNTIME_EVIDENCE_PATH,
+        report,
+        "generation8.step11.runtime_evidence",
+        require_canonical_bytes=True,
+    )
+    if not isinstance(value, dict) or raw is None:
+        return
+    if receipt.mcp_runtime_evidence_sha256 != sha256_bytes(raw):
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_RUNTIME_EVIDENCE_SHA256_MISMATCH",
+            GENERATION8_RUNTIME_EVIDENCE_PATH,
+        )
+    if not _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_RUNTIME_EVIDENCE_FIELD_SET_MISMATCH",
+        "generation8.step11.runtime_evidence",
+        value,
+        GENERATION8_RUNTIME_EVIDENCE_FIELDS,
+    ):
+        return
+    expected = {
+        "schema_version": GENERATION8_RUNTIME_EVIDENCE_SCHEMA_VERSION,
+        "step_id": "STEP11",
+        "generation_id": GENERATION8_ID,
+        "resume_evidence_id": manifest.get("new_evidence_id"),
+        "authorization_manifest_sha256": authorization_sha256,
+        "subject_head_sha": manifest.get("product_subject_head_sha"),
+        "subject_tree_sha": manifest.get("product_subject_tree_sha"),
+        "execution_head_sha": receipt.live_pr_head_sha,
+        "execution_tree_sha": receipt.live_pr_tree_sha,
+        "production_scene_path": "res://scenes/main.tscn",
+        "execution_mode": "PRODUCTION_COMPOSITION_UI_DRIVEN",
+        "diagnostic_only": False,
+        "fixture_only": False,
+        "scene_started_via_mcp": True,
+        "mcp_real_runtime_observed": True,
+        "selected_seed": manifest.get("selected_seed"),
+        "player_count": 4,
+        "new_game_profile": manifest.get("new_game_profile"),
+        "mission_kind": "ASSAULT_REGION",
+    }
+    for field, expected_value in expected.items():
+        if value.get(field) != expected_value:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_RUNTIME_IDENTITY_MISMATCH",
+                f"{field}:expected={expected_value!r}:actual={value.get(field)!r}",
+            )
+    if value.get("mcp_tool_identity") != REQUIRED_MCP_TOOL_IDENTITY:
+        report.add("identity_mismatches", "GENERATION8_MCP_TOOL_IDENTITY_MISMATCH", repr(value.get("mcp_tool_identity")))
+    if value.get("mcp_protocol_version") != REQUIRED_MCP_PROTOCOL_VERSION:
+        report.add("identity_mismatches", "GENERATION8_MCP_PROTOCOL_VERSION_MISMATCH", repr(value.get("mcp_protocol_version")))
+    if value.get("godot_binary_sha256") != REQUIRED_GODOT_BINARY_SHA256:
+        report.add("hash_mismatches", "GENERATION8_GODOT_BINARY_SHA256_MISMATCH", repr(value.get("godot_binary_sha256")))
+    for field in (
+        "godot_binary_sha256",
+        "project_godot_sha256",
+        "main_tscn_sha256",
+        "runtime_composition_sha256",
+        "production_screen_sha256",
+        "canonical_payload_sha256",
+    ):
+        if not _is_sha256(value.get(field)):
+            report.add("schema_failures", "GENERATION8_RUNTIME_SHA256_INVALID", field)
+    expected_hashes = {
+        "project_godot_sha256": runtime_binding_sha256.get("project.godot"),
+        "main_tscn_sha256": runtime_binding_sha256.get("scenes/main.tscn"),
+        "runtime_composition_sha256": runtime_binding_sha256.get(
+            "scenes/runtime/V075RuntimeComposition.tscn"
+        ),
+        "production_screen_sha256": runtime_binding_sha256.get(
+            "scenes/ui/v075/V075SampleGameScreen.tscn"
+        ),
+    }
+    for field, expected_value in expected_hashes.items():
+        if expected_value is None or value.get(field) != expected_value:
+            report.add(
+                "hash_mismatches",
+                "GENERATION8_RUNTIME_PRODUCT_BINDING_MISMATCH",
+                f"{field}:expected={expected_value}:actual={value.get(field)!r}",
+            )
+    times: dict[str, datetime] = {}
+    for field in ("session_started_at_utc", "session_ended_at_utc"):
+        try:
+            times[field] = parse_rfc3339_utc(value.get(field))
+        except ValueError:
+            report.add("schema_failures", "GENERATION8_RUNTIME_TIMESTAMP_INVALID", field)
+    if (
+        "session_started_at_utc" in times
+        and "session_ended_at_utc" in times
+        and times["session_started_at_utc"] >= times["session_ended_at_utc"]
+    ):
+        report.add("identity_mismatches", "GENERATION8_RUNTIME_SESSION_ORDER_INVALID", "start>=end")
+    try:
+        receipt_created = parse_rfc3339_utc(receipt.created_at_utc)
+    except ValueError:
+        receipt_created = None
+    if receipt_created is not None and times.get("session_ended_at_utc", receipt_created) > receipt_created:
+        report.add("identity_mismatches", "GENERATION8_RECEIPT_CREATED_BEFORE_RUNTIME_END", receipt.created_at_utc)
+    target_region_id = value.get("target_region_id")
+    if not isinstance(target_region_id, str) or re.fullmatch(r"region\.\d{3}", target_region_id) is None:
+        report.add("schema_failures", "GENERATION8_TARGET_REGION_ID_INVALID", repr(target_region_id))
+
+    injection = value.get("injection_counters")
+    if _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_INJECTION_COUNTER_FIELD_SET_MISMATCH",
+        "generation8.runtime.injection_counters",
+        injection,
+        GENERATION8_INJECTION_COUNTER_FIELDS,
+    ):
+        assert isinstance(injection, dict)
+        for field in sorted(GENERATION8_INJECTION_COUNTER_FIELDS):
+            if not _is_exact_int(injection.get(field)) or injection[field] != 0:
+                report.add("field_mismatches", "GENERATION8_INJECTION_COUNT_NONZERO", f"{field}:{injection.get(field)!r}")
+
+    asset = value.get("asset_authority_witness")
+    if _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_ASSET_WITNESS_FIELD_SET_MISMATCH",
+        "generation8.runtime.asset_authority_witness",
+        asset,
+        GENERATION8_ASSET_WITNESS_FIELDS,
+    ):
+        assert isinstance(asset, dict)
+        expected_asset = {
+            "schema": "space_syndicate.v076.asset_consequence_witness.v1",
+            "action": "ASSAULT_REGION",
+            "outcome": "SETTLED",
+            "asset_debit_count": 1,
+            "consequence_bound": True,
+            "projection_failure_count": 0,
+            "presentation_count": 1,
+        }
+        for field, expected_value in expected_asset.items():
+            if asset.get(field) != expected_value:
+                report.add("field_mismatches", "GENERATION8_ASSET_WITNESS_IDENTITY_MISMATCH", f"{field}:{asset.get(field)!r}")
+        for field in (
+            "reservation_id",
+            "owner_player_id",
+            "reservation_receipt_id",
+            "reservation_receipt_fingerprint",
+            "settlement_receipt_id",
+            "settlement_receipt_fingerprint",
+            "mission_receipt_fingerprint",
+        ):
+            if not isinstance(asset.get(field), str) or not asset[field]:
+                report.add("schema_failures", "GENERATION8_ASSET_WITNESS_STRING_MISSING", field)
+        for field in (
+            "reservation_receipt_fingerprint",
+            "settlement_receipt_fingerprint",
+            "mission_receipt_fingerprint",
+            "witness_fingerprint",
+        ):
+            if not _is_sha256(asset.get(field)):
+                report.add("schema_failures", "GENERATION8_ASSET_WITNESS_SHA256_INVALID", field)
+        if asset.get("witness_fingerprint") != _generation8_witness_fingerprint(asset):
+            report.add("hash_mismatches", "GENERATION8_ASSET_WITNESS_FINGERPRINT_MISMATCH", "asset_authority_witness")
+        for field in (
+            "asset_revision_before",
+            "asset_revision_after",
+            "asset_debit_count",
+            "projection_count_before",
+            "projection_count_after",
+            "projection_failure_count",
+            "presentation_count",
+        ):
+            if not _is_exact_int(asset.get(field)) or asset[field] < 0:
+                report.add("schema_failures", "GENERATION8_ASSET_WITNESS_INTEGER_INVALID", field)
+        if _is_exact_int(asset.get("asset_revision_before")) and asset.get("asset_revision_after") != asset["asset_revision_before"] + 1:
+            report.add("field_mismatches", "GENERATION8_ASSET_REVISION_NOT_EXACT_ONCE", repr(asset))
+        if _is_exact_int(asset.get("projection_count_before")) and asset.get("projection_count_after") != asset["projection_count_before"] + 1:
+            report.add("field_mismatches", "GENERATION8_ASSET_PROJECTION_NOT_EXACT_ONCE", repr(asset))
+        quantity_fields = (
+            "asset_quantities_before",
+            "asset_quantities_after",
+            "asset_delta_by_color",
+            "reserved_asset_cost_by_color",
+        )
+        quantities: dict[str, dict[str, int]] = {}
+        for field in quantity_fields:
+            row = asset.get(field)
+            if not isinstance(row, dict) or not row:
+                report.add("schema_failures", "GENERATION8_ASSET_QUANTITY_MAP_INVALID", field)
+                continue
+            if any(not isinstance(color, str) or not _is_exact_int(amount) for color, amount in row.items()):
+                report.add("schema_failures", "GENERATION8_ASSET_QUANTITY_ENTRY_INVALID", field)
+                continue
+            quantities[field] = row
+        before = quantities.get("asset_quantities_before", {})
+        after = quantities.get("asset_quantities_after", {})
+        delta = quantities.get("asset_delta_by_color", {})
+        cost = quantities.get("reserved_asset_cost_by_color", {})
+        if before and after and delta and cost:
+            colors = set(before) | set(after) | set(delta) | set(cost)
+            if any(before.get(color, 0) < 0 or after.get(color, 0) < 0 for color in colors):
+                report.add("field_mismatches", "GENERATION8_ASSET_NEGATIVE_VALUE", repr(asset))
+            if not any(amount > 0 for amount in cost.values()):
+                report.add("field_mismatches", "GENERATION8_ASSET_COST_NOT_POSITIVE", repr(cost))
+            for color in colors:
+                expected_delta = after.get(color, 0) - before.get(color, 0)
+                if delta.get(color, 0) != expected_delta or expected_delta != -cost.get(color, 0):
+                    report.add("field_mismatches", "GENERATION8_ASSET_DELTA_PARITY_MISMATCH", color)
+
+    military = value.get("military_lifecycle_witness")
+    if _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_MILITARY_WITNESS_FIELD_SET_MISMATCH",
+        "generation8.runtime.military_lifecycle_witness",
+        military,
+        GENERATION8_MILITARY_WITNESS_FIELDS,
+    ):
+        assert isinstance(military, dict)
+        expected_military = {
+            "mission_kind": "ASSAULT_REGION",
+            "target_region_id": target_region_id,
+            "submission_count": 1,
+            "intake_settlement_count": 1,
+            "resolution_count": 1,
+            "withdrawal_count": 1,
+            "collision_count": 0,
+            "public_batch_entry_count": 0,
+            "shared_sushi_track_resolution_count": 0,
+            "consequence_presentation_count": 1,
+            "complete_major_round_barrier_observed": True,
+        }
+        for field, expected_value in expected_military.items():
+            if military.get(field) != expected_value:
+                report.add("field_mismatches", "GENERATION8_MILITARY_WITNESS_IDENTITY_MISMATCH", f"{field}:{military.get(field)!r}")
+        for field in ("submission_id", "command_id"):
+            if not isinstance(military.get(field), str) or not military[field]:
+                report.add("schema_failures", "GENERATION8_MILITARY_WITNESS_STRING_MISSING", field)
+        for field in (
+            "eta_ticks",
+            "arrival_tick",
+            "submission_count",
+            "intake_settlement_count",
+            "resolution_count",
+            "withdrawal_count",
+            "collision_count",
+            "public_batch_entry_count",
+            "shared_sushi_track_resolution_count",
+            "consequence_presentation_count",
+        ):
+            if not _is_exact_int(military.get(field)) or military[field] < 0:
+                report.add("schema_failures", "GENERATION8_MILITARY_WITNESS_INTEGER_INVALID", field)
+        if not _is_exact_int(military.get("eta_ticks")) or military.get("eta_ticks", 0) <= 0:
+            report.add("field_mismatches", "GENERATION8_MILITARY_ETA_NOT_POSITIVE", repr(military.get("eta_ticks")))
+
+    proof = value.get("proof")
+    if _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_STEP11_PROOF_FIELD_SET_MISMATCH",
+        "generation8.runtime.proof",
+        proof,
+        GENERATION8_STEP11_PROOF_FIELDS,
+    ):
+        assert isinstance(proof, dict)
+        for field in sorted(GENERATION8_STEP11_POSITIVE_PROOF_FIELDS):
+            if not _is_exact_int(proof.get(field)) or proof[field] < 1:
+                report.add("field_mismatches", "STEP_PROOF_POSITIVE_COUNT_MISSING", f"STEP11.{field}:{proof.get(field)!r}")
+        for field in sorted(GENERATION8_STEP11_ZERO_PROOF_FIELDS):
+            if not _is_exact_int(proof.get(field)) or proof[field] != 0:
+                report.add("field_mismatches", "STEP_PROOF_ZERO_COUNT_VIOLATION", f"STEP11.{field}:{proof.get(field)!r}")
+        for field in (
+            "asset_authority_receipt_count",
+            "before_after_quantity_receipt_count",
+            "committed_revision_receipt_count",
+            "asset_delta_projection_count",
+            "asset_consequence_binding_count",
+            "exact_once_binding_count",
+        ):
+            if proof.get(field) != 1:
+                report.add("field_mismatches", "GENERATION8_ASSET_PROOF_NOT_EXACT_ONCE", f"{field}:{proof.get(field)!r}")
+        for field in (
+            "assault_region_root_command_count",
+            "military_direct_action_accepted_count",
+            "military_eta_created_count",
+            "military_eta_positive_count",
+            "military_arrival_count",
+            "assault_region_resolution_count",
+            "military_withdrawal_count",
+        ):
+            if proof.get(field) != 1:
+                report.add("field_mismatches", "GENERATION8_MILITARY_PROOF_NOT_EXACT_ONCE", f"{field}:{proof.get(field)!r}")
+    if value.get("canonical_payload_sha256") != canonical_payload_sha256(value):
+        report.add("hash_mismatches", "GENERATION8_RUNTIME_CANONICAL_SHA256_MISMATCH", GENERATION8_RUNTIME_EVIDENCE_PATH)
+
+
+def _validate_generation8_formal_documents(
+    project: GitCommittedProject,
+    head: str,
+    execution_head: str,
+    execution_tree: str,
+    manifest: Mapping[str, Any],
+    authorization_sha256: str,
+    receipt_raw: bytes,
+    report: ValidationReport,
+) -> set[str]:
+    allowlist = {
+        GENERATION8_EXECUTION_START_PATH,
+        GENERATION8_PROGRESS_PATH,
+        GENERATION8_SUMMARY_PATH,
+    }
+    execution, _execution_raw = _load_committed_json(
+        project,
+        head,
+        GENERATION8_EXECUTION_START_PATH,
+        report,
+        "generation8.execution_start",
+        require_canonical_bytes=True,
+    )
+    if _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_EXECUTION_START_FIELD_SET_MISMATCH",
+        "generation8.execution_start",
+        execution,
+        GENERATION8_EXECUTION_START_FIELDS,
+    ):
+        assert isinstance(execution, dict)
+        expected_execution = {
+            "schema_version": GENERATION8_EXECUTION_START_SCHEMA_VERSION,
+            "status": "STARTED",
+            "authorization_id": GENERATION8_AUTHORIZATION_ID,
+            "authorization_manifest_sha256": authorization_sha256,
+            "generation_id": GENERATION8_ID,
+            "parent_generation_id": GENERATION8_PARENT_ID,
+            "parent_evidence_id": GENERATION8_PARENT_EVIDENCE_ID,
+            "new_evidence_id": manifest.get("new_evidence_id"),
+            "formal_attempt_id": "formal-attempt-001",
+            "formal_execution_count": 1,
+            "automatic_retry_count": 0,
+            "execution_head_sha": execution_head,
+            "execution_tree_sha": execution_tree,
+            "product_subject_head_sha": manifest.get("product_subject_head_sha"),
+            "product_subject_tree_sha": manifest.get("product_subject_tree_sha"),
+            "selected_seed": manifest.get("selected_seed"),
+            "player_count": 4,
+            "new_game_profile": manifest.get("new_game_profile"),
+            "production_scene_path": "res://scenes/main.tscn",
+            "execution_mode": "PRODUCTION_COMPOSITION_UI_DRIVEN",
+        }
+        for field, expected_value in expected_execution.items():
+            if execution.get(field) != expected_value:
+                report.add("identity_mismatches", "GENERATION8_EXECUTION_START_IDENTITY_MISMATCH", f"{field}:{execution.get(field)!r}")
+        injection = execution.get("injection_counters")
+        if _compare_exact_keys(
+            report,
+            "schema_failures",
+            "GENERATION8_EXECUTION_INJECTION_FIELD_SET_MISMATCH",
+            "generation8.execution_start.injection_counters",
+            injection,
+            GENERATION8_INJECTION_COUNTER_FIELDS,
+        ):
+            assert isinstance(injection, dict)
+            for field in GENERATION8_INJECTION_COUNTER_FIELDS:
+                if not _is_exact_int(injection.get(field)) or injection[field] != 0:
+                    report.add("field_mismatches", "GENERATION8_EXECUTION_INJECTION_NONZERO", field)
+        try:
+            parse_rfc3339_utc(execution.get("started_at_utc"))
+        except ValueError:
+            report.add("schema_failures", "GENERATION8_EXECUTION_START_TIMESTAMP_INVALID", repr(execution.get("started_at_utc")))
+        if execution.get("canonical_payload_sha256") != canonical_payload_sha256(execution):
+            report.add("hash_mismatches", "GENERATION8_EXECUTION_START_CANONICAL_SHA256_MISMATCH", GENERATION8_EXECUTION_START_PATH)
+
+    progress, _progress_raw = _load_committed_json(
+        project,
+        head,
+        GENERATION8_PROGRESS_PATH,
+        report,
+        "generation8.progress",
+        require_canonical_bytes=True,
+    )
+    if _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_PROGRESS_FIELD_SET_MISMATCH",
+        "generation8.progress",
+        progress,
+        GENERATION8_PROGRESS_FIELDS,
+    ):
+        assert isinstance(progress, dict)
+        expected_progress = {
+            "schema_version": GENERATION8_PROGRESS_SCHEMA_VERSION,
+            "status": "COMPLETED",
+            "generation_id": GENERATION8_ID,
+            "new_evidence_id": manifest.get("new_evidence_id"),
+            "formal_attempt_id": "formal-attempt-001",
+            "formal_execution_count": 1,
+            "automatic_retry_count": 0,
+            "current_step": "STEP11_ASSAULT_REGION",
+            "step11_status": "PASS",
+            "accepted_action_drain_status": "PASS",
+            "process_cleanup_status": "PASS",
+        }
+        for field, expected_value in expected_progress.items():
+            if progress.get(field) != expected_value:
+                report.add("identity_mismatches", "GENERATION8_PROGRESS_IDENTITY_MISMATCH", f"{field}:{progress.get(field)!r}")
+        parsed: list[datetime] = []
+        for field in ("started_at_utc", "completed_at_utc"):
+            try:
+                parsed.append(parse_rfc3339_utc(progress.get(field)))
+            except ValueError:
+                report.add("schema_failures", "GENERATION8_PROGRESS_TIMESTAMP_INVALID", field)
+        if len(parsed) == 2 and parsed[0] >= parsed[1]:
+            report.add("identity_mismatches", "GENERATION8_PROGRESS_TIMESTAMP_ORDER_INVALID", "start>=complete")
+        if progress.get("canonical_payload_sha256") != canonical_payload_sha256(progress):
+            report.add("hash_mismatches", "GENERATION8_PROGRESS_CANONICAL_SHA256_MISMATCH", GENERATION8_PROGRESS_PATH)
+
+    summary, _summary_raw = _load_committed_json(
+        project,
+        head,
+        GENERATION8_SUMMARY_PATH,
+        report,
+        "generation8.summary",
+        require_canonical_bytes=True,
+    )
+    if _compare_exact_keys(
+        report,
+        "schema_failures",
+        "GENERATION8_SUMMARY_FIELD_SET_MISMATCH",
+        "generation8.summary",
+        summary,
+        GENERATION8_SUMMARY_FIELDS,
+    ):
+        assert isinstance(summary, dict)
+        expected_summary = {
+            "schema_version": GENERATION8_SUMMARY_SCHEMA_VERSION,
+            "status": "PASS",
+            "generation_id": GENERATION8_ID,
+            "parent_generation_id": GENERATION8_PARENT_ID,
+            "parent_evidence_id": GENERATION8_PARENT_EVIDENCE_ID,
+            "new_evidence_id": manifest.get("new_evidence_id"),
+            "authorization_manifest_sha256": authorization_sha256,
+            "formal_attempt_id": "formal-attempt-001",
+            "formal_execution_count": 1,
+            "automatic_retry_count": 0,
+            "step11_receipt_path": GENERATION8_STEP11_RECEIPT_PATH,
+            "step11_receipt_sha256": sha256_bytes(receipt_raw),
+            "step11_receipt_status": "PASS",
+            "step11_required_positive_field_count": len(GENERATION8_STEP11_POSITIVE_PROOF_FIELDS),
+            "step11_required_positive_field_pass_count": len(GENERATION8_STEP11_POSITIVE_PROOF_FIELDS),
+            "step11_required_zero_field_count": len(GENERATION8_STEP11_ZERO_PROOF_FIELDS),
+            "step11_required_zero_field_pass_count": len(GENERATION8_STEP11_ZERO_PROOF_FIELDS),
+            "generation7_step11_receipt_status": "BLOCKED",
+            "generation7_modification_count": 0,
+            "generation7_rerun_count": 0,
+            "process_cleanup_status": "PASS",
+        }
+        for field, expected_value in expected_summary.items():
+            if summary.get(field) != expected_value:
+                report.add("identity_mismatches", "GENERATION8_SUMMARY_IDENTITY_MISMATCH", f"{field}:{summary.get(field)!r}")
+        try:
+            parse_rfc3339_utc(summary.get("completed_at_utc"))
+        except ValueError:
+            report.add("schema_failures", "GENERATION8_SUMMARY_TIMESTAMP_INVALID", repr(summary.get("completed_at_utc")))
+        if summary.get("canonical_payload_sha256") != canonical_payload_sha256(summary):
+            report.add("hash_mismatches", "GENERATION8_SUMMARY_CANONICAL_SHA256_MISMATCH", GENERATION8_SUMMARY_PATH)
+    return allowlist
+
+
+def _validate_generation8_preformal_reports(
+    project: GitCommittedProject,
+    tooling_head: str,
+    product_subject_head: str,
+    manifest: Mapping[str, Any],
+    report: ValidationReport,
+) -> None:
+    product_file_change_count = sum(
+        1
+        for _status, path in project.changed_entries(
+            GENERATION7_ARTIFACT_HEAD_SHA, product_subject_head
+        )
+        if is_generation8_mcp_mutation_path(path)
+    )
+    characterization, _raw = _load_committed_json(
+        project,
+        tooling_head,
+        GENERATION8_CHARACTERIZATION_PATH,
+        report,
+        "generation8.characterization",
+        require_canonical_bytes=True,
+    )
+    if isinstance(characterization, dict):
+        expected = {
+            "generation_id": GENERATION8_ID,
+            "formal_execution": False,
+            "player_count": 4,
+            "product_repair_required": product_file_change_count > 0,
+            "godot_product_file_change_count": product_file_change_count,
+        }
+        for field, expected_value in expected.items():
+            if characterization.get(field) != expected_value:
+                report.add(
+                    "identity_mismatches",
+                    "GENERATION8_CHARACTERIZATION_IDENTITY_MISMATCH",
+                    f"{field}:{characterization.get(field)!r}",
+                )
+        for field, minimum in (
+            ("characterization_seed_count", 256),
+            ("natural_assault_region_reachable_seed_count", 3),
+            ("normally_settled_natural_assault_region_reachable_seed_count", 3),
+            ("real_main_tscn_reachability_probe_count", 3),
+        ):
+            if not _is_exact_int(characterization.get(field)) or characterization[field] < minimum:
+                report.add(
+                    "field_mismatches",
+                    "GENERATION8_CHARACTERIZATION_COUNT_INSUFFICIENT",
+                    f"{field}:{characterization.get(field)!r}:minimum={minimum}",
+                )
+        if characterization.get("root_cause_class") not in {"I", "J", "I/J"}:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_CHARACTERIZATION_ROOT_CAUSE_INVALID",
+                repr(characterization.get("root_cause_class")),
+            )
+        probes = characterization.get("real_main_tscn_reachability_probes")
+        if not isinstance(probes, list) or len(probes) < 3:
+            report.add(
+                "schema_failures", "GENERATION8_CHARACTERIZATION_PROBES_MISSING", repr(probes)
+            )
+            probes = []
+        probe_seeds: list[int] = []
+        for probe in probes:
+            if not isinstance(probe, dict) or probe.get("status") != "PASS" or not _is_exact_int(probe.get("seed")):
+                report.add(
+                    "schema_failures", "GENERATION8_CHARACTERIZATION_PROBE_INVALID", repr(probe)
+                )
+                continue
+            probe_seeds.append(probe["seed"])
+            for field in (
+                "fixture_card_injection_count",
+                "fixture_asset_injection_count",
+                "fixture_target_injection_count",
+                "fixture_action_injection_count",
+                "fixture_eta_injection_count",
+                "direct_action_internal_method_as_ui_proof_count",
+            ):
+                if probe.get(field) != 0 or not _is_exact_int(probe.get(field)):
+                    report.add(
+                        "field_mismatches",
+                        "GENERATION8_CHARACTERIZATION_PROBE_INJECTION_NONZERO",
+                        f"{probe.get('seed')}:{field}:{probe.get(field)!r}",
+                    )
+        if manifest.get("selected_seed") not in probe_seeds:
+            report.add(
+                "identity_mismatches",
+                "GENERATION8_SELECTED_SEED_NOT_UI_PROVEN",
+                repr(manifest.get("selected_seed")),
+            )
+        for field in (
+            "fixture_card_injection_count",
+            "fixture_asset_injection_count",
+            "fixture_target_injection_count",
+            "fixture_action_injection_count",
+            "fixture_eta_injection_count",
+            "direct_action_internal_method_as_ui_proof_count",
+        ):
+            if characterization.get(field) != 0 or not _is_exact_int(characterization.get(field)):
+                report.add(
+                    "field_mismatches",
+                    "GENERATION8_CHARACTERIZATION_INJECTION_NONZERO",
+                    f"{field}:{characterization.get(field)!r}",
+                )
+    focused, _focused_raw = _load_committed_json(
+        project,
+        tooling_head,
+        GENERATION8_FOCUSED_TEST_REPORT_PATH,
+        report,
+        "generation8.focused_test_report",
+        require_canonical_bytes=True,
+    )
+    if isinstance(focused, dict):
+        expected_focused = {
+            "status": "PASS",
+            "generation_id": GENERATION8_ID,
+            "focused_test_count": 26,
+            "focused_test_pass_count": 26,
+            "focused_test_failure_count": 0,
+            "full_world_reproof_count": 0,
+            "unnecessary_full_suite_run_count": 0,
+            "step09_inherited_regression_count": 0,
+            "step12_inherited_regression_count": 0,
+            "godot_product_file_change_count": product_file_change_count,
+        }
+        for field, expected_value in expected_focused.items():
+            if focused.get(field) != expected_value:
+                report.add(
+                    "identity_mismatches",
+                    "GENERATION8_FOCUSED_TEST_REPORT_MISMATCH",
+                    f"{field}:{focused.get(field)!r}",
+                )
+        if focused.get("canonical_payload_sha256") != canonical_payload_sha256(focused):
+            report.add(
+                "hash_mismatches",
+                "GENERATION8_FOCUSED_TEST_REPORT_CANONICAL_SHA256_MISMATCH",
+                GENERATION8_FOCUSED_TEST_REPORT_PATH,
+            )
+    contract_value, _contract_raw = _load_committed_json(
+        project,
+        tooling_head,
+        GENERATION8_MAJOR_ROUND_CONTRACT_PATH,
+        report,
+        "generation8.major_round_contract",
+        require_canonical_bytes=True,
+    )
+    if isinstance(contract_value, dict):
+        expected_contract = {
+            "status": "PASS_REPAIRED_PRODUCT_CONTRACT",
+            "contract_id": "V076_COMPLETE_MAJOR_ROUND_BEFORE_FINAL_SETTLEMENT_V1",
+            "complete_major_round_before_settlement": True,
+            "explicit_mid_round_qualification_latch_present": True,
+            "bounded_terminal_drain_deadlock_guard_present": True,
+            "accepted_action_loss_at_terminal_count": 0,
+            "final_settlement_count": 1,
+            "duplicate_final_settlement_count": 0,
+            "winner_fact_delta_count": 0,
+            "terminal_drain_deadlock_count": 0,
+            "victory_threshold_change_count": 0,
+            "winner_fact_change_count": 0,
+        }
+        for field, expected_value in expected_contract.items():
+            if contract_value.get(field) != expected_value:
+                report.add(
+                    "identity_mismatches",
+                    "GENERATION8_MAJOR_ROUND_CONTRACT_MISMATCH",
+                    f"{field}:{contract_value.get(field)!r}",
+                )
+        if contract_value.get("canonical_payload_sha256") != canonical_payload_sha256(contract_value):
+            report.add(
+                "hash_mismatches",
+                "GENERATION8_MAJOR_ROUND_CONTRACT_CANONICAL_SHA256_MISMATCH",
+                GENERATION8_MAJOR_ROUND_CONTRACT_PATH,
+            )
+
+
+def validate_generation8_repository(
+    project_root: Path,
+    expected_consumer_head: str,
+) -> dict[str, Any]:
+    report = ValidationReport(
+        generation_id=GENERATION8_ID,
+        resume_evidence_id=-1,
+        validation_mode="GENERATION8_SUCCESSOR",
+    )
+    try:
+        project = GitCommittedProject(project_root)
+        evaluated_head = project.resolve_commit(expected_consumer_head)
+        report.expected_consumer_head_sha = evaluated_head
+    except Exception as exc:
+        report.add("identity_mismatches", "VALIDATION_CONTEXT_INVALID", str(exc))
+        return report.finish()
+    if not project.is_ancestor(GENERATION7_ARTIFACT_HEAD_SHA, evaluated_head):
+        report.add(
+            "identity_mismatches",
+            "GENERATION7_ARTIFACT_NOT_GENERATION8_ANCESTOR",
+            evaluated_head,
+        )
+        return report.finish()
+
+    parent_summary_sha, _g7_rows = _validate_generation7_frozen_receipt_chain(
+        project, evaluated_head, report
+    )
+    if parent_summary_sha is None:
+        return report.finish()
+
+    authorization_additions = project.addition_commits(
+        evaluated_head, GENERATION8_AUTHORIZATION_MANIFEST_PATH
+    )
+    if len(authorization_additions) != 1:
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_AUTHORIZATION_COMMIT_NOT_UNIQUE",
+            repr(authorization_additions),
+        )
+        return report.finish()
+    authorization_head = authorization_additions[0]
+    try:
+        tooling_head = project.single_parent(authorization_head)
+        tooling_tree = project.tree(tooling_head)
+        product_subject_head = project.single_parent(tooling_head)
+        product_subject_tree = project.tree(product_subject_head)
+        authorization_tree = project.tree(authorization_head)
+    except ValueError as exc:
+        report.add(
+            "identity_mismatches", "GENERATION8_AUTHORIZATION_PARENT_INVALID", str(exc)
+        )
+        return report.finish()
+    if not project.is_ancestor(GENERATION7_ARTIFACT_HEAD_SHA, tooling_head):
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_TOOLING_NOT_GENERATION7_SUCCESSOR",
+            tooling_head,
+        )
+    if not project.is_ancestor(GENERATION7_ARTIFACT_HEAD_SHA, product_subject_head):
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_PRODUCT_SUBJECT_NOT_GENERATION7_SUCCESSOR",
+            product_subject_head,
+        )
+    authorization_entries = project.changed_entries(tooling_head, authorization_head)
+    expected_authorization_entries = [
+        ("A", GENERATION8_AUTHORIZATION_MANIFEST_PATH),
+        ("A", GENERATION8_AUTHORIZATION_SIDECAR_PATH),
+    ]
+    if authorization_entries != expected_authorization_entries:
+        report.add(
+            "path_failures",
+            "GENERATION8_AUTHORIZATION_COMMIT_NOT_EXACT_ALLOWLIST",
+            f"expected={expected_authorization_entries}:actual={authorization_entries}",
+        )
+    registry_sha256s, registry_max = _load_generation8_registry_state(
+        project, tooling_head, report
+    )
+    if registry_max is None:
+        return report.finish()
+    authorization, authorization_raw = _load_committed_json(
+        project,
+        authorization_head,
+        GENERATION8_AUTHORIZATION_MANIFEST_PATH,
+        report,
+        "generation8.authorization_manifest",
+        require_canonical_bytes=True,
+    )
+    if authorization_raw is None:
+        return report.finish()
+    authorization_sha256 = sha256_bytes(authorization_raw)
+    sidecar = None
+    try:
+        sidecar = project.read_regular_file(
+            authorization_head, GENERATION8_AUTHORIZATION_SIDECAR_PATH
+        )
+    except (ValueError, CommittedPathError) as exc:
+        report.add(
+            "path_failures", "GENERATION8_AUTHORIZATION_SIDECAR_UNAVAILABLE", str(exc)
+        )
+    expected_sidecar = (
+        f"{authorization_sha256}  {GENERATION8_AUTHORIZATION_MANIFEST_PATH}\n".encode(
+            "utf-8"
+        )
+    )
+    if sidecar is not None and sidecar != expected_sidecar:
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_AUTHORIZATION_SIDECAR_MISMATCH",
+            GENERATION8_AUTHORIZATION_SIDECAR_PATH,
+        )
+    authorization = _validate_generation8_authorization_value(
+        authorization,
+        report,
+        parent_summary_sha256=parent_summary_sha,
+        registry_sha256s=registry_sha256s,
+        registry_max_evidence_id=registry_max,
+        tooling_head_sha=tooling_head,
+        tooling_tree_sha=tooling_tree,
+        product_subject_head_sha=product_subject_head,
+        product_subject_tree_sha=product_subject_tree,
+    )
+    if authorization is None:
+        return report.finish()
+    report.resume_evidence_id = (
+        authorization["new_evidence_id"]
+        if _is_exact_int(authorization.get("new_evidence_id"))
+        else -1
+    )
+    binding_specs = (
+        (SCHEMA_AUTHORITY_PATH, "receipt_schema_sha256"),
+        (VALIDATOR_PATH, "receipt_validator_sha256"),
+        (WORKFLOW_PATH, "required_workflow_sha256"),
+        (SELFTEST_PATH, "receipt_selftest_sha256"),
+        (GENERATION8_PRODUCT_PATH_MANIFEST_PATH, "product_path_manifest_sha256"),
+        (GENERATION8_MCP_LANDING_MANIFEST_PATH, "mcp_landing_manifest_sha256"),
+        (GENERATION8_FOCUSED_TEST_REPORT_PATH, "focused_test_report_sha256"),
+        (GENERATION8_CHARACTERIZATION_PATH, "characterization_report_sha256"),
+        (GENERATION8_MAJOR_ROUND_CONTRACT_PATH, "major_round_contract_sha256"),
+        (GENERATION8_TOOLING_SEAL_PATH, "generation8_tooling_seal_sha256"),
+    )
+    for path, field in binding_specs:
+        claimed = authorization.get(field)
+        if _is_sha256(claimed):
+            _validate_supporting_binding(
+                project,
+                tooling_head,
+                path,
+                claimed,
+                report,
+                f"generation8.authorization.{field}",
+            )
+        else:
+            report.add(
+                "schema_failures",
+                "GENERATION8_AUTHORIZATION_BINDING_INVALID",
+                field,
+            )
+    selftest_bytes = (
+        _validate_supporting_binding(
+            project,
+            tooling_head,
+            SELFTEST_PATH,
+            str(authorization.get("receipt_selftest_sha256")),
+            report,
+            "generation8.selftest",
+        )
+        if _is_sha256(authorization.get("receipt_selftest_sha256"))
+        else None
+    )
+    catalog, _catalog_raw = _load_committed_json(
+        project,
+        tooling_head,
+        GENERATION8_NEGATIVE_FIXTURE_CATALOG_PATH,
+        report,
+        "generation8.negative_fixture_catalog",
+        require_canonical_bytes=True,
+    )
+    if selftest_bytes is not None:
+        _validate_generation8_negative_fixture_catalog(
+            catalog,
+            selftest_bytes,
+            report,
+            "generation8.negative_fixture_catalog",
+        )
+    _validate_generation8_tooling_seal(
+        project, tooling_head, product_subject_head, authorization, report
+    )
+    _validate_generation8_mcp_landing(
+        project, tooling_head, product_subject_head, authorization, report
+    )
+    _validate_generation8_preformal_reports(
+        project, tooling_head, product_subject_head, authorization, report
+    )
+
+    authorized_product_subject_head = str(
+        authorization.get("product_subject_head_sha", "")
+    )
+    authorized_product_subject_tree = str(
+        authorization.get("product_subject_tree_sha", "")
+    )
+    product_manifest_path = str(authorization.get("product_path_manifest_path", ""))
+    subject_manifest, subject_manifest_raw = _load_committed_json(
+        project,
+        tooling_head,
+        product_manifest_path,
+        report,
+        "generation8.product_subject_manifest",
+        require_canonical_bytes=True,
+    )
+    runtime_binding_sha256: dict[str, str] = {}
+    generation8_changed_paths: list[str] = []
+    if isinstance(subject_manifest, dict) and subject_manifest_raw is not None:
+        if sha256_bytes(subject_manifest_raw) != authorization.get(
+            "product_path_manifest_sha256"
+        ):
+            report.add(
+                "hash_mismatches",
+                "GENERATION8_PRODUCT_SUBJECT_MANIFEST_SHA256_MISMATCH",
+                product_manifest_path,
+            )
+        runtime_binding_sha256 = _validate_manifest_product_bindings(
+            project,
+            subject_manifest,
+            (authorized_product_subject_head, authorization_head),
+            report,
+        )
+        generation8_changed_paths = sorted(
+            path
+            for _status, path in project.changed_entries(
+                GENERATION7_ARTIFACT_HEAD_SHA, authorized_product_subject_head
+            )
+            if is_generation8_mcp_mutation_path(path)
+        )
+        expected_manifest_identity = {
+            "schema_version": (
+                "space_syndicate.v076.generation8_product_path_manifest.v1"
+            ),
+            "authorization_id": GENERATION8_AUTHORIZATION_ID,
+            "generation_id": GENERATION8_ID,
+            "base_head_sha": GENERATION7_ARTIFACT_HEAD_SHA,
+            "base_tree_sha": project.tree(GENERATION7_ARTIFACT_HEAD_SHA),
+            "product_file_change_count": len(generation8_changed_paths),
+            "product_file_change_paths": generation8_changed_paths,
+            "direct_filesystem_product_edit_count": 0,
+        }
+        for field, expected_value in expected_manifest_identity.items():
+            if subject_manifest.get(field) != expected_value:
+                report.add(
+                    "identity_mismatches",
+                    "GENERATION8_PRODUCT_PATH_MANIFEST_IDENTITY_MISMATCH",
+                    f"{field}:expected={expected_value!r}:actual={subject_manifest.get(field)!r}",
+                )
+        if subject_manifest.get("canonical_payload_sha256") != canonical_payload_sha256(
+            subject_manifest
+        ):
+            report.add(
+                "hash_mismatches",
+                "GENERATION8_PRODUCT_PATH_MANIFEST_CANONICAL_SHA256_MISMATCH",
+                product_manifest_path,
+            )
+        required_runtime_paths = {
+            "project.godot",
+            "scenes/main.tscn",
+            "scenes/runtime/V075RuntimeComposition.tscn",
+            "scenes/ui/v075/V075SampleGameScreen.tscn",
+        }
+        if not required_runtime_paths.issubset(runtime_binding_sha256):
+            report.add(
+                "path_failures",
+                "GENERATION8_PRODUCT_PATH_MANIFEST_RUNTIME_BOUNDARY_INCOMPLETE",
+                repr(sorted(runtime_binding_sha256)),
+            )
+
+    receipt_additions = project.addition_commits(
+        evaluated_head, GENERATION8_STEP11_RECEIPT_PATH
+    )
+    if len(receipt_additions) != 1:
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_RECEIPT_ARTIFACT_COMMIT_NOT_UNIQUE",
+            repr(receipt_additions),
+        )
+        return report.finish()
+    artifact_head = receipt_additions[0]
+    report.artifact_head_sha = artifact_head
+    try:
+        execution_head = project.single_parent(artifact_head)
+        execution_tree = project.tree(execution_head)
+    except ValueError as exc:
+        report.add(
+            "identity_mismatches", "GENERATION8_ARTIFACT_PARENT_INVALID", str(exc)
+        )
+        return report.finish()
+    report.execution_head_sha = execution_head
+    report.execution_tree_sha = execution_tree
+    if execution_head != authorization_head or execution_tree != authorization_tree:
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_EXECUTION_HEAD_NOT_AUTHORIZATION_COMMIT",
+            f"expected={authorization_head}/{authorization_tree}:actual={execution_head}/{execution_tree}",
+        )
+    if not project.is_ancestor(artifact_head, evaluated_head):
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_ARTIFACT_NOT_EVALUATED_ANCESTOR",
+            f"artifact={artifact_head}:evaluated={evaluated_head}",
+        )
+
+    receipt_value, receipt_raw = _load_committed_json(
+        project,
+        artifact_head,
+        GENERATION8_STEP11_RECEIPT_PATH,
+        report,
+        "generation8.step11.receipt",
+        require_canonical_bytes=True,
+    )
+    if receipt_raw is None:
+        return report.finish()
+    report.receipt_count = 1
+    receipt = _validate_generation8_receipt_schema(
+        report, receipt_value, "generation8.step11.receipt", authorization
+    )
+    if receipt is None:
+        return report.finish()
+    report.validated_receipt_count = 1
+    if receipt.step_id != "STEP11" or receipt.status != "PASS":
+        report.add(
+            "field_mismatches",
+            "GENERATION8_STEP11_RECEIPT_NOT_PASS",
+            f"step={receipt.step_id}:status={receipt.status}",
+        )
+    _validate_generation8_parent_receipt_binding(receipt, report)
+    if receipt.live_pr_head_sha != execution_head or receipt.live_pr_tree_sha != execution_tree:
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_RECEIPT_EXECUTION_IDENTITY_MISMATCH",
+            f"expected={execution_head}/{execution_tree}:actual={receipt.live_pr_head_sha}/{receipt.live_pr_tree_sha}",
+        )
+    if receipt.producer_tooling_head_sha != tooling_head or receipt.producer_tooling_tree_sha != tooling_tree:
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_RECEIPT_TOOLING_IDENTITY_MISMATCH",
+            f"expected={tooling_head}/{tooling_tree}:actual={receipt.producer_tooling_head_sha}/{receipt.producer_tooling_tree_sha}",
+        )
+    if receipt.resume_authorization_manifest_sha256 != authorization_sha256:
+        report.add(
+            "hash_mismatches",
+            "GENERATION8_RECEIPT_AUTHORIZATION_SHA256_MISMATCH",
+            repr(receipt.resume_authorization_manifest_sha256),
+        )
+    expected_contains_product_delta = bool(generation8_changed_paths)
+    expected_mcp_landing_path = (
+        GENERATION8_MCP_LANDING_MANIFEST_PATH
+        if expected_contains_product_delta
+        else None
+    )
+    expected_mcp_landing_sha256 = (
+        authorization.get("mcp_landing_manifest_sha256")
+        if expected_contains_product_delta
+        else None
+    )
+    if (
+        receipt.contains_godot_product_delta is not expected_contains_product_delta
+        or receipt.mcp_landing_manifest_path != expected_mcp_landing_path
+        or receipt.mcp_landing_manifest_sha256 != expected_mcp_landing_sha256
+    ):
+        report.add(
+            "identity_mismatches",
+            "GENERATION8_RECEIPT_PRODUCT_DELTA_DECLARATION_INVALID",
+            (
+                f"expected={expected_contains_product_delta}/"
+                f"{expected_mcp_landing_path}/{expected_mcp_landing_sha256}:"
+                f"actual={receipt.contains_godot_product_delta}/"
+                f"{receipt.mcp_landing_manifest_path}/"
+                f"{receipt.mcp_landing_manifest_sha256}"
+            ),
+        )
+    for path, claimed, label in (
+        (receipt.producer_script_path, receipt.producer_script_sha256, "producer_script"),
+        (receipt.schema_authority_path, receipt.schema_authority_sha256, "schema_authority"),
+        (receipt.validator_path, receipt.validator_sha256, "validator"),
+        (receipt.workflow_path, receipt.workflow_sha256, "workflow"),
+        (receipt.product_path_manifest_path, receipt.product_path_manifest_sha256, "product_manifest"),
+        (receipt.tooling_seal_path, receipt.tooling_seal_sha256, "tooling_seal"),
+        (receipt.resume_authorization_manifest_path, receipt.resume_authorization_manifest_sha256, "authorization_manifest"),
+    ):
+        _validate_supporting_binding(
+            project,
+            artifact_head,
+            path,
+            claimed,
+            report,
+            f"generation8.receipt.{label}",
+        )
+    assert report.receipt_bindings is not None
+    report.receipt_bindings.append(
+        {
+            "step_id": "STEP11",
+            "receipt_id": receipt.receipt_id,
+            "path": GENERATION8_STEP11_RECEIPT_PATH,
+            "sha256": sha256_bytes(receipt_raw),
+            "status": receipt.status,
+            "subject_head_sha": receipt.subject_head_sha,
+            "subject_tree_sha": receipt.subject_tree_sha,
+            "execution_head_sha": receipt.live_pr_head_sha,
+            "execution_tree_sha": receipt.live_pr_tree_sha,
+        }
+    )
+    allowlist = {GENERATION8_STEP11_RECEIPT_PATH}
+    allowlist.update(
+        _validate_generation8_evidence_manifest(
+            project, artifact_head, receipt, authorization, report
+        )
+    )
+    _validate_generation8_source_evidence_index(
+        project, artifact_head, authorization, allowlist, report
+    )
+    _validate_generation8_runtime_evidence(
+        project,
+        artifact_head,
+        receipt,
+        authorization,
+        authorization_sha256,
+        runtime_binding_sha256,
+        allowlist,
+        report,
+    )
+    allowlist.update(
+        _validate_generation8_formal_documents(
+            project,
+            artifact_head,
+            execution_head,
+            execution_tree,
+            authorization,
+            authorization_sha256,
+            receipt_raw,
+            report,
+        )
+    )
+    formal_paths = project.list_paths(artifact_head, GENERATION8_FORMAL_ROOT)
+    if formal_paths != sorted(allowlist):
+        report.add(
+            "path_failures",
+            "GENERATION8_FORMAL_PATH_SET_MISMATCH",
+            f"expected={sorted(allowlist)}:actual={formal_paths}",
+        )
+    generation8_paths = project.list_paths(
+        artifact_head, "reports/reuse/full_convergence/generation-008"
+    )
+    if any(
+        not path.startswith(GENERATION8_FORMAL_ROOT + "/")
+        for path in generation8_paths
+    ):
+        report.add(
+            "path_failures",
+            "GENERATION8_MULTIPLE_FORMAL_ATTEMPTS_DETECTED",
+            repr(generation8_paths),
+        )
+    actual_entries = project.changed_entries(execution_head, artifact_head)
+    expected_entries = [("A", path) for path in sorted(allowlist)]
+    if actual_entries != expected_entries:
+        report.add(
+            "path_failures",
+            "GENERATION8_ARTIFACT_COMMIT_NOT_EXACT_APPEND_ONLY_ALLOWLIST",
+            f"expected={expected_entries}:actual={actual_entries}",
+        )
+    for path in sorted(allowlist):
+        try:
+            artifact_bytes = project.read_regular_file(artifact_head, path)
+            evaluated_bytes = project.read_regular_file(evaluated_head, path)
+        except (ValueError, CommittedPathError) as exc:
+            report.add("path_failures", "GENERATION8_ARTIFACT_FILE_UNAVAILABLE", f"{path}:{exc}")
+            continue
+        if artifact_bytes != evaluated_bytes:
+            report.add(
+                "hash_mismatches", "GENERATION8_ARTIFACT_BYTES_DRIFT_AFTER_APPEND", path
+            )
+    return report.finish()
+
+
 def validate_repository(
     project_root: Path,
     expected_consumer_head: str,
@@ -3656,6 +6216,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     validate_parser.add_argument("--expected-consumer-head", required=True)
     validate_parser.add_argument("--report-json", type=Path, required=True)
+    validate_generation8_parser = subparsers.add_parser("validate-generation8")
+    validate_generation8_parser.add_argument("--project", type=Path, required=True)
+    validate_generation8_parser.add_argument(
+        "--expected-consumer-head", required=True
+    )
+    validate_generation8_parser.add_argument(
+        "--report-json", type=Path, required=True
+    )
     args = parser.parse_args(argv)
 
     if args.command == "schema":
@@ -3666,11 +6234,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     try:
-        payload = validate_repository(
-            args.project,
-            args.expected_consumer_head,
-            args.subject_manifest,
-        )
+        if args.command == "validate-generation8":
+            payload = validate_generation8_repository(
+                args.project,
+                args.expected_consumer_head,
+            )
+        else:
+            payload = validate_repository(
+                args.project,
+                args.expected_consumer_head,
+                args.subject_manifest,
+            )
     except Exception as exc:  # final CLI boundary is always fail-closed
         payload = {
             "validator_status": "FAIL",

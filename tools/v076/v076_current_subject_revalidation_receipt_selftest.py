@@ -894,6 +894,173 @@ exit 1
     return True
 
 
+def _generation8_authorization_fixture() -> tuple[dict[str, Any], str, list[str]]:
+    receipt_rows = [
+        (
+            step_id,
+            path,
+            contract.GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP[step_id],
+            contract.GENERATION7_FROZEN_RECEIPT_STATUS_BY_STEP[step_id],
+        )
+        for step_id, path in contract.REQUIRED_RECEIPT_SPECS
+    ]
+    parent_summary_sha = contract.sha256_bytes(
+        contract.canonical_json_bytes(
+            contract._generation7_receipt_chain_projection(receipt_rows)
+        )
+    )
+    registry_sha256s = [_h("a"), _h("b"), _h("c")]
+    value: dict[str, Any] = {
+        "schema_version": contract.GENERATION8_AUTHORIZATION_SCHEMA_VERSION,
+        "status": "SEALED",
+        "authorization_id": contract.GENERATION8_AUTHORIZATION_ID,
+        "generation_id": 8,
+        "parent_generation_id": 7,
+        "parent_generation7_summary_sha256": parent_summary_sha,
+        "parent_generation7_summary_derivation": contract.GENERATION7_SUMMARY_DERIVATION,
+        "parent_step09_receipt_sha256": contract.GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP["STEP09"],
+        "parent_step11_blocked_receipt_sha256": contract.GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP["STEP11"],
+        "parent_step12_receipt_sha256": contract.GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP["STEP12"],
+        "parent_evidence_id": 9631,
+        "evidence_registry_index_paths": list(contract.GENERATION8_REGISTRY_INDEX_PATHS),
+        "evidence_registry_index_sha256s": registry_sha256s,
+        "evidence_registry_max_evidence_id": 9693,
+        "new_evidence_id": 9694,
+        "evidence_id_derivation": contract.GENERATION8_EVIDENCE_ID_DERIVATION,
+        "product_subject_head_sha": _g("a"),
+        "product_subject_tree_sha": _g("b"),
+        "live_pr_head_sha": _g("c"),
+        "live_pr_tree_sha": _g("d"),
+        "selected_seed": 900940611,
+        "player_count": 4,
+        "new_game_profile": {
+            "geography_complexity": "STANDARD",
+            "land_ocean_profile": "BALANCED",
+            "region_count": 16,
+        },
+        "major_round_contract_path": contract.GENERATION8_MAJOR_ROUND_CONTRACT_PATH,
+        "major_round_contract_sha256": _h("d"),
+        "product_path_manifest_path": contract.GENERATION8_PRODUCT_PATH_MANIFEST_PATH,
+        "product_path_manifest_sha256": _h("c"),
+        "mcp_landing_manifest_sha256": _h("9"),
+        "receipt_schema_path": contract.SCHEMA_AUTHORITY_PATH,
+        "receipt_schema_sha256": _h("e"),
+        "receipt_validator_path": contract.VALIDATOR_PATH,
+        "receipt_validator_sha256": _h("e"),
+        "required_workflow_path": contract.WORKFLOW_PATH,
+        "required_workflow_sha256": _h("f"),
+        "receipt_selftest_path": contract.SELFTEST_PATH,
+        "receipt_selftest_sha256": _h("1"),
+        "focused_test_report_path": contract.GENERATION8_FOCUSED_TEST_REPORT_PATH,
+        "focused_test_report_sha256": _h("2"),
+        "characterization_report_path": contract.GENERATION8_CHARACTERIZATION_PATH,
+        "characterization_report_sha256": _h("3"),
+        "generation8_tooling_seal_path": contract.GENERATION8_TOOLING_SEAL_PATH,
+        "generation8_tooling_seal_sha256": _h("4"),
+        "formal_execution_count": 1,
+        "automatic_retry": False,
+        "created_at_utc": "2026-09-01T00:00:00Z",
+        "canonical_payload_sha256": "",
+    }
+    value["canonical_payload_sha256"] = contract.canonical_payload_sha256(value)
+    return value, parent_summary_sha, registry_sha256s
+
+
+def _generation8_authorization_accepts(
+    mutate: Callable[[dict[str, Any]], None] | None = None,
+) -> bool:
+    value, parent_summary_sha, registry_sha256s = _generation8_authorization_fixture()
+    if mutate is not None:
+        mutate(value)
+        value["canonical_payload_sha256"] = contract.canonical_payload_sha256(value)
+    report = contract.ValidationReport()
+    contract._validate_generation8_authorization_value(
+        value,
+        report,
+        parent_summary_sha256=parent_summary_sha,
+        registry_sha256s=registry_sha256s,
+        registry_max_evidence_id=9693,
+        tooling_head_sha=_g("c"),
+        tooling_tree_sha=_g("d"),
+        product_subject_head_sha=_g("a"),
+        product_subject_tree_sha=_g("b"),
+    )
+    return report.finish()["validator_status"] == "PASS"
+
+
+def _base_generation8_receipt() -> tuple[dict[str, Any], dict[str, Any]]:
+    manifest, _parent_summary_sha, _registry_sha256s = (
+        _generation8_authorization_fixture()
+    )
+    value = _base_receipt("STEP11")
+    value.update(
+        {
+            "authorization_id": contract.GENERATION8_AUTHORIZATION_ID,
+            "generation_id": 8,
+            "resume_evidence_id": 9694,
+            "subject_head_sha": manifest["product_subject_head_sha"],
+            "subject_tree_sha": manifest["product_subject_tree_sha"],
+            "product_path_manifest_path": manifest["product_path_manifest_path"],
+            "product_path_manifest_sha256": manifest["product_path_manifest_sha256"],
+            "contains_godot_product_delta": True,
+            "mcp_landing_manifest_path": contract.GENERATION8_MCP_LANDING_MANIFEST_PATH,
+            "mcp_landing_manifest_sha256": manifest["mcp_landing_manifest_sha256"],
+            "live_pr_head_sha": _g("e"),
+            "live_pr_tree_sha": _g("f"),
+            "producer_tooling_head_sha": _g("c"),
+            "producer_tooling_tree_sha": _g("d"),
+            "tooling_seal_path": contract.GENERATION8_TOOLING_SEAL_PATH,
+            "resume_authorization_manifest_path": contract.GENERATION8_AUTHORIZATION_MANIFEST_PATH,
+            "evidence_manifest_path": contract.GENERATION8_STEP11_EVIDENCE_MANIFEST_PATH,
+            "mcp_runtime_evidence_path": contract.GENERATION8_RUNTIME_EVIDENCE_PATH,
+            "check_count": len(contract.GENERATION8_STEP11_PROOF_FIELDS),
+            "pass_count": len(contract.GENERATION8_STEP11_PROOF_FIELDS),
+            "previous_receipt_sha256": contract.GENERATION7_FROZEN_RECEIPT_SHA256_BY_STEP["STEP11"],
+        }
+    )
+    return _finalize_receipt(value), manifest
+
+
+def _generation8_receipt_accepts(
+    mutate: Callable[[dict[str, Any]], None] | None = None,
+    *,
+    validate_parent: bool = False,
+) -> bool:
+    value, manifest = _base_generation8_receipt()
+    if mutate is not None:
+        mutate(value)
+        _finalize_receipt(value)
+    report = contract.ValidationReport()
+    typed = contract._validate_generation8_receipt_schema(
+        report, value, "fixture.generation8_receipt", manifest
+    )
+    if typed is not None and validate_parent:
+        contract._validate_generation8_parent_receipt_binding(typed, report)
+    return typed is not None and report.finish()["validator_status"] == "PASS"
+
+
+def _generation7_frozen_chain_accepts() -> bool:
+    project = contract.GitCommittedProject(REPO_ROOT)
+    head = project.resolve_commit("HEAD")
+    report = contract.ValidationReport()
+    summary_sha, rows = contract._validate_generation7_frozen_receipt_chain(
+        project, head, report
+    )
+    return (
+        summary_sha is not None
+        and len(rows) == 3
+        and report.finish()["validator_status"] == "PASS"
+    )
+
+
+def _generation8_missing_manifest_rejected() -> bool:
+    payload = contract.validate_generation8_repository(REPO_ROOT, "HEAD")
+    return (
+        payload["validator_status"] == "FAIL"
+        and "GENERATION8_AUTHORIZATION_COMMIT_NOT_UNIQUE" in payload["failure_codes"]
+    )
+
+
 def main() -> int:
     cases: list[tuple[str, str, Callable[[], bool]]] = []
 
@@ -901,6 +1068,9 @@ def main() -> int:
         cases.append((case_id, "POSITIVE", check))
 
     def negative(case_id: str, rejected: Callable[[], bool]) -> None:
+        cases.append((case_id, "NEGATIVE", rejected))
+
+    def generation8_negative(case_id: str, rejected: Callable[[], bool]) -> None:
         cases.append((case_id, "NEGATIVE", rejected))
 
     positive("P01_TYPED_PASS_RECEIPT", lambda: _schema_accepts(_base_receipt()))
@@ -950,6 +1120,47 @@ def main() -> int:
             contract.canonical_json_bytes(_base_receipt())
         )
         == _base_receipt(),
+    )
+    positive("P21_GENERATION7_FROZEN_RECEIPT_CHAIN", _generation7_frozen_chain_accepts)
+    positive(
+        "P22_GENERATION8_AUTHORIZED_RECEIPT",
+        lambda: _generation8_authorization_accepts()
+        and _generation8_receipt_accepts(validate_parent=True),
+    )
+    generation8_negative(
+        "N113_GENERATION8_WITH_GENERATION7_EVIDENCE_ID_REJECTED",
+        lambda: not _generation8_receipt_accepts(
+            lambda value: value.__setitem__("resume_evidence_id", 9631)
+        ),
+    )
+    generation8_negative(
+        "N114_GENERATION7_WITH_GENERATION8_EVIDENCE_ID_REJECTED",
+        lambda: not _schema_accepts(
+            _mutated(lambda value: value.__setitem__("resume_evidence_id", 9694))
+        ),
+    )
+    generation8_negative(
+        "N115_GENERATION8_PARENT_CHAIN_MISMATCH_REJECTED",
+        lambda: not _generation8_receipt_accepts(
+            lambda value: value.__setitem__("previous_receipt_sha256", _h("0")),
+            validate_parent=True,
+        ),
+    )
+    generation8_negative(
+        "N116_GENERATION8_AUTHORIZATION_MANIFEST_MISSING_REJECTED",
+        _generation8_missing_manifest_rejected,
+    )
+    generation8_negative(
+        "N117_GENERATION8_AUTHORIZED_HEAD_MISMATCH_REJECTED",
+        lambda: not _generation8_authorization_accepts(
+            lambda value: value.__setitem__("live_pr_head_sha", _g("e"))
+        ),
+    )
+    generation8_negative(
+        "N118_GENERATION8_PRODUCT_HEAD_MISMATCH_REJECTED",
+        lambda: not _generation8_authorization_accepts(
+            lambda value: value.__setitem__("product_subject_head_sha", _g("c"))
+        ),
     )
     negative(
         "N92_AUDIT_P1_NO_GO_REJECTED",
@@ -2013,7 +2224,7 @@ def main() -> int:
 
     workflow_text = (REPO_ROOT / contract.WORKFLOW_PATH).read_text(encoding="utf-8")
     consumer_block = workflow_text.split(
-        "      - name: Consume Generation 7 current-subject receipts (fail closed)", 1
+        "      - name: Consume current authorized receipt generation (fail closed)", 1
     )[-1].split("\n      - name:", 1)[0]
     effective_gate_block = workflow_text.split(
         "      - name: Enforce Effective Gate", 1
@@ -2026,7 +2237,15 @@ def main() -> int:
     positive(
         "P15_SINGLE_REQUIRED_CONSUMER",
         lambda: workflow_text.count(
-            "v076_current_subject_revalidation_receipt.py validate"
+            "      - name: Consume current authorized receipt generation (fail closed)"
+        )
+        == 1
+        and consumer_block.count(
+            "v076_current_subject_revalidation_receipt.py validate-generation8"
+        )
+        == 1
+        and consumer_block.count(
+            "v076_current_subject_revalidation_receipt.py validate `"
         )
         == 1,
     )
@@ -2046,11 +2265,11 @@ def main() -> int:
         == 1
         and "steps.full_convergence_inputs.outputs.current_subject_manifest }}"
         not in consumer_block
-        and "$caseCount -ne 132" in workflow_text
-        and "[long]$negativeCaseCountProperty.Value -ne 112" in workflow_text
+        and "$caseCount -ne 140" in workflow_text
+        and "[long]$negativeCaseCountProperty.Value -ne 118" in workflow_text
         and (
             '[string]$receipt.NEGATIVE_FIXTURE_CATALOG_SHA256 -cne '
-            '"3f2152db36028a12ed79e22b49d2291f84cff0e291075f954b3840ebd2b55a2a"'
+            '"26129c2720bf6c252bc219127ba47c420a7672912135082da0c28c3c8a02797a"'
             in workflow_text
         ),
     )
@@ -2066,7 +2285,7 @@ def main() -> int:
     negative("N62_CONSUMER_OR_TRUE_ABSENT", lambda: "|| true" not in consumer_block)
     negative(
         "N63_CONSUMER_PATH_ONLY_ACCEPTANCE_ABSENT",
-        lambda: "validated_receipt_count -ne 3" in effective_gate_block
+        lambda: "validated_receipt_count -ne $expectedReceiptCount" in effective_gate_block
         and "validator_status -cne $expectedReceiptStatus" in effective_gate_block,
     )
     negative(
@@ -2200,7 +2419,7 @@ def main() -> int:
     negative_ids = [row["case_id"] for row in results if row["kind"] == "NEGATIVE"]
     pass_count = sum(row["status"] == "PASS" for row in results)
     executed_negative_case_ids = sorted(negative_ids)
-    executed_negative_set_matches = contract._executed_negative_case_ids_match(
+    executed_negative_set_matches = contract._generation8_executed_negative_case_ids_match(
         executed_negative_case_ids, Path(__file__).read_bytes()
     )
     executed_negative_set_sha256 = contract._negative_case_id_set_sha256(
@@ -2218,7 +2437,7 @@ def main() -> int:
         "RECEIPT_CONTRACT_SELFTEST_STATUS": (
             "PASS"
             if pass_count == len(results)
-            and len(results) == contract.REQUIRED_SELFTEST_CASE_COUNT
+            and len(results) == contract.GENERATION8_REQUIRED_SELFTEST_CASE_COUNT
             and false_green_count == 0
             and valid_false_reject_count == 0
             and executed_negative_set_matches
