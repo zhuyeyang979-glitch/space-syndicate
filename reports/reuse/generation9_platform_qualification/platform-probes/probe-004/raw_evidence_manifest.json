@@ -1,0 +1,15 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_raw_evidence_manifest.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "probe_id": "probe-004",
+  "append_only": true,
+  "raw_evidence_root_token": "TASK_OUTPUT/platform-probes/probe-004",
+  "file_count": 1,
+  "files": [
+    {
+      "path": "probe_execution_result.json",
+      "size_bytes": 1585,
+      "sha256": "8af9c091faf0b820784e4fc27ab749ccb0b359e411bea726062582bc79888a8a"
+    }
+  ]
+}

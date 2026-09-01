@@ -236,11 +236,11 @@ try {
 
     $identityChecks = [ordered]@{
         godot_binary = @($GodotPath, 'b2ca888d5115a6cedee564764a2ee494a625f2ec2edbabd010fe33c9a88a6bf8')
-        project_godot = @(Join-Path $root 'project.godot', '849e8c9458b1f6f4431a00073a8d50119937e64a995303874354fb34da4fb06b')
-        main_tscn = @(Join-Path $root 'scenes\main.tscn', 'aabe4e7f5dce63af558d22c2b77b0cffcfad03a763a7c6d11c4003e90e8e79f3')
-        runtime_bridge = @(Join-Path $root 'addons\funplay_mcp\runtime\funplay_mcp_runtime_bridge.gd', 'f3bbc4acc290bffbd596695b4962fabda85d3da764be91e50eb9f4fba2352990')
+        project_godot = @((Join-Path $root 'project.godot'), '849e8c9458b1f6f4431a00073a8d50119937e64a995303874354fb34da4fb06b')
+        main_tscn = @((Join-Path $root 'scenes\main.tscn'), 'aabe4e7f5dce63af558d22c2b77b0cffcfad03a763a7c6d11c4003e90e8e79f3')
+        runtime_bridge = @((Join-Path $root 'addons\funplay_mcp\runtime\funplay_mcp_runtime_bridge.gd'), 'f3bbc4acc290bffbd596695b4962fabda85d3da764be91e50eb9f4fba2352990')
         mcp_launcher = @($launchTool, 'ae61c920a2a1b4c6d0c2e25d46a754d8d077ed145c0cfbe152c29c4566bc58ba')
-        class_cache = @(Join-Path $root '.godot\global_script_class_cache.cfg', 'f35abc2d252fa772468528f561dd52344ec0c3b09bd0a9b58ebfaf3d54c2ea01')
+        class_cache = @((Join-Path $root '.godot\global_script_class_cache.cfg'), 'f35abc2d252fa772468528f561dd52344ec0c3b09bd0a9b58ebfaf3d54c2ea01')
     }
     $identityResults = [ordered]@{}
     foreach ($entry in $identityChecks.GetEnumerator()) {

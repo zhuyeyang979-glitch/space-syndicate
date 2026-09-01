@@ -1,0 +1,69 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_report.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "probe_id": "probe-004",
+  "append_only": true,
+  "formal_generation": false,
+  "generation9_formal_execution_count": 0,
+  "generation9_consumed": false,
+  "started_at_utc": "2026-09-01T22:57:03.1657993Z",
+  "finished_at_utc": "2026-09-01T22:57:04.0439493Z",
+  "status": "PRE_EXECUTION_BLOCKED",
+  "overall_classification": "NONFORMAL_PLATFORM_PROBE_TOOLING_FAILURE",
+  "failure_class": "TOOLING_FAILURE",
+  "failure_stage": "CANONICAL_IDENTITY_TUPLE_CONSTRUCTION",
+  "failure_detail": "PowerShell parsed one file-path and expected-hash tuple as a single joined path.",
+  "product_failure_attested": false,
+  "platform_capacity_failure_attested": false,
+  "monitor_started": false,
+  "godot_editor_launch_count": 0,
+  "main_scene_start_count": 0,
+  "seed_workflow_start_count": 0,
+  "successor_probe_execution_count_contribution": 0,
+  "exact_clone_identity": {
+    "path_token": "GENERATION9_EXACT_CLONE",
+    "branch": "codex/v076-generation9-platform-qualification-7a2e10c7-001",
+    "head_sha": "e4673d55a4e70633c761b218fe1d879e05fb38e5",
+    "tree_sha": "a95826b78bd161ff4a08d5a9f46bfedb07ac2970",
+    "tracked_delta_count": 0,
+    "index_delta_count": 0,
+    "untracked_uid_count": 295
+  },
+  "mcp_control_plane": {
+    "status": "NOT_STARTED",
+    "milestone_pass_count": 0,
+    "milestone_required_count": 12
+  },
+  "memory_observation": {
+    "status": "NOT_STARTED",
+    "sample_count": 0,
+    "capacity_guard_triggered": false
+  },
+  "seed_binding": {
+    "status": "NOT_STARTED",
+    "selected_seed": 917592522,
+    "four_layer_match": false,
+    "empty_readback_count": 0,
+    "fallback_randomization_count": 0,
+    "direct_runtime_injection_count": 0
+  },
+  "cleanup": {
+    "status": "NOT_REQUIRED_NO_PROCESS_STARTED",
+    "process_count_after": 0,
+    "endpoint_count_after": 0,
+    "forced_stop": false,
+    "unrelated_process_termination_count": 0
+  },
+  "corrective_action": {
+    "status": "REPAIRED_BEFORE_NEXT_EXECUTION",
+    "change": "Wrap every Join-Path expression before constructing the two-element identity tuple.",
+    "probe_004_overwrite_allowed": false,
+    "next_probe_id": "probe-005"
+  },
+  "raw_evidence": {
+    "root_token": "TASK_OUTPUT/platform-probes/probe-004",
+    "file_count": 1,
+    "execution_result_sha256": "8af9c091faf0b820784e4fc27ab749ccb0b359e411bea726062582bc79888a8a"
+  },
+  "next_atomic_step": "RUN_PROBE_005_WITH_REPAIRED_PREFLIGHT_AND_MONITOR_ACTIVE_BEFORE_EDITOR_LAUNCH"
+}
