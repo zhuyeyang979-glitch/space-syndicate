@@ -124,6 +124,14 @@ func _ready() -> void:
 			_v076_production_configuration_failure_count += 1
 			push_error("V076 Monster production adapter binding failed")
 			return
+		var terminal_drain_binding := _runtime_owner.call(
+			"bind_terminal_drain_port",
+			self
+		) as Dictionary
+		if not bool(terminal_drain_binding.get("accepted", false)):
+			_v076_production_configuration_failure_count += 1
+			push_error("V076 terminal drain observation binding failed")
+			return
 	_runtime_owner.state_changed.connect(_on_runtime_state_changed)
 	_runtime_owner.final_settlement_committed.connect(
 		_on_final_settlement_committed
@@ -576,6 +584,62 @@ func _ensure_v076_production_configuration(seed_value: int) -> Dictionary:
 		"seed": seed_value,
 		"kernel_owner": "V076DeterministicKernel",
 		"direct_action_owner": "V076PrivateDirectActionInputOwnerV1",
+	}
+
+
+func terminal_drain_snapshot() -> Dictionary:
+	if (
+		not _v076_production_ready
+		or not is_instance_valid(_v076_kernel)
+		or not is_instance_valid(_v076_private_direct_action_owner)
+	):
+		return {
+			"valid": false,
+			"reason_code": "terminal_drain_dependencies_not_ready",
+		}
+	var kernel_debug := _v076_kernel.call("debug_snapshot") as Dictionary
+	var direct_debug := _v076_private_direct_action_owner.call(
+		"debug_snapshot"
+	) as Dictionary
+	var direct_drain := _v076_private_direct_action_owner.call(
+		"terminal_drain_snapshot"
+	) as Dictionary
+	var captured := _v076_kernel.call("capture_snapshot") as Dictionary
+	var kernel_snapshot := captured.get("snapshot", {}) as Dictionary
+	var direct_domain_id := str(direct_debug.get("domain_id", ""))
+	var pending_direct_command_count := 0
+	for command_variant in kernel_snapshot.get("pending_commands", []) as Array:
+		var command := command_variant as Dictionary
+		if str(command.get("domain_id", "")) == direct_domain_id:
+			pending_direct_command_count += 1
+	var unresolved_action_ids := direct_drain.get(
+		"unresolved_action_ids",
+		[]
+	) as Array
+	var valid := (
+		int(kernel_debug.get("domain_count", 0)) > 0
+		and bool(direct_debug.get("configured", false))
+		and bool(direct_drain.get("valid", false))
+		and bool(captured.get("accepted", false))
+		and not direct_domain_id.is_empty()
+	)
+	return {
+		"schema": "V076CompleteMajorRoundTerminalDrainSnapshotV1",
+		"valid": valid,
+		"drained": (
+			valid
+			and pending_direct_command_count == 0
+			and unresolved_action_ids.is_empty()
+		),
+		"current_tick": int(kernel_debug.get("current_tick", -1)),
+		"pending_command_count": pending_direct_command_count,
+		"unresolved_action_count": unresolved_action_ids.size(),
+		"unresolved_action_ids": unresolved_action_ids.duplicate(),
+		"public_batch_complete": str(_runtime_owner.call("phase")) in [
+			"terminal_draining",
+			"settled",
+		],
+		"writes_gameplay_authority": false,
 	}
 
 

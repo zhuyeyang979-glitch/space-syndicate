@@ -66,6 +66,45 @@ func _run() -> void:
 		runtime_errors,
 	])
 	_expect(normal_terminal, "natural seed terminal is a normal Victory/FinalSettlement, not a track-loop blocker")
+	_expect(
+		bool(debug.get("victory_qualification_latched", false)),
+		"Victory qualification is explicitly latched before FinalSettlement"
+	)
+	_expect(
+		int(debug.get("victory_qualification_batch_number", 0)) > 0
+		and int(debug.get("victory_qualification_batch_number", 0))
+			<= int(debug.get("batch_number", 0)),
+		"qualification latch records its major-round position"
+	)
+	_expect(
+		bool(debug.get("complete_major_round_before_settlement", false)),
+		"FinalSettlement observes the complete-major-round barrier"
+	)
+	_expect(
+		int(debug.get("accepted_action_loss_at_terminal_count", -1)) == 0,
+		"terminal settlement loses no accepted action"
+	)
+	_expect(
+		int(debug.get("terminal_drain_deadlock_count", -1)) == 0,
+		"natural terminal drain completes without deadlock"
+	)
+	_expect(
+		int(debug.get("new_major_round_after_qualification_count", -1)) == 0,
+		"qualification opens no new major round"
+	)
+	_expect(
+		int(debug.get("duplicate_settlement_count", -1)) == 0,
+		"FinalSettlement remains exact once"
+	)
+	var runtime_source := FileAccess.get_file_as_string(
+		"res://scripts/v073_runtime/v073_sample_runtime_owner.gd"
+	)
+	_expect(
+		runtime_source.contains("MAX_TERMINAL_DRAIN_TICKS")
+		and runtime_source.contains("func _process_terminal_drain()")
+		and runtime_source.contains("terminal_drain_deadlock"),
+		"terminal drain has an explicit bounded fail-closed guard"
+	)
 	if normal_terminal:
 		var source_instance_id := ""
 		var core := runtime.get("_track_core") as RefCounted

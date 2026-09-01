@@ -1037,6 +1037,34 @@ static func _damage_reject(reason: String) -> Dictionary:
 	return {"accepted": false, "reason": reason}
 
 
+func terminal_drain_snapshot() -> Dictionary:
+	var unresolved_action_ids: Array[String] = []
+	for submission_variant in _submitted_result_by_id.keys():
+		var submission_id := str(submission_variant)
+		var submitted := _submitted_result_by_id.get(
+			submission_id,
+			{}
+		) as Dictionary
+		var action_kind := str(submitted.get("action_kind", ""))
+		var resolved := (
+			_settlement_fingerprint_by_id.has(submission_id)
+			if action_kind == ACTION_KIND_MILITARY
+			else _intake_settlement_fingerprint_by_id.has(submission_id)
+		)
+		if not resolved:
+			unresolved_action_ids.append(submission_id)
+	unresolved_action_ids.sort()
+	return {
+		"schema": "V076PrivateDirectActionTerminalDrainSnapshotV1",
+		"valid": _configured,
+		"drained": unresolved_action_ids.is_empty(),
+		"unresolved_action_count": unresolved_action_ids.size(),
+		"unresolved_action_ids": unresolved_action_ids,
+		"reads_exact_once_submission_ledger": true,
+		"writes_gameplay_authority": false,
+	}
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,

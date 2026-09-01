@@ -33,6 +33,9 @@ const MONSTER_CARD_MODE_HINTS := {
 const ProjectionAdapter := preload(
 	"res://scripts/v075/player/v075_combat_projection_adapter.gd"
 )
+const CombatCandidate := preload(
+	"res://scripts/v075/ai/v075_ai_combat_action_candidate_v1.gd"
+)
 const V075CardDefinitionRegistry := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
@@ -436,6 +439,7 @@ var _combat_map_last_sync_signature := ""
 var _selected_track_item: Dictionary = {}
 var _selected_commodity_item: Dictionary = {}
 var _pending_confirm_binding: Dictionary = {}
+var _military_target_choice_bindings: Array[Dictionary] = []
 var _current_action_mode := "idle"
 var _current_action_source_surface := ""
 var _current_action_started_msec := 0
@@ -5955,15 +5959,17 @@ func _on_military_mission_selected(option: Dictionary) -> void:
 		return
 	var parameters := canonical_option.duplicate(true)
 	parameters["execution_mode"] = _military_execution_mode()
+	_action_submission_pending = true
 	var intent := _issue_combat_intent(
 		_military_intent_kind(),
 		parameters,
 		true
 	)
 	if intent.is_empty():
+		_action_submission_pending = false
+		_update_acceptance_state()
 		return
 	_combat_military_intent_count += 1
-	_action_submission_pending = true
 	_combat_status.text = (
 		"攻击地区" if task_kind == "assault_region" else "攻击怪兽"
 	) + " · 已进入私密直接行动通道"
@@ -6117,11 +6123,13 @@ func _same_military_option_identity(
 		)
 		or left.get("card_action_binding") != right.get("card_action_binding")
 		or str(left.get("candidate_fingerprint", "")).is_empty()
-		or left.get("candidate_fingerprint")
-			!= right.get("candidate_fingerprint")
 		or left.get("military_target_envelope")
 			!= right.get("military_target_envelope")
 		or left.get("target_binding") != right.get("target_binding")
+		or not _military_candidate_fingerprint_matches_revision_history(
+			left,
+			right
+		)
 	):
 		return false
 	if str(left.get("task_kind", "")) == "assault_region":
@@ -6134,6 +6142,76 @@ func _same_military_option_identity(
 		and _positive_int_field(right, "target_source_generation")
 		and left.get("target_source_generation")
 			== right.get("target_source_generation")
+	)
+
+
+func _military_candidate_fingerprint_matches_revision_history(
+	published: Dictionary,
+	current: Dictionary
+) -> bool:
+	var published_fingerprint := str(published.get(
+		"candidate_fingerprint",
+		""
+	))
+	var current_fingerprint := str(current.get(
+		"candidate_fingerprint",
+		""
+	))
+	if published_fingerprint == current_fingerprint:
+		return true
+	var published_canonical := CombatCandidate.military_candidate(
+		published,
+		int(published.get("score", 0))
+	)
+	var current_canonical := CombatCandidate.military_candidate(
+		current,
+		int(current.get("score", 0))
+	)
+	if (
+		published_canonical.is_empty()
+		or current_canonical.is_empty()
+		or published_fingerprint != str(published_canonical.get(
+			"candidate_fingerprint",
+			""
+		))
+		or current_fingerprint != str(current_canonical.get(
+			"candidate_fingerprint",
+			""
+		))
+		or not bool(CombatCandidate.validation_report(
+			published_canonical
+		).get("valid", false))
+		or not bool(CombatCandidate.validation_report(
+			current_canonical
+		).get("valid", false))
+	):
+		return false
+	var published_world_revision := int(published_canonical.get(
+		"expected_world_revision",
+		0
+	))
+	var current_world_revision := int(current_canonical.get(
+		"expected_world_revision",
+		0
+	))
+	# Both sides are canonical, viewer-private projections with identical card,
+	# target and envelope identity. Snapshot delivery can interleave at this
+	# presentation consumer, so revision ordering is not authority here; the
+	# Runtime Owner still performs the monotonic current >= published check.
+	if published_world_revision <= 0 or current_world_revision <= 0:
+		return false
+	var historical_source := current_canonical.duplicate(true)
+	historical_source["expected_world_revision"] = published_world_revision
+	var historical := CombatCandidate.military_candidate(
+		historical_source,
+		int(current_canonical.get("score", 0))
+	)
+	return (
+		not historical.is_empty()
+		and published_fingerprint == str(historical.get(
+			"candidate_fingerprint",
+			""
+		))
 	)
 
 
@@ -7446,6 +7524,33 @@ func _public_arrangement_private_key_count(
 	return 0
 
 
+func _route_military_target_choice_pointer(
+	event: InputEventMouseButton
+) -> bool:
+	if (
+		not _region_popup.visible
+		or event.pressed
+		or event.button_index != MOUSE_BUTTON_LEFT
+	):
+		return false
+	for binding in _military_target_choice_bindings:
+		var choose_button := binding.get("button") as Button
+		var target_menu := binding.get("target_menu") as OptionButton
+		var task_options := binding.get(
+			"task_options",
+			[]
+		) as Array[Dictionary]
+		if (
+			not is_instance_valid(choose_button)
+			or not choose_button.is_visible_in_tree()
+			or not choose_button.get_global_rect().has_point(event.position)
+		):
+			continue
+		_activate_military_target_choice(target_menu, task_options)
+		return true
+	return false
+
+
 func _input(event: InputEvent) -> void:
 	# Keep a small manual gesture bridge alongside Godot's drag-and-drop
 	# contract.  A hand card selects itself on mouse-down, but the hand rail is
@@ -7456,6 +7561,9 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var button := event as InputEventMouseButton
 		if button.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if _route_military_target_choice_pointer(button):
+			get_viewport().set_input_as_handled()
 			return
 		if button.pressed:
 			_manual_drag_last_drop_card_id = ""
@@ -9326,6 +9434,7 @@ func _render_military_card_action_popup(payload: Dictionary) -> void:
 		options.size(),
 	]
 	_clear_children(_region_popup_choices)
+	_military_target_choice_bindings.clear()
 	for task_kind in ["assault_region", "assault_monster"]:
 		var task_options: Array[Dictionary] = []
 		for option_variant in options:
@@ -9359,15 +9468,57 @@ func _render_military_card_action_popup(payload: Dictionary) -> void:
 		choose_button.text = (
 			"选择地区" if task_kind == "assault_region" else "选择怪兽"
 		)
-		choose_button.pressed.connect(func() -> void:
-			var selected := target_menu.get_item_metadata(
-				target_menu.selected
-			) as Dictionary
-			_queue_military_target(selected)
+		choose_button.gui_input.connect(
+			_on_military_target_choice_gui_input.bind(
+				target_menu,
+				task_options
+			)
 		)
 		row.add_child(target_menu)
 		row.add_child(choose_button)
 		_region_popup_choices.add_child(row)
+		_military_target_choice_bindings.append({
+			"button": choose_button,
+			"target_menu": target_menu,
+			"task_options": task_options,
+		})
+
+
+func _on_military_target_choice_gui_input(
+	event: InputEvent,
+	target_menu: OptionButton,
+	task_options: Array[Dictionary]
+) -> void:
+	var activated := false
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		activated = (
+			mouse_event.button_index == MOUSE_BUTTON_LEFT
+			and not mouse_event.pressed
+		)
+	elif event is InputEventKey:
+		var key_event := event as InputEventKey
+		activated = (
+			key_event.pressed
+			and not key_event.echo
+			and key_event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]
+		)
+	if not activated:
+		return
+	_activate_military_target_choice(target_menu, task_options)
+	get_viewport().set_input_as_handled()
+
+
+func _activate_military_target_choice(
+	target_menu: OptionButton,
+	task_options: Array[Dictionary]
+) -> void:
+	if not _region_popup.visible or not is_instance_valid(target_menu):
+		return
+	var selected_index := target_menu.selected
+	if selected_index < 0 or selected_index >= task_options.size():
+		return
+	_queue_military_target(task_options[selected_index].duplicate(true))
 
 
 func _military_options_for_card(card_id: String) -> Array[Dictionary]:

@@ -517,6 +517,8 @@ func _process(delta: float) -> void:
 			resolve_next_action()
 		"maintenance":
 			_process_maintenance()
+		"terminal_draining":
+			_process_terminal_drain()
 
 
 func bind_combat_owner(owner: Node) -> Dictionary:
@@ -3553,9 +3555,101 @@ func _v076_current_military_option(
 		target_slot_id,
 		parameters
 	)
-	if option.is_empty():
-		return {}
-	return option
+	if not option.is_empty():
+		return option
+	# Another seat may advance the Combat Owner's global revision during the
+	# simultaneous submission window. Revalidate the published fingerprint
+	# against the otherwise-current canonical candidate so unrelated combat
+	# activity cannot strand a still-authorized private military target.
+	for option_variant in legal_card_actions(actor_id):
+		if not (option_variant is Dictionary):
+			continue
+		var current := option_variant as Dictionary
+		if (
+			str(current.get("action_domain", "")) != "military"
+			or str(current.get("card_instance_id", "")) != card_instance_id
+			or str(current.get("target_slot_id", "")) != target_slot_id
+		):
+			continue
+		if not bool(CombatCandidate.validation_report(current).get(
+			"valid",
+			false
+		)):
+			current = CombatCandidate.military_candidate(current, 0)
+		if _v076_military_published_candidate_is_current(
+			actor_id,
+			parameters,
+			current
+		):
+			return current.duplicate(true)
+	return {}
+
+
+func _v076_military_published_candidate_is_current(
+	actor_id: String,
+	published: Dictionary,
+	current: Dictionary
+) -> bool:
+	if (
+		current.is_empty()
+		or not bool(CombatCandidate.validation_report(current).get(
+			"valid",
+			false
+		))
+		or str(published.get("owner_player_id", "")) != actor_id
+		or str(current.get("owner_player_id", "")) != actor_id
+		or published.get("target_binding")
+			!= published.get("military_target_envelope")
+		or current.get("target_binding")
+			!= current.get("military_target_envelope")
+	):
+		return false
+	for field_name in [
+		"option_id",
+		"owner_player_id",
+		"card_instance_id",
+		"card_action_binding",
+		"target_slot_id",
+		"task_kind",
+		"target_region_id",
+		"target_monster_source_instance_id",
+		"military_target_envelope",
+		"target_binding",
+	]:
+		if published.get(field_name) != current.get(field_name):
+			return false
+	var published_world_revision := int(published.get(
+		"expected_world_revision",
+		0
+	))
+	var current_world_revision := int(current.get(
+		"expected_world_revision",
+		0
+	))
+	if (
+		published_world_revision <= 0
+		or current_world_revision < published_world_revision
+	):
+		return false
+	var published_fingerprint := str(published.get(
+		"candidate_fingerprint",
+		""
+	))
+	if published_fingerprint == str(current.get("candidate_fingerprint", "")):
+		return true
+	var historical_source := current.duplicate(true)
+	historical_source["expected_world_revision"] = published_world_revision
+	var historical := CombatCandidate.military_candidate(
+		historical_source,
+		int(current.get("score", 0))
+	)
+	return (
+		not historical.is_empty()
+		and published_fingerprint == str(historical.get(
+			"candidate_fingerprint",
+			""
+		))
+	)
 
 
 func _v076_closed_military_parameters(parameters: Dictionary) -> Dictionary:
@@ -3573,6 +3667,7 @@ func _v076_closed_military_parameters(parameters: Dictionary) -> Dictionary:
 		"military_target_envelope",
 		"target_binding",
 		"target_source_generation",
+		"expected_world_revision",
 		"producer_sequence",
 	]:
 		if parameters.has(field_name):
@@ -5175,7 +5270,10 @@ func player_snapshot(viewer_id: String) -> Dictionary:
 		_v075_public_action_arrangement_projection(viewer_id)
 	)
 	if _combat_initialized:
-		var private_facts := _combat_player_private_facts(viewer_id)
+		var private_facts := _combat_player_private_facts(
+			viewer_id,
+			snapshot.get("legal_actions", []) as Array
+		)
 		var authority := _combat_owner.call(
 			"projection_authority_for_viewer",
 			viewer_id,
@@ -9029,7 +9127,10 @@ func _register_private_card_identity_rejection(count: int) -> void:
 	_hidden_info_violation_count += positive_count
 
 
-func _combat_player_private_facts(viewer_id: String) -> Dictionary:
+func _combat_player_private_facts(
+	viewer_id: String,
+	published_legal_actions: Array
+) -> Dictionary:
 	var military_selected := false
 	for card_variant in (_dbg_projection(viewer_id).get(
 		"facts",
@@ -9043,7 +9144,7 @@ func _combat_player_private_facts(viewer_id: String) -> Dictionary:
 	var has_region := false
 	var has_monster := false
 	var military_options: Array[Dictionary] = []
-	for option_variant in legal_card_actions(viewer_id):
+	for option_variant in published_legal_actions:
 		var option := option_variant as Dictionary
 		if str(option.get("action_domain", "")) != "military":
 			continue
@@ -9158,7 +9259,11 @@ func _military_private_option(
 	option: Dictionary,
 	owner_player_id: String
 ) -> Dictionary:
-	var canonical := CombatCandidate.military_candidate(option, 0)
+	var canonical: Dictionary = {}
+	if bool(CombatCandidate.validation_report(option).get("valid", false)):
+		canonical = option.duplicate(true)
+	else:
+		canonical = CombatCandidate.military_candidate(option, 0)
 	if canonical.is_empty():
 		return {}
 	option = canonical

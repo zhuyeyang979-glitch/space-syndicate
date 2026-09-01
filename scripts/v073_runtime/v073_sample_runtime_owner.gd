@@ -29,6 +29,9 @@ const SUBMISSION_WINDOW_MSEC := 30000
 const MAX_ACTIONS_PER_PLAYER := 5
 const DEFAULT_MATCH_SEED := 730045
 const PUBLIC_PROGRESS_PER_PLAYER_TARGET := 2
+# Fail-closed safety window only. It does not change Victory qualification,
+# winner facts, or gameplay timing; it bounds already-accepted terminal work.
+const MAX_TERMINAL_DRAIN_TICKS := 1200
 
 signal match_started(snapshot: Dictionary)
 signal state_changed(snapshot: Dictionary)
@@ -728,6 +731,16 @@ var _adapter_failure_count := 0
 var _projection_emit_coalesced := false
 var _projection_emit_pending := false
 var _match_sequence := 0
+var _victory_qualification_latched := false
+var _victory_settlement_pending := false
+var _victory_qualification_source_revision := -1
+var _victory_qualification_batch_number := 0
+var _terminal_drain_port: Node
+var _terminal_drain_started_tick := -1
+var _terminal_drain_deadline_tick := -1
+var _terminal_drain_deadlock_count := 0
+var _accepted_action_loss_at_terminal_count := 0
+var _new_major_round_after_qualification_count := 0
 
 
 func _ready() -> void:
@@ -746,6 +759,20 @@ func _process(delta: float) -> void:
 			resolve_next_action()
 		"maintenance":
 			_process_maintenance()
+		"terminal_draining":
+			_process_terminal_drain()
+
+
+func bind_terminal_drain_port(port: Node) -> Dictionary:
+	if not is_instance_valid(port) or not port.has_method(
+		"terminal_drain_snapshot"
+	):
+		return _reject("terminal_drain_port_invalid")
+	_terminal_drain_port = port
+	return {
+		"accepted": true,
+		"reason_code": "terminal_drain_port_bound",
+	}
 
 
 func start_new_game(
@@ -1715,6 +1742,24 @@ func debug_snapshot() -> Dictionary:
 			0,
 			_final_settlement_presentation_count - 1
 		),
+		"victory_qualification_latched": _victory_qualification_latched,
+		"victory_settlement_pending": _victory_settlement_pending,
+		"victory_qualification_batch_number": (
+			_victory_qualification_batch_number
+		),
+		"complete_major_round_before_settlement": (
+			not _victory_qualification_latched
+			or _batch_number >= _player_ids.size()
+		),
+		"terminal_drain_started_tick": _terminal_drain_started_tick,
+		"terminal_drain_deadline_tick": _terminal_drain_deadline_tick,
+		"terminal_drain_deadlock_count": _terminal_drain_deadlock_count,
+		"accepted_action_loss_at_terminal_count": (
+			_accepted_action_loss_at_terminal_count
+		),
+		"new_major_round_after_qualification_count": (
+			_new_major_round_after_qualification_count
+		),
 		"track_validation": _track_core.call("validation_report_v1") \
 			if _track_core != null else {},
 		"asset_validation": ASSET_BATCH_CORE.validation_report(_asset_state) \
@@ -2021,10 +2066,12 @@ func _emit_local_asset_refresh_observation(before_assets: Dictionary) -> void:
 
 
 func _finish_macro_boundary() -> void:
-	var qualifies := _public_progress_points >= _victory_target()
-	var macro_round_complete := _batch_number >= _player_ids.size()
-	if qualifies and macro_round_complete:
-		_commit_victory()
+	if _public_progress_points >= _victory_target():
+		if not _latch_victory_qualification():
+			return
+	var major_round_complete := _batch_number >= _player_ids.size()
+	if _victory_qualification_latched and major_round_complete:
+		_begin_terminal_settlement_boundary()
 		return
 	var advance_intent := _track_core.call(
 		"build_intent_v1",
@@ -2047,7 +2094,11 @@ func _on_authoritative_track_advanced(_receipt: Dictionary) -> void:
 	return
 
 
-func _commit_victory() -> void:
+func _latch_victory_qualification() -> bool:
+	if _victory_qualification_latched:
+		return true
+	if _public_progress_points < _victory_target():
+		return false
 	var condition_id := _runtime_victory_condition_id()
 	var source_revision := _public_progress_points
 	var qualification_proof := _victory_authority.issue_qualification(
@@ -2074,10 +2125,117 @@ func _commit_victory() -> void:
 		_victory_authority,
 		_victory_authority.capability()
 	)
-	if not bool((pending.get("receipt", {}) as Dictionary).get("committed", false)):
+	if not bool((pending.get("receipt", {}) as Dictionary).get(
+		"committed",
+		false
+	)):
 		_fail("victory_qualification_failed", pending)
-		return
+		return false
 	_solar_state = (pending.get("state", {}) as Dictionary).duplicate(true)
+	_victory_qualification_latched = true
+	_victory_settlement_pending = true
+	_victory_qualification_source_revision = source_revision
+	_victory_qualification_batch_number = _batch_number
+	_public_history.append({
+		"accepted": true,
+		"outcome_id": "victory_qualification_latched",
+		"reason_code": "complete_major_round_before_final_settlement",
+		"batch_number": _batch_number,
+	})
+	return true
+
+
+func _terminal_drain_snapshot() -> Dictionary:
+	if not is_instance_valid(_terminal_drain_port):
+		return {
+			"valid": true,
+			"drained": true,
+			"current_tick": _clock_msec,
+			"pending_command_count": 0,
+			"unresolved_action_count": 0,
+			"unresolved_action_ids": [],
+		}
+	var snapshot := _terminal_drain_port.call(
+		"terminal_drain_snapshot"
+	) as Dictionary
+	var action_ids := snapshot.get("unresolved_action_ids", []) as Array
+	if (
+		not bool(snapshot.get("valid", false))
+		or not (snapshot.get("drained") is bool)
+		or not (snapshot.get("current_tick") is int)
+		or not (snapshot.get("pending_command_count") is int)
+		or not (snapshot.get("unresolved_action_count") is int)
+		or int(snapshot.get("pending_command_count", -1)) < 0
+		or int(snapshot.get("unresolved_action_count", -1)) < 0
+		or int(snapshot.get("unresolved_action_count", -1)) != action_ids.size()
+	):
+		return {
+			"valid": false,
+			"reason_code": "terminal_drain_snapshot_invalid",
+		}
+	return snapshot.duplicate(true)
+
+
+func _begin_terminal_settlement_boundary() -> void:
+	if _phase in ["settled", "failed"]:
+		return
+	if not _victory_qualification_latched or _batch_number < _player_ids.size():
+		_fail("victory_complete_major_round_boundary_missing", {})
+		return
+	var drain := _terminal_drain_snapshot()
+	if not bool(drain.get("valid", false)):
+		_fail("terminal_drain_observer_invalid", drain)
+		return
+	if bool(drain.get("drained", false)):
+		_commit_victory()
+		return
+	_phase = "terminal_draining"
+	_terminal_drain_started_tick = int(drain.get("current_tick", 0))
+	_terminal_drain_deadline_tick = (
+		_terminal_drain_started_tick + MAX_TERMINAL_DRAIN_TICKS
+	)
+	_emit_local_state()
+
+
+func _process_terminal_drain() -> void:
+	var drain := _terminal_drain_snapshot()
+	if not bool(drain.get("valid", false)):
+		_fail("terminal_drain_observer_invalid", drain)
+		return
+	if bool(drain.get("drained", false)):
+		_commit_victory()
+		return
+	if int(drain.get("current_tick", -1)) >= _terminal_drain_deadline_tick:
+		_terminal_drain_deadlock_count += 1
+		var action_ids := drain.get("unresolved_action_ids", []) as Array
+		_fail("terminal_drain_deadlock", {
+			"action_id": str(action_ids[0]) if not action_ids.is_empty() else "unknown",
+			"unresolved_action_ids": action_ids.duplicate(),
+			"pending_command_count": int(drain.get(
+				"pending_command_count",
+				0
+			)),
+			"deadline_tick": _terminal_drain_deadline_tick,
+		})
+
+
+func _commit_victory() -> void:
+	if _phase == "settled":
+		return
+	if not _victory_qualification_latched and not _latch_victory_qualification():
+		return
+	if _batch_number < _player_ids.size():
+		_fail("victory_complete_major_round_boundary_missing", {})
+		return
+	var drain := _terminal_drain_snapshot()
+	if not bool(drain.get("valid", false)):
+		_fail("terminal_drain_observer_invalid", drain)
+		return
+	if not bool(drain.get("drained", false)):
+		_begin_terminal_settlement_boundary()
+		return
+	var condition_id := _runtime_victory_condition_id()
+	var source_revision := _victory_qualification_source_revision
 	var settlement_id := "settlement.%s" % _match_id
 	var boundary := {
 		"submission_window_locked": true,
@@ -2087,9 +2245,6 @@ func _commit_victory() -> void:
 		"macro_round_complete": true,
 		"every_player_led_once": _batch_number >= _player_ids.size(),
 	}
-	if not bool(boundary.get("every_player_led_once", false)):
-		_begin_batch()
-		return
 	var boundary_proof := _victory_authority.issue_boundary(
 		_solar_state,
 		"proof.boundary.%s" % _match_id,
@@ -2104,7 +2259,7 @@ func _commit_victory() -> void:
 		"intent_id": "intent.victory.boundary.%s" % _match_id,
 		"intent_kind_id": SOLAR_VICTORY_CORE.INTENT_KIND_REVALIDATION,
 		"expected_revision": int(_solar_state.get("revision", 0)),
-		"condition_id": str(gate.get("pending_condition_id", "")),
+		"condition_id": str(gate.get("pending_condition_id", condition_id)),
 		"macro_round_index": int(gate.get("macro_round_index", 1)),
 		"proof_id": str(boundary_proof.get("proof_id", "")),
 		"proof_fingerprint": str(boundary_proof.get("proof_fingerprint", "")),
@@ -2122,6 +2277,7 @@ func _commit_victory() -> void:
 	_solar_state = (settled.get("state", {}) as Dictionary).duplicate(true)
 	_final_settlement = _build_final_settlement(settlement_id)
 	_phase = "settled"
+	_victory_settlement_pending = false
 	_final_settlement_presentation_count += 1
 	_final_settlement_public_log_count += 1
 	_public_history.append({
@@ -2132,7 +2288,6 @@ func _commit_victory() -> void:
 	})
 	final_settlement_committed.emit(_final_settlement.duplicate(true))
 	_emit_local_state()
-
 
 func _build_bound_actions(
 	actor_id: String,
@@ -2578,6 +2733,15 @@ func _reset_runtime() -> void:
 	_canonical_player_projection_count = 0
 	_canonical_ai_observation_count = 0
 	_adapter_failure_count = 0
+	_victory_qualification_latched = false
+	_victory_settlement_pending = false
+	_victory_qualification_source_revision = -1
+	_victory_qualification_batch_number = 0
+	_terminal_drain_started_tick = -1
+	_terminal_drain_deadline_tick = -1
+	_terminal_drain_deadlock_count = 0
+	_accepted_action_loss_at_terminal_count = 0
+	_new_major_round_after_qualification_count = 0
 	_projection_emit_coalesced = false
 	_projection_emit_pending = false
 

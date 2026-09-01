@@ -60,16 +60,18 @@ func _run() -> void:
 			Callable(production_screen, "apply_snapshot")
 		)
 	var runtime := composition.get_node_or_null("V075RuntimeOwner")
+	var combat := composition.get_node_or_null("V075CombatRuntimeOwner")
 	var kernel := composition.get_node_or_null("V076DeterministicKernel")
 	var eta := composition.get_node_or_null("V076MilitaryPhysicalEtaOwnerV1")
 	var adapter := composition.get_node_or_null("V076V075ProductionAdapterV1")
 	var direct := composition.get_node_or_null("V076PrivateDirectActionInputOwnerV1")
 	_expect(runtime != null, "composition reuses one V075 runtime Owner")
+	_expect(combat != null, "composition reuses one V075 combat Owner")
 	_expect(kernel != null, "composition exposes one V076 Kernel")
 	_expect(eta != null, "composition exposes one V076 physical ETA Owner")
 	_expect(adapter != null, "composition exposes one stateless V075 adapter")
 	_expect(direct != null, "composition exposes one private Direct Action Owner")
-	if runtime == null or kernel == null or eta == null or adapter == null or direct == null:
+	if runtime == null or combat == null or kernel == null or eta == null or adapter == null or direct == null:
 		composition.queue_free()
 		await process_frame
 		_finish()
@@ -106,6 +108,217 @@ func _run() -> void:
 		str(card_setup.get("card_instance_id", ""))
 	)
 	_expect(not option.is_empty(), "owner-private projection supplies one legal region assault")
+	var legal_option := _first_region_option(
+		snapshot.get("legal_actions", []) as Array,
+		str(card_setup.get("card_instance_id", ""))
+	)
+	_expect(not legal_option.is_empty(), "snapshot publishes the same legal military option")
+	for identity_field_variant in [
+		"option_id",
+		"candidate_fingerprint",
+		"card_action_binding",
+		"target_binding",
+		"expected_world_revision",
+	]:
+		var identity_field := str(identity_field_variant)
+		_expect(
+			legal_option.get(identity_field) == option.get(identity_field),
+			"snapshot and combat projection share military %s" % identity_field
+		)
+	var rejection_screen := screen_packed.instantiate()
+	root.add_child(rejection_screen)
+	await process_frame
+	rejection_screen.set("_viewer_player_id", actor_id)
+	rejection_screen.set("_combat_projection", {
+		"viewer_player_id": actor_id,
+		"military_task_options": [option.duplicate(true)],
+	})
+	rejection_screen.set("_current_action_mode", "military")
+	rejection_screen.set("_current_action_source_surface", "hand_dock")
+	rejection_screen.set("_selected_card_id", str(card_setup.get(
+		"card_instance_id", ""
+	)))
+	rejection_screen.set("_selected_card_definition_id", str(card_setup.get(
+		"card_definition_id", ""
+	)))
+	rejection_screen.set("_action_submission_pending", false)
+	rejection_screen.application_intent_requested.connect(
+		func(_intent: Dictionary) -> void:
+			rejection_screen.call("apply_owner_private_receipt", {
+				"receipt_id": "receipt.v076.test.owner-private-rejection.001",
+				"receipt_scope": "owner_private",
+				"event_kind": "military_private_action_rejected",
+				"accepted": false,
+				"reason_code": "v076_production_military_option_stale",
+			})
+	)
+	rejection_screen.call("_on_military_mission_selected", option.duplicate(true))
+	_expect(
+		not bool(rejection_screen.get("_action_submission_pending")),
+		"synchronous owner-private rejection clears submission pending"
+	)
+	_expect(
+		str(rejection_screen.get("_current_action_mode")) == "idle",
+		"synchronous owner-private rejection returns action mode to idle"
+	)
+	rejection_screen.queue_free()
+	await process_frame
+	var published_world_revision := int(option.get("expected_world_revision", 0))
+	var published_candidate_fingerprint := str(option.get(
+		"candidate_fingerprint", ""
+	))
+	var unrelated_revision_advance := combat.call(
+		"set_phase",
+		str((combat.call("debug_snapshot") as Dictionary).get(
+			"phase",
+			"batch_active"
+		))
+	) as Dictionary
+	_expect(
+		bool(unrelated_revision_advance.get("accepted", false)),
+		"unrelated combat authority activity advances only the global revision"
+	)
+	runtime.call("_clear_v075_submission_caches")
+	runtime.call("_invalidate_v075_snapshot_caches")
+	var refreshed_snapshot := runtime.call("player_snapshot", actor_id) as Dictionary
+	var refreshed_option := _first_region_option(
+		((refreshed_snapshot.get(
+			"v075_combat_projection", {}
+		) as Dictionary).get("military_task_options", []) as Array),
+		str(card_setup.get("card_instance_id", ""))
+	)
+	_expect(
+		not refreshed_option.is_empty(),
+		"same military target remains currently legal after unrelated revision"
+	)
+	_expect(
+		int(refreshed_option.get("expected_world_revision", 0))
+			> published_world_revision,
+		"current candidate observes the advanced global revision"
+	)
+	_expect(
+		str(refreshed_option.get("candidate_fingerprint", ""))
+			!= published_candidate_fingerprint,
+		"global revision advance changes only the opaque candidate fingerprint"
+	)
+	for stable_field_variant in [
+		"option_id",
+		"owner_player_id",
+		"card_instance_id",
+		"card_action_binding",
+		"target_slot_id",
+		"task_kind",
+		"target_region_id",
+		"military_target_envelope",
+		"target_binding",
+	]:
+		var stable_field := str(stable_field_variant)
+		_expect(
+			refreshed_option.get(stable_field) == option.get(stable_field),
+			"unrelated revision preserves military %s" % stable_field
+		)
+	_expect(
+		production_screen != null,
+		"production UI consumer is available for military identity regression"
+	)
+	if production_screen != null:
+		_expect(
+			bool(production_screen.call(
+				"_same_military_option_identity",
+				option,
+				option.duplicate(true)
+			)),
+			"production UI consumer preserves exact military fingerprint match"
+		)
+		_expect(
+			bool(production_screen.call(
+				"_same_military_option_identity",
+				option,
+				refreshed_option
+			)),
+			"production UI consumer revalidates revision-only historical candidate"
+		)
+		_expect(
+			bool(production_screen.call(
+				"_same_military_option_identity",
+				refreshed_option,
+				option
+			)),
+			"production UI consumer tolerates lagging projection delivery"
+		)
+		var ui_tampered_fingerprint := option.duplicate(true)
+		ui_tampered_fingerprint["candidate_fingerprint"] = "0".repeat(64)
+		_expect(
+			not bool(production_screen.call(
+				"_same_military_option_identity",
+				ui_tampered_fingerprint,
+				refreshed_option
+			)),
+			"production UI consumer rejects tampered historical fingerprint"
+		)
+		var ui_tampered_target := refreshed_option.duplicate(true)
+		ui_tampered_target["target_region_id"] = "region.v076.tampered"
+		_expect(
+			not bool(production_screen.call(
+				"_same_military_option_identity",
+				option,
+				ui_tampered_target
+			)),
+			"production UI consumer rejects changed military target identity"
+		)
+		var ui_tampered_card := refreshed_option.duplicate(true)
+		ui_tampered_card["card_instance_id"] = "card.v076.tampered"
+		_expect(
+			not bool(production_screen.call(
+				"_same_military_option_identity",
+				option,
+				ui_tampered_card
+			)),
+			"production UI consumer rejects changed military card identity"
+		)
+		var ui_tampered_owner := refreshed_option.duplicate(true)
+		ui_tampered_owner["owner_player_id"] = "player.v076.tampered"
+		_expect(
+			not bool(production_screen.call(
+				"_same_military_option_identity",
+				option,
+				ui_tampered_owner
+			)),
+			"production UI consumer rejects changed military Owner identity"
+		)
+		var ui_tampered_envelope := refreshed_option.duplicate(true)
+		var changed_envelope := (
+			ui_tampered_envelope.get(
+				"military_target_envelope",
+				{}
+			) as Dictionary
+		).duplicate(true)
+		changed_envelope["region_damage_budget"] = int(
+			changed_envelope.get("region_damage_budget", 0)
+		) + 1
+		ui_tampered_envelope["military_target_envelope"] = changed_envelope
+		ui_tampered_envelope["target_binding"] = changed_envelope.duplicate(true)
+		_expect(
+			not bool(production_screen.call(
+				"_same_military_option_identity",
+				option,
+				ui_tampered_envelope
+			)),
+			"production UI consumer rejects changed military target envelope"
+		)
+	var tampered_published_option := option.duplicate(true)
+	tampered_published_option["candidate_fingerprint"] = "0".repeat(64)
+	var tampered_authorization := runtime.call(
+		"authorize_v076_production_military_bundle",
+		actor_id,
+		tampered_published_option
+	) as Dictionary
+	_expect(
+		not bool(tampered_authorization.get("accepted", false))
+			and str(tampered_authorization.get("reason_code", ""))
+				== "v076_production_military_option_stale",
+		"historical revalidation rejects a tampered candidate fingerprint"
+	)
 	var source_face := int(runtime.call("v076_production_face_binding", str(
 		runtime.call("_v076_production_source_region_for_actor", actor_id)
 	)))
