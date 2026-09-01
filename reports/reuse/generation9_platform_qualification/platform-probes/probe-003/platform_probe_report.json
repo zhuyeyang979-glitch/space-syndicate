@@ -1,0 +1,116 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_report.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "probe_id": "probe-003",
+  "probe_execution_index": 3,
+  "successor_probe_execution_index": 1,
+  "authorized_successor_nonformal_probe_count": 4,
+  "append_only": true,
+  "formal_generation": false,
+  "generation9_formal_execution_count": 0,
+  "generation9_automatic_retry_count": 0,
+  "started_at_utc": "2026-09-01T22:37:20.1260324Z",
+  "cleanup_sample_at_utc": "2026-09-01T22:41:18.0721557Z",
+  "status": "FAIL_RECOVERABLE",
+  "overall_classification": "NONFORMAL_PLATFORM_PROBE_TOOLING_FAILURE",
+  "failure_class": "TOOLING_FAILURE",
+  "product_failure_attested": false,
+  "platform_capacity_failure_attested": false,
+  "generation9_consumed": false,
+  "platform_qualification_gate_green": false,
+  "consecutive_platform_pass_count_after": 0,
+  "exact_clone_identity": {
+    "path_token": "GENERATION9_EXACT_CLONE",
+    "branch": "codex/v076-generation9-platform-qualification-7a2e10c7-001",
+    "head_sha": "2fa69216b29b4e121c546e2be4aa218b66bbaf44",
+    "tree_sha": "207e6cbe55793cd2e160f0ed4b03a20c58b9b572",
+    "index_delta_count_before_report": 0,
+    "tracked_worktree_delta_count_before_report": 0,
+    "untracked_uid_count": 295,
+    "staged_uid_count": 0
+  },
+  "tooling_failure": {
+    "stage": "MONITOR_REDIRECTION_PRECONDITION",
+    "probe_root_created_before_monitor_start": false,
+    "monitor_started": false,
+    "continuous_memory_evidence_available": false,
+    "editor_launch_followed_failed_monitor_start": true,
+    "root_cause": "The monitor stdout and stderr redirection parent directory did not exist.",
+    "corrective_action": "Create the full probe directory and verify the monitor is alive before launching Godot."
+  },
+  "mcp_control_plane": {
+    "status": "INCOMPLETE_TOOLING_FAILURE",
+    "milestone_pass_count": 7,
+    "milestone_required_count": 12,
+    "milestones": [
+      {"id": "M0", "name": "Exact Candidate Identity", "status": "PASS"},
+      {"id": "M1", "name": "Godot Process Created", "status": "PASS", "editor_pid": 5532},
+      {"id": "M2", "name": "GUI Engine Identified", "status": "PASS", "renderer": "gl_compatibility", "rendering_driver": "opengl3_angle"},
+      {"id": "M3", "name": "MCP Listener Bound", "status": "PASS", "listener_port": 23207},
+      {"id": "M4", "name": "Endpoint Owner Matches GUI Engine", "status": "PASS", "listener_owner_pid": 5532},
+      {"id": "M5", "name": "First JSON-RPC Request Sent", "status": "NOT_STARTED"},
+      {"id": "M6", "name": "First JSON-RPC Response Received", "status": "NOT_STARTED"},
+      {"id": "M7", "name": "Runtime Bootstrap Received", "status": "NOT_STARTED"},
+      {"id": "M8", "name": "Ready Witness Persisted", "status": "NOT_STARTED"},
+      {"id": "M9", "name": "Main Scene Loaded", "status": "NOT_STARTED"},
+      {"id": "M10", "name": "Normal Exit Requested", "status": "PASS", "forced_stop": false},
+      {"id": "M11", "name": "Godot MCP And Port Zero", "status": "PASS", "process_count_after": 0, "endpoint_count_after": 0}
+    ]
+  },
+  "memory_observation": {
+    "status": "NOT_ATTESTED_MONITOR_NEVER_STARTED",
+    "sample_count": 0,
+    "startup_available_commit_bytes": null,
+    "minimum_available_commit_bytes": null,
+    "available_commit_bytes_after_cleanup": 26398298112,
+    "capacity_guard_triggered": false
+  },
+  "import_observation": {
+    "status": "NOT_ATTESTED",
+    "main_scene_started": false,
+    "import_pending_count": null,
+    "import_event_count": null
+  },
+  "seed_binding": {
+    "status": "NOT_STARTED",
+    "selected_seed": 917592522,
+    "successful_sample_count": 0,
+    "empty_readback_count": 0,
+    "fallback_randomization_count": 0,
+    "direct_runtime_injection_count": 0,
+    "four_layer_match": false
+  },
+  "shutdown": {
+    "status": "PASS",
+    "identity_verified": true,
+    "normal_close_requested": true,
+    "forced_stop": false,
+    "process_count_after": 0,
+    "endpoint_count_after": 0,
+    "unrelated_process_termination_count": 0
+  },
+  "frozen_evidence_preservation": {
+    "frozen_probe2_modification_count": 0,
+    "frozen_generation8_modification_count": 0,
+    "frozen_capacity_stop_commit_modification_count": 0,
+    "user_dirty_file_mutation_count": 0,
+    "user_dirty_file_stage_count": 0,
+    "user_dirty_file_delete_count": 0,
+    "unknown_file_delete_count": 0
+  },
+  "qualification_disposition": {
+    "successor_probe_execution_count": 1,
+    "successor_probe_budget_remaining": 3,
+    "two_consecutive_passes_still_reachable": true,
+    "generation9_authorization_status": "NOT_SEALED",
+    "generation9_formal_execution_count": 0,
+    "step11_generation9_receipt_status": "NOT_RUN",
+    "commercial_sprint_resumed": false
+  },
+  "raw_evidence": {
+    "root_token": "TASK_OUTPUT/platform-probes/probe-003",
+    "manifest_path": "reports/reuse/generation9_platform_qualification/platform-probes/probe-003/raw_evidence_manifest.json",
+    "file_count": 3
+  },
+  "next_atomic_step": "CREATE_PROBE_004_ROOT_START_AND_VERIFY_MONITOR_THEN_LAUNCH_IDENTICAL_GODOT_PROBE"
+}

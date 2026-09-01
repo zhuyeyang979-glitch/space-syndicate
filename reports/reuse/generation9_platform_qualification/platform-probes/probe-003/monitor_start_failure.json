@@ -1,0 +1,19 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_tooling_failure.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "probe_id": "probe-003",
+  "append_only": true,
+  "failure_class": "TOOLING_FAILURE",
+  "failure_stage": "MONITOR_REDIRECTION_PRECONDITION",
+  "observed_error": "Start-Process could not open the monitor stdout redirection target because the probe output directory did not exist.",
+  "monitor_started": false,
+  "continuous_memory_evidence_available": false,
+  "editor_launch_followed_failed_monitor_start": true,
+  "editor_pid": 5532,
+  "mcp_port": 23207,
+  "main_scene_started": false,
+  "seed_workflow_started": false,
+  "generation9_formal_execution_count": 0,
+  "generation9_consumed": false,
+  "corrective_action": "Create the complete probe root before redirecting monitor stdout and stderr, verify the monitor is alive, and only then launch Godot."
+}

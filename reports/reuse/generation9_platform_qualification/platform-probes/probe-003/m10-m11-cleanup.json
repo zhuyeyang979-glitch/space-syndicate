@@ -1,0 +1,18 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_cleanup.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "probe_id": "probe-003",
+  "append_only": true,
+  "cleanup_sample_at_utc": "2026-09-01T22:41:18.0721557Z",
+  "stop_script": "tools/stop_role_godot_mcp.ps1",
+  "identity_verified": true,
+  "normal_close_requested": true,
+  "forced_stop": false,
+  "editor_pid": 5532,
+  "pid_5532_count_after": 0,
+  "exact_clone_godot_count_after": 0,
+  "endpoint_count_after": 0,
+  "available_commit_bytes_after_cleanup": 26398298112,
+  "available_physical_bytes_after_cleanup": 21830004736,
+  "unrelated_process_termination_count": 0
+}

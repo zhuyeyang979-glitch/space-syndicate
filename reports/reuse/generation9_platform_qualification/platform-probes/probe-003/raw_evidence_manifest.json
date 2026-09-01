@@ -1,0 +1,25 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_raw_evidence_manifest.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "probe_id": "probe-003",
+  "append_only": true,
+  "raw_evidence_root_token": "TASK_OUTPUT/platform-probes/probe-003",
+  "file_count": 3,
+  "files": [
+    {
+      "path": "godot.engine.log",
+      "size_bytes": 292,
+      "sha256": "8964547f9a5d7dc2c8165397380282c2a815f1e6ccf3d07845c0b7aceba7688a"
+    },
+    {
+      "path": "m10-m11-cleanup.json",
+      "size_bytes": 695,
+      "sha256": "cf43a434915e24a1c1540ca0965a3317874bd812be64c14b3e47a67bd036a557"
+    },
+    {
+      "path": "monitor_start_failure.json",
+      "size_bytes": 942,
+      "sha256": "96b42cf4782c91a89a4139fe8df071c2686e50a9cf71c03bff37ec7d9706e943"
+    }
+  ]
+}
