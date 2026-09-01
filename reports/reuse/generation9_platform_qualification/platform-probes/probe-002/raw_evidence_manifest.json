@@ -1,0 +1,85 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_raw_evidence_manifest.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "probe_id": "probe-002",
+  "append_only": true,
+  "raw_evidence_root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-20\\qu\\outputs\\v076-generation9-platform-qualification\\platform-probes\\probe-002",
+  "file_count": 15,
+  "files": [
+    {
+      "path": "godot.engine.log",
+      "size_bytes": 292,
+      "sha256": "8964547f9a5d7dc2c8165397380282c2a815f1e6ccf3d07845c0b7aceba7688a"
+    },
+    {
+      "path": "launcher-connection-snapshot.json",
+      "size_bytes": 1320,
+      "sha256": "00ec7a0c4d9d0262ddd34427c3036b8ac458b43eae3eb8f5522f0380ed149c0d"
+    },
+    {
+      "path": "m10-m11-post-reboot-cleanup.json",
+      "size_bytes": 219,
+      "sha256": "f23d60597cc08dd14d4c4025a48271c07da126f2644a1a690973fe40cca37f8d"
+    },
+    {
+      "path": "m5-m6-first-get-project-info.jsonrpc.json",
+      "size_bytes": 2780,
+      "sha256": "52b1725dc96b8b6138e1eaf6cb008c674973118534753aec77764bb045d2cfba"
+    },
+    {
+      "path": "m7-pre-play-runtime-bootstrap.jsonrpc.json",
+      "size_bytes": 131630,
+      "sha256": "5338ed13cb2ea084370c47706b20ed10e527c2f5c3f6b125f451bfe3758adb60"
+    },
+    {
+      "path": "m8-ready-poll-001.jsonrpc.json",
+      "size_bytes": 131630,
+      "sha256": "ffea68d124e7acad127803b79ff66f45c96c625c4f32afd77295cf6eca9482af"
+    },
+    {
+      "path": "m8-ready-poll-002.jsonrpc.json",
+      "size_bytes": 128047,
+      "sha256": "c8ba23eac4d811cfcfdeefb3e186c502d68d510ebee30b33fb948466dd9fe898"
+    },
+    {
+      "path": "m9-play-main-scene.jsonrpc.json",
+      "size_bytes": 114,
+      "sha256": "bd0876dc640d6d3fbc0fa000ee164c5c64b1a20beed34e9558cf6d075ef958c8"
+    },
+    {
+      "path": "m9-post-play-project-info-001.jsonrpc.json",
+      "size_bytes": 2778,
+      "sha256": "e091d4ba50820362dcd4a876d41d3f862b24cc2775aefbcec8cd3762e2f74c41"
+    },
+    {
+      "path": "monitor.stderr.log",
+      "size_bytes": 350,
+      "sha256": "434a718ce42ba87b8e745f44e03f79c38ccfca4c14d7634e34285359ba4138ec"
+    },
+    {
+      "path": "monitor.stdout.log",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "monitor/process_memory_salvage_summary.json",
+      "size_bytes": 1819,
+      "sha256": "acc713c21bf960351579d166dfc41e5fb23157369cf5b98efc9697669e8f690f"
+    },
+    {
+      "path": "monitor/process_memory_samples.jsonl",
+      "size_bytes": 326894,
+      "sha256": "ca94a6f2cba870f7e1fc334d69930bc2b5699cbb2982fba1d7af395a66f26604"
+    },
+    {
+      "path": "post-reboot-capacity-snapshot.json",
+      "size_bytes": 4045,
+      "sha256": "4bb58e38f077a87cad2891a0765e35f1c4c1a499f0ae68366f393b9eb56b6100"
+    },
+    {
+      "path": "windows-platform-events.json",
+      "size_bytes": 11498,
+      "sha256": "664f7b72539392e42230e34f272fcc7487fd172f009fcc144629c6a6b0c9c1e3"
+    }
+  ]
+}

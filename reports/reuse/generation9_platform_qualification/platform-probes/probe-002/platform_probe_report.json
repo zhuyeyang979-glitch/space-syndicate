@@ -1,0 +1,257 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_report.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "probe_id": "probe-002",
+  "probe_execution_index": 2,
+  "authorized_nonformal_probe_count": 3,
+  "append_only": true,
+  "formal_generation": false,
+  "generation9_formal_execution_count": 0,
+  "generation9_automatic_retry_count": 0,
+  "generated_at_utc": "2026-09-01T21:04:23.5246228Z",
+  "started_at_utc": "2026-09-01T16:07:41.9327248Z",
+  "last_persisted_sample_at_utc": "2026-09-01T16:09:42.8784978Z",
+  "system_restarted_at_utc": "2026-09-01T16:12:11.5000000Z",
+  "status": "BLOCKED",
+  "overall_classification": "PLATFORM_CAPACITY_HARD_STOP",
+  "failure_class": "SYSTEM_COMMIT_HEADROOM_EXHAUSTION_BEFORE_SEED_BINDING",
+  "product_failure_attested": false,
+  "platform_capacity_hard_stop_attested": true,
+  "platform_qualification_gate_green": false,
+  "exact_clone_identity": {
+    "path": "D:\\ss-v076-generation9-platform-qualification-7a2e10c7-001",
+    "branch": "codex/v076-generation9-platform-qualification-7a2e10c7-001",
+    "head_sha": "31497a77cc9457694a6adcfed748aee727054553",
+    "tree_sha": "20f1c5485fd91989678b5325cb80baa2298140b4",
+    "index_delta_count": 0,
+    "tracked_worktree_delta_count_before_report": 0,
+    "untracked_uid_count": 295,
+    "staged_uid_count": 0
+  },
+  "tooling_identity": {
+    "godot_path": "C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.7-stable_win64.exe",
+    "godot_sha256": "b2ca888d5115a6cedee564764a2ee494a625f2ec2edbabd010fe33c9a88a6bf8",
+    "godot_version": "4.7-stable (official)",
+    "renderer": "compatibility",
+    "rendering_method": "gl_compatibility",
+    "rendering_driver": "opengl3_angle",
+    "mcp_tool_profile": "full",
+    "mcp_port": 23207,
+    "bridge_sha256": "f3bbc4acc290bffbd596695b4962fabda85d3da764be91e50eb9f4fba2352990",
+    "launcher_sha256": "ae61c920a2a1b4c6d0c2e25d46a754d8d077ed145c0cfbe152c29c4566bc58ba",
+    "class_cache_sha256": "f35abc2d252fa772468528f561dd52344ec0c3b09bd0a9b58ebfaf3d54c2ea01"
+  },
+  "mcp_control_plane": {
+    "status": "BLOCKED_BY_PLATFORM_RESTART",
+    "milestone_pass_count": 11,
+    "milestone_required_count": 12,
+    "stale_mcp_listener_count": 0,
+    "endpoint_owner_mismatch_count": 0,
+    "scoped_residual_process_count": 0,
+    "milestones": [
+      {
+        "id": "M0",
+        "name": "Exact Clone Identity",
+        "status": "PASS"
+      },
+      {
+        "id": "M1",
+        "name": "Godot Process Created",
+        "status": "PASS",
+        "evidence": {
+          "editor_pid": 30696
+        }
+      },
+      {
+        "id": "M2",
+        "name": "GUI Engine Identified",
+        "status": "PASS",
+        "evidence": {
+          "editor_pid": 30696,
+          "renderer": "gl_compatibility",
+          "rendering_driver": "opengl3_angle"
+        }
+      },
+      {
+        "id": "M3",
+        "name": "MCP Listener Bound",
+        "status": "PASS",
+        "evidence": {
+          "configured_port": 23207,
+          "listener_port": 23207
+        }
+      },
+      {
+        "id": "M4",
+        "name": "Listener Owner Matches GUI Engine",
+        "status": "PASS",
+        "evidence": {
+          "listener_owner_pid": 30696,
+          "gui_engine_pid": 30696
+        }
+      },
+      {
+        "id": "M5",
+        "name": "First JSON-RPC Request Sent",
+        "status": "PASS",
+        "evidence_path": "m5-m6-first-get-project-info.jsonrpc.json"
+      },
+      {
+        "id": "M6",
+        "name": "First JSON-RPC Response Received",
+        "status": "PASS",
+        "evidence": {
+          "godot_version": "4.7-stable (official)",
+          "tool_profile": "full"
+        }
+      },
+      {
+        "id": "M7",
+        "name": "Runtime Bootstrap Received",
+        "status": "PASS",
+        "evidence_path": "m7-pre-play-runtime-bootstrap.jsonrpc.json"
+      },
+      {
+        "id": "M8",
+        "name": "Ready Witness Persisted",
+        "status": "PASS",
+        "evidence": {
+          "fresh_state_path": "m8-ready-poll-002.jsonrpc.json",
+          "state_age_msec": 634,
+          "state_modified_at_utc": "2026-09-01T16:08:52.0000000Z"
+        }
+      },
+      {
+        "id": "M9",
+        "name": "Main Scene Load Capability Confirmed",
+        "status": "PASS",
+        "evidence": {
+          "is_playing_scene": true,
+          "runtime_pid": 9228
+        }
+      },
+      {
+        "id": "M10",
+        "name": "Clean Exit Requested",
+        "status": "BLOCKED",
+        "reason": "System commit headroom was exhausted and Windows restarted before a clean exit request could be issued."
+      },
+      {
+        "id": "M11",
+        "name": "Process And Port Zero",
+        "status": "PASS_POST_REBOOT",
+        "evidence": {
+          "process_count_after": 0,
+          "endpoint_count_after": 0,
+          "forced_stop": false
+        }
+      }
+    ]
+  },
+  "import_observation": {
+    "status": "PASS_UNTIL_PLATFORM_STOP",
+    "configured_monitor_interval_milliseconds": 250,
+    "quiescent_window_duration_milliseconds": 30523,
+    "quiescent_window_sample_count": 43,
+    "maximum_import_queue_length": 0,
+    "initial_import_event_count": 57,
+    "maximum_import_event_count": 57,
+    "import_event_growth": 0,
+    "formal_import_pending_count": 0,
+    "formal_import_event_count": 0,
+    "compatibility_manifest_fingerprint_sha256": "b9992d229dc7e079f5c6087f9305e03c2ee5288b2c7c0c614e40497c7a182380",
+    "production_asset_excluded_from_import_count": 0,
+    "gdignore_change_count": 0,
+    "explanation": "The absolute event count of 57 is inherited log history from Probe 1. It did not grow during Probe 2, and the queue remained zero."
+  },
+  "seed_binding": {
+    "status": "NOT_STARTED_DUE_TO_CAPACITY_HARD_STOP",
+    "selected_seed": 917592522,
+    "successful_sample_count": 0,
+    "empty_readback_count": 0,
+    "fallback_randomization_count": 0,
+    "direct_runtime_injection_count": 0,
+    "windows_text_entry_count": 0,
+    "computer_use_click_count": 0,
+    "four_layer_match": false,
+    "product_seed_owner_failure_attested": false
+  },
+  "memory_observation": {
+    "status": "FAIL_CAPACITY_FORMULA",
+    "configured_interval_milliseconds": 250,
+    "persisted_sample_count": 179,
+    "baseline_total_godot_private_bytes": 24788992,
+    "peak_total_godot_private_bytes": 4272857088,
+    "peak_editor_private_bytes": 2279006208,
+    "peak_game_private_bytes": 2209067008,
+    "observed_max_incremental_private_bytes": 4248068096,
+    "required_commit_headroom_bytes": 6383826944,
+    "startup_available_commit_bytes": 4609146880,
+    "first_bound_available_commit_bytes": 3832803328,
+    "minimum_available_commit_bytes": 4243456,
+    "capacity_shortfall_at_first_bound_bytes": 2551023616,
+    "capacity_formula_satisfied": false,
+    "monitor_terminal_error": "Get-CimInstance failed after available Commit fell to approximately 4 MiB.",
+    "samples_sha256": "ca94a6f2cba870f7e1fc334d69930bc2b5699cbb2982fba1d7af395a66f26604"
+  },
+  "system_restart_evidence": {
+    "status": "ATTESTED",
+    "last_boot_up_time_utc": "2026-09-01T16:12:11.5000000Z",
+    "bugcheck_code": "0x000000ef",
+    "bugcheck_event_provider": "Microsoft-Windows-WER-SystemErrorReporting",
+    "bugcheck_event_id": 1001,
+    "bugcheck_event_record_id": 95665,
+    "kernel_power_event_id": 41,
+    "unexpected_shutdown_event_id": 6008,
+    "minidump_path": "C:\\WINDOWS\\Minidump\\090226-16296-01.dmp",
+    "causality_note": "The capacity formula failure is directly measured. The temporal link between near-zero Commit and the later Windows bugcheck is a platform inference, not a product-failure claim."
+  },
+  "capacity_remediation": {
+    "task_owned_processes_to_close": [],
+    "task_owned_process_count_after_reboot": 0,
+    "unrelated_process_termination_count": 0,
+    "pagefile_automatic_managed": true,
+    "post_reboot_pagefile_path": "D:\\pagefile.sys",
+    "post_reboot_pagefile_allocated_mebibytes": 6656,
+    "minimum_additional_commit_headroom_required_bytes": 2551023616,
+    "pagefile_expansion_or_equivalent_capacity_release_required_before_new_probe": true,
+    "post_reboot_available_commit_bytes": 27866755072,
+    "post_reboot_snapshot_is_not_a_replacement_for_two_consecutive_probe_passes": true
+  },
+  "shutdown": {
+    "status": "SYSTEM_RESTARTED_BEFORE_CLEAN_EXIT",
+    "normal_close_requested": false,
+    "forced_stop": false,
+    "post_reboot_cleanup_verified": true,
+    "process_count_after": 0,
+    "endpoint_count_after": 0
+  },
+  "qualification_disposition": {
+    "generation7_rerun_count": 0,
+    "generation8_rerun_count": 0,
+    "generation8_receipt_status": "BLOCKED",
+    "generation8_product_failure_attested": false,
+    "platform_probe_execution_count": 2,
+    "platform_qualification_consecutive_pass_count": 0,
+    "generation9_authorization_status": "NOT_SEALED",
+    "generation9_formal_execution_count": 0,
+    "formal_seed_confirmed": false,
+    "step11_generation9_receipt_status": "NOT_RUN",
+    "probe_003_allowed_under_current_budget": true,
+    "probe_003_can_satisfy_two_consecutive_pass_requirement_alone": false,
+    "probe_003_started": false,
+    "commercial_sprint_resumed": false
+  },
+  "raw_evidence": {
+    "root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-20\\qu\\outputs\\v076-generation9-platform-qualification\\platform-probes\\probe-002",
+    "manifest_path": "reports/reuse/generation9_platform_qualification/platform-probes/probe-002/raw_evidence_manifest.json",
+    "manifest_sha256": "88433021b95102eef4df758bc70015f7916765a3d7b6968a341fdafc79d71765",
+    "file_count": 15
+  },
+  "pr93_live_state": {
+    "state": "OPEN",
+    "is_draft": true,
+    "head_sha": "8b7f029db03a9cd18be72f5b5f8ed8cb233d255b"
+  },
+  "next_atomic_step": "INCREASE_OR_FREE_SYSTEM_COMMIT_CAPACITY_THEN_AUTHORIZE_A_SUCCESSOR_NONFORMAL_PROBE_BUDGET_LARGE_ENOUGH_FOR_TWO_CONSECUTIVE_PASSES"
+}
