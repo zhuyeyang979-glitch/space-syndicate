@@ -1,0 +1,33 @@
+{
+  "schema": "space_syndicate.v076.generation9_canonical_import_monitoring_correction.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "correction_id": "canonical-import-compatibility-correction-001-monitoring-correction",
+  "append_only": true,
+  "affected_passes": ["pass-001", "pass-002"],
+  "invalidated_fields": [
+    "monitoring.peak_working_set_bytes",
+    "monitoring.peak_private_bytes",
+    "monitoring.sampled_process_kind"
+  ],
+  "reason": "The runner resolved Godot_v4.7-stable_win64_console.exe and sampled only the console wrapper instead of the complete GUI engine process tree.",
+  "still_valid_fields": [
+    "process.exit_code",
+    "process.timeout",
+    "import_queue",
+    "import_cache",
+    "error_counts",
+    "git_state",
+    "raw_logs"
+  ],
+  "complete_process_tree_capacity_owner": "NONFORMAL_PLATFORM_PROBE_MONITOR",
+  "pass_count": 2,
+  "pass_statuses": ["PASS", "PASS"],
+  "path_parity": true,
+  "hash_parity": true,
+  "manifest_fingerprint_sha256": "b9992d229dc7e079f5c6087f9305e03c2ee5288b2c7c0c614e40497c7a182380",
+  "class_cache_sha256": "f35abc2d252fa772468528f561dd52344ec0c3b09bd0a9b58ebfaf3d54c2ea01",
+  "imported_file_count": 1330,
+  "tracked_delta_count": 0,
+  "untracked_uid_count": 295,
+  "runner_sha256": "8bf820646a67c1ffed3fb7d7e7da86a71fc14f3fe1f1a91fbd091496318af52f"
+}
