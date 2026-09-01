@@ -19,7 +19,8 @@ param(
     [uint64]$TargetStartAvailableCommitBytes = 8589934592,
     [uint64]$CapacityGuardBytes = 1073741824,
     [int]$RuntimeReadyTimeoutSeconds = 120,
-    [int]$NewGameReadyTimeoutSeconds = 180
+    [int]$NewGameReadyTimeoutSeconds = 180,
+    [int]$ExternalSeedFocusTimeoutSeconds = 120
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,6 +39,8 @@ $resultPath = Join-Path $probeRoot 'probe_execution_result.json'
 $connectionSnapshotPath = Join-Path $probeRoot 'launcher-connection-snapshot.json'
 $preflightPath = Join-Path $probeRoot 'preflight.json'
 $cleanupPath = Join-Path $probeRoot 'm10-m11-cleanup.json'
+$externalSeedFocusRequestPath = Join-Path $probeRoot 'external-seed-focus-request.json'
+$externalSeedFocusCompletePath = Join-Path $probeRoot 'external-seed-focus-complete.json'
 $seedControlPath = '/root/Main/V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/SeedRow/SeedInput'
 $startButtonPath = '/root/Main/V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/StartConfiguredButton'
 $compositionPath = '/root/Main/V075RuntimeComposition'
@@ -418,6 +421,36 @@ try {
         -NodePath $seedControlPath `
         -Properties @('text', 'visible', 'editable', 'global_position', 'size')
     $seedCenter = Get-Center $seedNode
+    Write-Utf8Json -Path $externalSeedFocusRequestPath -Value ([ordered]@{
+        schema_version = 'space_syndicate.v076.external_seed_focus_request.v1'
+        authorization_id = $authorizationId
+        probe_id = $ProbeId
+        requested_at_utc = [DateTime]::UtcNow.ToString('o')
+        editor_pid = [int]$connection.pid
+        node_path = $seedControlPath
+        runtime_viewport_center = $seedCenter
+        required_action = 'ACTIVATE_EXACT_GODOT_WINDOW_AND_CLICK_VISIBLE_SEED_INPUT'
+        forbidden_action = 'DIRECT_RUNTIME_SEED_INJECTION'
+    })
+    $focusDeadline = [DateTime]::UtcNow.AddSeconds($ExternalSeedFocusTimeoutSeconds)
+    do {
+        Assert-NoCapacityGuard
+        if (Test-Path -LiteralPath $externalSeedFocusCompletePath) {
+            break
+        }
+        Start-Sleep -Milliseconds 250
+    } while ([DateTime]::UtcNow -lt $focusDeadline)
+    if (-not (Test-Path -LiteralPath $externalSeedFocusCompletePath)) {
+        throw 'External Windows focus witness was not supplied before timeout.'
+    }
+    $externalFocus = Get-Content -LiteralPath $externalSeedFocusCompletePath -Raw | ConvertFrom-Json
+    if (
+        [string]$externalFocus.status -cne 'PASS' -or
+        [int]$externalFocus.editor_pid -ne [int]$connection.pid -or
+        [int]$externalFocus.window_click_count -ne 1
+    ) {
+        throw 'External Windows focus witness is invalid.'
+    }
     Send-RuntimeInput `
         -EvidenceName 'seed-focus-click.jsonrpc.json' `
         -Arguments @{
