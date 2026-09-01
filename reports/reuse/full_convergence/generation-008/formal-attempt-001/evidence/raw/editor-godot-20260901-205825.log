@@ -1,0 +1,382 @@
+Godot Engine v4.7.stable.official.5b4e0cb0f - https://godotengine.org
+OpenGL API OpenGL ES 3.0 (ANGLE 2.1.1 git hash: aaebda1c5a40) - Compatibility - Using Device: Google Inc. (NVIDIA) - ANGLE (NVIDIA, NVIDIA GeForce RTX 4080 SUPER (0x00002702) Direct3D11 vs_5_0 ps_5_0, D3D11-32.0.15.9636)
+
+ERROR: Failed decoding WebP image.
+   at: _webp_unpack (modules/webp/webp_common.cpp:147)
+ERROR: Condition "img.is_null() || img->is_empty()" is true. Returning: Ref<Image>()
+   at: load_image_from_file (scene/resources/compressed_texture.cpp:343)
+ERROR: Failed decoding WebP image.
+   at: _webp_unpack (modules/webp/webp_common.cpp:147)
+ERROR: Condition "img.is_null() || img->is_empty()" is true. Returning: Ref<Image>()
+   at: load_image_from_file (scene/resources/compressed_texture.cpp:343)
+res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png: 3Dで法線マップとして使用されているテクスチャが検出されました。赤と緑のテクスチャ圧縮を有効にしてメモリ使用量を削減します（青チャンネルは破棄されます）。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png:3Dでラフネスマップとして使用されるテクスチャが検出されました。res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.pngで検出された関連する法線マップに基づくラフネスリミッターを有効にします。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png: 3Dで法線マップとして使用されているテクスチャが検出されました。赤と緑のテクスチャ圧縮を有効にしてメモリ使用量を削減します（青チャンネルは破棄されます）。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png:3Dでラフネスマップとして使用されるテクスチャが検出されました。res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.pngで検出された関連する法線マップに基づくラフネスリミッターを有効にします。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png: 3Dで法線マップとして使用されているテクスチャが検出されました。赤と緑のテクスチャ圧縮を有効にしてメモリ使用量を削減します（青チャンネルは破棄されます）。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png:3Dでラフネスマップとして使用されるテクスチャが検出されました。res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.pngで検出された関連する法線マップに基づくラフネスリミッターを有効にします。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png: 3Dで法線マップとして使用されているテクスチャが検出されました。赤と緑のテクスチャ圧縮を有効にしてメモリ使用量を削減します（青チャンネルは破棄されます）。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png:3Dでラフネスマップとして使用されるテクスチャが検出されました。res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.pngで検出された関連する法線マップに基づくラフネスリミッターを有効にします。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png: 3Dで法線マップとして使用されているテクスチャが検出されました。赤と緑のテクスチャ圧縮を有効にしてメモリ使用量を削減します（青チャンネルは破棄されます）。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png:3Dでラフネスマップとして使用されるテクスチャが検出されました。res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.pngで検出された関連する法線マップに基づくラフネスリミッターを有効にします。
+res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png: 3Dで法線マップとして使用されているテクスチャが検出されました。赤と緑のテクスチャ圧縮を有効にしてメモリ使用量を削減します（青チャンネルは破棄されます）。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png:3Dでラフネスマップとして使用されるテクスチャが検出されました。res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.pngで検出された関連する法線マップに基づくラフネスリミッターを有効にします。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png: 3Dで法線マップとして使用されているテクスチャが検出されました。赤と緑のテクスチャ圧縮を有効にしてメモリ使用量を削減します（青チャンネルは破棄されます）。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png:3Dでラフネスマップとして使用されるテクスチャが検出されました。res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.pngで検出された関連する法線マップに基づくラフネスリミッターを有効にします。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png: 3Dで法線マップとして使用されているテクスチャが検出されました。赤と緑のテクスチャ圧縮を有効にしてメモリ使用量を削減します（青チャンネルは破棄されます）。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png:3Dでラフネスマップとして使用されるテクスチャが検出されました。res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.pngで検出された関連する法線マップに基づくラフネスリミッターを有効にします。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png: 3Dで法線マップとして使用されているテクスチャが検出されました。赤と緑のテクスチャ圧縮を有効にしてメモリ使用量を削減します（青チャンネルは破棄されます）。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png:3Dでラフネスマップとして使用されるテクスチャが検出されました。res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.pngで検出された関連する法線マップに基づくラフネスリミッターを有効にします。
+res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+res://assets/third_party/commercial/materials/ambientcg/NightSkyHDRI001/NightSkyHDRI001_2K_HDR.exr:3Dで使用されるテクスチャが検出されました。ミップマップ生成を有効にして、テクスチャ圧縮モードを VRAM Compressed (S3TC/ETC/BPTC) に設定しました。
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+ERROR: Parameter "mem" is null.
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+   at: alloc_static (core/os/memory.cpp:96)
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Unable to create a local RenderingDevice.
+   at: _init (modules/betsy/image_compress_betsy.cpp:132)
+ERROR: Parameter "mem_new" is null.
+ERROR: Parameter "mem" is null.
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+   at: alloc_static (core/os/memory.cpp:96)
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: FATAL: Condition "_copy_on_write()" is true.
+   at: ptrw (./core/templates/cowdata.h:166)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: FATAL: Condition "_copy_on_write()" is true.
+   at: ptrw (./core/templates/cowdata.h:166)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Parameter "mem" is null.
+   at: alloc_static (core/os/memory.cpp:96)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Parameter "mem_new" is null.
+   at: _alloc_exact (./core/templates/cowdata.h:476)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error loading image: 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png'.
+   at: load_image (core/io/image_loader.cpp:102)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
+ERROR: Error importing 'res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png'.
+   at: _reimport_file (editor/file_system/editor_file_system.cpp:3081)
