@@ -1,0 +1,287 @@
+[
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_AmbientOcclusion.jpg.import",
+    "size_bytes": 1236,
+    "sha256": "4da7221717b4f2752966c9723cf0cbd42838a800603ef876cc766d4926ea80ec"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_Color.jpg.import",
+    "size_bytes": 1098,
+    "sha256": "1c64d1fedd928b361a68a850d56d6afc750a65717ea78f2cfd66bdb338a732e0"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_Metalness.jpg.import",
+    "size_bytes": 1110,
+    "sha256": "855ec517b36278ec33a191c620e6178c51c4e8bbfb3d1d5980cb17b42d031a43"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_NormalGL.jpg.import",
+    "size_bytes": 1211,
+    "sha256": "42167f6a88401570a8ca3e80516afdc787fe9b8cdf90cc8153f30fb46618271d"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_Roughness.jpg.import",
+    "size_bytes": 1110,
+    "sha256": "34e427a4c5672a64c2de0e6437d9f49fda4b05e52c5e4f374c5a6f618da67eb7"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/NightSkyHDRI001/NightSkyHDRI001_2K_HDR.exr.import",
+    "size_bytes": 1084,
+    "sha256": "ef64adb100afff0f87ddd8539e3222b40670fb46d8f30cb28a66f26161402569"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/PaintedMetal007/PaintedMetal007_1K-JPG_AmbientOcclusion.jpg.import",
+    "size_bytes": 1242,
+    "sha256": "b4bbd8b055b17bb794503da1a92033e6a8f2d63de7da4e1df90fc74ae5f50675"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/PaintedMetal007/PaintedMetal007_1K-JPG_Color.jpg.import",
+    "size_bytes": 1102,
+    "sha256": "32466ca5887b05066e7380c24d7cdfe1396b0d81602273ca7f0fa07cb55996c8"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/PaintedMetal007/PaintedMetal007_1K-JPG_Metalness.jpg.import",
+    "size_bytes": 1113,
+    "sha256": "1cd1128832bc0d7c9986a8e121027aad57ccf2a5ce24d877fce188b4221101a0"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/PaintedMetal007/PaintedMetal007_1K-JPG_NormalGL.jpg.import",
+    "size_bytes": 1217,
+    "sha256": "828e3c9753301fc6c56c5baf1cf23210ff2715401f4a60ef2a2f9b4c8ed50ab3"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/PaintedMetal007/PaintedMetal007_1K-JPG_Roughness.jpg.import",
+    "size_bytes": 1114,
+    "sha256": "579f640a75ffc2dd42db5804c834287facbcfca202e66f604f426e423cfd123d"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/SheetMetal003/SheetMetal003_1K-JPG_Color.jpg.import",
+    "size_bytes": 1093,
+    "sha256": "1f799d917333c01d91eae55eb5e025b8fd64f60caae5af4ecddce5b519d89370"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/SheetMetal003/SheetMetal003_1K-JPG_Metalness.jpg.import",
+    "size_bytes": 1106,
+    "sha256": "75fedd705a1e564e7a6395aa27cb6360ffe896ff872f447c4e32e4c6a38cb6e4"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/SheetMetal003/SheetMetal003_1K-JPG_NormalGL.jpg.import",
+    "size_bytes": 1206,
+    "sha256": "13139de3a6cdf08a7d05ec528e6298f0263e7be8424e55f1dd5b3a6887126088"
+  },
+  {
+    "path": "assets/third_party/commercial/materials/ambientcg/SheetMetal003/SheetMetal003_1K-JPG_Roughness.jpg.import",
+    "size_bytes": 1105,
+    "sha256": "a1fdf1e043ad821d9817f263f9db564205cbf61cf1321c5b67f72b57dbfb7cb4"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png.import",
+    "size_bytes": 1149,
+    "sha256": "710df2f2c329393627e3f627fce3361abead9fd48bb0300e1b0d02698ed7f819"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png.import",
+    "size_bytes": 1143,
+    "sha256": "dae8fb42e4fded9d0367f198fb830bae8600528b4684d52f37cb5cacce4eeea6"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png.import",
+    "size_bytes": 1137,
+    "sha256": "ffc01746ec02897688de436f6a909c51b2c21ead416a67a462ef5a1acbb7a856"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png.import",
+    "size_bytes": 1137,
+    "sha256": "36b0127588095950aada28871bb9c906c90780e956b889e5551b347125981e2c"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png.import",
+    "size_bytes": 1050,
+    "sha256": "fe4d29a59a20ac3b71f714ba9a2acab35e448d6290ddd430a2322025b3e14499"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png.import",
+    "size_bytes": 1093,
+    "sha256": "d5dc1c3c7a894918fc8c447ba6b56f60bb819b0494c0c66b76e21638991aa06b"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png.import",
+    "size_bytes": 1188,
+    "sha256": "eefdbbc6d6e5bbd1ea80d457c4ed4d304a5f53b73356ffe03050dbbaaed8bb7f"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png.import",
+    "size_bytes": 1075,
+    "sha256": "85783ede15e2f9e6f92db8b619e1227767c3fd0d9b17605f772f54389f6ef7e1"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png.import",
+    "size_bytes": 1096,
+    "sha256": "0c143e5527eb56e05063818baa6eda2aca818d5a24823362afedceb295c5095c"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png.import",
+    "size_bytes": 1175,
+    "sha256": "2a7d9155e22f7105613d9bd9ef30a632af93e53326e3caf687ac7ea469f12a70"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png.import",
+    "size_bytes": 1066,
+    "sha256": "87b24ef48119b1f873c3af2643c58cc7555007605a9aec65702a82b1fd21aaa5"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png.import",
+    "size_bytes": 1096,
+    "sha256": "51db96ffb2e5800f180cbbf739c7acea445b29bf175ae08ee4dd3071f0562fd5"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png.import",
+    "size_bytes": 1176,
+    "sha256": "c829723147ee4fb90759877003244699674a0108278c062bf9b05de06cad6daf"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png.import",
+    "size_bytes": 1065,
+    "sha256": "123a78b207e2db47af2505d01d6a8992065a96e494ac30ea9f9cda94893a0c0f"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png.import",
+    "size_bytes": 1084,
+    "sha256": "d406cf401ad4f8153aa9886b48e4feba47961f10d52f4035e971bc8d3afcfc5e"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png.import",
+    "size_bytes": 1176,
+    "sha256": "1801e31f0764353dd52a6ea21610daa6969bd2b958c7f37219c6b8d4e200c26e"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png.import",
+    "size_bytes": 1066,
+    "sha256": "1eed4872a6cfdb93346f9b03ad8d6e146be9ec5e215a836446dcecc05b2948d3"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png.import",
+    "size_bytes": 1091,
+    "sha256": "12b2d91fdeabbe0eadbe3f3086b97e1819fc553197a44b79b9ee37871343bbab"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png.import",
+    "size_bytes": 1166,
+    "sha256": "589640efe20d38c394f153d676cbbe6e3b52702a08c4751140c568f9522cc27e"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png.import",
+    "size_bytes": 1060,
+    "sha256": "c8919b8e2862233dd272be6b4281cca0e480aba4b0f244669be94151692f4f0d"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png.import",
+    "size_bytes": 1094,
+    "sha256": "01dea3d2eeeb8bc71d5831b6cffc69f957b8ed7cc6da4afd23a5dbcc1e7f7b06"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png.import",
+    "size_bytes": 1185,
+    "sha256": "38644404d665febcac0da7ea6002d06c488fd95f928c65690c149c235cdfef47"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png.import",
+    "size_bytes": 1076,
+    "sha256": "6d63f858e7347945f5c81d154a908e8e91cc2b2c6bfa50f5f79c92464990c0aa"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png.import",
+    "size_bytes": 1091,
+    "sha256": "e6a7f835b15ed715e7d042b8bd6e5a9bcb8836047c195010690358e5ed0dfdba"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png.import",
+    "size_bytes": 1165,
+    "sha256": "de79ddbc772804b3630adaf36f732c022297bf95c6ebddff116e8a32143e1cb7"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png.import",
+    "size_bytes": 1061,
+    "sha256": "795f3db32c11954ad36e0483fc2fd74782c3caba6a5620b78afb57f6208b1054"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png.import",
+    "size_bytes": 1091,
+    "sha256": "d0f2a5a7e509d34aacb87621cd4ad6f890d21adc90f62c110d17e21c066337e3"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png.import",
+    "size_bytes": 1165,
+    "sha256": "361e6a1a180bbc26c294508d6f3100b76d81ab080ad56e2329f8ecdb415214d5"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png.import",
+    "size_bytes": 1060,
+    "sha256": "45b3b0852af2462e2a59fd059d208f6f1b6daf12666f6d965fba5d33c8240881"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png.import",
+    "size_bytes": 1078,
+    "sha256": "36d5da1f783b1f47b17609ceadf37d13a624d111b6d6bd964c0dce8288eb33db"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png.import",
+    "size_bytes": 1070,
+    "sha256": "2db3a228258258563d52bec86632e6f6c595570dd7eac91f7d3569c7e4034def"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png.import",
+    "size_bytes": 1166,
+    "sha256": "261d7637b2288ebaae313f680c2cd1473aa0933bec60ecb3dcac0fbb7d21b275"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png.import",
+    "size_bytes": 1061,
+    "sha256": "e93a5f31f8a70e5358e6275eec047aed353ab0425313555016b3c6961b8cb103"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png.import",
+    "size_bytes": 1180,
+    "sha256": "5095073679387537b659f827e7cfff960df3c08fd9adf8d1c423f0156a36ba3f"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png.import",
+    "size_bytes": 1177,
+    "sha256": "dd040690debfe6564b5b656f38b6fc9f5df2fcca9e71a012d0b966002c32dc58"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png.import",
+    "size_bytes": 1168,
+    "sha256": "4cf874f7f97a33da640cee933c8d5b030bf5382b0ef1535c4e6d2a3f1c23b008"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png.import",
+    "size_bytes": 1161,
+    "sha256": "af8d6b31932d40813ac6c0795c8c402019104cb5908086a57b6a53b0cedc76df"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png.import",
+    "size_bytes": 1162,
+    "sha256": "199524f4d17e82980a4a7307186a2d1cce98d1abae6a84f2d82355c4f9b54ec4"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png.import",
+    "size_bytes": 1155,
+    "sha256": "ccbc0a572fe1bf0fd455233e8eec63658efec67cda83e01240eb287450d9b1eb"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png.import",
+    "size_bytes": 1140,
+    "sha256": "7557c54d8e0f2ab863b8d3f5dddeb531cc0387cbda10b4e7e7e86bc127eda476"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png.import",
+    "size_bytes": 1158,
+    "sha256": "211d4b620782e02c6c8775d08b2b6add295809a6c54a6f3d4f0374ecf6b33e5d"
+  },
+  {
+    "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png.import",
+    "size_bytes": 1158,
+    "sha256": "fbdf14b646ffd340094cc08699e05f06d2a8c98bb58d5108acc052578781dd7a"
+  }
+]

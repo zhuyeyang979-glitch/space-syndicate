@@ -1,0 +1,18 @@
+{
+  "schema": "space_syndicate.v076.generation9_deterministic_import_metadata_audit.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "status": "PASS",
+  "mode": "--editor --import --rendering-method gl_compatibility --rendering-driver opengl3_angle",
+  "head_sha": "01d0818ddfe9b6903340c417fb4f7d456864909f",
+  "exit_code": 0,
+  "before_tracked_import_count": 57,
+  "after_tracked_import_count": 57,
+  "before_manifest_sha256": "ece3b3390213984bf3b3b447e19ab062743677184ef730fa5b1aadbab310095f",
+  "after_manifest_sha256": "ece3b3390213984bf3b3b447e19ab062743677184ef730fa5b1aadbab310095f",
+  "hash_parity": true,
+  "untracked_uid_count": 295,
+  "other_delta_count": 0,
+  "production_asset_excluded_count": 0,
+  "gdignore_change_count": 0,
+  "completed_at": "2026-09-02T00:27:23.5729646+09:00"
+}
