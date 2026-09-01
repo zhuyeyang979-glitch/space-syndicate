@@ -1,0 +1,219 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_report.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "probe_id": "probe-001",
+  "probe_execution_index": 1,
+  "authorized_nonformal_probe_count": 3,
+  "append_only": true,
+  "formal_generation": false,
+  "generation9_formal_execution_count": 0,
+  "generation9_automatic_retry_count": 0,
+  "generated_at_utc": "2026-09-01T15:38:30.4127378Z",
+  "started_at_utc": "2026-09-01T15:13:36.0508036Z",
+  "finished_at_utc": "2026-09-01T15:24:47.5785487Z",
+  "status": "FAIL",
+  "overall_classification": "NONFORMAL_PLATFORM_PROBE_FAIL_CLOSED",
+  "failure_class": "SEED_UI_BINDING_TOOLING_UNICODE_GAP",
+  "product_failure_attested": false,
+  "platform_capacity_hard_stop_attested": false,
+  "platform_qualification_gate_green": false,
+  "exact_clone_identity": {
+    "path": "D:\\ss-v076-generation9-platform-qualification-7a2e10c7-001",
+    "probe_execution_head_sha": "01d0818ddfe9b6903340c417fb4f7d456864909f",
+    "probe_execution_tree_sha": "07eaca9dbf5c2ff791c607bc9930b142e5cccb12",
+    "current_successor_head_sha": "804f6e24ac9dd843a0500bd93665936bd0360810",
+    "current_successor_tree_sha": "581207556a555665a28e183ee7ff89c677468bfa",
+    "index_delta_count_before_report": 0,
+    "tracked_worktree_delta_count_before_report": 0,
+    "untracked_uid_count": 295,
+    "staged_uid_count": 0
+  },
+  "mcp_control_plane": {
+    "status": "PASS",
+    "milestone_pass_count": 12,
+    "milestone_required_count": 12,
+    "stale_mcp_listener_count": 0,
+    "endpoint_owner_mismatch_count": 0,
+    "scoped_residual_process_count": 0,
+    "milestones": [
+      {
+        "id": "M0",
+        "name": "Exact Clone Identity",
+        "status": "PASS",
+        "evidence": {
+          "exact_clone_path": "D:\\ss-v076-generation9-platform-qualification-7a2e10c7-001",
+          "head_sha": "01d0818ddfe9b6903340c417fb4f7d456864909f",
+          "tree_sha": "07eaca9dbf5c2ff791c607bc9930b142e5cccb12",
+          "identity_basis": "immutable local reflog interval plus committed Git lineage"
+        }
+      },
+      {
+        "id": "M1",
+        "name": "Godot Process Created",
+        "status": "PASS",
+        "evidence": {
+          "editor_pid": 11524,
+          "process_name": "Godot_v4.7-stable_win64.exe"
+        }
+      },
+      {
+        "id": "M2",
+        "name": "GUI Engine Identified",
+        "status": "PASS",
+        "evidence": {
+          "editor_pid": 11524,
+          "renderer": "gl_compatibility",
+          "rendering_driver": "opengl3_angle"
+        }
+      },
+      {
+        "id": "M3",
+        "name": "MCP Listener Bound",
+        "status": "PASS",
+        "evidence": {
+          "configured_port": 23198,
+          "listener_port": 23198
+        }
+      },
+      {
+        "id": "M4",
+        "name": "Listener Owner Matches GUI Engine",
+        "status": "PASS",
+        "evidence": {
+          "listener_owner_pid": 11524,
+          "gui_engine_pid": 11524
+        }
+      },
+      {
+        "id": "M5",
+        "name": "First JSON-RPC Request Sent",
+        "status": "PASS",
+        "evidence_path": "m5-m6-first-get-project-info.jsonrpc.json"
+      },
+      {
+        "id": "M6",
+        "name": "First JSON-RPC Response Received",
+        "status": "PASS",
+        "evidence": {
+          "godot_version": "4.7-stable (official)",
+          "tool_profile": "core"
+        }
+      },
+      {
+        "id": "M7",
+        "name": "Runtime Bootstrap Received",
+        "status": "PASS",
+        "evidence_path": "m7-runtime-bootstrap.jsonrpc.json"
+      },
+      {
+        "id": "M8",
+        "name": "Ready Witness Persisted",
+        "status": "PASS",
+        "evidence": {
+          "state_exists": true,
+          "state_age_msec": 480
+        }
+      },
+      {
+        "id": "M9",
+        "name": "Main Scene Load Capability Confirmed",
+        "status": "PASS",
+        "evidence": {
+          "is_playing_scene": true,
+          "runtime_pid": 14520
+        }
+      },
+      {
+        "id": "M10",
+        "name": "Clean Exit Requested",
+        "status": "PASS",
+        "evidence": {
+          "normal_close_requested": true,
+          "forced_stop": false
+        }
+      },
+      {
+        "id": "M11",
+        "name": "Process And Port Zero",
+        "status": "PASS",
+        "evidence": {
+          "process_count_after": 0,
+          "endpoint_count_after": 0
+        }
+      }
+    ]
+  },
+  "seed_binding": {
+    "status": "FAIL_CLOSED",
+    "selected_seed": 917592522,
+    "selected_seed_sha256": "8b2f22f3f35d4a6d7eed22b7a5bcf80238cf2913beed5c249382795290a11944",
+    "seed_control_path": "/root/Main/V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/SeedRow/SeedInput",
+    "initial_visible_text": "900626424",
+    "final_visible_text": "",
+    "config_model_value": 900626424,
+    "new_game_intent_seed": "NOT_ATTESTED",
+    "runtime_match_seed": 900626424,
+    "successful_sample_count": 0,
+    "empty_readback_count": 1,
+    "fallback_randomization_count": 0,
+    "direct_runtime_injection_count": 0,
+    "four_layer_match": false,
+    "external_keyboard_foreground_acquired": false,
+    "root_cause": {
+      "owner": "FUNPLAY_MCP_RUNTIME_INPUT_TOOLING",
+      "product_seed_owner_failure_attested": false,
+      "bridge_path": "addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd",
+      "bridge_sha256_at_probe_head": "41d1c7d1af1f21d5f839dafe8545164636f16e3f8cc0182b02b45ec07865098e",
+      "ascii_unicode_assignment_present_at_probe_head": false,
+      "observation": "Backspace cleared the LineEdit, but printable ASCII key events returned success without a unicode codepoint and inserted no characters."
+    }
+  },
+  "import_observation": {
+    "status_during_probe": "FAIL_NOT_QUIESCENT",
+    "maximum_import_queue_length": 0,
+    "maximum_import_event_count": 57,
+    "probe_cache_identity": "INVALID_HEADLESS_CANONICAL_IMPORT_IDENTITY",
+    "deterministic_production_import_metadata_delta_count": 57,
+    "deterministic_metadata_commit_sha": "a79be8e622ed0ad13192535ddde2532640dc00c1",
+    "compatibility_canonical_import_commit_sha": "804f6e24ac9dd843a0500bd93665936bd0360810",
+    "compatibility_canonical_import_pass_count": 2,
+    "compatibility_path_parity": true,
+    "compatibility_hash_parity": true,
+    "compatibility_manifest_fingerprint_sha256": "b9992d229dc7e079f5c6087f9305e03c2ee5288b2c7c0c614e40497c7a182380",
+    "class_cache_sha256": "f35abc2d252fa772468528f561dd52344ec0c3b09bd0a9b58ebfaf3d54c2ea01",
+    "production_asset_excluded_from_import_count": 0,
+    "gdignore_change_count": 0,
+    "disposition": "Probe 1 remains failed. Later append-only commits correct the cache identity for Probe 2 without rewriting this sample."
+  },
+  "memory_observation": {
+    "interval_milliseconds": 250,
+    "sample_count": 1047,
+    "baseline_total_godot_private_bytes": 138698752,
+    "peak_total_godot_private_bytes": 7334481920,
+    "peak_editor_private_bytes": 5806292992,
+    "peak_game_private_bytes": 2315423744,
+    "observed_incremental_private_bytes": 7195783168,
+    "minimum_available_physical_bytes": 13652860928,
+    "minimum_available_commit_bytes": 1307217920,
+    "startup_available_commit_bytes": 9701756928,
+    "provisional_required_headroom_bytes": 10068470784,
+    "provisional_shortfall_bytes": 366713856,
+    "capacity_formula_satisfied_for_this_contaminated_sample": false,
+    "capacity_qualification_status": "INCONCLUSIVE_REPROBE_REQUIRED",
+    "explanation": "The peak includes deterministic production reimport caused by the invalid headless cache identity. Probe 2 must measure the warm compatibility cache before any hard-stop decision."
+  },
+  "shutdown": {
+    "status": "PASS",
+    "normal_close_requested": true,
+    "forced_stop": false,
+    "process_count_after": 0,
+    "endpoint_count_after": 0
+  },
+  "raw_evidence": {
+    "root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-20\\qu\\outputs\\v076-generation9-platform-qualification\\platform-probes\\probe-001",
+    "manifest_path": "reports/reuse/generation9_platform_qualification/platform-probes/probe-001/raw_evidence_manifest.json",
+    "manifest_sha256": "38ab40677c42d06f3e6d7659288343891e7b78736f52536c51cb8920a7937ac3",
+    "file_count": 40
+  },
+  "next_atomic_step": "PATCH_RUNTIME_KEY_EVENT_ASCII_UNICODE_VIA_FULL_PROFILE_MCP_THEN_RUN_TOOLING_SELFTEST"
+}

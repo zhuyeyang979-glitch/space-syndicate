@@ -1,0 +1,210 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_raw_evidence_manifest.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_PLATFORM_QUALIFIED_GENERATION9_20260901",
+  "probe_id": "probe-001",
+  "append_only": true,
+  "raw_evidence_root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-20\\qu\\outputs\\v076-generation9-platform-qualification\\platform-probes\\probe-001",
+  "file_count": 40,
+  "files": [
+    {
+      "path": "m10-editor-normal-stop.json",
+      "size_bytes": 219,
+      "sha256": "3fcc53b3525663ab17667531140f5dd4e54c06481d3f2b0f83cd6a1297a68c3f"
+    },
+    {
+      "path": "m10-exit-play-mode.jsonrpc.json",
+      "size_bytes": 120,
+      "sha256": "b770de89d930d53d7ef5a13c0bbb21a0b0fd5b269a0a38a400750a47e73f0593"
+    },
+    {
+      "path": "m5-m6-first-get-project-info.jsonrpc.json",
+      "size_bytes": 2780,
+      "sha256": "5c80512e5afbc5879fe81fed4501a30219c6c98f75c2177090e9440e3e55f3ab"
+    },
+    {
+      "path": "m7-pre-play-state.jsonrpc.json",
+      "size_bytes": 389,
+      "sha256": "2960d1d9fa4cf61920776123021b38b4d0f9ba33ea0eedb5c81b4d1d0171a207"
+    },
+    {
+      "path": "m7-runtime-bootstrap.jsonrpc.json",
+      "size_bytes": 1408,
+      "sha256": "9827573d3010cc8b7f8272a3a55d43e84d5bdc75833a215378fe789ba39a9a8b"
+    },
+    {
+      "path": "m7-runtime-ready-witness.jsonrpc.json",
+      "size_bytes": 128050,
+      "sha256": "4407e1a37c688b09a44c5c7b1f5353ef5648627e2e79d00def7567eb8b461daa"
+    },
+    {
+      "path": "m9-play-main-scene.jsonrpc.json",
+      "size_bytes": 117,
+      "sha256": "22afe47bcab1ac6bd4a0e81335c7b985afb7c9485080e0c28c640a1f30f8931f"
+    },
+    {
+      "path": "m9-post-play-state.jsonrpc.json",
+      "size_bytes": 387,
+      "sha256": "eb337ae72959718bdebc392100b4eb3f50d60f0af8fb7ace6dd56ace727e26d4"
+    },
+    {
+      "path": "main-menu-preview-tree.jsonrpc.json",
+      "size_bytes": 484184,
+      "sha256": "a64fcd6aa74405ed54cf797bbe7792070cf74c888cbe7f9a710614fdf1ad582b"
+    },
+    {
+      "path": "monitor.stderr.log",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "monitor.stdout.log",
+      "size_bytes": 1381,
+      "sha256": "89601a74ed301df531e2c986d27a91db0aee056cc0926f3339934f58b1a44b9d"
+    },
+    {
+      "path": "monitor.stop",
+      "size_bytes": 33,
+      "sha256": "222bd72cc594bfbb7caa5b70bbcb2ca997145167d4fb69167df62cab7602dd2f"
+    },
+    {
+      "path": "monitor/process_memory_samples.jsonl",
+      "size_bytes": 2100656,
+      "sha256": "f8e6aefc53040bf5c3bd2ab31974cd9a995204bb44e1a9ab6b6cf496676589a0"
+    },
+    {
+      "path": "monitor/process_memory_summary.json",
+      "size_bytes": 1380,
+      "sha256": "b1d33e3c9aa341ffeee39ef1356bb28c95e98d39c039e5306e55e3dfd5629b0f"
+    },
+    {
+      "path": "runtime-tree-main-menu-search.jsonrpc.json",
+      "size_bytes": 254360,
+      "sha256": "e31a77a7be6271af1dace1b9e73e49b213e63b8c9f818cecd5b59e2bace7da30"
+    },
+    {
+      "path": "seed-sample-001-after-open-node.jsonrpc.json",
+      "size_bytes": 3456,
+      "sha256": "9877499ffc28217b1d92742ad47c1c9a07de4a9c4cd6fee3cbed11af5dabeb8e"
+    },
+    {
+      "path": "seed-sample-001-after-open-view.jsonrpc.json",
+      "size_bytes": 1364,
+      "sha256": "314195b7625045c6b0135aa8642bdaf2572e019191a619ba6f2d6b2a58bf89bf"
+    },
+    {
+      "path": "seed-sample-001-before-input-node.jsonrpc.json",
+      "size_bytes": 3548,
+      "sha256": "fbc6c76a8b2fd785f383f90f2312ef4053cc5257192abd070d5ed88b44708d2b"
+    },
+    {
+      "path": "seed-sample-001-before-input-view.jsonrpc.json",
+      "size_bytes": 1346,
+      "sha256": "e453020a168102e978f3967bcc9f7227c3b2dd58353fe715fdb054587ca2d801"
+    },
+    {
+      "path": "seed-sample-001-commit-enter.jsonrpc.json",
+      "size_bytes": 1470,
+      "sha256": "aad0ef829ae312db4bb81ee39caa8ba9bf010daa96bdf1b26be651b07238f12d"
+    },
+    {
+      "path": "seed-sample-001-config-commit-enter.jsonrpc.json",
+      "size_bytes": 1470,
+      "sha256": "c80052d2b1a6658e0f6439923148afdb34d5ab3c486aef98b2666983679f4450"
+    },
+    {
+      "path": "seed-sample-001-config-focus-click.jsonrpc.json",
+      "size_bytes": 1626,
+      "sha256": "0de971173c918198e9febb7a760e663743f486b67d9501c836a8d8f45b3e522c"
+    },
+    {
+      "path": "seed-sample-001-config-keyboard-entry.jsonrpc.json",
+      "size_bytes": 13966,
+      "sha256": "8c602ef30c067c8893693879fef6e4b07b1bcec2735eabe416b529ab1c80b488"
+    },
+    {
+      "path": "seed-sample-001-failed-config-flow.jsonrpc.json",
+      "size_bytes": 2688,
+      "sha256": "3ce87ce6d273bc11618bb7b9f0f7df97bdcf68d9cbe7acc05033af0e63860064"
+    },
+    {
+      "path": "seed-sample-001-failed-runtime-events.jsonrpc.json",
+      "size_bytes": 151107,
+      "sha256": "d80884695654df5be56af43ab2fd7aab066fdbd1cba590baf221971c280a3bac"
+    },
+    {
+      "path": "seed-sample-001-failed-runtime-owner.jsonrpc.json",
+      "size_bytes": 2540,
+      "sha256": "fb3911bf382683a3c95aa56483a72d1bfb6d46712caa08968313412407050d3d"
+    },
+    {
+      "path": "seed-sample-001-failed-runtime-view.jsonrpc.json",
+      "size_bytes": 1382,
+      "sha256": "79b8704f03681fe41b6d3e6bd9be2fd98341cd622bba56d819e062a6f45342b0"
+    },
+    {
+      "path": "seed-sample-001-failed-visible-text.jsonrpc.json",
+      "size_bytes": 2864,
+      "sha256": "3b06fca9bb9b5350d60d2860b21a9fc7792951eda674812309c8ef1aca0f924a"
+    },
+    {
+      "path": "seed-sample-001-focus-click.jsonrpc.json",
+      "size_bytes": 1626,
+      "sha256": "7bb3b2e88b8d2da23f0a372b565c8b2b5523fb11923a3e75ed5e7714f51b272e"
+    },
+    {
+      "path": "seed-sample-001-keyboard-entry.jsonrpc.json",
+      "size_bytes": 13966,
+      "sha256": "0a041e0c92cd3296dff5b592493fa85a33ba4e478cffda39b1d65e7392c3103c"
+    },
+    {
+      "path": "seed-sample-001-mcp-ctrl-v-combined-keycode.jsonrpc.json",
+      "size_bytes": 1638,
+      "sha256": "1677d322eab218af3b678997f24f4cad4de249e0cd53ac68e75bd2c2ffedf512"
+    },
+    {
+      "path": "seed-sample-001-new-game-button-node.jsonrpc.json",
+      "size_bytes": 3364,
+      "sha256": "fcd84d37354c406ee75c20efd5f8a78b9aa9b9e45776d8f38a7c6150d18ce1cf"
+    },
+    {
+      "path": "seed-sample-001-open-new-game-click.jsonrpc.json",
+      "size_bytes": 1632,
+      "sha256": "ca86e80a1cc2310bd7679a2a8088f757dda29756b507ffa04d4695eb6c29dd32"
+    },
+    {
+      "path": "seed-sample-001-os-keyboard-driver-receipt.json",
+      "size_bytes": 594,
+      "sha256": "c80efadf2634663c4b0f2c057f7368b6e6f6d8496512264be29c25aaa0c71409"
+    },
+    {
+      "path": "seed-sample-001-visible-readback-after-entry.jsonrpc.json",
+      "size_bytes": 3420,
+      "sha256": "3ce7e56d3310555682a5664cedd56f9a884223400f7074e6477c2a905cc52506"
+    },
+    {
+      "path": "seed-sample-001-visible-readback-after-mcp-paste.jsonrpc.json",
+      "size_bytes": 2864,
+      "sha256": "7bbd90c4ab45a3433ee675661322fa5be0f778eab4a8634547ade2041598d7fc"
+    },
+    {
+      "path": "seed-sample-001-visible-readback-after-os-keyboard.jsonrpc.json",
+      "size_bytes": 3420,
+      "sha256": "74f95ee5404824b28aa87ea6427613ab70b2d86d17d3718ed3a5b0bce40a2694"
+    },
+    {
+      "path": "seed-sample-001-visible-readback-view.jsonrpc.json",
+      "size_bytes": 1356,
+      "sha256": "4ae6f2fe656ff967f8357a27ad68bf32336e7ef8304ffa1ecbf7102d84ca11a3"
+    },
+    {
+      "path": "seed-sample-001-visible-readback.jsonrpc.json",
+      "size_bytes": 3548,
+      "sha256": "3a8434d41e41e01e113d1975fd8d31f81ebce765d30e9e8b2f17b3e519a02cd8"
+    },
+    {
+      "path": "tools-list.jsonrpc.json",
+      "size_bytes": 21249,
+      "sha256": "b62a9d68385d02da6c9bcdfc32917c1b6fa621b92d2ed2b8fef681353f8814ee"
+    }
+  ]
+}
