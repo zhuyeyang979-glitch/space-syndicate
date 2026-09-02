@@ -1,0 +1,23 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_probe_budget_ledger.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "generated_at_utc": "2026-09-02T05:42:18.3297167Z",
+  "append_only": true,
+  "ledger_sequence": 10,
+  "predecessor_ledger_sha256": "7c1d54f5058c313c80d36948e84e4f1f0a791874354b45712ac93eb85c5d3171",
+  "status": "ACTIVE_UNTIL_CONSECUTIVE_COMPLETE_PASS_PAIR",
+  "new_probe_budget_kind": "UNTIL_FIRST_CONSECUTIVE_COMPLETE_PASS_PAIR",
+  "minimum_new_nonformal_probe_count": 2,
+  "new_launch_count": 4,
+  "required_consecutive_pass_count": 2,
+  "current_consecutive_pass_count": 0,
+  "last_probe_id": "probe-014",
+  "last_probe_status": "FAIL",
+  "last_probe_classification": "PRODUCT_FAILURE_NEW_GAME_RECEIPT_NOT_DURABLE",
+  "last_probe_raw_evidence_manifest_sha256": "e974d16472792d1c0823678d5168cf60e041b1c45501dc2aaf6a72a4f118091f",
+  "last_probe_report_sha256": "2bb1dcb3588b6a72cfcbef5378a3a699ab05e4c35e0f76263ddad15b45f9dc39",
+  "next_probe_id": "probe-015",
+  "frozen_probe_rewrite_count": 0,
+  "generation9_formal_execution_count": 0,
+  "generation10_creation_count": 0
+}
