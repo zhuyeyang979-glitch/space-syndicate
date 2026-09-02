@@ -1,0 +1,41 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_probe_budget_exhaustion_receipt.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_at_utc": "2026-09-02T04:23:10.4924997Z",
+  "status": "HARD_STOP",
+  "authorized_launch_count": 4,
+  "actual_launch_count": 4,
+  "remaining_launch_count": 0,
+  "required_consecutive_pass_count": 2,
+  "achieved_consecutive_pass_count": 0,
+  "probes": {
+    "probe-007": {
+      "status": "FAIL",
+      "classification": "TOOLING_FAILURE_WINDOW_COORDINATE_MAPPING",
+      "qualification_pass": false,
+      "report_sha256": "4e84e53e1b96b2870f7e26e4921904c4be873eee2dd9306365f8dafddfa5d747"
+    },
+    "probe-008": {
+      "status": "FAIL",
+      "classification": "TOOLING_FAILURE_SCREENSHOT_WINDOW_RELATIVE_COORDINATE_OFFSET",
+      "qualification_pass": false,
+      "report_sha256": "42ee4e62f37072e03ca14aacae564425d0fa957f7d168ba0c4680ebea26e6bc6"
+    },
+    "probe-009": {
+      "status": "FAIL",
+      "classification": "TOOLING_FAILURE_EXTERNAL_TO_RUNTIME_GUI_FOCUS_BINDING",
+      "qualification_pass": false,
+      "report_sha256": "16ac182546499447c722b122714f38d833b9a5935ba99bfecb067f61991a7b85"
+    },
+    "probe-010": {
+      "status": "FAIL",
+      "classification": "PRODUCT_FAILURE",
+      "qualification_pass": false,
+      "report_sha256": "0ce928defb6f7f1723d1298686b9ed5cfec0b03d649d547e8115437f08e36ba5"
+    }
+  },
+  "final_budget_ledger_sha256": "e9dfde8dea416dc7b31d816feea262c70439623d21e32bf6347d40cb31953ea0",
+  "generation9_formal_execution_count": 0,
+  "generation9_automatic_retry_count": 0,
+  "generation10_creation_count": 0
+}

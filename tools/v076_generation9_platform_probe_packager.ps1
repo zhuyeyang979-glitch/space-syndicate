@@ -28,9 +28,7 @@ param(
     [ValidateRange(0, 3)]
     [int]$RemainingLaunchCount,
 
-    [Parameter(Mandatory = $true)]
-    [ValidatePattern('^probe-\d{3}$')]
-    [string]$NextProbeId
+    [string]$NextProbeId = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,6 +67,13 @@ $manifestFiles = @($sourceFiles | ForEach-Object {
     }
 })
 $generatedAt = [DateTime]::UtcNow.ToString('o')
+$normalizedNextProbeId = $NextProbeId.Trim()
+if ($RemainingLaunchCount -gt 0 -and $normalizedNextProbeId -notmatch '^probe-\d{3}$') {
+    throw 'A next monotonic Probe ID is required while launch budget remains.'
+}
+if ($RemainingLaunchCount -eq 0 -and $normalizedNextProbeId -ne '') {
+    throw 'Next Probe ID must be empty when the launch budget is exhausted.'
+}
 $qualificationPass = (
     $Classification -ceq 'QUALIFICATION_PASS' -and
     [string]$executionResult.status -ceq 'PASS'
@@ -106,7 +111,7 @@ $report = [ordered]@{
     consecutive_pass_carry = $false
     launch_index_after_requalification = $LaunchIndexAfterRequalification
     remaining_launch_count = $RemainingLaunchCount
-    next_probe_id = $NextProbeId
+    next_probe_id = if ($normalizedNextProbeId -eq '') {$null} else {$normalizedNextProbeId}
     execution_result_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $executionResultPath).Hash.ToLowerInvariant()
     raw_evidence_manifest_file_count = $sourceFiles.Count
     failure = $executionResult.failure
