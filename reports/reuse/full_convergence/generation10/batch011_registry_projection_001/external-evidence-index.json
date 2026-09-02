@@ -1,0 +1,19 @@
+{
+  "schema_version": "space_syndicate.v076.batch011_registry_external_evidence_index.v1",
+  "candidates": [
+    {
+      "path": "D:/ss-v076-generation10-batch011-registry-projection-001-20260902/batch011_registry_projection_candidate.json",
+      "sha256": "e7c505e42f3e490d7f23479db61a966bdfafaf9d8539a33e0c62d378dde32321",
+      "status": "REJECTED_NOT_APPLIED_ALIAS_REPLACEMENT_DEBT",
+      "preserved": true
+    },
+    {
+      "path": "D:/ss-v076-generation10-batch011-registry-projection-002-20260903/batch011_registry_projection_candidate.json",
+      "sha256": "48ca76ef8063ede499e3e1cc775a2025eca0a0aaade7a7b7b7e0f26ccfa66f6a",
+      "status": "DUAL_REVIEWED_EXACT_TARGET_APPLIED",
+      "repository_copy": "registry-candidate.json",
+      "preserved": true
+    }
+  ],
+  "old_evidence_mutation_count": 0
+}

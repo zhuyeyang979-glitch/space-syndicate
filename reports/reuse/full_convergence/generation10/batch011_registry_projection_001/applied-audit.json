@@ -1,0 +1,165 @@
+{
+  "schema_version": "space_syndicate.v076.batch011_exact_registry_audit.v1",
+  "status": "PASS",
+  "passed": 37,
+  "total": 37,
+  "checks": [
+    {
+      "name": "candidate bound to exact committed Head",
+      "status": "PASS"
+    },
+    {
+      "name": "candidate tree matches commit",
+      "status": "PASS"
+    },
+    {
+      "name": "payload and canonical file match",
+      "status": "PASS"
+    },
+    {
+      "name": "source and target hashes",
+      "status": "PASS"
+    },
+    {
+      "name": "actual Registry exact expected epoch",
+      "status": "PASS"
+    },
+    {
+      "name": "applied candidate unchanged",
+      "status": "PASS"
+    },
+    {
+      "name": "all 474 old rows unchanged",
+      "status": "PASS"
+    },
+    {
+      "name": "only inventory appended",
+      "status": "PASS"
+    },
+    {
+      "name": "49 append exact original-byte splice",
+      "status": "PASS"
+    },
+    {
+      "name": "exact 50 unique members",
+      "status": "PASS"
+    },
+    {
+      "name": "48 test 1 active 1 diagnostic",
+      "status": "PASS"
+    },
+    {
+      "name": "one existing mechanic document reused",
+      "status": "PASS"
+    },
+    {
+      "name": "no added ownership or writes",
+      "status": "PASS"
+    },
+    {
+      "name": "one passive production definition",
+      "status": "PASS"
+    },
+    {
+      "name": "source citation not execution proof",
+      "status": "PASS"
+    },
+    {
+      "name": "no green claims or official writes",
+      "status": "PASS"
+    },
+    {
+      "name": "source dependency:scripts",
+      "status": "PASS"
+    },
+    {
+      "name": "source dependency:resources",
+      "status": "PASS"
+    },
+    {
+      "name": "source dependency:scenes",
+      "status": "PASS"
+    },
+    {
+      "name": "source dependency:addons",
+      "status": "PASS"
+    },
+    {
+      "name": "source dependency:assets",
+      "status": "PASS"
+    },
+    {
+      "name": "source dependency:project.godot",
+      "status": "PASS"
+    },
+    {
+      "name": "source dependency:docs/rules/v06_mechanic_status_registry.json",
+      "status": "PASS"
+    },
+    {
+      "name": "committed helper:tools/v076/v076_reuse_point_inertia_gate.py",
+      "status": "PASS"
+    },
+    {
+      "name": "committed helper:tools/v076/v076_reuse_full_convergence_batch_builder.py",
+      "status": "PASS"
+    },
+    {
+      "name": "committed helper:tools/v076/v076_reuse_full_convergence_batch010_materializer.py",
+      "status": "PASS"
+    },
+    {
+      "name": "committed helper:tools/v076/v076_reuse_full_convergence_batch010_registry_projection_builder.py",
+      "status": "PASS"
+    },
+    {
+      "name": "committed helper:tools/v076/v076_current_component_registration_58_builder.py",
+      "status": "PASS"
+    },
+    {
+      "name": "builder bytes bound",
+      "status": "PASS"
+    },
+    {
+      "name": "original snapshot guards",
+      "status": "PASS"
+    },
+    {
+      "name": "original monotonic guards",
+      "status": "PASS"
+    },
+    {
+      "name": "negative:old alias rename",
+      "status": "PASS"
+    },
+    {
+      "name": "negative:duplicate id",
+      "status": "PASS"
+    },
+    {
+      "name": "negative:duplicate path",
+      "status": "PASS"
+    },
+    {
+      "name": "negative:duplicate class",
+      "status": "PASS"
+    },
+    {
+      "name": "negative:unknown owner",
+      "status": "PASS"
+    },
+    {
+      "name": "negative:no typed source proof",
+      "status": "PASS"
+    }
+  ],
+  "candidate_sha256": "48ca76ef8063ede499e3e1cc775a2025eca0a0aaade7a7b7b7e0f26ccfa66f6a",
+  "binding_head_sha": "30002f6e691ad8a9c555f95abc29c9e71a638236",
+  "target_sha256": "fa8486af2023a067df3af6e4e1eb5f4247e78f96f2b26e18a050d015c3a7667f",
+  "mode": "APPLIED_VERIFICATION",
+  "snapshot_failures": [],
+  "monotonic_failures": [],
+  "script_sha256": "e04b613019ffb067cef71a218eca293bb157c47773d44975c643a20d67f453cd",
+  "official_write_count": 0,
+  "required_gate_green": false
+}

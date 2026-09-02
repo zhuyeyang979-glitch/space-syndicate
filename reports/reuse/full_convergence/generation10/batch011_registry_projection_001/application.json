@@ -1,0 +1,36 @@
+{
+  "schema_version": "space_syndicate.v076.batch011_registry_application.v1",
+  "status": "REGISTRY_APPEND_COMPLETE_CORRECTION_AUTHORITY_PENDING",
+  "source_head_sha": "30002f6e691ad8a9c555f95abc29c9e71a638236",
+  "source_tree_sha": "9c3af053a0b3688856bcdac5a7852dac5fe49840",
+  "target_path": "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json",
+  "source_sha256": "84cc99166b3515d6ae33dc1e025042fb5344a6fb29fda4cfb403ac7c80a6fdf8",
+  "target_sha256": "fa8486af2023a067df3af6e4e1eb5f4247e78f96f2b26e18a050d015c3a7667f",
+  "candidate_sha256": "48ca76ef8063ede499e3e1cc775a2025eca0a0aaade7a7b7b7e0f26ccfa66f6a",
+  "reviews": [
+    "review-primary.json",
+    "review-independent.json"
+  ],
+  "operation": "APPEND_EXACT_49_INVENTORY_ROWS",
+  "registry_rows_before": 474,
+  "registry_rows_after": 523,
+  "old_row_mutation_count": 0,
+  "reused_member_count": 1,
+  "classification_counts": {
+    "HISTORICAL_TEST_ONLY": 48,
+    "HISTORICAL_ACTIVE_LINEAGE_REGISTERED": 1,
+    "HISTORICAL_DIAGNOSTIC_ONLY": 1
+  },
+  "registry_write_count": 1,
+  "audit_execution_registry_write_count": 0,
+  "correction_record_write_count": 0,
+  "corrected_failure_claim_count": 0,
+  "product_file_mutation_count": 0,
+  "new_owner_count": 0,
+  "formal_step11_reexecution_count": 0,
+  "full_required_gate_execution_count": 0,
+  "required_gate_green": false,
+  "human_green": false,
+  "production_green": false,
+  "next_atomic_step": "BUILD_BATCH011_EXACT_AUTHORITY_PROPOSAL_FROM_COMMITTED_REGISTERED_HEAD"
+}

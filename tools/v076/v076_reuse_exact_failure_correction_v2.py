@@ -233,8 +233,8 @@ SCANNER_CORE_PATHS = (
     "tools/rules/check_v06_mechanic_authority.py",
 )
 SCANNER_SUCCESSOR_SHA256_BY_PATH = {
-    "tools/v076/v076_reuse_point_inertia_gate.py": "de366d10349d025af5535b747ecc5d3652288fcdfe49aa7d94ab81432a4e70cd",
-    "tools/v076/v076_reuse_point_inertia_gate_selftest.py": "593426655dca5a25782c3fded9eed179a8a7fa19f63817d81ffb930a10b20b6a",
+    "tools/v076/v076_reuse_point_inertia_gate.py": "2a4ade11b49719cc5b4a5290b51868eb3385c92c986d543585d89aac974ba333",
+    "tools/v076/v076_reuse_point_inertia_gate_selftest.py": "6b986b34c47311e03a0ea18a9a6158fac27c8c4b17a7bda9d5439347bc20aa34",
     "tools/rules/check_v06_mechanic_authority.py": "a7bdb3b4a5109439a61cafb6a4149373b220f80552a1e95a7fccb2caf84ae1ea",
 }
 EVOLVABLE_SEAL_INPUT_PATHS = frozenset({

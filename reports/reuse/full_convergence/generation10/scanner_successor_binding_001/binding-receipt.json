@@ -1,0 +1,55 @@
+{
+  "schema_version": "space_syndicate.v076.exact_scanner_successor_binding.v1",
+  "status": "EXACT_TWO_HASH_BINDING_PENDING_POSTCOMMIT_VERIFICATION",
+  "mechanism": "Existing SCANNER_SUCCESSOR_SHA256_BY_PATH; no new seal, schema or waiver",
+  "scanner_commit_sha": "30002f6e691ad8a9c555f95abc29c9e71a638236",
+  "scanner_tree_sha": "9c3af053a0b3688856bcdac5a7852dac5fe49840",
+  "resolver_path": "tools/v076/v076_reuse_exact_failure_correction_v2.py",
+  "resolver_sha256": "d3ec779c1a46c862f53f87d49d8132f87b1d9578e4907db080f7f72e76df8106",
+  "changed_bindings": [
+    {
+      "path": "tools/v076/v076_reuse_point_inertia_gate.py",
+      "before": "de366d10349d025af5535b747ecc5d3652288fcdfe49aa7d94ab81432a4e70cd",
+      "after": "2a4ade11b49719cc5b4a5290b51868eb3385c92c986d543585d89aac974ba333"
+    },
+    {
+      "path": "tools/v076/v076_reuse_point_inertia_gate_selftest.py",
+      "before": "593426655dca5a25782c3fded9eed179a8a7fa19f63817d81ffb930a10b20b6a",
+      "after": "6b986b34c47311e03a0ea18a9a6158fac27c8c4b17a7bda9d5439347bc20aa34"
+    }
+  ],
+  "unchanged_mechanic_checker_sha256": "a7bdb3b4a5109439a61cafb6a4149373b220f80552a1e95a7fccb2caf84ae1ea",
+  "frozen_manifest_sha256": "0731778c0b62f19bd15f7b6629ff82a67c11ec8ff9e6ca2923f4374eb170f948",
+  "frozen_plan_sha256": "abb283532cea5b344de680152caeb413522469464ab7d6c4d4e2e10c73ea555b",
+  "failure_evidence": "../batch011_registry_projection_001/post-apply-v2-selftest-first.json",
+  "failed_case": "111:SEAL_SCANNER_SUCCESSOR_HASH_MISMATCH:tools/v076/v076_reuse_point_inertia_gate.py",
+  "previous_test_result": "117/118 FAIL; preserved",
+  "primary_review": {
+    "reviewer": "/root",
+    "status": "GO_EXACT_TWO_LITERAL_DELTA_ONLY"
+  },
+  "independent_review": {
+    "reviewer": "/root/current_delta_forensics",
+    "status": "GO_EXACT_TWO_VALUES_ONLY",
+    "passed": 8,
+    "total": 8,
+    "checks": {
+      "original_error_reproduced": 1,
+      "exact_new_values_verified": 1,
+      "each_wrong_scanner_hash_rejected": 3,
+      "each_frozen_artifact_drift_rejected": 3
+    },
+    "evidence_source": "Read-only in-memory independent audit; injected scanner selftest receipt validates seal path only, not a claim of suite reexecution"
+  },
+  "checker_logic_mutation_count": 0,
+  "old_seal_mutation_count": 0,
+  "evovable_input_path_set_mutation_count": 0,
+  "correction_fingerprint_expansion_count": 0,
+  "product_file_mutation_count": 0,
+  "formal_step11_reexecution_count": 0,
+  "required_gate_green": false,
+  "human_green": false,
+  "production_green": false,
+  "historical_seal_reuse_gate_status": "FAIL",
+  "historical_seal_final_status": "HARD_STOP"
+}
