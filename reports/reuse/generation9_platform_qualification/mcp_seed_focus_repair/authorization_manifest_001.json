@@ -1,0 +1,40 @@
+{
+  "schema_version": "space_syndicate.v076.mcp_seed_focus_repair_authorization.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "generated_at_utc": "2026-09-02T04:45:14.8941757Z",
+  "status": "AUTHORIZED",
+  "user_authorization_verbatim": "明确授权：允许通过 Godot MCP 修复 Seed UI focus/输入链，并至少新增两次非正式 Probe，以重新取得连续 2 次完整 PASS。",
+  "authorized_scope": {
+    "godot_mcp_product_seed_ui_focus_input_chain_repair": true,
+    "direct_filesystem_product_edit_allowed": false,
+    "minimum_new_nonformal_probe_count": 2,
+    "required_consecutive_complete_pass_count": 2,
+    "probe_launch_authority_mode": "UNTIL_FIRST_CONSECUTIVE_COMPLETE_PASS_PAIR",
+    "next_monotonic_probe_id": "probe-011"
+  },
+  "frozen_history": {
+    "probe_007_through_010_rewrite_count": 0,
+    "prior_hard_stop_status": "FROZEN_SUPERSEDED_BY_EXPLICIT_NEW_AUTHORITY",
+    "prior_hard_stop_sha256": "ff2c57ee0e9c3941eedf082579558f1f55334a7df50be3dbacf328da203745e8",
+    "predecessor_budget_ledger_sha256": "e9dfde8dea416dc7b31d816feea262c70439623d21e32bf6347d40cb31953ea0"
+  },
+  "baseline": {
+    "platform_head_sha": "0d984a85c2eaece885fb1063b11e20a7944854cd",
+    "platform_tree_sha": "2b880ea725a27a64174a1715f9aa3b8c1c6ae9fd",
+    "runner_sha256": "bd0eaeb5eefbf3e21adc571096726b93242256d6df321caa02a5e74296aa6004",
+    "generation9_formal_execution_count": 0,
+    "preserved_untracked_uid_count": 295,
+    "pr93_state": "OPEN_DRAFT_UNTOUCHED",
+    "pr93_head_sha": "8b7f029db03a9cd18be72f5b5f8ed8cb233d255b"
+  },
+  "hard_boundaries": [
+    "PRODUCT_SCRIPT_AND_SCENE_MUTATIONS_MUST_USE_GODOT_MCP",
+    "SEED_CHARACTERS_MUST_USE_MCP_RUNTIME_INPUT_ONLY",
+    "WINDOW_AUTOMATION_MAY_ONLY_ACTIVATE_THE_UNIQUE_DEBUG_WINDOW_AND_CLICK_THE_VISIBLE_SEED_FIELD",
+    "NO_FROZEN_PROBE_RETRY_OR_REWRITE",
+    "NO_GENERATION9_FORMAL_EXECUTION_BEFORE_A_CONSECUTIVE_COMPLETE_PASS_PAIR",
+    "NO_GENERATION10_CREATION",
+    "NO_PAGEFILE_CHANGE_OR_REBOOT",
+    "STOP_NONFORMAL_PROBES_AFTER_THE_FIRST_CONSECUTIVE_COMPLETE_PASS_PAIR"
+  ]
+}
