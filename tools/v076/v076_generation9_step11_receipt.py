@@ -50,11 +50,11 @@ SELFTEST_PATH = "tools/v076/v076_generation9_step11_receipt_selftest.py"
 WORKFLOW_PATH = ".github/workflows/v076-reuse-point-inertia-gate.yml"
 RUNNER_PATH = "tools/v076_generation9_step11_formal.ps1"
 RUNNER_SELFTEST_PATH = "tools/v076/v076_generation9_step11_runner_selftest.py"
-TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_receipt_tooling_repair_seal_001.json"
-SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest.json"
-AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_001.json"
+TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_receipt_tooling_repair_seal_002.json"
+SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_001.json"
+AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_002.json"
 AUTHORIZATION_SIDECAR_PATH = AUTHORIZATION_PATH + ".sha256"
-ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_environment_seal.json"
+ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_environment_seal_repair_002.json"
 ENVIRONMENT_SIDECAR_PATH = ENVIRONMENT_SEAL_PATH + ".sha256"
 QUALIFICATION_SEAL_PATH = "reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json"
 PASS_PAIR_PATH = "reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json"
@@ -706,7 +706,6 @@ def _validate_tooling(project: GitProject, tooling_head: str, authorization: Map
         ("M", WORKFLOW_PATH),
         ("A", TOOLING_SEAL_PATH),
         ("M", VALIDATOR_PATH),
-        ("M", RUNNER_SELFTEST_PATH),
         ("M", RUNNER_PATH),
     ]
     if project.changed(tooling_parent, tooling_head) != expected_changes:
@@ -756,9 +755,9 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         "environment_seal_path": ENVIRONMENT_SEAL_PATH, "formal_execution_count_before": 0,
         "authorized_formal_execution_count": 1, "automatic_retry": False,
         "superseded_authorization_manifest_path": SUPERSEDED_AUTHORIZATION_PATH,
-        "superseded_authorization_head_sha": project.parent(tooling_head),
-        "superseded_authorization_tree_sha": project.tree(project.parent(tooling_head)),
-        "tooling_repair_reason_code": "WINDOWS_EVENT_STARTTIME_UTC_LOCAL_CLOCK_MISINTERPRETATION",
+        "superseded_authorization_head_sha": project.parent(project.parent(tooling_head)),
+        "superseded_authorization_tree_sha": project.tree(project.parent(project.parent(tooling_head))),
+        "tooling_repair_reason_code": "CANONICAL_IMPORT_CHECKOUT_ENCODING_BINDING_REQUIRED",
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:
@@ -769,7 +768,7 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         ("post_restart_requalification_seal_path", "post_restart_requalification_seal_sha256"),
         ("platform_pass_pair_path", "platform_pass_pair_sha256"),
         ("platform_qualification_seal_path", "platform_qualification_seal_sha256"),
-        ("mcp_config_path", "mcp_config_sha256"), ("canonical_import_manifest_path", "canonical_import_manifest_sha256"),
+        ("mcp_config_path", "mcp_config_sha256"),
         ("receipt_schema_path", "receipt_schema_sha256"),
         ("receipt_validator_path", "receipt_validator_sha256"), ("receipt_selftest_path", "receipt_selftest_sha256"),
         ("required_workflow_path", "required_workflow_sha256"), ("formal_runner_path", "formal_runner_sha256"),
@@ -777,6 +776,12 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         ("superseded_authorization_manifest_path", "superseded_authorization_manifest_sha256"),
     ):
         _bind(project, tooling_head, value.get(path_field), value.get(hash_field), report, f"authorization.{hash_field}")
+    try:
+        canonical_import_sidecar = project.read(tooling_head, CANONICAL_IMPORT_PATH + ".sha256").decode("ascii").strip().split()[0].lower()
+        if value.get("canonical_import_manifest_path") != CANONICAL_IMPORT_PATH or value.get("canonical_import_manifest_sha256") != canonical_import_sidecar or SHA256_RE.fullmatch(canonical_import_sidecar) is None:
+            report.add("hash_mismatches", "CANONICAL_IMPORT_WORKTREE_SIDECAR_BINDING_MISMATCH", CANONICAL_IMPORT_PATH)
+    except Exception as exc:
+        report.add("path_failures", "CANONICAL_IMPORT_SIDECAR_UNAVAILABLE", str(exc))
     if value.get("class_cache_path") != CLASS_CACHE_PATH or not isinstance(value.get("class_cache_sha256"), str) or SHA256_RE.fullmatch(value["class_cache_sha256"]) is None:
         report.add("schema_failures", "CLASS_CACHE_BINDING_INVALID", "authorization")
     if not isinstance(value.get("godot_binary_path"), str) or not isinstance(value.get("godot_binary_sha256"), str) or SHA256_RE.fullmatch(str(value.get("godot_binary_sha256"))) is None:
