@@ -50,11 +50,11 @@ SELFTEST_PATH = "tools/v076/v076_generation9_step11_receipt_selftest.py"
 WORKFLOW_PATH = ".github/workflows/v076-reuse-point-inertia-gate.yml"
 RUNNER_PATH = "tools/v076_generation9_step11_formal.ps1"
 RUNNER_SELFTEST_PATH = "tools/v076/v076_generation9_step11_runner_selftest.py"
-TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_receipt_tooling_repair_seal_002.json"
-SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_001.json"
-AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_002.json"
+TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_receipt_tooling_repair_seal_003.json"
+SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_002.json"
+AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_003.json"
 AUTHORIZATION_SIDECAR_PATH = AUTHORIZATION_PATH + ".sha256"
-ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_environment_seal_repair_002.json"
+ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_environment_seal_repair_003.json"
 ENVIRONMENT_SIDECAR_PATH = ENVIRONMENT_SEAL_PATH + ".sha256"
 QUALIFICATION_SEAL_PATH = "reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json"
 PASS_PAIR_PATH = "reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json"
@@ -706,6 +706,7 @@ def _validate_tooling(project: GitProject, tooling_head: str, authorization: Map
         ("M", WORKFLOW_PATH),
         ("A", TOOLING_SEAL_PATH),
         ("M", VALIDATOR_PATH),
+        ("M", RUNNER_SELFTEST_PATH),
         ("M", RUNNER_PATH),
     ]
     if project.changed(tooling_parent, tooling_head) != expected_changes:
@@ -757,7 +758,7 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         "superseded_authorization_manifest_path": SUPERSEDED_AUTHORIZATION_PATH,
         "superseded_authorization_head_sha": project.parent(project.parent(tooling_head)),
         "superseded_authorization_tree_sha": project.tree(project.parent(project.parent(tooling_head))),
-        "tooling_repair_reason_code": "CANONICAL_IMPORT_CHECKOUT_ENCODING_BINDING_REQUIRED",
+        "tooling_repair_reason_code": "INVARIANT_RFC3339_TIMESTAMP_PARSE_REQUIRED",
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:

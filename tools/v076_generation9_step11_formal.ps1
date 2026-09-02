@@ -21,8 +21,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation9/generation9_environment_seal_repair_002.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_002.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation9/generation9_environment_seal_repair_003.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_003.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -270,7 +270,11 @@ try {
     $godotCount = @(Get-ExactGodotRows).Count
     $listenerCount = Get-ListenerCount
     $importPendingCount = @(Get-ChildItem -LiteralPath (Join-Path $root '.godot\imported') -File -Recurse -ErrorAction Stop | Where-Object {$_.Name -match '\.(tmp|importing)$'}).Count
-    $stabilityStart = [DateTime]::Parse([string]$environment.sealed_at_utc).ToUniversalTime()
+    $stabilityStart = [DateTimeOffset]::Parse(
+        [string]$environment.sealed_at_utc,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::AssumeUniversal
+    ).UtcDateTime
     $stabilityIds = @(7,18,19,20,41,51,55,129,153,1001)
     $newStabilityEvents = @(Get-WinEvent -FilterHashtable @{LogName='System';StartTime=$stabilityStart.ToLocalTime()} -ErrorAction SilentlyContinue | Where-Object {$stabilityIds -contains [int]$_.Id -and $_.TimeCreated.ToUniversalTime() -ge $stabilityStart}).Count
     $checks = [ordered]@{

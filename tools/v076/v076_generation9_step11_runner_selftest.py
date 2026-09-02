@@ -22,6 +22,7 @@ checks = {
     "boot_guard": "boot_id_actual" in text and "boot_id_expected" in text,
     "stability_guard": "new_stability_event_count" in text,
     "stability_guard_utc_to_local_boundary": "StartTime=$stabilityStart.ToLocalTime()" in text and "TimeCreated.ToUniversalTime() -ge $stabilityStart" in text,
+    "stability_guard_invariant_rfc3339_parse": "[DateTimeOffset]::Parse(" in text and "[Globalization.CultureInfo]::InvariantCulture" in text and "[Globalization.DateTimeStyles]::AssumeUniversal" in text and ").UtcDateTime" in text,
     "commit_guard": "available_commit_bytes" in text and "8589934592" in text,
     "head_tree_guard": "head_matches_environment_commit" in text and "tree_matches_head" in text,
     "import_guard": "import_pending_count" in text,
