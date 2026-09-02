@@ -220,6 +220,7 @@ runtime_negative_mutations = {
     "formal_status": lambda value: value.update({"status": "FAIL"}),
     "source_withdrawal": lambda value: value["step_receipts"][1]["runtime_owner"].update({"_v076_production_military_submission_by_uid": {"7": {}}}),
     "screen_projection_missing": lambda value: value["step_receipts"][1]["production_screen"].pop("_v075_snapshot"),
+    "projection_on_wrong_owner": lambda value: value["step_receipts"][1]["runtime_owner"].update({"_v075_snapshot": value["step_receipts"][1]["production_screen"].pop("_v075_snapshot")}),
     "screen_old_writer_reachable": lambda value: value["step_receipts"][1]["production_screen"]["_v075_snapshot"].update({"old_military_controller_production_reachable_count": 1}),
 }
 for name, mutate in runtime_negative_mutations.items():

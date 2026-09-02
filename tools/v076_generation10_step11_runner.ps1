@@ -24,8 +24,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_003.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_003.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_004.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_004.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -540,7 +540,7 @@ try {
     $militaryItem = @($segment | Where-Object {[string]$_.card_definition_id -eq 'military.air_superiority_fighter.shipping.rank_1'})
     if ($militaryItem.Count -ne 1 -or [int]$militaryItem[0].local_slot_index -ne 1) { throw 'MILITARY_TRACK_CARD_IDENTITY_MISMATCH' }
     $trackRail = Query-Node -Name 'track-rail-geometry.jsonrpc.json' -Path $trackRailPath -Properties @('visible','global_position','size') -Children -MaxDepth 1 -MaxNodes 20
-    $trackCards = @(Flatten-Tree $trackRail.tree | Where-Object {[string]$_.script_path -eq 'res://scripts/ui/v075/v075_interactive_card_face.gd' -and [bool]$_.properties.visible})
+    $trackCards = @(Flatten-Tree $trackRail.tree | Where-Object {[string]$_.script_path -eq 'res://scripts/ui/v074/v074_track_card_button.gd' -and [bool]$_.properties.visible})
     if ($trackCards.Count -lt 2) { throw 'TRACK_CARD_GEOMETRY_INCOMPLETE' }
     Click-Node -Name 'select-military-track-card.jsonrpc.json' -Node $trackCards[1]
     Click-Node -Name 'confirm-military-track-acquire.jsonrpc.json' -Node (Query-Clickable -Name 'confirm-military-track-acquire-query.jsonrpc.json' -Path $confirmPath)
