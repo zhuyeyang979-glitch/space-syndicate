@@ -24,8 +24,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_005.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_005.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_006.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_006.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -572,13 +572,12 @@ try {
     $regionIndex = 0
     $selectedOption = $options[$regionIndex]
     $selectedTargetRegion = [string]$selectedOption.target_region_id
-    Click-Node -Name 'batch3-open-region-option.jsonrpc.json' -Node $optionButton[0]
-    $selectEvents = @(@{type='key';key='home';mode='tap'}); if($regionIndex -gt 0){1..$regionIndex | ForEach-Object {$selectEvents += @{type='key';key='down';mode='tap'}}}; $selectEvents += @{type='key';key='enter';mode='tap'}
-    Send-Input -Name 'batch3-select-legal-region.jsonrpc.json' -Arguments @{events=$selectEvents} | Out-Null
+    $menuSelection = Get-Props (Query-Node -Name 'batch3-default-region-readback.jsonrpc.json' -Path ([string]$optionButton[0].path) -Properties @('selected','item_count','text'))
+    if ($null -eq $menuSelection.selected -or $null -eq $menuSelection.item_count -or [int]$menuSelection.selected -ne $regionIndex -or [int]$menuSelection.item_count -ne $options.Count) { throw 'MILITARY_DEFAULT_MENU_SELECTION_MISMATCH' }
     Click-Node -Name 'batch3-choose-legal-region.jsonrpc.json' -Node $chooseButton[0]
     $bound = Get-Props (Query-Node -Name 'batch3-bound-military-target.jsonrpc.json' -Path $screenPath -Properties @('_current_action_mode','_pending_confirm_binding','_selected_card_id'))
     if ([string]$bound._pending_confirm_binding.target_region_id -cne $selectedTargetRegion -or [string]$bound._pending_confirm_binding.task_kind -cne 'assault_region' -or [string]$bound._pending_confirm_binding.option_id -cne [string]$selectedOption.option_id) { throw 'MILITARY_TARGET_BINDING_MISMATCH' }
-    $stepReceipts.Add([ordered]@{step='military_target';selection_policy='FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID';eligible_options=$options;selected_option=$selectedOption;bound_option=$bound._pending_confirm_binding})
+    $stepReceipts.Add([ordered]@{step='military_target';selection_policy='FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID';eligible_options=$options;selected_option=$selectedOption;bound_option=$bound._pending_confirm_binding;menu_selected_index=[int]$menuSelection.selected;menu_item_count=[int]$menuSelection.item_count})
     [void](Capture-View -Name '02-assault-region-ready-to-confirm')
     Click-Node -Name 'batch3-confirm-military-action.jsonrpc.json' -Node (Query-Clickable -Name 'batch3-confirm-military-query.jsonrpc.json' -Path $confirmPath)
     $immediatePrivate = Get-Props (Query-Node -Name 'military-private-owner-immediate.jsonrpc.json' -Path $privateOwnerPath -Properties @('_collision_count','_rejection_count','_submitted_result_by_id','_submission_fingerprint_by_id','_intake_settlement_result_by_id','_settlement_fingerprint_by_id'))

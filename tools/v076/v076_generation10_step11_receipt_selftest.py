@@ -139,7 +139,7 @@ def runtime_result() -> dict[str, object]:
             {"step": "seed", "visible_text": "917592522", "config_model_seed": 917592522,
              "new_game_receipt_seed": 917592522, "runtime_seed": 917592522},
             final,
-            {"step": "military_target", "selection_policy": "FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID", "eligible_options": [copy.deepcopy(option)], "selected_option": copy.deepcopy(option), "bound_option": copy.deepcopy(option)},
+            {"step": "military_target", "selection_policy": "FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID", "eligible_options": [copy.deepcopy(option)], "selected_option": copy.deepcopy(option), "bound_option": copy.deepcopy(option), "menu_selected_index": 0, "menu_item_count": 1},
         ],
     }
 
@@ -230,6 +230,8 @@ runtime_negative_mutations = {
     "legal_target_disabled": lambda value: value["step_receipts"][2]["selected_option"].update({"enabled": False}),
     "legal_target_binding_mismatch": lambda value: value["step_receipts"][2]["bound_option"].update({"target_region_id": "region.000"}),
     "legal_target_missing": lambda value: value["step_receipts"].pop(),
+    "menu_index_mismatch": lambda value: value["step_receipts"][2].update({"menu_selected_index": 1}),
+    "menu_item_count_mismatch": lambda value: value["step_receipts"][2].update({"menu_item_count": 0}),
     "eta_zero": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"].update({"eta_ticks": 0}),
     "eta_wrong_distance_owner": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"]["eta_receipt"].update({"distance_owner": "unowned"}),
     "eta_teleport": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"]["eta_receipt"].update({"teleport_allowed": True}),

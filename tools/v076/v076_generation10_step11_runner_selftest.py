@@ -107,6 +107,10 @@ checks["card_filter_scripts_exist"] = all((root / path.removeprefix("res://")).i
 checks["military_target_no_fixed_region"] = "region.005" not in text and "$selectedTargetRegion" in text
 checks["military_target_witness_captured"] = "step='military_target'" in text and "eligible_options=$options" in text and "bound_option=$bound._pending_confirm_binding" in text
 checks["military_target_local_card_and_enabled"] = "[bool]$_.enabled" in text and "[string]$_.owner_player_id -ceq 'player.local'" in text and "[string]$_.card_instance_id -ceq $militaryInstanceId" in text
+checks["military_default_selection_readback"] = "MILITARY_DEFAULT_MENU_SELECTION_MISMATCH" in text and "'selected','item_count','text'" in text and "menu_selected_index=[int]$menuSelection.selected" in text
+bridge_source = (root / "addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd").read_text(encoding="utf-8")
+key_names = set(re.findall(r'"([a-z]+)": KEY_', bridge_source))
+checks["all_literal_runtime_keys_supported"] = set(re.findall(r"key='([^']+)'", text)).issubset(key_names)
 checks["screen_projection_wait_used"] = "Wait-ScreenProjection -Name 'initial-track-snapshot'" in text and "Wait-ScreenProjection -Name 'batch3-hand'" in text and "SCREEN_PROJECTION_PROPERTY_MISSING" in text
 checks["runtime_source_does_not_fake_screen_fields"] = "$finalRuntime._v075_snapshot" not in text and "'final-production-screen.jsonrpc.json' -Path $screenPath" in text
 exit_function = text[text.index("function Test-ExitPlayModeResponse {"):text.index("function Stop-Normally {")]

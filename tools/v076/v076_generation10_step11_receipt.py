@@ -50,11 +50,11 @@ SELFTEST_PATH = "tools/v076/v076_generation10_step11_receipt_selftest.py"
 WORKFLOW_PATH = ".github/workflows/v076-reuse-point-inertia-gate.yml"
 RUNNER_PATH = "tools/v076_generation10_step11_runner.ps1"
 RUNNER_SELFTEST_PATH = "tools/v076/v076_generation10_step11_runner_selftest.py"
-TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_005.json"
-SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_004.json"
-AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_005.json"
+TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_006.json"
+SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_005.json"
+AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_006.json"
 AUTHORIZATION_SIDECAR_PATH = AUTHORIZATION_PATH + ".sha256"
-ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_005.json"
+ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_006.json"
 ENVIRONMENT_SIDECAR_PATH = ENVIRONMENT_SEAL_PATH + ".sha256"
 QUALIFICATION_SEAL_PATH = "reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json"
 PASS_PAIR_PATH = "reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json"
@@ -548,6 +548,8 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("FORMAL_RESULT_LEGAL_TARGET_EVIDENCE_MISSING")
     if any(not isinstance(option, dict) or not isinstance(option.get("option_id"), str) for option in options):
         raise ValueError("FORMAL_RESULT_LEGAL_TARGET_OPTIONS_INVALID")
+    if not _exact_int(target_selection.get("menu_selected_index")) or target_selection.get("menu_selected_index") != 0 or not _exact_int(target_selection.get("menu_item_count")) or target_selection.get("menu_item_count") != len(options):
+        raise ValueError("FORMAL_RESULT_MENU_SELECTION_BINDING_MISMATCH")
     if selected != sorted(options, key=lambda option: option["option_id"])[0] or selected.get("enabled") is not True or selected.get("owner_player_id") != "player.local" or selected.get("task_kind") != "assault_region" or selected.get("card_definition_id") != "military.air_superiority_fighter.shipping.rank_1":
         raise ValueError("FORMAL_RESULT_LEGAL_TARGET_SELECTION_INVALID")
     target_region = selected.get("target_region_id")
@@ -795,7 +797,7 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         "superseded_authorization_manifest_path": SUPERSEDED_AUTHORIZATION_PATH,
         "superseded_authorization_head_sha": superseded_head,
         "superseded_authorization_tree_sha": project.tree(superseded_head),
-        "tooling_repair_reason_code": "AUTHORITATIVE_LEGAL_TARGET_SELECTION_AND_PHYSICAL_ETA_BINDING",
+        "tooling_repair_reason_code": "READ_BACK_DEFAULT_TARGET_MENU_AND_CLICK_EXISTING_CHOOSE_CONTROL",
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:
