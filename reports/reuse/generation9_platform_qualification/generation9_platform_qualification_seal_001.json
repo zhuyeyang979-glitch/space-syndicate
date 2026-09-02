@@ -1,0 +1,66 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_qualification_seal.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "generated_at_utc": "2026-09-02T06:16:03.1407766Z",
+  "status": "SEALED_CONSECUTIVE_COMPLETE_PASS_PAIR",
+  "qualification_result": "PASS",
+  "append_only": true,
+  "required_consecutive_complete_pass_count": 2,
+  "observed_consecutive_complete_pass_count": 2,
+  "qualification_probe_ids": [
+    "probe-016",
+    "probe-017"
+  ],
+  "probe_execution_identity": {
+    "head_sha": "be001d6f2cd750b1ca2fad8cdddbc612ffd0799b",
+    "tree_sha": "9a56436563613473508291b19209278df815a497",
+    "runner_sha256": "86dceea2f23e65eedb87a36f9b8476b2710b247664f1dc4dfdf68cec4d9077fa",
+    "runner_seal_sha256": "62da81f9b326165a4ede43a221e8454ceec4c258d5040fb8643defbe610bd66b",
+    "monitor_sha256": "64e811c4ab358db051d9cb52d5508e867b0a4fbdd527b062f980081223bd1a59",
+    "canonical_import_manifest_sha256": "3658b1050ac601e220fed3e0b3d0339cbd6c2053aff23d63a79464db7a3027ce"
+  },
+  "product_candidate_identity": {
+    "head_sha": "b33e460610776564dac3616bd341fa829316b1e2",
+    "tree_sha": "449018413600b57b9d503b9610c9ae79e3c8eee1"
+  },
+  "pass_pair_report": {
+    "path": "reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json",
+    "sha256": "fc9e97888a5a1cf154562e13872dedd6e9173ba6c418ac5811fc3e4ac358db8c"
+  },
+  "terminal_probe_budget_ledger": {
+    "path": "reports/reuse/generation9_platform_qualification/mcp_seed_focus_repair/probe_budget_ledger_013.json",
+    "sha256": "8b7102919ac44fb90bffed1393dc81f958e9844902ed1baedd1116d835ae638f",
+    "status": "SEALED_AFTER_CONSECUTIVE_COMPLETE_PASS_PAIR",
+    "additional_probe_launch_allowed": false
+  },
+  "probe_packages": {
+    "probe-016": {
+      "report_path": "reports/reuse/generation9_platform_qualification/platform-probes/probe-016/platform_probe_report.json",
+      "report_sha256": "2a5ddaa8f851c1a00f464e45dfc01b216696784b45d96a43eb4174a82ee15319",
+      "raw_evidence_manifest_path": "reports/reuse/generation9_platform_qualification/platform-probes/probe-016/raw_evidence_manifest.json",
+      "raw_evidence_manifest_sha256": "d49233e390365ebc16531c3f97736b9f3d16c8c3a56702ac7411264851f088e1"
+    },
+    "probe-017": {
+      "report_path": "reports/reuse/generation9_platform_qualification/platform-probes/probe-017/platform_probe_report.json",
+      "report_sha256": "bcbf4307ff7c5f61d612351f9fb0b22fa80086247190d65992799c22cfaac3e0",
+      "raw_evidence_manifest_path": "reports/reuse/generation9_platform_qualification/platform-probes/probe-017/raw_evidence_manifest.json",
+      "raw_evidence_manifest_sha256": "f3b2035b8fcae094ee25abee5fe043c7da0d55e6bfff820686fb9075d8e59ab2"
+    }
+  },
+  "qualification_assertions": {
+    "all_input_parity": true,
+    "seed_four_layer_parity": true,
+    "milestone_pass_count_per_probe": 12,
+    "ready_steady_memory_growth_percent": 1.397714,
+    "ready_steady_memory_growth_maximum_percent": 10.0,
+    "ready_steady_memory_growth_pass": true,
+    "import_event_growth": 0,
+    "normal_cleanup_both_probes": true,
+    "direct_runtime_seed_injection_count": 0,
+    "frozen_probe_rewrite_count": 0
+  },
+  "generation9_formal_execution_count": 0,
+  "formal_step11_status": "AUTHORIZED_NOT_STARTED",
+  "additional_nonformal_probe_allowed": false,
+  "generation10_creation_count": 0
+}

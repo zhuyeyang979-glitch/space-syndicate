@@ -1,0 +1,64 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_qualification_pass_pair.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "generated_at_utc": "2026-09-02T06:16:03.1407766Z",
+  "status": "PASS",
+  "consecutive_complete_pass_count": 2,
+  "probe_ids": ["probe-016", "probe-017"],
+  "probe_head_sha": "be001d6f2cd750b1ca2fad8cdddbc612ffd0799b",
+  "probe_tree_sha": "9a56436563613473508291b19209278df815a497",
+  "product_candidate_head_sha": "b33e460610776564dac3616bd341fa829316b1e2",
+  "product_candidate_tree_sha": "449018413600b57b9d503b9610c9ae79e3c8eee1",
+  "runner_sha256": "86dceea2f23e65eedb87a36f9b8476b2710b247664f1dc4dfdf68cec4d9077fa",
+  "runner_seal_sha256": "62da81f9b326165a4ede43a221e8454ceec4c258d5040fb8643defbe610bd66b",
+  "monitor_sha256": "64e811c4ab358db051d9cb52d5508e867b0a4fbdd527b062f980081223bd1a59",
+  "canonical_import_manifest_sha256": "3658b1050ac601e220fed3e0b3d0339cbd6c2053aff23d63a79464db7a3027ce",
+  "probe_016": {
+    "raw_evidence_manifest_sha256": "d49233e390365ebc16531c3f97736b9f3d16c8c3a56702ac7411264851f088e1",
+    "report_sha256": "2a5ddaa8f851c1a00f464e45dfc01b216696784b45d96a43eb4174a82ee15319",
+    "milestone_pass_count": 12,
+    "seed_four_layer_parity": true,
+    "minimum_available_commit_bytes": 19079802880,
+    "ready_steady_average_private_bytes": 2017706803,
+    "normal_cleanup": true
+  },
+  "probe_017": {
+    "raw_evidence_manifest_sha256": "f3b2035b8fcae094ee25abee5fe043c7da0d55e6bfff820686fb9075d8e59ab2",
+    "report_sha256": "bcbf4307ff7c5f61d612351f9fb0b22fa80086247190d65992799c22cfaac3e0",
+    "milestone_pass_count": 12,
+    "seed_four_layer_parity": true,
+    "minimum_available_commit_bytes": 18969554944,
+    "ready_steady_average_private_bytes": 2045908582,
+    "normal_cleanup": true
+  },
+  "input_hash_parity": {
+    "head": true,
+    "tree": true,
+    "runner": true,
+    "runner_seal": true,
+    "product_candidate_head": true,
+    "product_candidate_tree": true,
+    "canonical_identity_set": true,
+    "seed": true,
+    "all": true
+  },
+  "seed": {
+    "selected": 917592522,
+    "visible_text": 917592522,
+    "config_model": 917592522,
+    "new_game_receipt": 917592522,
+    "runtime_match": 917592522,
+    "four_layer_parity": true
+  },
+  "ready_steady_memory": {
+    "probe_016_average_private_bytes": 2017706803,
+    "probe_017_average_private_bytes": 2045908582,
+    "growth_percent": 1.397714,
+    "maximum_allowed_growth_percent": 10.0,
+    "pass": true
+  },
+  "import_event_growth": 0,
+  "formal_generation": false,
+  "generation9_formal_execution_count": 0,
+  "additional_nonformal_probe_allowed": false
+}
