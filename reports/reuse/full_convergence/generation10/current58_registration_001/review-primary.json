@@ -1,0 +1,17 @@
+{
+  "schema_version": "space_syndicate.v076.current58_exact_application_review.v1",
+  "role": "PRIMARY",
+  "reviewer": "/root",
+  "source_head_sha": "144f846f14e30fb1053d8905acd9a906db968589",
+  "candidate_sha256": "d02fca72dbde48fdf31f5c5422ba60455a318911ee54274d9298cb769ad1a19d",
+  "candidate_payload_sha256": "d27457a58c5d7ff8702b7ce7d0b578ca8d513b291a83184c0419cca248ec6efd",
+  "builder_sha256": "362023ba34e91127dff379768fd5955420df4110d146ade48549f149ebcdf03e",
+  "verdict": "GO_EXACT_TWO_METADATA_TARGETS_ONLY",
+  "basis": ["74/74 positive and negative selftests", "original component contracts and existing Owner bindings", "all prior Registry bytes preserved by insertion", "no Stage or canonical status changes", "57 exact import transitions preserve source texture bytes", "13 audited dependency object bindings and 3 executed-helper byte bindings", "16/16 post-application exact-byte and monotonic checks"],
+  "new_owner_count": 0,
+  "product_file_mutation_count": 0,
+  "formal_step11_reexecution_count": 0,
+  "required_gate_green": false,
+  "human_green": false,
+  "production_green": false
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": "space_syndicate.v076.current58_exact_application_review.v1",
+  "role": "INDEPENDENT",
+  "reviewer": "/root/current_delta_forensics",
+  "transcribed_by": "/root",
+  "source_head_sha": "144f846f14e30fb1053d8905acd9a906db968589",
+  "candidate_sha256": "d02fca72dbde48fdf31f5c5422ba60455a318911ee54274d9298cb769ad1a19d",
+  "candidate_payload_sha256": "d27457a58c5d7ff8702b7ce7d0b578ca8d513b291a83184c0419cca248ec6efd",
+  "builder_sha256": "362023ba34e91127dff379768fd5955420df4110d146ade48549f149ebcdf03e",
+  "verdict": "GO_EXACT_TWO_METADATA_TARGETS_ONLY",
+  "unresolved_p0_p1_count": 0,
+  "registry_rows_before": 416,
+  "registry_rows_after": 474,
+  "focused_test_id_append_count": 5,
+  "verified_source_proof_count": 58,
+  "verified_import_transition_count": 57,
+  "verified_dependency_binding_count": 13,
+  "verified_execution_helper_count": 3,
+  "audited_catalog_ancestor_resource_count": 53,
+  "inherited_exact_embedded_png_proof_count": 13,
+  "target_sha256": {
+    "docs/architecture/V076_HISTORICAL_REUSE_REGISTRY.json": "84cc99166b3515d6ae33dc1e025042fb5344a6fb29fda4cfb403ac7c80a6fdf8",
+    "docs/architecture/V076_INHERITED_GREEN_LEDGER.json": "b8025b8a621ba5a2796c66a41645b47f7b2c34c03e66dff49decf1bc429ad406"
+  },
+  "conditions": ["recheck both source SHA values immediately before application", "apply only the exact decoded targets", "do not regenerate or expand membership under this review"],
+  "new_authority_flag_count": 0,
+  "required_gate_green": false,
+  "human_green": false,
+  "production_green": false
+}

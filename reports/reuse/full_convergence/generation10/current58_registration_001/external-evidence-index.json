@@ -1,0 +1,44 @@
+{
+  "schema_version": "space_syndicate.v076.current58_external_evidence_index.v1",
+  "files": [
+    {
+      "path": "D:\\ss-v076-generation10-current58-registration-projection-001-20260902\\current58_registration_candidate.json",
+      "bytes": 1194315,
+      "sha256": "e557169416e8b406d4f58e398ca9e065a40899d595639a32cf4683bed59c13f1"
+    },
+    {
+      "path": "D:\\ss-v076-generation10-current58-registration-projection-002-20260902\\current58_registration_candidate.json",
+      "bytes": 1206723,
+      "sha256": "cc48ffdd1421a0e189264f0761562d911e19860c86eb3aa55c6241a05baa4c08"
+    },
+    {
+      "path": "D:\\ss-v076-generation10-current58-registration-projection-003-20260902\\applied-metadata-validation.json",
+      "bytes": 1422,
+      "sha256": "d54c41692ec8d4a83846b1fe1d7639cec9e8c7d3fff9a3af6dba0ee6b7d49202"
+    },
+    {
+      "path": "D:\\ss-v076-generation10-current58-registration-projection-003-20260902\\current58_registration_candidate.json",
+      "bytes": 1207577,
+      "sha256": "d02fca72dbde48fdf31f5c5422ba60455a318911ee54274d9298cb769ad1a19d"
+    },
+    {
+      "path": "D:\\ss-v076-generation10-current58-registration-projection-003-20260902\\focused-selftest-002.json",
+      "bytes": 4975,
+      "sha256": "97bda23d73f1f9758c769f6c542f9327b03c30fb8f80fc2bfa94b2f565c70587"
+    },
+    {
+      "path": "D:\\ss-v076-generation10-current58-registration-projection-003-20260902\\focused-selftest.json",
+      "bytes": 4976,
+      "sha256": "71981cedcfe80e6695374bdd056897a1a704fe2afd153c73f89f30d27f5e4b37"
+    },
+    {
+      "path": "D:\\ss-v076-generation10-current58-registration-projection-003-20260902\\validate_applied_metadata.py",
+      "bytes": 4264,
+      "sha256": "53a949b1fb89186fe5933a16be0966c97a1700555c231fd603030419c00418a8"
+    }
+  ],
+  "candidate001_disposition": "SUPERSEDED_NOT_APPLIED",
+  "candidate002_disposition": "SUPERSEDED_NOT_APPLIED",
+  "candidate003_disposition": "DUAL_REVIEW_PASS_APPLIED_EXACTLY",
+  "formal_step11_reexecution_count": 0
+}

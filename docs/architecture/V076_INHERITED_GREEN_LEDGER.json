@@ -1907,7 +1907,12 @@
       "v076_public_action_arrangement_privacy_test",
       "v076_public_action_arrangement_test",
       "vertical_slice_showcase_test",
-      "visual_event_smoke_test"
+      "visual_event_smoke_test",
+      "commercial_presentation_catalog_contract_test",
+      "commercial_planet_production_presentation_test",
+      "funplay_mcp_runtime_event_cursor_contract_test",
+      "funplay_mcp_file_handle_lifecycle_test",
+      "v076_generation10_step11_runner_selftest"
     ],
     "inherited_sentinels": [
       "V076_KERNEL",
