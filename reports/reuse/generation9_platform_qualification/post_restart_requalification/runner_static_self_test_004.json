@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "powershell_parse_error_count": 0,
+  "discovered_command_count": 33,
+  "unknown_command_count": 0,
+  "control_flow_token_audit": "PASS",
+  "synthetic_recursive_button_discovery": "PASS",
+  "discovered_button_path": "/root/Main/CommercialShellSurfaceLayer/MenuPreviewBox/MainMenuCommandButton",
+  "discovered_button_center": {
+    "x": 250.0,
+    "y": 240.0
+  },
+  "commercial_navigation_before_seed_entry": "PASS",
+  "unoccluded_start_overlay_gate": "PASS",
+  "external_windows_focus_contract": "PASS",
+  "timeout_state_machine": "PASS",
+  "cleanup_state_machine": "PASS",
+  "evidence_finalization": "PASS",
+  "budget_ledger_guard": "PASS",
+  "screenshot_coordinate_space_contract": "PASS",
+  "direct_runtime_seed_injection_allowed": false,
+  "godot_launch_count": 0
+}

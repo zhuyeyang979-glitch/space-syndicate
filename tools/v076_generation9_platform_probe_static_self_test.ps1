@@ -177,12 +177,16 @@ foreach ($requiredText in @(
     '-not [bool]$requalificationSeal.existing_probe_budget_reactivated',
     "exact_window_title = '太空辛迪加 (DEBUG)'",
     'runtime_viewport_coordinate_advisory_only = $true',
-    "computer_use_coordinate_space = 'FRESH_WINDOW_SCREENSHOT'",
-    "computer_use_click_instruction = 'LOCATE_THE_VISIBLE_SEED_INPUT_BY_LABEL_IN_THE_FRESH_SCREENSHOT_AND_CLICK_ITS_VISIBLE_CENTER_ONCE'",
+    "computer_use_coordinate_space = 'WINDOW_RELATIVE_INCLUDING_WINDOW_CHROME'",
+    "computer_use_required_screenshot_frame = 'FULL_WINDOW_FRAME'",
+    "computer_use_click_instruction = 'USE_THE_FULL_WINDOW_FRAME_SCREENSHOT_AND_CLICK_THE_VISIBLE_SEED_INPUT_CENTER_ONCE_IN_WINDOW_RELATIVE_COORDINATES'",
     '[int]$externalFocus.window_match_count -ne 1',
     '[int]$externalFocus.window_activation_count -ne 1',
     '[int]$externalFocus.seed_field_click_count -ne 1',
     '[int]$externalFocus.direct_runtime_seed_injection_count -ne 0',
+    "[string]`$externalFocus.computer_use_coordinate_space -cne 'WINDOW_RELATIVE_INCLUDING_WINDOW_CHROME'",
+    '-not [bool]$externalFocus.full_window_frame_screenshot_used',
+    '[bool]$externalFocus.runtime_viewport_coordinate_used_for_click',
     'commercial_menu_overlay_visible = $false'
 )) {
     if ($runnerText.IndexOf($requiredText, [StringComparison]::Ordinal) -lt 0) {

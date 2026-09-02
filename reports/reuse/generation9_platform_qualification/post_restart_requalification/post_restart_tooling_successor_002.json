@@ -1,0 +1,16 @@
+{
+  "schema_version": "space_syndicate.v076.post_restart_tooling_successor.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_at_utc": "2026-09-02T04:15:52.2465408Z",
+  "status": "SEALED",
+  "system_requalification_repeated": false,
+  "system_requalification_seal_sha256": "5411203af65fe621491f021d8dd38c8929f49191c45ac1a23a7a7a2e537c5b63",
+  "probe008_frozen": true,
+  "probe008_report_sha256": "42ee4e62f37072e03ca14aacae564425d0fa957f7d168ba0c4680ebea26e6bc6",
+  "runner_seal_sha256": "e53aa64720cde091f3b13aa0ab68be6b13ca103ae2ed6ea60e61c0320a425ba8",
+  "budget_ledger_sha256": "48c5a34d266c46f98f6c47392c9fbc8865204b00def3e2e72a455d5f0c5e2bca",
+  "next_probe_id": "probe-009",
+  "remaining_launch_count": 2,
+  "current_consecutive_pass_count": 0,
+  "generation9_formal_execution_count": 0
+}
