@@ -605,14 +605,13 @@ func terminal_drain_snapshot() -> Dictionary:
 	var direct_drain := _v076_private_direct_action_owner.call(
 		"terminal_drain_snapshot"
 	) as Dictionary
-	var captured := _v076_kernel.call("capture_snapshot") as Dictionary
-	var kernel_snapshot := captured.get("snapshot", {}) as Dictionary
 	var direct_domain_id := str(direct_debug.get("domain_id", ""))
-	var pending_direct_command_count := 0
-	for command_variant in kernel_snapshot.get("pending_commands", []) as Array:
-		var command := command_variant as Dictionary
-		if str(command.get("domain_id", "")) == direct_domain_id:
-			pending_direct_command_count += 1
+	var kernel_pending := _v076_kernel.call(
+		"pending_command_observation", direct_domain_id
+	) as Dictionary
+	var pending_direct_command_count := int(
+		kernel_pending.get("pending_command_count", -1)
+	)
 	var unresolved_action_ids := direct_drain.get(
 		"unresolved_action_ids",
 		[]
@@ -621,7 +620,10 @@ func terminal_drain_snapshot() -> Dictionary:
 		int(kernel_debug.get("domain_count", 0)) > 0
 		and bool(direct_debug.get("configured", false))
 		and bool(direct_drain.get("valid", false))
-		and bool(captured.get("accepted", false))
+		and bool(kernel_pending.get("valid", false))
+		and str(kernel_pending.get("domain_id", "")) == direct_domain_id
+		and int(kernel_pending.get("current_tick", -1)) == int(kernel_debug.get("current_tick", -2))
+		and pending_direct_command_count >= 0
 		and not direct_domain_id.is_empty()
 	)
 	return {

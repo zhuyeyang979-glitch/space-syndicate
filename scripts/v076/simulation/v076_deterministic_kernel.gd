@@ -460,6 +460,26 @@ func tick_hashes() -> Array:
 	return _tick_hashes.duplicate(true)
 
 
+func pending_command_observation(domain_id: String) -> Dictionary:
+	# Read-only at any frame position. Restorable snapshots retain their
+	# exact tick-boundary requirement; observers do not advance the clock.
+	if not _configured or domain_id.is_empty() or not _domain_states.has(domain_id):
+		return {"valid": false, "reason": "pending_command_domain_not_configured"}
+	var pending_count := 0
+	for command_variant in _pending_commands:
+		var command := command_variant as Dictionary
+		if str(command.get("domain_id", "")) == domain_id:
+			pending_count += 1
+	return {
+		"schema": "V076PendingCommandObservationV1",
+		"valid": true,
+		"domain_id": domain_id,
+		"current_tick": _current_tick,
+		"pending_command_count": pending_count,
+		"writes_gameplay_authority": false,
+	}
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,

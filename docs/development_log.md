@@ -10120,3 +10120,22 @@ deleted. Evidence and the remaining action inventory are recorded in
   Existing full-chain validation reports touched prior projections, which is
   preserved as an append-only revalidation follow-up rather than hidden or
   rewritten.
+
+## 2026-09-02 — Generation 10 terminal-drain observer repair
+
+- User explicitly authorized the minimal MCP-only product repair after frozen
+  nonformal-confirmation-009. Generation 9 and nonformal 001–009 remain immutable;
+  Generation 10 formal execution is still unconsumed.
+- MCP changed only the existing Kernel's read-only per-domain pending-command
+  observer and its existing ApplicationFlow terminal-drain consumer. The Kernel
+  clock, command ordering, RNG, queue execution, and restorable snapshot boundary
+  contract are unchanged. No gameplay Owner or rule was added.
+- New focused test uses the real V075RuntimeComposition scene. Before repair it
+  captured terminal_drain_observer_invalid; after repair it passes 40/40,
+  including partial-tick observation, no authority mutation, and exactly-once
+  FinalSettlement. Both changed scripts and the test passed MCP validation.
+- Kernel, military production composition, Direct Action input, Half-Edge,
+  terminal classification, UI text, visual contract, and smoke parse checks pass.
+  Generic full smoke stops at its existing Main QA save-path precondition; that
+  failure is retained and is not reported as PASS. Natural main.tscn STEP11 and
+  the new candidate seal remain pending; no human or production-green claim.
