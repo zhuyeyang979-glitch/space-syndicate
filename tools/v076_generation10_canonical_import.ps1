@@ -4,6 +4,9 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("pass-001", "pass-002")]
     [string]$PassId,
+    [string]$CanonicalCacheRoot,
+    [string]$CanonicalCacheManifest,
+    [string]$GodotPath = 'C:\Users\Administrator\AppData\Local\Microsoft\WinGet\Packages\GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe\Godot_v4.7-stable_win64.exe',
     [int]$TimeoutSeconds = 1800
 )
 
@@ -101,7 +104,7 @@ $untrackedBefore = @($statusBefore | Where-Object {$_ -match '^\?\?'})
 $unexpectedUntrackedBefore = @($untrackedBefore | Where-Object {
     $path = $_.Substring(3).Replace("\", "/")
     $path -notlike "*.uid" -and
-        $path -notlike "reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_001/*"
+        $path -notlike "reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_002/*"
 })
 $indexBefore = @($statusBefore | Where-Object {$_.Substring(0, 1) -notin @(" ", "?")})
 $cacheRoot = Join-Path $root ".godot"
@@ -113,8 +116,26 @@ if ($PassId -eq "pass-001") {
     if (Test-Path -LiteralPath $cacheRoot) {
         throw "Canonical pass 1 requires an absent .godot cache; refusing to reuse an unsealed cache."
     }
+    if ([string]::IsNullOrWhiteSpace($CanonicalCacheRoot) -or [string]::IsNullOrWhiteSpace($CanonicalCacheManifest)) { throw "VERIFIED_CANONICAL_ASSET_CACHE_REQUIRED" }
+    $cacheSource = (Resolve-Path -LiteralPath $CanonicalCacheRoot).Path
+    $cacheManifestPath = (Resolve-Path -LiteralPath $CanonicalCacheManifest).Path
+    $cacheManifestHash = Get-Sha256 $cacheManifestPath
+    if ($cacheManifestHash -ne '3658b1050ac601e220fed3e0b3d0339cbd6c2053aff23d63a79464db7a3027ce') { throw "CANONICAL_COMPATIBILITY_CACHE_MANIFEST_MISMATCH" }
+    $cacheRows = Get-Content -LiteralPath $cacheManifestPath -Raw | ConvertFrom-Json
+    if (@($cacheRows).Count -ne 1330) { throw "CANONICAL_CACHE_ENTRY_COUNT_MISMATCH" }
+    foreach ($row in $cacheRows) {
+        if ([string]$row.path -notmatch '^\.godot/imported/[^/\\]+$') { throw "CANONICAL_CACHE_PATH_INVALID" }
+        $source = Join-Path $cacheSource $row.path
+        if (-not (Test-Path -LiteralPath $source) -or (Get-Sha256 $source) -cne [string]$row.sha256) { throw "CANONICAL_CACHE_SOURCE_HASH_MISMATCH" }
+    }
+    New-Item -ItemType Directory -Path (Join-Path $cacheRoot 'imported') | Out-Null
+    foreach ($row in $cacheRows) {
+        $destination = Join-Path $root $row.path
+        Copy-Item -LiteralPath (Join-Path $cacheSource $row.path) -Destination $destination
+        if ((Get-Sha256 $destination) -cne [string]$row.sha256) { throw "CANONICAL_CACHE_COPY_HASH_MISMATCH" }
+    }
 } else {
-    $pass1Report = Join-Path $root "reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_001/pass-001/canonical_import_report.json"
+    $pass1Report = Join-Path $root "reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_002/pass-001/canonical_import_report.json"
     if (-not (Test-Path -LiteralPath $pass1Report)) {
         throw "Canonical pass 2 requires the sealed pass 1 report."
     }
@@ -126,23 +147,15 @@ if ($PassId -eq "pass-001") {
     }
 }
 
-$godotCommand = Get-Command godot -ErrorAction Stop
-$godotCommandPath = (Resolve-Path -LiteralPath $godotCommand.Source).Path
-$godotPath = $godotCommandPath
-if ([System.IO.Path]::GetExtension($godotCommandPath).Equals(".cmd", [System.StringComparison]::OrdinalIgnoreCase)) {
-    $shimText = Get-Content -LiteralPath $godotCommandPath -Raw
-    $shimMatch = [regex]::Match($shimText, '"%~dp0(?<exe>Godot_[^"\r\n]+\.exe)"')
-    if (-not $shimMatch.Success) {
-        throw "Unable to resolve the Godot executable from launcher: $godotCommandPath"
-    }
-    $godotPath = (Resolve-Path -LiteralPath (Join-Path (Split-Path -Parent $godotCommandPath) $shimMatch.Groups["exe"].Value)).Path
-}
-$godotVersion = (& $godotPath --version).Trim()
+$godotPath = (Resolve-Path -LiteralPath $GodotPath).Path
+if ($godotPath -notmatch 'Godot_v4\.7-stable_win64\.exe$' -or (Get-Sha256 $godotPath) -ne 'b2ca888d5115a6cedee564764a2ee494a625f2ec2edbabd010fe33c9a88a6bf8') { throw "CANONICAL_IMPORT_EXACT_GUI_ENGINE_REQUIRED" }
+$godotCommandPath = $godotPath
+$godotVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($godotPath).ProductVersion
 if ($godotVersion -notmatch '^4\.7\.') {
     throw "Generation 10 is pinned to Godot 4.7.x; observed: $godotVersion"
 }
 
-$externalRoot = Join-Path "D:\ss-v076-generation10-terminal-canonical-evidence-001-20260902" $PassId
+$externalRoot = Join-Path "D:\ss-v076-generation10-terminal-canonical-evidence-002-20260902" $PassId
 if (Test-Path -LiteralPath $externalRoot) {
     throw "Refusing to overwrite an existing canonical import pass: $externalRoot"
 }
@@ -260,7 +273,7 @@ $untrackedAfter = @($statusAfter | Where-Object {$_ -match '^\?\?'})
 $unexpectedUntrackedAfter = @($untrackedAfter | Where-Object {
     $path = $_.Substring(3).Replace("\", "/")
     $path -notlike "*.uid" -and
-        $path -notlike "reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_001/*"
+        $path -notlike "reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_002/*"
 })
 $indexAfter = @($statusAfter | Where-Object {$_.Substring(0, 1) -notin @(" ", "?")})
 $trackedImportAfter = @($trackedAfter | Where-Object {$_.Substring(3) -like "*.import"})
@@ -270,6 +283,9 @@ $report = [ordered]@{
     schema_version = "space_syndicate.v076.generation10_terminal_repair_canonical_import.v1"
     authorization_id = "USER_CONFIRMED_GENERATION10_TERMINAL_DRAIN_REPAIR_20260902"
     pass_id = $PassId
+    import_revalidation_mode = "HASH_VERIFIED_UNCHANGED_COMPATIBILITY_ASSET_CACHE"
+    cold_import_claim = $false
+    inherited_cache_manifest_sha256 = '3658b1050ac601e220fed3e0b3d0339cbd6c2053aff23d63a79464db7a3027ce'
     status = if (-not $timedOut -and $exitCode -eq 0 -and $finalQueueLength -eq 0 -and $indexAfter.Count -eq 0 -and $trackedAfter.Count -eq 0 -and $unexpectedUntrackedAfter.Count -eq 0 -and $combinedLog -notmatch 'FATAL: Condition "_copy_on_write\(\)" is true|Parameter "mem(?:_new)?" is null') {"PASS"} else {"FAIL"}
     exact_clone_path = $root
     branch = $branch
@@ -345,7 +361,7 @@ $report = [ordered]@{
     }
 }
 
-$repoOutputRoot = Join-Path $root "reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_001/$PassId"
+$repoOutputRoot = Join-Path $root "reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_002/$PassId"
 [System.IO.Directory]::CreateDirectory($repoOutputRoot) | Out-Null
 $manifestPath = Join-Path $repoOutputRoot "imported_manifest.json"
 $reportPath = Join-Path $repoOutputRoot "canonical_import_report.json"
