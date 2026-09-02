@@ -176,6 +176,9 @@ foreach ($requiredText in @(
     '[int]$budgetLedger.launch_count_after_requalification -gt 3',
     '-not [bool]$requalificationSeal.existing_probe_budget_reactivated',
     "exact_window_title = '太空辛迪加 (DEBUG)'",
+    'runtime_viewport_coordinate_advisory_only = $true',
+    "computer_use_coordinate_space = 'FRESH_WINDOW_SCREENSHOT'",
+    "computer_use_click_instruction = 'LOCATE_THE_VISIBLE_SEED_INPUT_BY_LABEL_IN_THE_FRESH_SCREENSHOT_AND_CLICK_ITS_VISIBLE_CENTER_ONCE'",
     '[int]$externalFocus.window_match_count -ne 1',
     '[int]$externalFocus.window_activation_count -ne 1',
     '[int]$externalFocus.seed_field_click_count -ne 1',
@@ -256,6 +259,7 @@ foreach ($forbiddenText in @(
     cleanup_state_machine = 'PASS'
     evidence_finalization = 'PASS'
     budget_ledger_guard = 'PASS'
+    screenshot_coordinate_space_contract = 'PASS'
     direct_runtime_seed_injection_allowed = $false
     godot_launch_count = 0
 } | ConvertTo-Json -Depth 10

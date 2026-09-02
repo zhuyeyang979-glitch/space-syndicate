@@ -1,0 +1,20 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_repaired_runner_seal.v3",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_at_utc": "2026-09-02T04:10:45.8245143Z",
+  "status": "SEALED",
+  "runner_manifest_sha256": "693c03797f8c15e2405d3cc38f1eaa2457730b0270f37ad18e5ba4750c9c999a",
+  "runner_sha256": "aaad926bc19aae92335742f3d989ac591fd03311414d22c4772a99674b5b79ac",
+  "static_self_test_sha256": "42bceacad2d08d69a94558d36fa782a3da7e71fe9564c012b5b7997206854c73",
+  "static_self_test_report_sha256": "be9d793aab32f2669946ad28821e0297c6f4637393657c2381d0cb1e098a0f7a",
+  "packager_sha256": "769a5fb3b293d57e3fb79c682f9037aa11c9d75d15a8d8e4fec52d66a7344420",
+  "requalification_seal_sha256": "5411203af65fe621491f021d8dd38c8929f49191c45ac1a23a7a7a2e537c5b63",
+  "screenshot_coordinate_space_contract_green": true,
+  "listen_endpoint_only_port_guard_green": true,
+  "cleanup_state_machine_green": true,
+  "evidence_finalization_green": true,
+  "budget_ledger_guard_green": true,
+  "tooling_change_resets_consecutive_pass_count": true,
+  "consecutive_pass_count": 0,
+  "post_seal_input_mutation_count": 0
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_repaired_runner_manifest.v3",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "probe_budget_authorization_id": "USER_SUPPLEMENTAL_AUTHORIZATION_V076_GENERATION9_PROBES_PLUS3_20260902",
+  "parent_authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "generated_at_utc": "2026-09-02T04:10:45.8245143Z",
+  "status": "PASS",
+  "predecessor_committed_head_sha": "1fcc40a069824c0907f64961b42a62b0b3a4195f",
+  "predecessor_committed_tree_sha": "3da9e3d372f633a757d08c87b0d16efd32621f4b",
+  "product_candidate_head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+  "product_candidate_tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d",
+  "runner": {
+    "path": "tools/v076_generation9_platform_probe.ps1",
+    "sha256": "aaad926bc19aae92335742f3d989ac591fd03311414d22c4772a99674b5b79ac",
+    "size_bytes": 43201
+  },
+  "static_self_test": {
+    "path": "tools/v076_generation9_platform_probe_static_self_test.ps1",
+    "sha256": "42bceacad2d08d69a94558d36fa782a3da7e71fe9564c012b5b7997206854c73",
+    "report_path": "reports/reuse/generation9_platform_qualification/post_restart_requalification/runner_static_self_test_003.json",
+    "report_sha256": "be9d793aab32f2669946ad28821e0297c6f4637393657c2381d0cb1e098a0f7a",
+    "status": "PASS",
+    "powershell_parse_error_count": 0,
+    "unknown_command_count": 0
+  },
+  "packager": {
+    "path": "tools/v076_generation9_platform_probe_packager.ps1",
+    "sha256": "769a5fb3b293d57e3fb79c682f9037aa11c9d75d15a8d8e4fec52d66a7344420"
+  },
+  "dependencies": {
+    "monitor_storage": "EXTERNAL_TASK_OUTPUT_READ_ONLY_INPUT",
+    "monitor_sha256": "64e811c4ab358db051d9cb52d5508e867b0a4fbdd527b062f980081223bd1a59",
+    "requalification_seal_sha256": "5411203af65fe621491f021d8dd38c8929f49191c45ac1a23a7a7a2e537c5b63",
+    "probe007_raw_evidence_manifest_sha256": "2f3ef2923798d7685e19fef0b2971f57123c076b22a6883afefa7463cff666bc",
+    "probe007_report_sha256": "4e84e53e1b96b2870f7e26e4921904c4be873eee2dd9306365f8dafddfa5d747"
+  },
+  "workflow_contract": {
+    "budget_ledger_guard": true,
+    "post_restart_requalification_seal_guard": true,
+    "evidence_root_overwrite_guard": true,
+    "commercial_menu_navigation_before_seed_focus": true,
+    "menu_modal_closed_before_seed_input": true,
+    "start_overlay_visible_before_seed_input": true,
+    "runtime_viewport_coordinate_advisory_only": true,
+    "computer_use_coordinate_space": "FRESH_WINDOW_SCREENSHOT",
+    "visible_seed_input_center_click_count": 1,
+    "windows_seed_character_input_count": 0,
+    "mcp_only_seed_character_input": true,
+    "direct_runtime_seed_injection_count": 0,
+    "seed_four_layer_parity_required": true,
+    "listen_endpoint_only_port_guard": true,
+    "normal_cleanup_required": true,
+    "raw_terminal_manifest_required": true,
+    "formal_generation": false,
+    "generation9_formal_execution_count": 0
+  },
+  "static_audits": {
+    "ast_parse": "PASS",
+    "unknown_command_scan": "PASS",
+    "menu_navigation_order": "PASS",
+    "screenshot_coordinate_space_contract": "PASS",
+    "seed_input_ownership": "PASS",
+    "timeout_state_machine": "PASS",
+    "cleanup_state_machine": "PASS",
+    "evidence_finalization": "PASS",
+    "budget_ledger": "PASS"
+  },
+  "tooling_change_resets_consecutive_pass_count": true,
+  "consecutive_pass_count_at_seal": 0,
+  "godot_launch_count_for_static_validation": 0,
+  "product_file_mutation_count": 0,
+  "direct_filesystem_product_edit_count": 0
+}

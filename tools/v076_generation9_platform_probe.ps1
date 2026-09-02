@@ -396,6 +396,20 @@ Write-Utf8Json -Path (Join-Path $probeRoot 'execution-start.json') -Value ([orde
     launch_count_after_requalification_before = [int]$budgetLedger.launch_count_after_requalification
     next_probe_id = [string]$budgetLedger.next_probe_id
 })
+Write-Utf8Json -Path (Join-Path $probeRoot 'runner-manifest.json') -Value ([ordered]@{
+    schema_version = 'space_syndicate.v076.generation9_platform_probe_runtime_runner_manifest.v1'
+    authorization_id = $authorizationId
+    probe_id = $ProbeId
+    generated_at_utc = [DateTime]::UtcNow.ToString('o')
+    runner_path = 'tools/v076_generation9_platform_probe.ps1'
+    runner_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $PSCommandPath).Hash.ToLowerInvariant()
+    exact_head_sha = (git -C $root rev-parse HEAD).Trim()
+    exact_tree_sha = (git -C $root rev-parse 'HEAD^{tree}').Trim()
+    budget_ledger_sha256 = $budgetLedgerSha256
+    requalification_seal_sha256 = $requalificationSealSha256
+    formal_generation = $false
+    generation9_formal_execution_count = 0
+})
 
 try {
     foreach ($required in @($MonitorScript, $GodotPath, $invokeTool, $launchTool, $stopTool)) {
@@ -406,7 +420,7 @@ try {
     if (@(Get-ExactCloneGodotRows).Count -ne 0) {
         throw 'Exact clone already has a running Godot process.'
     }
-    if (@(Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue).Count -ne 0) {
+    if (@(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue).Count -ne 0) {
         throw "Probe port is not free: $Port"
     }
 
@@ -685,6 +699,9 @@ try {
         required_window_match_count = 1
         node_path = $seedControlPath
         runtime_viewport_center = $seedCenter
+        runtime_viewport_coordinate_advisory_only = $true
+        computer_use_coordinate_space = 'FRESH_WINDOW_SCREENSHOT'
+        computer_use_click_instruction = 'LOCATE_THE_VISIBLE_SEED_INPUT_BY_LABEL_IN_THE_FRESH_SCREENSHOT_AND_CLICK_ITS_VISIBLE_CENTER_ONCE'
         start_overlay_visible = $true
         commercial_menu_overlay_visible = $false
         required_action = 'ACTIVATE_UNIQUE_EXACT_GODOT_WINDOW_AND_CLICK_VISIBLE_SEED_INPUT_ONCE'
@@ -941,6 +958,67 @@ $result = [ordered]@{
     requalification_seal_sha256 = $requalificationSealSha256
 }
 Write-Utf8Json -Path $resultPath -Value $result
+Write-Utf8Json -Path (Join-Path $probeRoot 'milestones.json') -Value ([ordered]@{
+    schema_version = 'space_syndicate.v076.generation9_platform_probe_milestones.v1'
+    authorization_id = $authorizationId
+    probe_id = $ProbeId
+    status = $status
+    milestone_pass_count = $result.milestone_pass_count
+    milestone_required_count = $result.milestone_required_count
+    milestones = $milestones
+})
+Write-Utf8Json -Path (Join-Path $probeRoot 'seed-binding.json') -Value ([ordered]@{
+    schema_version = 'space_syndicate.v076.generation9_platform_probe_seed_binding.v1'
+    authorization_id = $authorizationId
+    probe_id = $ProbeId
+    status = if ([bool]$seedBinding.four_layer_match) {'PASS'} else {'FAIL'}
+    seed_binding = $seedBinding
+})
+$terminalListenerCount = @(Get-NetTCPConnection `
+    -State Listen `
+    -LocalPort $Port `
+    -ErrorAction SilentlyContinue).Count
+$terminalProcessCount = @(Get-ExactCloneGodotRows).Count
+Write-Utf8Json -Path (Join-Path $probeRoot 'terminal-process-port-manifest.json') -Value ([ordered]@{
+    schema_version = 'space_syndicate.v076.generation9_platform_probe_terminal_process_port_manifest.v1'
+    authorization_id = $authorizationId
+    probe_id = $ProbeId
+    generated_at_utc = [DateTime]::UtcNow.ToString('o')
+    exact_clone_godot_process_count = $terminalProcessCount
+    listen_endpoint_count = $terminalListenerCount
+    port = $Port
+    cleanup_normal = (
+        $null -ne $cleanup -and
+        [bool]$cleanup.stopped -and
+        -not [bool]$cleanup.forced_stop -and
+        $terminalProcessCount -eq 0 -and
+        $terminalListenerCount -eq 0
+    )
+})
+Write-Utf8Json -Path (Join-Path $probeRoot 'platform-probe-report.json') -Value ([ordered]@{
+    schema_version = 'space_syndicate.v076.generation9_platform_probe_report.v1'
+    authorization_id = $authorizationId
+    probe_id = $ProbeId
+    generated_at_utc = [DateTime]::UtcNow.ToString('o')
+    status = $status
+    qualification_pass = ($status -ceq 'PASS')
+    failure = $result.failure
+    milestone_pass_count = $result.milestone_pass_count
+    milestone_required_count = $result.milestone_required_count
+    seed_four_layer_match = [bool]$seedBinding.four_layer_match
+    minimum_available_commit_bytes = $result.minimum_available_commit_bytes
+    maximum_import_queue_length = $result.maximum_import_queue_length
+    import_event_growth = $result.import_event_growth
+    cleanup_normal = (
+        $terminalProcessCount -eq 0 -and
+        $terminalListenerCount -eq 0 -and
+        $null -ne $cleanup -and
+        [bool]$cleanup.stopped -and
+        -not [bool]$cleanup.forced_stop
+    )
+    formal_generation = $false
+    generation9_formal_execution_count = 0
+})
 $result | ConvertTo-Json -Depth 100
 if ($status -ne 'PASS') {
     exit 65
