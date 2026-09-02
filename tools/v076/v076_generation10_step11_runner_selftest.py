@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import copy
 import re
 import shutil
 import subprocess
@@ -126,6 +127,42 @@ for name, response, expected in (
     script = exit_function + "\nTest-ExitPlayModeResponse ('" + encoded + "' | ConvertFrom-Json -Depth 20)"
     completed = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True, text=True, timeout=15) if pwsh else None
     checks[f"exit_response_executes__{name}"] = completed is not None and completed.returncode == 0 and completed.stdout.strip() == str(expected)
+
+ready_function = text[text.index("function Test-FreshRuntimeReady {"):text.index("function Query-Node {")]
+ready_base = {"installed": True, "script_exists": True, "state_exists": True, "state_age_msec": 500, "state_modified_unix": 1788349500, "state": {"status": "running", "timestamp": "2026-09-02 11:45:00", "current_scene": {"path": "/root/Main", "scene_file_path": "res://scenes/main.tscn"}, "runtime_event_cursor": {"stream_id": "new-run"}}}
+ready_cases = [("fresh_new_run", ready_base, True)]
+for name, mutate in {
+    "old_heartbeat": lambda v: v.update(state_age_msec=167783, state_modified_unix=1788349165),
+    "missing_age": lambda v: v.pop("state_age_msec"),
+    "negative_age": lambda v: v.update(state_age_msec=-1),
+    "boolean_age": lambda v: v.update(state_age_msec=False),
+    "string_age": lambda v: v.update(state_age_msec="500"),
+    "excess_age": lambda v: v.update(state_age_msec=2001),
+    "missing_mtime": lambda v: v.pop("state_modified_unix"),
+    "future_mtime": lambda v: v.update(state_modified_unix=1788349502),
+    "pre_play_mtime": lambda v: v.update(state_modified_unix=1788349498),
+    "missing_timestamp": lambda v: v["state"].pop("timestamp"),
+    "pre_play_timestamp": lambda v: v["state"].update(timestamp="2026-09-02 11:39:25"),
+    "wrong_scene": lambda v: v["state"]["current_scene"].update(scene_file_path="res://tests/fixture.tscn"),
+    "wrong_root": lambda v: v["state"]["current_scene"].update(path="/root/Other"),
+    "stopped": lambda v: v["state"].update(status="stopped"),
+    "missing_state": lambda v: v.pop("state"),
+    "missing_stream": lambda v: v["state"].pop("runtime_event_cursor"),
+    "same_previous_stream": lambda v: v["state"]["runtime_event_cursor"].update(stream_id="prior-run"),
+    "not_installed": lambda v: v.update(installed=False),
+    "state_exists_string": lambda v: v.update(state_exists="true"),
+}.items():
+    candidate = copy.deepcopy(ready_base)
+    mutate(candidate)
+    ready_cases.append((name, candidate, False))
+for name, response, expected in ready_cases:
+    encoded = json.dumps(response).replace("'", "''")
+    script = ready_function + "\nTest-FreshRuntimeReady -Status ('" + encoded + "' | ConvertFrom-Json -Depth 20) -PlayRequestedUnix 1788349499 -PreviousStreamId 'prior-run' -ObservedUnix 1788349501"
+    completed = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True, text=True, timeout=15) if pwsh else None
+    checks[f"fresh_runtime_guard_executes__{name}"] = completed is not None and completed.returncode == 0 and completed.stdout.strip() == str(expected)
+checks["fresh_runtime_guard_controls_poll_exit"] = "$runtimeReady = Test-FreshRuntimeReady" in after_launch and "if ($runtimeReady) { break }" in after_launch and "if (-not $runtimeReady) { throw 'FRESH_RUNTIME_READY_TIMEOUT' }" in after_launch
+checks["new_play_clock_captured_before_play"] = text.index("$playRequestedUnix =") < text.index("Invoke-RoleTool -ToolName 'play_main_scene'")
+checks["fresh_runtime_identity_witness_recorded"] = "step='runtime_ready'" in text and "previous_stream_id=$previousRuntimeStreamId" in text
 
 failed = sorted(name for name, ok in checks.items() if not ok)
 result = {

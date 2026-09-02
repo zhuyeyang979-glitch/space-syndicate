@@ -231,6 +231,8 @@ runtime_negative_mutations = {
     "legal_target_binding_mismatch": lambda value: value["step_receipts"][2]["bound_option"].update({"target_region_id": "region.000"}),
     "legal_target_missing": lambda value: value["step_receipts"].pop(),
     "menu_index_mismatch": lambda value: value["step_receipts"][2].update({"menu_selected_index": 1}),
+    "menu_index_boolean": lambda value: value["step_receipts"][2].update({"menu_selected_index": False}),
+    "duplicate_target_receipt": lambda value: value["step_receipts"].append(copy.deepcopy(value["step_receipts"][2])),
     "menu_item_count_mismatch": lambda value: value["step_receipts"][2].update({"menu_item_count": 0}),
     "eta_zero": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"].update({"eta_ticks": 0}),
     "eta_wrong_distance_owner": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"]["eta_receipt"].update({"distance_owner": "unowned"}),

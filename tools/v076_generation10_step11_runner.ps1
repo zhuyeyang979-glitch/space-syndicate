@@ -24,8 +24,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_006.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_006.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_007.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_007.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -115,6 +115,31 @@ function Get-Inner {
     $text = [string](@($Outer.result.content | Where-Object {[string]$_.type -eq 'text'})[0].text)
     if ([string]::IsNullOrWhiteSpace($text)) { throw 'MCP_RESPONSE_TEXT_MISSING' }
     return ($text | ConvertFrom-Json -Depth 100)
+}
+
+function Test-FreshRuntimeReady {
+    param([object]$Status, [int64]$PlayRequestedUnix, [string]$PreviousStreamId, [int64]$ObservedUnix)
+    try {
+        if ($Status.installed -isnot [bool] -or -not $Status.installed -or
+            $Status.script_exists -isnot [bool] -or -not $Status.script_exists -or
+            $Status.state_exists -isnot [bool] -or -not $Status.state_exists) { return $false }
+        foreach ($value in @($Status.state_age_msec, $Status.state_modified_unix)) {
+            if ($null -eq $value -or $value -is [bool] -or $value -is [string] -or
+                -not [double]::IsFinite([double]$value) -or [double]$value -lt 0 -or
+                [double]$value -ne [Math]::Floor([double]$value)) { return $false }
+        }
+        $modified = [int64]$Status.state_modified_unix
+        $timestamp = [DateTimeOffset]::ParseExact([string]$Status.state.timestamp, 'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal).ToUnixTimeSeconds()
+        $streamId = [string]$Status.state.runtime_event_cursor.stream_id
+        return [bool]([string]$Status.state.status -ceq 'running' -and
+            [string]$Status.state.current_scene.path -ceq '/root/Main' -and
+            [string]$Status.state.current_scene.scene_file_path -ceq 'res://scenes/main.tscn' -and
+            [int64]$Status.state_age_msec -le 2000 -and $PlayRequestedUnix -gt 0 -and
+            $modified -ge $PlayRequestedUnix -and $modified -le $ObservedUnix -and
+            $ObservedUnix - $modified -le 2 -and $timestamp -ge $PlayRequestedUnix -and
+            [Math]::Abs($timestamp - $modified) -le 1 -and
+            -not [string]::IsNullOrWhiteSpace($streamId) -and $streamId -cne $PreviousStreamId)
+    } catch { return $false }
 }
 
 function Query-Node {
@@ -491,16 +516,22 @@ try {
     if ([string]$projectInfo.tool_profile -ne 'full' -or [int]$projectInfo.server_port -ne $Port) { throw 'MCP_ENDPOINT_IDENTITY_MISMATCH' }
     $bridge = Get-Inner (Invoke-RoleTool -ToolName 'get_runtime_bridge_status' -EvidenceName 'runtime-bridge-bootstrap.jsonrpc.json' -Arguments @{})
     if (-not [bool]$bridge.installed -or -not [bool]$bridge.script_exists) { throw 'RUNTIME_BRIDGE_UNAVAILABLE' }
+    $previousRuntimeStreamId = [string]$bridge.state.runtime_event_cursor.stream_id
+    $playRequestedUnix = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
     Invoke-RoleTool -ToolName 'play_main_scene' -EvidenceName 'play-main-scene.jsonrpc.json' -Arguments @{} | Out-Null
     $readyDeadline = [DateTime]::UtcNow.AddSeconds($RuntimeReadyTimeoutSeconds)
     $runtimeReadyIndex = 0
+    $runtimeReady = $false
     do {
         $runtimeReadyIndex++
         $runtimeStatus = Get-Inner (Invoke-RoleTool -ToolName 'get_runtime_bridge_status' -EvidenceName ("runtime-ready-poll-{0:d3}.jsonrpc.json" -f $runtimeReadyIndex) -Arguments @{})
-        if ([bool]$runtimeStatus.state_exists -and [string]$runtimeStatus.state.status -eq 'running' -and [string]$runtimeStatus.state.current_scene.path -eq '/root/Main') { break }
+        $runtimeObservedUnix = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        $runtimeReady = Test-FreshRuntimeReady -Status $runtimeStatus -PlayRequestedUnix $playRequestedUnix -PreviousStreamId $previousRuntimeStreamId -ObservedUnix $runtimeObservedUnix
+        if ($runtimeReady) { break }
         Start-Sleep -Milliseconds 250
     } while ([DateTime]::UtcNow -lt $readyDeadline)
-    if (-not [bool]$runtimeStatus.state_exists -or [string]$runtimeStatus.state.status -ne 'running' -or [string]$runtimeStatus.state.current_scene.path -ne '/root/Main') { throw 'RUNTIME_READY_TIMEOUT' }
+    if (-not $runtimeReady) { throw 'FRESH_RUNTIME_READY_TIMEOUT' }
+    $stepReceipts.Add([ordered]@{step='runtime_ready';play_requested_unix=$playRequestedUnix;observed_unix=$runtimeObservedUnix;previous_stream_id=$previousRuntimeStreamId;stream_id=[string]$runtimeStatus.state.runtime_event_cursor.stream_id;state_age_msec=[int64]$runtimeStatus.state_age_msec;state_modified_unix=[int64]$runtimeStatus.state_modified_unix;state_timestamp=[string]$runtimeStatus.state.timestamp;poll_count=$runtimeReadyIndex})
 
     $commercialButton = Find-ButtonByText -Name 'commercial-new-game' -Text '开始新局'
     Click-Node -Name 'commercial-new-game-click.jsonrpc.json' -Node $commercialButton
