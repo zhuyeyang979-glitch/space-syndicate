@@ -1,0 +1,23 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_probe_budget_ledger.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "generated_at_utc": "2026-09-02T05:24:10.0000000Z",
+  "append_only": true,
+  "ledger_sequence": 7,
+  "predecessor_ledger_sha256": "436b2b897c349f67dbae3056a65473f3159d9b63a0a923a00d2912b39eedbb7f",
+  "status": "ACTIVE_UNTIL_CONSECUTIVE_COMPLETE_PASS_PAIR",
+  "compatibility_correction": "MATCH_EXISTING_RUNNER_CONTROL_FILE_ALLOWLIST",
+  "new_probe_budget_kind": "UNTIL_FIRST_CONSECUTIVE_COMPLETE_PASS_PAIR",
+  "minimum_new_nonformal_probe_count": 2,
+  "new_launch_count": 1,
+  "required_consecutive_pass_count": 2,
+  "current_consecutive_pass_count": 0,
+  "last_probe_id": "probe-011",
+  "last_probe_status": "FAIL",
+  "last_probe_classification": "TOOLING_FAILURE_FULL_WINDOW_DPI_COORDINATE_MISCLICK",
+  "next_probe_id": "probe-012",
+  "control_file_correction_probe_launch_count": 0,
+  "frozen_probe_rewrite_count": 0,
+  "generation9_formal_execution_count": 0,
+  "generation10_creation_count": 0
+}
