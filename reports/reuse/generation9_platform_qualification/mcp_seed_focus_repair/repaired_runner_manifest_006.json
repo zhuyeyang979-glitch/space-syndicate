@@ -1,0 +1,72 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_repaired_runner_manifest.v7",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "parent_authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_at_utc": "2026-09-02T05:22:16.4086410Z",
+  "status": "PASS",
+  "predecessor_runner_manifest_sha256": "b5374ce5290aee14c927f85e2bf98beac0aab003bc9a788c510acd8d1f4b8a87",
+  "product_candidate_head_sha": "745696e9dda39fbc0487853609aaf91eb4984191",
+  "product_candidate_tree_sha": "0da87f7923b33f2d6ad968cd381c41813d591eff",
+  "authorization_manifest_sha256": "804a16c4bfe9b132e29dcb72d7c883bf76a6cf1f7338fe6fcc74b0350e903a1b",
+  "probe_budget_ledger_006_sha256": "436b2b897c349f67dbae3056a65473f3159d9b63a0a923a00d2912b39eedbb7f",
+  "probe_011_raw_evidence_manifest_sha256": "6024afc0961abbee997018c15cd19cbd765a28e0a576f56b94f0d245643e9613",
+  "probe_011_report_sha256": "8700acf7d45d8a2ce4b7a49757014a8dd808f95932c402b19ea7bd35e3868c1d",
+  "runner": {
+    "path": "tools/v076_generation9_platform_probe.ps1",
+    "sha256": "7c56ab1156956e7dcc9a996c9d054e0485c270efe78a32d91ce735e8800b49cf",
+    "size_bytes": 44535
+  },
+  "static_self_test": {
+    "path": "tools/v076_generation9_platform_probe_static_self_test.ps1",
+    "sha256": "38d8f98d38b4299fc419ef822634e7d0e4075367709e92e7c45d4dc5c83e8698",
+    "report_path": "reports/reuse/generation9_platform_qualification/mcp_seed_focus_repair/runner_static_self_test_006.json",
+    "report_sha256": "01d810bb1b84ff512f55a017ab2badcf59ba0972cb9a80c157af3d3d406e455e",
+    "status": "PASS",
+    "powershell_parse_error_count": 0,
+    "unknown_command_count": 0,
+    "godot_launch_count": 0
+  },
+  "packager": {
+    "path": "tools/v076_generation9_platform_probe_packager.ps1",
+    "sha256": "a2894f57b6c7e50badc995c3d0713672bcf53e71d1388175092422d4dd4f71c6",
+    "static_self_test_report_path": "reports/reuse/generation9_platform_qualification/mcp_seed_focus_repair/packager_static_self_test_001.json",
+    "static_self_test_report_sha256": "70b11b7c3854bb262e87c52562bb3ddafcd59a1036193c1a2c85f7f6223bcb4b",
+    "powershell_parse_error_count": 0,
+    "unknown_command_count": 0
+  },
+  "monitor": {
+    "external_path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation9-platform-qualification/monitor_generation9_probe.ps1",
+    "sha256": "64e811c4ab358db051d9cb52d5508e867b0a4fbdd527b062f980081223bd1a59"
+  },
+  "canonical_import": {
+    "manifest_path": "reports/reuse/generation9_platform_qualification/canonical_import_compatibility_correction_001/pass-002/imported_manifest.json",
+    "manifest_sha256": "3658b1050ac601e220fed3e0b3d0339cbd6c2053aff23d63a79464db7a3027ce",
+    "entry_count": 1330,
+    "current_mismatch_count": 0
+  },
+  "coordinate_repair": {
+    "probe_011_disposition": "FROZEN_TOOLING_FAILURE",
+    "probe_011_failure_code": "FULL_WINDOW_SCREENSHOT_DPI_COORDINATE_MISCLICK_START_BUTTON",
+    "computer_use_click_coordinate_space": "WINDOW_RELATIVE_LOGICAL_PIXELS_INCLUDING_WINDOW_CHROME",
+    "runtime_viewport_coordinate_is_advisory_only": true,
+    "full_window_screenshot_physical_to_logical_dpi_conversion_required": true,
+    "post_click_start_overlay_must_remain_visible": true,
+    "seed_field_click_count_required": 1,
+    "non_seed_click_count_required": 0
+  },
+  "workflow_contract": {
+    "external_unique_window_activation_required": true,
+    "external_seed_field_click_count": 1,
+    "runtime_focus_confirmation_click_count": 1,
+    "windows_seed_character_input_count": 0,
+    "mcp_only_seed_character_input": true,
+    "direct_runtime_seed_injection_count": 0,
+    "seed_four_layer_parity_required": true,
+    "normal_cleanup_required": true,
+    "formal_generation": false,
+    "generation9_formal_execution_count": 0
+  },
+  "tooling_change_resets_consecutive_pass_count": true,
+  "consecutive_complete_pass_count_at_manifest": 0,
+  "next_monotonic_probe_id": "probe-012"
+}

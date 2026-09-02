@@ -1,0 +1,23 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_probe_budget_ledger.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "generated_at_utc": "2026-09-02T05:22:16.4086410Z",
+  "append_only": true,
+  "ledger_sequence": 6,
+  "predecessor_ledger_sha256": "c0bea5547b7967f8ad350f1954b96eecda3d133127e9abd3e2f2edb1c64218c5",
+  "status": "ACTIVE_UNTIL_FIRST_CONSECUTIVE_COMPLETE_PASS_PAIR",
+  "new_probe_budget_kind": "UNTIL_FIRST_CONSECUTIVE_COMPLETE_PASS_PAIR",
+  "minimum_new_nonformal_probe_count": 2,
+  "new_launch_count": 1,
+  "required_consecutive_pass_count": 2,
+  "current_consecutive_pass_count": 0,
+  "last_probe_id": "probe-011",
+  "last_probe_status": "FAIL",
+  "last_probe_classification": "TOOLING_FAILURE_FULL_WINDOW_DPI_COORDINATE_MISCLICK",
+  "last_probe_raw_evidence_manifest_sha256": "6024afc0961abbee997018c15cd19cbd765a28e0a576f56b94f0d245643e9613",
+  "last_probe_report_sha256": "8700acf7d45d8a2ce4b7a49757014a8dd808f95932c402b19ea7bd35e3868c1d",
+  "next_probe_id": "probe-012",
+  "frozen_probe_rewrite_count": 0,
+  "generation9_formal_execution_count": 0,
+  "generation10_creation_count": 0
+}

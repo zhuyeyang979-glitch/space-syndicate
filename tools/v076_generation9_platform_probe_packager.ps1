@@ -12,6 +12,7 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateSet(
         'QUALIFICATION_PASS',
+        'TOOLING_FAILURE_FULL_WINDOW_DPI_COORDINATE_MISCLICK',
         'TOOLING_FAILURE_WINDOW_COORDINATE_MAPPING',
         'TOOLING_FAILURE_SCREENSHOT_WINDOW_RELATIVE_COORDINATE_OFFSET',
         'TOOLING_FAILURE_EXTERNAL_TO_RUNTIME_GUI_FOCUS_BINDING',
@@ -21,20 +22,26 @@ param(
     [string]$Classification,
 
     [Parameter(Mandatory = $true)]
-    [ValidateRange(1, 4)]
-    [int]$LaunchIndexAfterRequalification,
+    [ValidateRange(1, 100000)]
+    [int]$NewLaunchIndex,
 
     [Parameter(Mandatory = $true)]
-    [ValidateRange(0, 3)]
-    [int]$RemainingLaunchCount,
+    [ValidateRange(0, 1)]
+    [int]$ConsecutivePassCountBefore,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateRange(0, 2)]
+    [int]$ConsecutivePassCountAfter,
 
     [string]$NextProbeId = ''
 )
 
 $ErrorActionPreference = 'Stop'
-$authorizationId = 'USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902'
-$probeBudgetAuthorizationId = 'USER_SUPPLEMENTAL_AUTHORIZATION_V076_GENERATION9_PROBES_PLUS3_20260902'
-$parentAuthorizationId = 'USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902'
+$authorizationId = 'USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902'
+$probeBudgetAuthorizationId = $authorizationId
+$parentAuthorizationId = 'USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902'
+$productCandidateHeadSha = '745696e9dda39fbc0487853609aaf91eb4984191'
+$productCandidateTreeSha = '0da87f7923b33f2d6ad968cd381c41813d591eff'
 $sourceRoot = (Resolve-Path -LiteralPath $SourceProbeRoot).Path.TrimEnd('\')
 $destinationRoot = [IO.Path]::GetFullPath($DestinationProbeRoot).TrimEnd('\')
 
@@ -49,6 +56,22 @@ if (-not (Test-Path -LiteralPath $executionResultPath)) {
 }
 
 $executionResult = Get-Content -LiteralPath $executionResultPath -Raw | ConvertFrom-Json
+$executionProbeId = [string]$executionResult.probe_id
+if ($executionProbeId -cne $ProbeId) {
+    throw "Execution result Probe ID mismatch: expected $ProbeId, found $executionProbeId"
+}
+if ([string]$executionResult.authorization_id -cne $authorizationId) {
+    throw 'Execution result authorization does not match the active Seed focus repair authority.'
+}
+if ([string]$executionResult.probe_budget_authorization_id -cne $probeBudgetAuthorizationId) {
+    throw 'Execution result probe budget authorization is invalid.'
+}
+if ([string]$executionResult.parent_authorization_id -cne $parentAuthorizationId) {
+    throw 'Execution result parent authorization is invalid.'
+}
+if ([bool]$executionResult.formal_generation -or [int]$executionResult.generation9_formal_execution_count -ne 0) {
+    throw 'A formal Generation 9 execution cannot be packaged as a nonformal platform Probe.'
+}
 $focusWitness = if (Test-Path -LiteralPath $focusWitnessPath) {
     Get-Content -LiteralPath $focusWitnessPath -Raw | ConvertFrom-Json
 } else {
@@ -68,12 +91,6 @@ $manifestFiles = @($sourceFiles | ForEach-Object {
 })
 $generatedAt = [DateTime]::UtcNow.ToString('o')
 $normalizedNextProbeId = $NextProbeId.Trim()
-if ($RemainingLaunchCount -gt 0 -and $normalizedNextProbeId -notmatch '^probe-\d{3}$') {
-    throw 'A next monotonic Probe ID is required while launch budget remains.'
-}
-if ($RemainingLaunchCount -eq 0 -and $normalizedNextProbeId -ne '') {
-    throw 'Next Probe ID must be empty when the launch budget is exhausted.'
-}
 $qualificationPass = (
     $Classification -ceq 'QUALIFICATION_PASS' -and
     [string]$executionResult.status -ceq 'PASS'
@@ -81,12 +98,33 @@ $qualificationPass = (
 if (($Classification -ceq 'QUALIFICATION_PASS') -ne ([string]$executionResult.status -ceq 'PASS')) {
     throw 'Classification and execution status disagree.'
 }
+if ($qualificationPass) {
+    if ($ConsecutivePassCountAfter -ne ($ConsecutivePassCountBefore + 1)) {
+        throw 'A PASS must increment the consecutive complete PASS count exactly once.'
+    }
+} elseif ($ConsecutivePassCountAfter -ne 0) {
+    throw 'A failed Probe must reset the consecutive complete PASS count to zero.'
+}
+if ($ConsecutivePassCountAfter -eq 2) {
+    if ($normalizedNextProbeId -ne '') {
+        throw 'Next Probe ID must be empty after the first consecutive complete PASS pair.'
+    }
+} else {
+    if ($normalizedNextProbeId -notmatch '^probe-\d{3}$') {
+        throw 'A next monotonic Probe ID is required until the first consecutive complete PASS pair.'
+    }
+    $currentProbeNumber = [int]$ProbeId.Substring(6)
+    $nextProbeNumber = [int]$normalizedNextProbeId.Substring(6)
+    if ($nextProbeNumber -ne ($currentProbeNumber + 1)) {
+        throw 'Next Probe ID must be the exact monotonic successor.'
+    }
+}
 
 [IO.Directory]::CreateDirectory($destinationRoot) | Out-Null
 $manifestPath = Join-Path $destinationRoot 'raw_evidence_manifest.json'
 $reportPath = Join-Path $destinationRoot 'platform_probe_report.json'
 $manifest = [ordered]@{
-    schema_version = 'space_syndicate.v076.generation9_platform_probe_raw_evidence_manifest.v1'
+    schema_version = 'space_syndicate.v076.generation9_platform_probe_raw_evidence_manifest.v2'
     authorization_id = $authorizationId
     probe_budget_authorization_id = $probeBudgetAuthorizationId
     parent_authorization_id = $parentAuthorizationId
@@ -99,7 +137,7 @@ $manifest = [ordered]@{
     files = $manifestFiles
 }
 $report = [ordered]@{
-    schema_version = 'space_syndicate.v076.generation9_platform_probe_packaged_report.v1'
+    schema_version = 'space_syndicate.v076.generation9_platform_probe_packaged_report.v2'
     authorization_id = $authorizationId
     probe_budget_authorization_id = $probeBudgetAuthorizationId
     parent_authorization_id = $parentAuthorizationId
@@ -108,9 +146,11 @@ $report = [ordered]@{
     status = [string]$executionResult.status
     classification = $Classification
     qualification_pass = $qualificationPass
-    consecutive_pass_carry = $false
-    launch_index_after_requalification = $LaunchIndexAfterRequalification
-    remaining_launch_count = $RemainingLaunchCount
+    new_probe_budget_kind = 'UNTIL_FIRST_CONSECUTIVE_COMPLETE_PASS_PAIR'
+    minimum_new_nonformal_probe_count = 2
+    new_launch_index = $NewLaunchIndex
+    consecutive_complete_pass_count_before = $ConsecutivePassCountBefore
+    consecutive_complete_pass_count_after = $ConsecutivePassCountAfter
     next_probe_id = if ($normalizedNextProbeId -eq '') {$null} else {$normalizedNextProbeId}
     execution_result_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $executionResultPath).Hash.ToLowerInvariant()
     raw_evidence_manifest_file_count = $sourceFiles.Count
@@ -120,12 +160,16 @@ $report = [ordered]@{
     seed_four_layer_match = [bool]$executionResult.seed_binding.four_layer_match
     external_focus_witness_status = if ($null -ne $focusWitness) {[string]$focusWitness.status} else {$null}
     external_focus_failure_domain = if ($null -ne $focusWitness) {[string]$focusWitness.failure_domain} else {$null}
+    external_focus_failure_code = if ($null -ne $focusWitness) {[string]$focusWitness.failure_code} else {$null}
+    external_focus_observed_result = if ($null -ne $focusWitness) {[string]$focusWitness.observed_result} else {$null}
     minimum_available_commit_bytes = $executionResult.minimum_available_commit_bytes
     maximum_import_queue_length = $executionResult.maximum_import_queue_length
     import_event_growth = $executionResult.import_event_growth
     cleanup = $executionResult.cleanup
     formal_generation = $false
     generation9_formal_execution_count = 0
+    product_candidate_head_sha = $productCandidateHeadSha
+    product_candidate_tree_sha = $productCandidateTreeSha
     product_file_mutation_count = 0
     frozen_probe_rewrite_count = 0
 }
