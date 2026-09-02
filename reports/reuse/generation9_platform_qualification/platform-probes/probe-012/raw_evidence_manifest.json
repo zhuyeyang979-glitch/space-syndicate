@@ -1,0 +1,194 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_raw_evidence_manifest.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "probe_budget_authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "parent_authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "probe_id": "probe-012",
+  "generated_at_utc": "2026-09-02T05:31:58.7824693Z",
+  "source_storage": "EXTERNAL_APPEND_ONLY_TASK_OUTPUT",
+  "source_path_redacted": true,
+  "source_file_count": 36,
+  "source_total_size_bytes": 2649153,
+  "files": [
+    {
+      "relative_path": "commercial-menu-closed-poll-001.jsonrpc.json",
+      "size_bytes": 3337,
+      "sha256": "8e260f119a63f92b6e0a071974af3ab79a17177e0bd260fe466f7eb245218175"
+    },
+    {
+      "relative_path": "commercial-new-game-button-click.jsonrpc.json",
+      "size_bytes": 1625,
+      "sha256": "5ee9ba388641ba002787b7df81a375b56b8aae2af24eef3d2c2418d26dbddce6"
+    },
+    {
+      "relative_path": "commercial-new-game-button-discovery-branch-001.jsonrpc.json",
+      "size_bytes": 104923,
+      "sha256": "a3aee9ad826a1eca24c91cba7cccc84e99cf7e45dd38b5155541d3e3239fe159"
+    },
+    {
+      "relative_path": "commercial-new-game-button-discovery-branch-002.jsonrpc.json",
+      "size_bytes": 597533,
+      "sha256": "9ce47f98667317a2fe12eb38e73c85c6bf8e053b14c3b765aa978cc9dd930683"
+    },
+    {
+      "relative_path": "commercial-new-game-button-discovery-branch-003.jsonrpc.json",
+      "size_bytes": 35693,
+      "sha256": "0ba14886d5d72574bba3f82e6ad460d985d7007174b5a65f9960faadf9bc7acd"
+    },
+    {
+      "relative_path": "commercial-new-game-button-discovery-branch-004.jsonrpc.json",
+      "size_bytes": 17343,
+      "sha256": "c8faa98cdc2704b88146e3ed744ac51a882e64c4ec2ddece7c203ac3f63e2ef7"
+    },
+    {
+      "relative_path": "commercial-new-game-button-discovery-branch-005.jsonrpc.json",
+      "size_bytes": 38697,
+      "sha256": "e4955b733409968220fb2c072d3c6e00fda03a36cf1f3a0f2d3c020bddbbf323"
+    },
+    {
+      "relative_path": "commercial-new-game-button-discovery-branch-006.jsonrpc.json",
+      "size_bytes": 28347,
+      "sha256": "c6cbec9c35abec9f50ac86325eb76e773f6d7f62459d43d1d55980d9518b6f08"
+    },
+    {
+      "relative_path": "commercial-new-game-button-discovery-candidate-001.jsonrpc.json",
+      "size_bytes": 4617,
+      "sha256": "bdf1f3e98a195ea95c8910214f42d59304161de68e3e47c6363f24731de5bc46"
+    },
+    {
+      "relative_path": "commercial-new-game-button-discovery-root.jsonrpc.json",
+      "size_bytes": 613877,
+      "sha256": "e906399d32f050491cb5bed0ebad09c8d80009b22d3787ac0c301c47b9efdd0b"
+    },
+    {
+      "relative_path": "execution-start.json",
+      "size_bytes": 903,
+      "sha256": "3489fb62a1098f319b1ef65830bcd7e8b4c9aee04b34147b88b071d551dae85c"
+    },
+    {
+      "relative_path": "external-seed-focus-complete.json",
+      "size_bytes": 865,
+      "sha256": "425b4378ddba5c835629691aebeed959d19365948b9c710b1f562131b64e134c"
+    },
+    {
+      "relative_path": "external-seed-focus-request.json",
+      "size_bytes": 1137,
+      "sha256": "48dc08e2b98f83dad9558a11742e9a05d453db080bb0927857ce8225059da201"
+    },
+    {
+      "relative_path": "launcher-connection-snapshot.json",
+      "size_bytes": 1321,
+      "sha256": "152201a1ae8987200fe98afdb6a186a68ee47a0dbd569cdd32d14019cf79256e"
+    },
+    {
+      "relative_path": "m10-exit-play-mode.jsonrpc.json",
+      "size_bytes": 117,
+      "sha256": "2e7a614beec760a27bfec5ecea74c6f71b8b621a0baf09ff763812bda8f4cfc1"
+    },
+    {
+      "relative_path": "m10-m11-cleanup.json",
+      "size_bytes": 218,
+      "sha256": "33120ed411f831771c8276faf5dcb3157d121316d396216b6157f6103e00256b"
+    },
+    {
+      "relative_path": "m5-m6-first-get-project-info.jsonrpc.json",
+      "size_bytes": 1720,
+      "sha256": "3ec143ac102762e5b8f4c77e57fa491b12c5b260fef7c8eb3de518f5c58bcedd"
+    },
+    {
+      "relative_path": "m7-runtime-bootstrap.jsonrpc.json",
+      "size_bytes": 136688,
+      "sha256": "d4ca6abdcb93b60d0be01b49685da578cc57bed29041780a9ea0e155ef6c90f1"
+    },
+    {
+      "relative_path": "m8-ready-poll-001.jsonrpc.json",
+      "size_bytes": 124214,
+      "sha256": "0fcf71eec6ba9ed6d38778df6827289823840d35969c7f99caa30b72025c72b1"
+    },
+    {
+      "relative_path": "m8-ready-poll-002.jsonrpc.json",
+      "size_bytes": 124216,
+      "sha256": "6d530ae7f6f44c98bfa13db5b02b5a6b0705c9a79f7db9ce60999f3d2c3b8b38"
+    },
+    {
+      "relative_path": "m8-ready-poll-003.jsonrpc.json",
+      "size_bytes": 128045,
+      "sha256": "b8f76214f0b569ef892baaf2c7336469937710f7be5a5908ac3196d8d36e0ee5"
+    },
+    {
+      "relative_path": "m9-play-main-scene.jsonrpc.json",
+      "size_bytes": 114,
+      "sha256": "bd0876dc640d6d3fbc0fa000ee164c5c64b1a20beed34e9558cf6d075ef958c8"
+    },
+    {
+      "relative_path": "milestones.json",
+      "size_bytes": 514,
+      "sha256": "b29c412438280185bc38ac92cbb395743192cd58f4d75d9f9ad54ffacd7bdcf7"
+    },
+    {
+      "relative_path": "monitor.stderr.log",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "relative_path": "monitor.stdout.log",
+      "size_bytes": 1553,
+      "sha256": "bf7e4c7714dd3e154482141ef6cc8e77a7042bc44610fcd02feeaa0f643f77b1"
+    },
+    {
+      "relative_path": "monitor.stop",
+      "size_bytes": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "relative_path": "monitor/process_memory_samples.jsonl",
+      "size_bytes": 665621,
+      "sha256": "0b67740ba1bf1e24e6a83053e4cb391bea65b066d417cce61bfd93e514d76d4e"
+    },
+    {
+      "relative_path": "monitor/process_memory_summary.json",
+      "size_bytes": 1552,
+      "sha256": "637c5dbcdc77be0baea2c20d8e733be72424dc886ffdddb6e39396153fab5371"
+    },
+    {
+      "relative_path": "platform-probe-report.json",
+      "size_bytes": 717,
+      "sha256": "a38d5fefafbf063e09577338d06d0441c0dfeab9d08969eebf5a058705b009d5"
+    },
+    {
+      "relative_path": "preflight.json",
+      "size_bytes": 2931,
+      "sha256": "6a60b00a9e874d3d3f18ebc5d3dd73f87655a13b612b7af9d7ba08d1c39e9404"
+    },
+    {
+      "relative_path": "probe_execution_result.json",
+      "size_bytes": 2358,
+      "sha256": "df6a03f786a97c93c749023a1e8308fbb4342ae3fdb7decd0ddf24b22913e062"
+    },
+    {
+      "relative_path": "runner-manifest.json",
+      "size_bytes": 834,
+      "sha256": "2b3f3ab8009caa840a2a697ee2a06f2fab111393aa8171660dc0b56c833c3771"
+    },
+    {
+      "relative_path": "seed-binding.json",
+      "size_bytes": 619,
+      "sha256": "f57f5797403e61c8d1ebf4d7767433eec0f3ada858a02fb4707e79e6f7b2b23a"
+    },
+    {
+      "relative_path": "seed-input-before-entry.jsonrpc.json",
+      "size_bytes": 3449,
+      "sha256": "93c5a289d1fddb1e219115cc89aefe5b6f1f19ba6d7796e400518056cf789382"
+    },
+    {
+      "relative_path": "start-overlay-visible-poll-001.jsonrpc.json",
+      "size_bytes": 3045,
+      "sha256": "fb6037618322c990780a4e6dcf105ccd22ed41c03ccd8c5f4632c5082f96a291"
+    },
+    {
+      "relative_path": "terminal-process-port-manifest.json",
+      "size_bytes": 405,
+      "sha256": "b243f78b5e8bfa7d4aaa26bb035aa10a13014d90d290f8dcfa6fd7c7bc19efe6"
+    }
+  ]
+}
