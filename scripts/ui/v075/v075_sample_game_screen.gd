@@ -1710,6 +1710,21 @@ func show_new_game_setup() -> void:
 	## owner.
 	_start_overlay.visible = true
 	_refresh_playtest_context()
+	call_deferred("_focus_seed_input_for_new_game_setup")
+
+
+func _focus_seed_input_for_new_game_setup() -> void:
+	## The commercial menu button owns GUI focus until its overlay closes.  Move
+	## that presentation-only focus to the existing Seed owner on the next idle
+	## edge so physical and MCP key events share the same visible input target.
+	if (
+		not _start_overlay.visible
+		or not _seed_input.visible
+		or not _seed_input.editable
+	):
+		return
+	_seed_input.grab_focus()
+	_seed_input.select_all()
 
 
 func _configure_commodity_preview_dock() -> void:

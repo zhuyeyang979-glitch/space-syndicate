@@ -91,8 +91,10 @@ func _run() -> void:
 		new_game_button.pressed.emit()
 	await process_frame
 	var start_overlay := screen.get_node_or_null("OverlayLayer/StartOverlay") as Control
+	var seed_input := screen.find_child("SeedInput", true, false) as LineEdit
 	_expect(start_overlay != null and start_overlay.visible, "New Game returns to the inherited embedded setup surface")
 	_expect(not overlay.visible, "shell closes before embedded New Game input")
+	_expect(seed_input != null and seed_input.has_focus(), "commercial New Game hands GUI focus to the visible Seed input")
 	var snapshot := flow.call("local_snapshot") as Dictionary
 	_expect(not bool(snapshot.get("match_started", false)), "shell navigation does not start a match")
 
