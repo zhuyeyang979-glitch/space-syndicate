@@ -275,6 +275,52 @@ jobs:
           "Current-subject receipt contract: PASS ($passCount/$caseCount); false green: 0." |
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
 
+      - name: Run Generation 9 STEP11 receipt and runner self-tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $receiptPath = Join-Path $env:RUNNER_TEMP "v076-generation9-step11-receipt-selftest.json"
+          $runnerPath = Join-Path $env:RUNNER_TEMP "v076-generation9-step11-runner-selftest.json"
+          $receiptLines = & python tools/v076/v076_generation9_step11_receipt_selftest.py
+          $receiptExit = $LASTEXITCODE
+          $runnerLines = & python tools/v076/v076_generation9_step11_runner_selftest.py
+          $runnerExit = $LASTEXITCODE
+          [IO.File]::WriteAllText(
+            $receiptPath,
+            (($receiptLines -join "`n").TrimEnd() + "`n"),
+            [Text.UTF8Encoding]::new($false)
+          )
+          [IO.File]::WriteAllText(
+            $runnerPath,
+            (($runnerLines -join "`n").TrimEnd() + "`n"),
+            [Text.UTF8Encoding]::new($false)
+          )
+          try {
+            $receipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
+            $runner = Get-Content -LiteralPath $runnerPath -Raw | ConvertFrom-Json
+          } catch {
+            throw "Generation 9 self-tests did not emit valid JSON: $($_.Exception.Message)"
+          }
+          if ($receiptExit -ne 0 -or
+              [string]$receipt.RECEIPT_CONTRACT_SELFTEST_STATUS -cne "PASS" -or
+              [long]$receipt.RECEIPT_CONTRACT_SELFTEST_CASE_COUNT -ne 67 -or
+              [long]$receipt.RECEIPT_CONTRACT_SELFTEST_PASS_COUNT -ne 67 -or
+              [long]$receipt.RECEIPT_CONTRACT_SELFTEST_NEGATIVE_CASE_COUNT -ne 39 -or
+              [long]$receipt.FALSE_GREEN_COUNT -ne 0 -or
+              [long]$receipt.VALID_RECEIPT_FALSE_REJECT_COUNT -ne 0 -or
+              $receipt.EXECUTED_NEGATIVE_CASE_SET_MATCH -ne $true) {
+            throw "Generation 9 receipt self-test failed: exit=$receiptExit status=$($receipt.RECEIPT_CONTRACT_SELFTEST_STATUS) pass=$($receipt.RECEIPT_CONTRACT_SELFTEST_PASS_COUNT)/$($receipt.RECEIPT_CONTRACT_SELFTEST_CASE_COUNT)"
+          }
+          if ($runnerExit -ne 0 -or
+              [string]$runner.status -cne "PASS" -or
+              [long]$runner.case_count -ne 42 -or
+              [long]$runner.pass_count -ne 42 -or
+              [long]$runner.false_green_count -ne 0) {
+            throw "Generation 9 runner self-test failed: exit=$runnerExit status=$($runner.status) pass=$($runner.pass_count)/$($runner.case_count)"
+          }
+          "Generation 9 STEP11 receipt contract: PASS (67/67); formal runner: PASS (42/42); false green: 0." |
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+
       - name: Resolve explicit full-convergence input set
         id: full_convergence_inputs
         shell: pwsh
@@ -328,10 +374,35 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $reportPath = Join-Path $env:RUNNER_TEMP "v076-current-subject-receipt-validation.json"
+          $generation9ManifestRelative = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest.json"
+          $generation9ManifestPath = Join-Path $env:GITHUB_WORKSPACE $generation9ManifestRelative
           $generation8ManifestRelative = "reports/reuse/full_convergence/generation8/generation8_authorization_manifest.json"
           $generation8ManifestPath = Join-Path $env:GITHUB_WORKSPACE $generation8ManifestRelative
           $global:LASTEXITCODE = 0
-          if (Test-Path -LiteralPath $generation8ManifestPath -PathType Leaf) {
+          if (Test-Path -LiteralPath $generation9ManifestPath -PathType Leaf) {
+            try {
+              $generation9Authorization = Get-Content -LiteralPath $generation9ManifestPath -Raw | ConvertFrom-Json
+            } catch {
+              throw "Generation 9 authorization manifest is invalid JSON: $($_.Exception.Message)"
+            }
+            $generationProperty = $generation9Authorization.PSObject.Properties["generation_id"]
+            $evidenceProperty = $generation9Authorization.PSObject.Properties["new_evidence_id"]
+            if ([string]$generation9Authorization.status -cne "SEALED" -or
+                $null -eq $generationProperty -or $generationProperty.Value -isnot [long] -or
+                [long]$generationProperty.Value -ne 9 -or
+                $null -eq $evidenceProperty -or $evidenceProperty.Value -isnot [long] -or
+                [long]$evidenceProperty.Value -ne 9695) {
+              throw "Generation 9 authorization manifest identity is not sealed or monotonic."
+            }
+            $expectedGenerationId = [long]$generationProperty.Value
+            $expectedEvidenceId = [long]$evidenceProperty.Value
+            $expectedReceiptCount = 1
+            $expectedValidationMode = "GENERATION9_SUCCESSOR"
+            & python tools/v076/v076_generation9_step11_receipt.py validate `
+              --project $env:GITHUB_WORKSPACE `
+              --expected-consumer-head "${{ steps.pr_context.outputs.head }}" `
+              --report-json $reportPath
+          } elseif (Test-Path -LiteralPath $generation8ManifestPath -PathType Leaf) {
             try {
               $generation8Authorization = Get-Content -LiteralPath $generation8ManifestPath -Raw | ConvertFrom-Json
             } catch {
@@ -658,7 +729,7 @@ jobs:
           if ($expectedGenerationText -notmatch '^[0-9]+$' -or
               $expectedEvidenceText -notmatch '^[0-9]+$' -or
               $expectedReceiptCountText -notmatch '^[0-9]+$' -or
-              $expectedValidationMode -notin @("GENERATION7_LEGACY", "GENERATION8_SUCCESSOR")) {
+              $expectedValidationMode -notin @("GENERATION7_LEGACY", "GENERATION8_SUCCESSOR", "GENERATION9_SUCCESSOR")) {
             throw "Effective Gate received invalid dynamic receipt expectations."
           }
           $expectedGenerationId = [long]$expectedGenerationText
@@ -679,7 +750,10 @@ jobs:
               $receiptFailureCodes.Count -ne 0 -or
               $receiptBindings.Count -ne $expectedReceiptCount -or
               ($expectedGenerationId -eq 8 -and
-                [string]$receiptReport.generation7_step11_receipt_status -cne "BLOCKED")) {
+                [string]$receiptReport.generation7_step11_receipt_status -cne "BLOCKED") -or
+              ($expectedGenerationId -eq 9 -and (
+                [string]$receiptReport.generation7_step11_receipt_status -cne "BLOCKED" -or
+                [string]$receiptReport.generation8_step11_receipt_status -cne "BLOCKED"))) {
             throw "Effective Gate receipt contract mismatch: expected_head=$expectedHead actual_head=$($receiptReport.expected_consumer_head_sha) receipts=$($receiptReport.validated_receipt_count)/$($receiptReport.receipt_count) bindings=$($receiptBindings.Count)"
           }
           if ($rawOutcome -cne "success" -or $v2Outcome -cne "success") {
@@ -861,6 +935,8 @@ jobs:
             ${{ runner.temp }}/v076-reuse-point-inertia-selftest.json
             ${{ runner.temp }}/v076-reuse-correction-v2-selftest.json
             ${{ runner.temp }}/v076-current-subject-receipt-contract-selftest.json
+            ${{ runner.temp }}/v076-generation9-step11-receipt-selftest.json
+            ${{ runner.temp }}/v076-generation9-step11-runner-selftest.json
             ${{ runner.temp }}/v076-current-subject-receipt-validation.json
             ${{ runner.temp }}/v076-reuse-point-inertia-raw.json
             ${{ runner.temp }}/v076-reuse-point-inertia-raw.md
