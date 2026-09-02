@@ -159,16 +159,52 @@ function Flatten-Tree {
 
 function Find-ButtonByText {
     param([string]$Name, [string]$Text, [int]$TimeoutSeconds = 30)
-    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
-    do {
-        $tree = Query-Node -Name "$Name-tree.jsonrpc.json" -Path '/root/Main' -Properties @('text','visible','disabled','global_position','size') -Children -MaxDepth 8 -MaxNodes 500
-        $matches = @(Flatten-Tree $tree.tree | Where-Object {
-            [string]$_.type -eq 'Button' -and [string]$_.properties.text -ceq $Text -and [bool]$_.properties.visible -and -not [bool]$_.properties.disabled
+    $buttonProperties = @('text','visible','disabled','global_position','size')
+    $rootQuery = Query-Node -Name "$Name-root.jsonrpc.json" -Path '/root/Main' -Properties $buttonProperties -Children -MaxDepth 8 -MaxNodes 500
+    $rootNodes = @(Flatten-Tree $rootQuery.tree)
+    $commercialRoots = @($rootNodes | Where-Object {[string]$_.name -ceq 'CommercialShellSurfaceLayer'})
+    $candidateSummaries = @($rootNodes | Where-Object {
+        [string]$_.type -ceq 'Button' -and [string]$_.properties.text -ceq $Text
+    })
+    if ($commercialRoots.Count -eq 0 -and ($rootNodes.Count -eq 500 -or [bool]$rootQuery.tree_truncated)) {
+        $overlayQuery = Query-Node -Name "$Name-overlay-fallback.jsonrpc.json" -Path '/root/Main/V075GameScreen/OverlayLayer' -Properties $buttonProperties -Children -MaxDepth 8 -MaxNodes 500
+        $overlayNodes = @(Flatten-Tree $overlayQuery.tree)
+        $candidateSummaries = @($overlayNodes | Where-Object {
+            [string]$_.type -ceq 'Button' -and [string]$_.properties.text -ceq $Text
         })
-        if ($matches.Count -eq 1) { return $matches[0] }
-        Start-Sleep -Milliseconds 250
-    } while ([DateTime]::UtcNow -lt $deadline)
-    throw "UNIQUE_BUTTON_NOT_FOUND:$Text"
+        $commercialRoots = @($overlayNodes | Where-Object {[string]$_.name -ceq 'CommercialShellSurfaceLayer'})
+    }
+    if ($commercialRoots.Count -ne 1) { throw "COMMERCIAL_ROOT_NOT_UNIQUE:$($commercialRoots.Count)" }
+    $frontier = [Collections.Generic.Queue[string]]::new()
+    $visited = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $frontier.Enqueue([string]$commercialRoots[0].path)
+    $branchIndex = 0
+    while ($candidateSummaries.Count -eq 0 -and $frontier.Count -gt 0) {
+        if ($branchIndex -ge 24) { throw "BUTTON_DISCOVERY_BRANCH_BUDGET_EXCEEDED:$Text" }
+        $branchPath = $frontier.Dequeue()
+        if (-not $visited.Add($branchPath)) { continue }
+        $branchIndex++
+        $branchQuery = Query-Node -Name ("{0}-branch-{1:d3}.jsonrpc.json" -f $Name,$branchIndex) -Path $branchPath -Properties $buttonProperties -Children -MaxDepth 8 -MaxNodes 500
+        $branchNodes = @(Flatten-Tree $branchQuery.tree)
+        $candidateSummaries = @($branchNodes | Where-Object {
+            [string]$_.type -ceq 'Button' -and [string]$_.properties.text -ceq $Text
+        })
+        foreach ($truncatedNode in @($branchNodes | Where-Object {[bool]$_.children_truncated})) {
+            $truncatedPath = [string]$truncatedNode.path
+            if (-not [string]::IsNullOrWhiteSpace($truncatedPath) -and -not $visited.Contains($truncatedPath)) { $frontier.Enqueue($truncatedPath) }
+        }
+    }
+    if ($candidateSummaries.Count -eq 0) { throw "BUTTON_NOT_FOUND_BY_EXACT_TEXT:$Text" }
+    $liveCandidates = @()
+    $candidateIndex = 0
+    foreach ($candidate in $candidateSummaries) {
+        $candidateIndex++
+        $exact = Query-Node -Name ("{0}-candidate-{1:d3}.jsonrpc.json" -f $Name,$candidateIndex) -Path ([string]$candidate.path) -Properties $buttonProperties
+        $props = Get-Props $exact
+        if ([string]$exact.type -ceq 'Button' -and [string]$props.text -ceq $Text -and [bool]$props.visible -and -not [bool]$props.disabled -and [double]$props.size.x -gt 0 -and [double]$props.size.y -gt 0) { $liveCandidates += $exact }
+    }
+    if ($liveCandidates.Count -ne 1) { throw "BUTTON_NOT_UNIQUE_OR_NOT_LIVE:${Text}:$($liveCandidates.Count)" }
+    return $liveCandidates[0]
 }
 
 function Wait-Runtime {
