@@ -1,0 +1,31 @@
+{
+  "schema_version": "space_syndicate.v076.typed_resource_script_implementation_review.v1",
+  "scope": "EXACT_TOOLING_IMPLEMENTATION_ONLY_NOT_REGISTRY_APPLICATION",
+  "observed_head_sha": "b75c7e83ae4d98b6a86ac21136350e53b398faad",
+  "file_sha256": {
+    "tools/v076/v076_resource_script_typed_identity_selftest.py": "6d580c2eb907918fba2878388ba5df584f81cbd6abf9b41362bceb81e8837f5d",
+    "tools/v076/v076_reuse_full_convergence_batch011_registry_projection_builder.py": "046bfca66084c07e9ca9947a3e03ea599e9c08bf6ac2d1aed88dcd434fa5049b",
+    "tools/v076/v076_reuse_point_inertia_gate.py": "2a4ade11b49719cc5b4a5290b51868eb3385c92c986d543585d89aac974ba333",
+    "tools/v076/v076_reuse_point_inertia_gate_selftest.py": "6b986b34c47311e03a0ea18a9a6158fac27c8c4b17a7bda9d5439347bc20aa34"
+  },
+  "status": "GO",
+  "findings": [],
+  "registry_sha256": "84cc99166b3515d6ae33dc1e025042fb5344a6fb29fda4cfb403ac7c80a6fdf8",
+  "candidate_application_reviewed": false,
+  "required_gate_green": false,
+  "human_green": false,
+  "product_green": false,
+  "formal_step11_reexecution_count": 0,
+  "reviewer": "/root",
+  "review_id": "PRIMARY",
+  "evidence_source": "Executed original/focused tests and exact diff review",
+  "focused_test_count": 58,
+  "focused_pass_count": 58,
+  "original_reuse_test_count": 163,
+  "original_reuse_pass_count": 163,
+  "v2_test_count": 118,
+  "v2_pass_count": 118,
+  "false_green_count": 0,
+  "old_resource_row_mutation_count": 0,
+  "product_file_mutation_count": 0
+}

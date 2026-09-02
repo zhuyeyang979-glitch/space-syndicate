@@ -1,0 +1,40 @@
+{
+  "schema_version": "space_syndicate.v076.typed_resource_script_implementation_review.v1",
+  "scope": "EXACT_TOOLING_IMPLEMENTATION_ONLY_NOT_REGISTRY_APPLICATION",
+  "observed_head_sha": "b75c7e83ae4d98b6a86ac21136350e53b398faad",
+  "file_sha256": {
+    "tools/v076/v076_resource_script_typed_identity_selftest.py": "6d580c2eb907918fba2878388ba5df584f81cbd6abf9b41362bceb81e8837f5d",
+    "tools/v076/v076_reuse_full_convergence_batch011_registry_projection_builder.py": "046bfca66084c07e9ca9947a3e03ea599e9c08bf6ac2d1aed88dcd434fa5049b",
+    "tools/v076/v076_reuse_point_inertia_gate.py": "2a4ade11b49719cc5b4a5290b51868eb3385c92c986d543585d89aac974ba333",
+    "tools/v076/v076_reuse_point_inertia_gate_selftest.py": "6b986b34c47311e03a0ea18a9a6158fac27c8c4b17a7bda9d5439347bc20aa34"
+  },
+  "status": "GO",
+  "findings": [],
+  "registry_sha256": "84cc99166b3515d6ae33dc1e025042fb5344a6fb29fda4cfb403ac7c80a6fdf8",
+  "candidate_application_reviewed": false,
+  "required_gate_green": false,
+  "human_green": false,
+  "product_green": false,
+  "formal_step11_reexecution_count": 0,
+  "reviewer": "/root/current_delta_forensics",
+  "review_id": "INDEPENDENT",
+  "evidence_source": "Read-only subagent independent execution and implementation review, transcribed by coordinator",
+  "passed": 93,
+  "total": 93,
+  "check_groups": {
+    "authority_flags_and_types": 54,
+    "alternative_paths": 2,
+    "builder_committed_byte_binding": 1,
+    "source_byte_fail_closed": 12,
+    "original_consumer_compatibility": 4,
+    "post_apply_fixture_compatibility": 3,
+    "scope_and_immutability": 3,
+    "snapshot_ref_integrity": 9,
+    "third_row_duplicates_and_sentinel": 5
+  },
+  "moving_ref_with_reset_rejected": true,
+  "moving_ref_without_reset_rejected": true,
+  "post_apply_focused_pass_count": 58,
+  "post_apply_focused_case_count": 58,
+  "raw_fingerprint_spr_hdm_modified_count": 0
+}

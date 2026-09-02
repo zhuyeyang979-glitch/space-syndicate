@@ -1,0 +1,244 @@
+{
+  "schema_version": "space_syndicate.v076.resource_script_typed_identity_selftest.v1",
+  "status": "PASS",
+  "case_count": 56,
+  "pass_count": 56,
+  "cases": [
+    {
+      "name": "legacy inventory keys unchanged",
+      "status": "PASS"
+    },
+    {
+      "name": "exact pair primary",
+      "status": "PASS"
+    },
+    {
+      "name": "exact pair independent",
+      "status": "PASS"
+    },
+    {
+      "name": "old row byte semantic identity",
+      "status": "PASS"
+    },
+    {
+      "name": "inputs unmodified",
+      "status": "PASS"
+    },
+    {
+      "name": "missing",
+      "status": "PASS"
+    },
+    {
+      "name": "empty",
+      "status": "PASS"
+    },
+    {
+      "name": "script absent",
+      "status": "PASS"
+    },
+    {
+      "name": "resource absent",
+      "status": "PASS"
+    },
+    {
+      "name": "resources/ai/ai_policy_profile_v1.tres:truncated",
+      "status": "PASS"
+    },
+    {
+      "name": "resources/ai/ai_policy_profile_v1.tres:appended",
+      "status": "PASS"
+    },
+    {
+      "name": "resources/ai/ai_policy_profile_v1.tres:wrong type",
+      "status": "PASS"
+    },
+    {
+      "name": "resources/ai/ai_policy_profile_v1.tres:empty",
+      "status": "PASS"
+    },
+    {
+      "name": "scripts/ai/ai_policy_profile_resource.gd:truncated",
+      "status": "PASS"
+    },
+    {
+      "name": "scripts/ai/ai_policy_profile_resource.gd:appended",
+      "status": "PASS"
+    },
+    {
+      "name": "scripts/ai/ai_policy_profile_resource.gd:wrong type",
+      "status": "PASS"
+    },
+    {
+      "name": "scripts/ai/ai_policy_profile_resource.gd:empty",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:component_id",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:component_role",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:domain_id",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:production_reachable",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:writes_authority",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:reads_authority",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:owner_component_id",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:owner_path",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:reuse_disposition",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:change_class",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:owns_rng",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:owns_tick",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:owns_save",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:owns_replay",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:owns_identity",
+      "status": "PASS"
+    },
+    {
+      "name": "script field:owns_presentation",
+      "status": "PASS"
+    },
+    {
+      "name": "integer false rejected:production_reachable",
+      "status": "PASS"
+    },
+    {
+      "name": "integer false rejected:writes_authority",
+      "status": "PASS"
+    },
+    {
+      "name": "integer false rejected:owns_tick",
+      "status": "PASS"
+    },
+    {
+      "name": "old resource unchanged:new_component_justification",
+      "status": "PASS"
+    },
+    {
+      "name": "old resource unchanged:focused_test_ids",
+      "status": "PASS"
+    },
+    {
+      "name": "old resource unchanged:path",
+      "status": "PASS"
+    },
+    {
+      "name": "old resource unchanged:owner_path",
+      "status": "PASS"
+    },
+    {
+      "name": "third same class fails",
+      "status": "PASS"
+    },
+    {
+      "name": "different script path fails",
+      "status": "PASS"
+    },
+    {
+      "name": "source mismatch cannot broaden to two scripts",
+      "status": "PASS"
+    },
+    {
+      "name": "source provider committed snapshot",
+      "status": "PASS"
+    },
+    {
+      "name": "source provider no pair no reads",
+      "status": "PASS"
+    },
+    {
+      "name": "source provider wrong ref failclosed",
+      "status": "PASS"
+    },
+    {
+      "name": "provider binds explicit ref",
+      "status": "PASS"
+    },
+    {
+      "name": "worktree cannot inherit committed proof",
+      "status": "PASS"
+    },
+    {
+      "name": "original snapshot accepts exact typed append",
+      "status": "PASS"
+    },
+    {
+      "name": "original monotonic accepts exact typed append",
+      "status": "PASS"
+    },
+    {
+      "name": "original snapshot without proof still rejects",
+      "status": "PASS"
+    },
+    {
+      "name": "original monotonic without proof still rejects",
+      "status": "PASS"
+    },
+    {
+      "name": "alias rename remains silent replacement",
+      "status": "PASS"
+    },
+    {
+      "name": "model uses source proof",
+      "status": "PASS"
+    },
+    {
+      "name": "model absent proof fails",
+      "status": "PASS"
+    },
+    {
+      "name": "second Kernel class and Owner still rejected",
+      "status": "PASS"
+    }
+  ],
+  "head_sha": "b75c7e83ae4d98b6a86ac21136350e53b398faad",
+  "gate_sha256": "cafa646c94462899178d7ddf6ce0f5db90934ec4cccdad542e6bf1d059c8754a",
+  "selftest_sha256": "b789bf5fb758c2e6e978d89624648c41149b2c56a4eeb83c9cdf24f0085ce0a9",
+  "source_sha256": {
+    "resources/ai/ai_policy_profile_v1.tres": "83b45124f7aae556291072460ae398562f0806e98d106edbd4a7582cba8ceae9",
+    "scripts/ai/ai_policy_profile_resource.gd": "5ecdc809d6a2ce646d4f30b5d293d0873b9a2f237796bdbe5f57d44a01c15b16"
+  },
+  "original_snapshot_failures": [],
+  "original_monotonic_failures": [],
+  "repository_mutation_count": 0,
+  "godot_execution_count": 0,
+  "required_gate_green": false
+}

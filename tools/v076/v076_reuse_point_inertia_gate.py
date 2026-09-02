@@ -1229,6 +1229,88 @@ def _component_class_identity_key(class_name: Any, path: Any) -> str:
     return rendered_class
 
 
+# A serialized Resource instance is not a second GDScript class declaration.
+# This closed binding preserves the old resource row; it is not an alias rename,
+# historical-failure correction, or permission for arbitrary duplicate classes.
+AI_PROFILE_RESOURCE_PATH = "resources/ai/ai_policy_profile_v1.tres"
+AI_PROFILE_SCRIPT_PATH = "scripts/ai/ai_policy_profile_resource.gd"
+AI_PROFILE_RESOURCE_ROW_SHA256 = "f35a708ff7ed7f5996b78a6d97ac6dcce14c8ecbaa7ee9aa3162b1cbd995423c"
+AI_PROFILE_SOURCE_SHA256 = {
+    AI_PROFILE_RESOURCE_PATH: "83b45124f7aae556291072460ae398562f0806e98d106edbd4a7582cba8ceae9",
+    AI_PROFILE_SCRIPT_PATH: "5ecdc809d6a2ce646d4f30b5d293d0873b9a2f237796bdbe5f57d44a01c15b16",
+}
+
+
+def _component_class_identity_keys(
+    components: list[Any], source_bytes: dict[str, bytes] | None = None
+) -> list[str]:
+    rows = [row for row in components if isinstance(row, dict)]
+    keys = [_component_class_identity_key(row.get("class_name"), row.get("path")) for row in rows]
+    pair = [row for row in rows if row.get("class_name") == "AiPolicyProfileResource"]
+    if len(pair) != 2 or any(not isinstance(row.get("path"), str) for row in pair) or {row.get("path") for row in pair} != set(AI_PROFILE_SOURCE_SHA256):
+        return keys
+    resource = next(row for row in pair if row.get("path") == AI_PROFILE_RESOURCE_PATH)
+    script = next(row for row in pair if row.get("path") == AI_PROFILE_SCRIPT_PATH)
+    if hashlib.sha256(_canonical_json_bytes(resource)).hexdigest() != AI_PROFILE_RESOURCE_ROW_SHA256:
+        return keys
+    expected_script_fields = {
+        "component_id": "component.current.ai_policy_profile_resource",
+        "component_role": "TEST_SUPPORT", "production_reachable": False,
+        "writes_authority": False, "reads_authority": True,
+        "owner_component_id": "component.current.v075_runtime_owner",
+        "owner_path": "scripts/v075_runtime/v075_runtime_owner.gd",
+        "domain_id": "current.v075_production_combat_candidate",
+        "reuse_disposition": "REUSE_AS_TEST", "change_class": "TEST_ORACLE_ONLY",
+        **{field: False for field in ("owns_rng", "owns_tick", "owns_save", "owns_replay", "owns_identity", "owns_presentation")},
+    }
+    if any(type(script.get(field)) is not type(value) or script.get(field) != value for field, value in expected_script_fields.items()):
+        return keys
+    if not isinstance(source_bytes, dict) or any(
+        not isinstance(source_bytes.get(path), bytes)
+        or hashlib.sha256(source_bytes[path]).hexdigest() != digest
+        for path, digest in AI_PROFILE_SOURCE_SHA256.items()
+    ):
+        return keys
+    # The exact bound resource header/script assignment points to the exact
+    # bound script declaring this class. No third row or future source is covered.
+    return [
+        "RESOURCE_INSTANCE_PATH_BOUND:" + AI_PROFILE_RESOURCE_PATH if row is resource else key
+        for row, key in zip(rows, keys)
+    ]
+
+
+def _component_class_source_bytes(
+    root: Path, ref: str, components: list[Any], include_worktree: bool = False
+) -> dict[str, bytes]:
+    """Read only the two known paths from the evaluated snapshot, never HEAD implicitly."""
+    pair = [row for row in components if isinstance(row, dict) and row.get("class_name") == "AiPolicyProfileResource"]
+    if len(pair) != 2 or any(not isinstance(row.get("path"), str) for row in pair) or {row.get("path") for row in pair} != set(AI_PROFILE_SOURCE_SHA256):
+        return {}
+    snapshot_ref = ref
+    if not include_worktree and not _is_hex(snapshot_ref, 40):
+        # _git/_git_bytes memoize arguments. A moving HEAD/branch must never
+        # reuse a previous invocation's source proof under the same ref string.
+        resolved_ref = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--verify", "--end-of-options", f"{ref}^{{commit}}"],
+            check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        snapshot_ref = resolved_ref.stdout.decode("ascii", errors="replace").strip()
+        if resolved_ref.returncode != 0 or not _is_hex(snapshot_ref, 40):
+            return {}
+    result: dict[str, bytes] = {}
+    for path in AI_PROFILE_SOURCE_SHA256:
+        if include_worktree:
+            resolved = (root / path).resolve()
+            try:
+                resolved.relative_to(root.resolve())
+                result[path] = resolved.read_bytes()
+            except (ValueError, OSError):
+                result[path] = b""
+        else:
+            result[path] = _git_bytes(root, "show", f"{snapshot_ref}:{path}", check=False)
+    return result
+
+
 def _regression_evidence_complete(
     value: Any, expected_prior_status: str | None = None
 ) -> bool:
@@ -3459,7 +3541,8 @@ def _change_scope_contract_failures(scope: Any, label: str, prefix: str) -> list
 
 
 def _authority_snapshot_contract_failures(
-    current: dict[str, dict[str, Any]], label: str
+    current: dict[str, dict[str, Any]], label: str,
+    component_source_bytes: dict[str, bytes] | None = None,
 ) -> list[str]:
     """Validate schema, component, domain, owner and scope invariants for one commit."""
     failures: list[str] = []
@@ -3486,11 +3569,7 @@ def _authority_snapshot_contract_failures(
         row.get("component_id") for row in components if isinstance(row, dict)
     ]
     component_paths = [row.get("path") for row in components if isinstance(row, dict)]
-    component_classes = [
-        _component_class_identity_key(row.get("class_name"), row.get("path"))
-        for row in components
-        if isinstance(row, dict)
-    ]
+    component_classes = _component_class_identity_keys(components, component_source_bytes)
     domain_ids = [row.get("domain_id") for row in domains if isinstance(row, dict)]
     reuse_ids_list = [row.get("reuse_id") for row in reuse_rows if isinstance(row, dict)]
     for values, failure_name in (
@@ -3835,6 +3914,7 @@ def _monotonic_transition_failures(
     current: dict[str, dict[str, Any]],
     label: str,
     transition_changed_paths: Iterable[dict[str, str]] | None = None,
+    component_source_bytes: dict[str, bytes] | None = None,
 ) -> list[str]:
     """Compare one committed authority transition without trusting Head metadata."""
     failures: list[str] = []
@@ -3843,7 +3923,7 @@ def _monotonic_transition_failures(
     if missing_authorities:
         return [f"HISTORY_AUTHORITY_MISSING:{label}:{key}" for key in sorted(set(missing_authorities))]
 
-    failures.extend(_authority_snapshot_contract_failures(current, label))
+    failures.extend(_authority_snapshot_contract_failures(current, label, component_source_bytes))
 
     for key, (expected_schema, id_field, expected_id) in AUTHORITY_CONTRACTS.items():
         authority = current[key]
@@ -4632,6 +4712,7 @@ class ValidationInput:
     scanner_presence: dict[str, bool] | None = None
     component_presence: dict[str, bool] | None = None
     component_declared_classes: dict[str, str] | None = None
+    component_source_bytes: dict[str, bytes] | None = None
     evidence_artifact_bindings: dict[str, dict[str, Any]] | None = None
     git_commit_tree_bindings: dict[str, str] | None = None
     regression_commit_bindings: set[str] | None = None
@@ -4814,11 +4895,7 @@ def validate_model(data: ValidationInput) -> dict[str, Any]:
         failures.append("COMPONENT_ID_NOT_UNIQUE")
     if not _unique(component_paths) or "" in component_paths:
         failures.append("COMPONENT_PATH_NOT_UNIQUE")
-    component_classes = [
-        _component_class_identity_key(x.get("class_name"), x.get("path"))
-        for x in components
-        if isinstance(x, dict)
-    ]
+    component_classes = _component_class_identity_keys(components, data.component_source_bytes)
     if not _unique(component_classes) or "" in component_classes:
         failures.append("COMPONENT_CLASS_NAME_NOT_UNIQUE")
     by_component = _index(components, "component_id")
@@ -8193,6 +8270,7 @@ def committed_history_failures(
         current_components = current_authorities.get("historical_reuse", {}).get(
             "component_inventory", []
         )
+        current_class_sources = _component_class_source_bytes(root, commit, current_components)
         for component in current_components:
             if not (
                 isinstance(component, dict)
@@ -8344,6 +8422,7 @@ def committed_history_failures(
                 current_authorities,
                 transition_label,
                 transition_changed_paths,
+                current_class_sources,
             )
             for failure in transition_failures:
                 allowed_count = metadata_migration_allowed.get(failure, 0)
@@ -8829,6 +8908,11 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
             scanner_presence=scanner_presence,
             component_presence=component_presence,
             component_declared_classes=component_declared_classes,
+            component_source_bytes=_component_class_source_bytes(
+                root, args.head_ref,
+                authorities.get("historical_reuse", {}).get("component_inventory", []),
+                args.include_worktree,
+            ),
             evidence_artifact_bindings=evidence_artifact_bindings,
             git_commit_tree_bindings=git_commit_tree_bindings,
             regression_commit_bindings=regression_commit_bindings,
@@ -8913,6 +8997,11 @@ def validate_live(args: argparse.Namespace) -> dict[str, Any]:
                     authorities,
                     f"{_git(root, 'rev-parse', args.head_ref)[:12]}->WORKTREE",
                     worktree_changed_paths,
+                    _component_class_source_bytes(
+                        root, args.head_ref,
+                        authorities.get("historical_reuse", {}).get("component_inventory", []),
+                        True,
+                    ),
                 )
             )
             history_transition_count += 1

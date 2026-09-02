@@ -5371,6 +5371,29 @@ print('not-json'); raise SystemExit(2)
         batch010_wrong_source_failures,
     )
 
+    typed_identity_report: dict[str, Any] = {}
+    typed_identity_failures: list[str] = []
+    try:
+        import v076_resource_script_typed_identity_selftest as typed_identity
+        typed_identity_report = typed_identity.run(project_root)
+        if not (
+            typed_identity_report.get("status") == "PASS"
+            and typed_identity_report.get("case_count", 0) >= 58
+            and typed_identity_report.get("pass_count") == typed_identity_report.get("case_count")
+            and typed_identity_report.get("repository_mutation_count") == 0
+            and typed_identity_report.get("godot_execution_count") == 0
+        ):
+            typed_identity_failures.append("TYPED_RESOURCE_SCRIPT_SELFTEST_FAILED")
+    except Exception as exc:
+        typed_identity_failures.append(f"TYPED_RESOURCE_SCRIPT_SELFTEST_ERROR:{type(exc).__name__}:{exc}")
+    append_direct_case(
+        "158",
+        "closed Resource/script identity preserves old rows and rejects source, authority and moving-ref drift",
+        "PASS",
+        "FAIL" if typed_identity_failures else "PASS",
+        typed_identity_failures,
+    )
+
     pass_count = sum(result["status"] == "PASS" for result in results)
     case_count = len(results)
     status = (
@@ -5403,6 +5426,7 @@ print('not-json'); raise SystemExit(2)
             Path(gate.__file__).read_bytes()
         ).hexdigest(),
         "selftest_script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "typed_resource_script_selftest": typed_identity_report,
         "cases": results,
     }
 
