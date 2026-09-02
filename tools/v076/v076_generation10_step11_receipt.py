@@ -50,11 +50,11 @@ SELFTEST_PATH = "tools/v076/v076_generation10_step11_receipt_selftest.py"
 WORKFLOW_PATH = ".github/workflows/v076-reuse-point-inertia-gate.yml"
 RUNNER_PATH = "tools/v076_generation10_step11_runner.ps1"
 RUNNER_SELFTEST_PATH = "tools/v076/v076_generation10_step11_runner_selftest.py"
-TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_002.json"
-SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_001.json"
-AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_002.json"
+TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_003.json"
+SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_002.json"
+AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_003.json"
 AUTHORIZATION_SIDECAR_PATH = AUTHORIZATION_PATH + ".sha256"
-ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_002.json"
+ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_003.json"
 ENVIRONMENT_SIDECAR_PATH = ENVIRONMENT_SEAL_PATH + ".sha256"
 QUALIFICATION_SEAL_PATH = "reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json"
 PASS_PAIR_PATH = "reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json"
@@ -641,7 +641,7 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("FORMAL_RESULT_RUNTIME_CONSEQUENCE_COUNT_MISMATCH")
     if runtime.get("_v076_production_military_submission_by_uid") != {}:
         raise ValueError("FORMAL_RESULT_MILITARY_SOURCE_NOT_WITHDRAWN")
-    snapshot = runtime.get("_v075_snapshot")
+    snapshot = screen.get("_v075_snapshot")
     if not isinstance(snapshot, dict) or snapshot.get("old_military_controller_production_reachable_count") != 0:
         raise ValueError("FORMAL_RESULT_OLD_MILITARY_WRITER_REACHABLE")
     if legacy.get("_runtime_error_count") != 0:
@@ -713,6 +713,7 @@ def _validate_tooling(project: GitProject, tooling_head: str, authorization: Map
         ("M", WORKFLOW_PATH),
         ("A", TOOLING_SEAL_PATH),
         ("M", VALIDATOR_PATH),
+        ("M", SELFTEST_PATH),
         ("M", RUNNER_SELFTEST_PATH),
         ("M", RUNNER_PATH),
     ]
@@ -766,7 +767,7 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         "superseded_authorization_manifest_path": SUPERSEDED_AUTHORIZATION_PATH,
         "superseded_authorization_head_sha": superseded_head,
         "superseded_authorization_tree_sha": project.tree(superseded_head),
-        "tooling_repair_reason_code": "MONOTONIC_NONFORMAL_ID_AND_CARD_SUBMISSION_POLL_EVIDENCE_NAMES",
+        "tooling_repair_reason_code": "SCREEN_PROJECTION_OWNER_AND_MCP_STOP_RESPONSE_AND_PUBLIC_EVIDENCE_PRIVACY",
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:
@@ -987,6 +988,11 @@ def _validate_evidence_manifest(project: GitProject, artifact_head: str, receipt
             continue
         if artifact.get("sha256") != sha256_bytes(data) or artifact.get("size_bytes") != len(data):
             report.add("hash_mismatches", "EVIDENCE_ARTIFACT_BINDING_MISMATCH", path)
+        try:
+            if _public_evidence_bytes(data, PurePosixPath(path).suffix) != data:
+                report.add("schema_failures", "PUBLIC_EVIDENCE_NOT_SANITIZED", path)
+        except Exception as exc:
+            report.add("schema_failures", "PUBLIC_EVIDENCE_FORMAT_INVALID", f"{path}:{exc}")
         paths.append(path)
     if paths != sorted(set(paths)):
         report.add("schema_failures", "EVIDENCE_ARTIFACT_PATHS_NOT_UNIQUE_SORTED", repr(paths))
@@ -995,6 +1001,30 @@ def _validate_evidence_manifest(project: GitProject, artifact_head: str, receipt
         report.add("path_failures", "EVIDENCE_MANIFEST_PATH_SET_MISMATCH", f"expected={sorted(expected_evidence_paths)}:actual={paths}")
     if receipt.get("evidence_manifest_sha256") != sha256_bytes(raw):
         report.add("hash_mismatches", "RECEIPT_EVIDENCE_MANIFEST_SHA256_MISMATCH", EVIDENCE_MANIFEST_PATH)
+    try:
+        publication = json.loads(project.read(artifact_head, f"{FORMAL_ROOT}/evidence/publication-index.json"))
+        if publication.get("schema_version") != "space_syndicate.v076.public_evidence_projection.v1" or publication.get("original_evidence_preserved") is not True:
+            raise ValueError("PUBLICATION_INDEX_IDENTITY_INVALID")
+        published_paths = set()
+        originals = {}
+        for row in publication["artifacts"]:
+            relative = PurePosixPath(row["published_path"])
+            source = PurePosixPath(row["source_relative_path"])
+            if relative.is_absolute() or source.is_absolute() or ".." in relative.parts or ".." in source.parts or str(relative) in published_paths or str(source) in originals:
+                raise ValueError("PUBLICATION_INDEX_UNSAFE_OR_DUPLICATE_PATH")
+            data = project.read(artifact_head, f"{FORMAL_ROOT}/evidence/{relative}")
+            if sha256_bytes(data) != row["published_sha256"] or len(data) != row["published_size_bytes"] or SHA256_RE.fullmatch(row["original_sha256"]) is None or row["original_size_bytes"] < 1:
+                raise ValueError("PUBLICATION_INDEX_HASH_BINDING_INVALID")
+            published_paths.add(str(relative))
+            originals[str(source)] = row["original_sha256"]
+        expected = {path.removeprefix(f"{FORMAL_ROOT}/evidence/") for path in paths} - {"publication-index.json", "mcp_runtime_evidence.json"}
+        if published_paths != expected:
+            raise ValueError("PUBLICATION_INDEX_PATH_SET_MISMATCH")
+        nonformal = json.loads(project.read(artifact_head, f"{FORMAL_ROOT}/evidence/raw/source-nonformal-confirmation-receipt.json"))
+        if nonformal.get("execution_result_sha256") != originals.get("source-nonformal-execution-result.json"):
+            raise ValueError("PUBLICATION_ORIGINAL_NONFORMAL_HASH_MISMATCH")
+    except Exception as exc:
+        report.add("schema_failures", "PUBLICATION_INDEX_INVALID", str(exc))
     return set(paths)
 
 
@@ -1201,6 +1231,34 @@ def _working_canonical(path: Path) -> tuple[dict[str, Any], bytes]:
     return value, raw
 
 
+def _public_evidence_value(value: Any) -> Any:
+    """Redact local identity only; never alter gameplay facts or original files."""
+    if isinstance(value, dict):
+        private_keys = {"machine_name", "computer_name", "username", "user_name", "command_line", "auth_token", "token", "password"}
+        return {key: "<REDACTED_PRIVATE>" if key.lower() in private_keys else _public_evidence_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_public_evidence_value(item) for item in value]
+    if isinstance(value, str):
+        if value.lstrip().startswith(("{", "[")):
+            try:
+                nested = json.loads(value)
+            except json.JSONDecodeError:
+                pass
+            else:
+                return canonical_json_bytes(_public_evidence_value(nested)).decode("utf-8")
+        if re.search(r"(?<![A-Za-z0-9_])[A-Za-z]:[/\\]", value) or value.startswith("\\\\"):
+            return "<REDACTED_LOCAL_PATH>"
+    return value
+
+
+def _public_evidence_bytes(raw: bytes, suffix: str) -> bytes:
+    if suffix == ".png" and raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        return raw
+    if suffix == ".json":
+        return canonical_json_bytes(_public_evidence_value(json.loads(raw.decode("utf-8"))))
+    raise ValueError("UNSUPPORTED_PUBLIC_EVIDENCE_TYPE")
+
+
 def _package_formal(project_root: Path, evidence_root: Path) -> dict[str, Any]:
     project_root = project_root.resolve()
     evidence_root = evidence_root.resolve()
@@ -1330,16 +1388,18 @@ def _package_formal(project_root: Path, evidence_root: Path) -> dict[str, Any]:
         evidence_output = temporary / "evidence"
         raw_output = evidence_output / "raw"
         raw_output.mkdir(parents=True)
-        (evidence_output / "source-formal-execution-result.json").write_bytes(result_raw)
+        publication_rows = []
         for source in sorted(path for path in evidence_root.rglob("*") if path.is_file() and not path.is_symlink()):
             relative = source.relative_to(evidence_root)
-            if relative.as_posix() == "formal-execution-result.json":
-                continue
             if any(part in ("", ".", "..") for part in relative.parts):
                 raise ValueError(f"UNSAFE_EXTERNAL_EVIDENCE_PATH:{relative}")
-            destination = raw_output.joinpath(*relative.parts)
+            destination = (evidence_output / "source-formal-execution-result.json") if relative.as_posix() == "formal-execution-result.json" else raw_output.joinpath(*relative.parts)
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, destination)
+            original = source.read_bytes()
+            public = _public_evidence_bytes(original, source.suffix)
+            destination.write_bytes(public)
+            publication_rows.append({"source_relative_path": relative.as_posix(), "original_sha256": sha256_bytes(original), "original_size_bytes": len(original), "published_path": destination.relative_to(evidence_output).as_posix(), "published_sha256": sha256_bytes(public), "published_size_bytes": len(public), "redacted_or_canonicalized": public != original})
+        _write(evidence_output / "publication-index.json", {"schema_version": "space_syndicate.v076.public_evidence_projection.v1", "original_evidence_preserved": True, "artifacts": publication_rows})
 
         injection_counters = {field: 0 for field in INJECTION_FIELDS}
         connection = result.get("mcp_connection")

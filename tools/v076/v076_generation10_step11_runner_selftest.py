@@ -100,6 +100,23 @@ for name, required, present, status, expected in (
     completed = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True, text=True, timeout=15) if pwsh else None
     checks[f"confirmation_guard_executes__{name}"] = completed is not None and completed.returncode == 0 and completed.stdout.strip() == str(expected)
 
+checks["screen_projection_owner_binding"] = all("_v075_snapshot" not in line for line in text.splitlines() if "-Path $runtimePath -Properties" in line)
+checks["screen_projection_wait_used"] = "Wait-ScreenProjection -Name 'initial-track-snapshot'" in text and "Wait-ScreenProjection -Name 'batch3-hand'" in text and "SCREEN_PROJECTION_PROPERTY_MISSING" in text
+checks["runtime_source_does_not_fake_screen_fields"] = "$finalRuntime._v075_snapshot" not in text and "'final-production-screen.jsonrpc.json' -Path $screenPath" in text
+exit_function = text[text.index("function Test-ExitPlayModeResponse {"):text.index("function Stop-Normally {")]
+for name, response, expected in (
+    ("plain_text_success", {"result": {"isError": False, "content": [{"type": "text", "text": "Stopped the running scene."}]}}, True),
+    ("error_envelope", {"error": {"message": "failure"}, "result": {"isError": False, "content": [{"type": "text", "text": "Stopped the running scene."}]}}, False),
+    ("is_error", {"result": {"isError": True, "content": [{"type": "text", "text": "Stopped the running scene."}]}}, False),
+    ("unknown_text", {"result": {"isError": False, "content": [{"type": "text", "text": "Unknown command"}]}}, False),
+    ("missing_error_flag", {"result": {"content": [{"type": "text", "text": "Stopped the running scene."}]}}, False),
+    ("empty_result", {}, False),
+):
+    encoded = json.dumps(response).replace("'", "''")
+    script = exit_function + "\nTest-ExitPlayModeResponse ('" + encoded + "' | ConvertFrom-Json -Depth 20)"
+    completed = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True, text=True, timeout=15) if pwsh else None
+    checks[f"exit_response_executes__{name}"] = completed is not None and completed.returncode == 0 and completed.stdout.strip() == str(expected)
+
 failed = sorted(name for name, ok in checks.items() if not ok)
 result = {
     "schema_version": "space_syndicate.v076.generation10_step11_runner_selftest.v1",

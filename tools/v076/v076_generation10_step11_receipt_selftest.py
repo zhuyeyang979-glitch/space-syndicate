@@ -113,10 +113,10 @@ def runtime_result() -> dict[str, object]:
             "_v076_military_consequence_presentation_count": 1,
             "_v076_production_military_submission_by_uid": {},
             "_v076_last_asset_consequence_witness": asset,
-            "_v075_snapshot": {"old_military_controller_production_reachable_count": 0},
         },
         "legacy_combat_owner": {"_runtime_error_count": 0},
         "production_screen": {
+            "_v075_snapshot": {"old_military_controller_production_reachable_count": 0},
             "_current_action_mode": "idle", "_action_submission_pending": False,
             "acceptance_state": {"combat_wrapper": {
                 "human_playability": human,
@@ -219,6 +219,8 @@ runtime_negative_mutations = {
     "legacy_runtime_error": lambda value: value["step_receipts"][1]["legacy_combat_owner"].update({"_runtime_error_count": 1}),
     "formal_status": lambda value: value.update({"status": "FAIL"}),
     "source_withdrawal": lambda value: value["step_receipts"][1]["runtime_owner"].update({"_v076_production_military_submission_by_uid": {"7": {}}}),
+    "screen_projection_missing": lambda value: value["step_receipts"][1]["production_screen"].pop("_v075_snapshot"),
+    "screen_old_writer_reachable": lambda value: value["step_receipts"][1]["production_screen"]["_v075_snapshot"].update({"old_military_controller_production_reachable_count": 1}),
 }
 for name, mutate in runtime_negative_mutations.items():
     candidate = copy.deepcopy(runtime_baseline)
@@ -230,6 +232,16 @@ for name, mutate in runtime_negative_mutations.items():
     else:
         rejected = False
     check(f"runtime_source_negative_rejected__{name}", rejected)
+
+private_sample = {"worktree": "D:/private/repo", "command_line": "private command", "username": "private user", "token": "private token", "scene": "res://scenes/main.tscn", "nested": json.dumps({"path": "C:/Users/private/data", "count": 1}), "facts": runtime_baseline}
+public_sample = contract._public_evidence_value(private_sample)
+public_bytes = contract._public_evidence_bytes(json.dumps(private_sample).encode(), ".json")
+check("public_projection_redacts_private_fields", all(public_sample[key] == "<REDACTED_PRIVATE>" for key in ("command_line", "username", "token")))
+check("public_projection_redacts_local_path", public_sample["worktree"] == "<REDACTED_LOCAL_PATH>")
+check("public_projection_redacts_nested_mcp_json", json.loads(public_sample["nested"])["path"] == "<REDACTED_LOCAL_PATH>")
+check("public_projection_preserves_res_scene", public_sample["scene"] == contract.SCENE)
+check("public_projection_preserves_proof", contract._derive_runtime_components(public_sample["facts"]) == derived)
+check("public_projection_idempotent", contract._public_evidence_bytes(public_bytes, ".json") == public_bytes)
 
 schema = contract.schema_descriptor()
 check("schema_generation_is_10", schema["required_generation_id"] == 10)

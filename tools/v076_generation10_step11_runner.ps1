@@ -24,8 +24,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_002.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_002.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_003.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_003.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -226,12 +226,27 @@ function Wait-Runtime {
     $index = 0
     do {
         $index++
-        $node = Query-Node -Name ("{0}-{1:d3}.jsonrpc.json" -f $Name,$index) -Path $runtimePath -Properties @('_batch_number','_phase','_seed','_invalid_action_count','_runtime_error_count','_v075_snapshot')
+        $node = Query-Node -Name ("{0}-{1:d3}.jsonrpc.json" -f $Name,$index) -Path $runtimePath -Properties @('_batch_number','_phase','_seed','_invalid_action_count','_runtime_error_count')
         $p = Get-Props $node
         if (& $Predicate $p) { return $p }
         Start-Sleep -Milliseconds 250
     } while ([DateTime]::UtcNow -lt $deadline)
     throw "RUNTIME_WAIT_TIMEOUT:$Name"
+}
+
+function Wait-ScreenProjection {
+    param([string]$Name, [scriptblock]$Predicate, [int]$TimeoutSeconds = 20)
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    $index = 0
+    do {
+        $index++
+        $node = Query-Node -Name ("{0}-{1:d3}.jsonrpc.json" -f $Name,$index) -Path $screenPath -Properties @('_v075_snapshot')
+        $p = Get-Props $node
+        if ($null -eq $p._v075_snapshot) { throw 'SCREEN_PROJECTION_PROPERTY_MISSING' }
+        if (& $Predicate $p) { return $p }
+        Start-Sleep -Milliseconds 250
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw "SCREEN_PROJECTION_WAIT_TIMEOUT:$Name"
 }
 
 function Capture-View {
@@ -288,15 +303,23 @@ function Wait-And-Finish-EmptyBatch {
     [void](Wait-Runtime -Name "batch$Batch-empty-next-submission" -TimeoutSeconds 30 -Predicate {param($p) [int]$p._batch_number -eq ($Batch + 1) -and [string]$p._phase -eq 'submission'})
 }
 
+function Test-ExitPlayModeResponse {
+    param([object]$Outer)
+    if ($null -ne $Outer.error -or $null -eq $Outer.result -or $Outer.result.isError -ne $false) { return $false }
+    $messages = @($Outer.result.content | Where-Object { [string]$_.type -eq 'text' })
+    if ($messages.Count -ne 1) { return $false }
+    return ([string]$messages[0].text -ceq 'Stopped the running scene.')
+}
+
 function Stop-Normally {
-    $exit = $null
-    try { $exit = Get-Inner (Invoke-RoleTool -ToolName 'exit_play_mode' -EvidenceName 'cleanup-exit-play-mode.jsonrpc.json' -Arguments @{}) } catch {}
+    $exitAccepted = $false
+    try { $exitAccepted = Test-ExitPlayModeResponse (Invoke-RoleTool -ToolName 'exit_play_mode' -EvidenceName 'cleanup-exit-play-mode.jsonrpc.json' -Arguments @{}) } catch {}
     $stopRaw = & $stopTool -Role Supervisor -Port $Port -Worktree $root
     $stopExit = $LASTEXITCODE
     $stopValue = if ($stopExit -eq 0) {$stopRaw | Select-Object -Last 1 | ConvertFrom-Json} else {$null}
     Start-Sleep -Milliseconds 500
     $cleanup = [ordered]@{
-        exit_play_mode = if ($null -ne $exit -and [bool]$exit.success) {'PASS'} else {'FAIL'}
+        exit_play_mode = if ($exitAccepted) {'PASS'} else {'FAIL'}
         stop_role_godot_mcp = if ($stopExit -eq 0) {'PASS'} else {'FAIL'}
         editor_pid_after = @(Get-ExactGodotRows).Count
         game_pid_after = @(Get-ExactGodotRows | Where-Object {[string]$_.CommandLine -match '--path'}).Count
@@ -413,7 +436,7 @@ try {
         post_restart_seal_sha256_match = ([string]$environment.post_restart_requalification_seal_sha256 -eq (Get-Sha256 (Join-Path $root $postRestartSealRelative)))
         class_cache_sha256_match = ([string]$environment.class_cache_sha256 -eq (Get-Sha256 (Join-Path $root $classCacheRelative)))
         authorization_manifest_sha256_match = ([string]$environment.authorization_manifest_sha256 -eq (Get-Sha256 $authorizationPath))
-        godot_binary_sha256_match = ([string]$environment.godot_binary_sha256 -eq (Get-Sha256 ([string]$authorization.godot_binary_path)))
+        godot_binary_sha256_match = ([string]$environment.godot_binary_sha256 -eq (Get-Sha256 $GodotPath))
         mcp_config_sha256_match = ([string]$environment.mcp_config_sha256 -eq (Get-Sha256 (Join-Path $root ([string]$authorization.mcp_config_path))))
         canonical_import_manifest_sha256_match = ([string]$environment.canonical_import_manifest_sha256 -eq (Get-Sha256 (Join-Path $root ([string]$authorization.canonical_import_manifest_path))))
         receipt_schema_sha256_match = ([string]$environment.receipt_schema_sha256 -eq (Get-Sha256 (Join-Path $root ([string]$authorization.receipt_schema_path))))
@@ -512,7 +535,7 @@ try {
     if ([int64]$composition._last_new_game_receipt.seed -ne $Seed -or [int64]$composition._v076_production_seed -ne $Seed) { throw 'SEED_RECEIPT_MISMATCH' }
     $skip = Find-ButtonByText -Name 'tutorial-skip' -Text '跳过全部'
     Click-Node -Name 'tutorial-skip-click.jsonrpc.json' -Node $skip
-    $trackSnapshot = Get-Props (Query-Node -Name 'initial-track-snapshot.jsonrpc.json' -Path $runtimePath -Properties @('_v075_snapshot'))
+    $trackSnapshot = Wait-ScreenProjection -Name 'initial-track-snapshot' -Predicate {param($p) @($p._v075_snapshot.unified_track.viewer_private_facts.own_segment_items).Count -gt 0}
     $segment = @($trackSnapshot._v075_snapshot.unified_track.viewer_private_facts.own_segment_items)
     $militaryItem = @($segment | Where-Object {[string]$_.card_definition_id -eq 'military.air_superiority_fighter.shipping.rank_1'})
     if ($militaryItem.Count -ne 1 -or [int]$militaryItem[0].local_slot_index -ne 1) { throw 'MILITARY_TRACK_CARD_IDENTITY_MISMATCH' }
@@ -529,7 +552,7 @@ try {
 
     Complete-NormalBatch -Batch 1
     Complete-NormalBatch -Batch 2
-    $batch3 = Wait-Runtime -Name 'batch3-hand' -TimeoutSeconds 20 -Predicate {param($p) @($p._v075_snapshot.personal_dbg.facts.hand | Where-Object {[string]$_.card_definition_id -eq 'military.air_superiority_fighter.shipping.rank_1'}).Count -eq 1}
+    $batch3 = Wait-ScreenProjection -Name 'batch3-hand' -TimeoutSeconds 20 -Predicate {param($p) @($p._v075_snapshot.personal_dbg.facts.hand | Where-Object {[string]$_.card_definition_id -eq 'military.air_superiority_fighter.shipping.rank_1'}).Count -eq 1}
     $hand = @($batch3._v075_snapshot.personal_dbg.facts.hand)
     $militaryIndex = -1
     for($index=0;$index-lt$hand.Count;$index++){if([string]$hand[$index].card_definition_id -eq 'military.air_superiority_fighter.shipping.rank_1'){$militaryIndex=$index;break}}
@@ -576,9 +599,9 @@ try {
     $finalEta = Get-Props (Query-Node -Name 'final-eta-owner.jsonrpc.json' -Path $etaOwnerPath -Properties @('_calculation_count','_rejection_count'))
     $finalKernel = Get-Props (Query-Node -Name 'final-kernel.jsonrpc.json' -Path $kernelPath -Properties @('_current_tick','_domain_states','_last_rejection','_rejection_count'))
     $finalComposition = Get-Props (Query-Node -Name 'final-application-flow.jsonrpc.json' -Path $compositionPath -Properties @('_v076_private_military_receipt_count','_v076_production_ready','_last_new_game_receipt','_v076_production_seed'))
-    $finalRuntime = Get-Props (Query-Node -Name 'final-runtime-owner.jsonrpc.json' -Path $runtimePath -Properties @('_batch_number','_phase','_invalid_action_count','_invalid_action_reasons','_runtime_error_count','_v076_asset_consequence_projection_count','_v076_asset_consequence_projection_failure_count','_v076_last_asset_consequence_witness','_v076_military_consequence_collision_count','_v076_military_consequence_presentation_count','_v076_production_military_submission_by_uid','_v075_snapshot'))
+    $finalRuntime = Get-Props (Query-Node -Name 'final-runtime-owner.jsonrpc.json' -Path $runtimePath -Properties @('_batch_number','_phase','_invalid_action_count','_invalid_action_reasons','_runtime_error_count','_v076_asset_consequence_projection_count','_v076_asset_consequence_projection_failure_count','_v076_last_asset_consequence_witness','_v076_military_consequence_collision_count','_v076_military_consequence_presentation_count','_v076_production_military_submission_by_uid'))
     $finalLegacy = Get-Props (Query-Node -Name 'final-legacy-combat-writer.jsonrpc.json' -Path $legacyCombatPath -Properties @('_combat_receipt_journal','_military_region_assault_count','_military_withdraw_count','_processed_missions','_runtime_error_count'))
-    $finalScreen = Get-Props (Query-Node -Name 'final-production-screen.jsonrpc.json' -Path $screenPath -Properties @('acceptance_state','_current_action_mode','_action_submission_pending'))
+    $finalScreen = Get-Props (Query-Node -Name 'final-production-screen.jsonrpc.json' -Path $screenPath -Properties @('acceptance_state','_current_action_mode','_action_submission_pending','_v075_snapshot'))
     $stepReceipts.Add([ordered]@{step='seed';visible_text=$seedVisible;config_model_seed=[int64]$composition._v076_production_seed;new_game_receipt_seed=[int64]$composition._last_new_game_receipt.seed;runtime_seed=[int64]$readyGame._seed})
     $stepReceipts.Add([ordered]@{step='military_immediate';private_owner=$immediatePrivate;eta_owner=$immediateEta})
     $stepReceipts.Add([ordered]@{step='military_final';private_owner=$finalPrivate;eta_owner=$finalEta;kernel=$finalKernel;application_flow=$finalComposition;runtime_owner=$finalRuntime;legacy_combat_owner=$finalLegacy;production_screen=$finalScreen})
