@@ -98,6 +98,34 @@ func _run() -> void:
 	var snapshot := flow.call("local_snapshot") as Dictionary
 	_expect(not bool(snapshot.get("match_started", false)), "shell navigation does not start a match")
 
+	var new_game_receipt := flow.call("submit_intent", {
+		"intent_id": "test.new_game.receipt.durable.001",
+		"intent_kind": "new_game.start",
+		"parameters": {"player_count": 4, "seed": 917592522},
+	}) as Dictionary
+	var pacing_receipt := flow.call("submit_intent", {
+		"intent_id": "test.pacing.after.new_game.001",
+		"intent_kind": "ui.pacing.set",
+		"parameters": {"multiplier": 2},
+	}) as Dictionary
+	var receipt_snapshot := flow.call("debug_snapshot") as Dictionary
+	var latest_receipt := receipt_snapshot.get("last_receipt", {}) as Dictionary
+	var durable_new_game_receipt := receipt_snapshot.get(
+		"last_new_game_receipt",
+		{}
+	) as Dictionary
+	_expect(
+		bool(new_game_receipt.get("accepted", false))
+			and int(durable_new_game_receipt.get("seed", 0)) == 917592522,
+		"accepted New Game publishes one durable Seed receipt"
+	)
+	_expect(
+		bool(pacing_receipt.get("accepted", false))
+			and str(latest_receipt.get("intent_kind", "")) == "ui.pacing.set"
+			and int(durable_new_game_receipt.get("seed", 0)) == 917592522,
+		"later pacing receipt cannot overwrite the durable New Game Seed receipt"
+	)
+
 	application.queue_free()
 	await process_frame
 	await process_frame

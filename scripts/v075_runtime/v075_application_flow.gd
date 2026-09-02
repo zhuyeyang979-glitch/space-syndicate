@@ -52,6 +52,7 @@ const PresentationReceiptIdentity := preload(
 var _intent_sequence := 0
 var _session_sequence := 0
 var _last_receipt: Dictionary = {}
+var _last_new_game_receipt: Dictionary = {}
 var _composition_ready := false
 var _private_skill_issue_count := 0
 var _private_skill_submit_count := 0
@@ -1021,6 +1022,7 @@ func debug_snapshot() -> Dictionary:
 		"runtime": runtime_debug,
 		"combat_telemetry": telemetry_debug,
 		"last_receipt": _last_receipt.duplicate(true),
+		"last_new_game_receipt": _last_new_game_receipt.duplicate(true),
 		"private_skill_issue_count": _private_skill_issue_count,
 		"private_skill_submit_count": _private_skill_submit_count,
 		"private_skill_owner_receipt_count": (
@@ -1093,6 +1095,7 @@ func _start_new_game(parameters: Dictionary) -> Dictionary:
 	_new_game_transaction_in_progress = true
 	_new_game_transaction_stage = "prepare"
 	var result := _execute_new_game_transaction(parameters)
+	_last_new_game_receipt = result.duplicate(true)
 	_last_new_game_transaction_stage = (
 		"complete"
 		if bool(result.get("accepted", false))

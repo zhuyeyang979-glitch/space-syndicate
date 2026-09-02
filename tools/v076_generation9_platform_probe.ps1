@@ -808,7 +808,7 @@ try {
             $composition = Query-RuntimeNode `
                 -EvidenceName ("seed-composition-poll-{0:d3}.jsonrpc.json" -f $newGamePoll) `
                 -NodePath $compositionPath `
-                -Properties @('_last_receipt', '_v076_production_seed')
+                -Properties @('_last_new_game_receipt', '_v076_production_seed')
             $runtime = Query-RuntimeNode `
                 -EvidenceName ("seed-runtime-owner-poll-{0:d3}.jsonrpc.json" -f $newGamePoll) `
                 -NodePath $runtimeOwnerPath `
@@ -816,7 +816,7 @@ try {
             $compositionProps = Get-RequestedProperties $composition
             $runtimeProps = Get-RequestedProperties $runtime
             if (
-                [int64]$compositionProps._last_receipt.seed -eq $Seed -and
+                [int64]$compositionProps._last_new_game_receipt.seed -eq $Seed -and
                 [int64]$compositionProps._v076_production_seed -eq $Seed -and
                 [int64]$runtimeProps._seed -eq $Seed -and
                 [int]$runtimeProps._batch_number -ge 1 -and
@@ -833,7 +833,7 @@ try {
         throw 'New Game seed owners did not become queryable before timeout.'
     }
     $seedBinding.config_model_value = [int64]$compositionProps._v076_production_seed
-    $seedBinding.new_game_intent_seed = [int64]$compositionProps._last_receipt.seed
+    $seedBinding.new_game_intent_seed = [int64]$compositionProps._last_new_game_receipt.seed
     $seedBinding.runtime_match_seed = [int64]$runtimeProps._seed
     $seedBinding.four_layer_match = (
         $seedBinding.visible_text -ceq [string]$Seed -and
