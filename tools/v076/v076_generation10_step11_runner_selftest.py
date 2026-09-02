@@ -67,7 +67,7 @@ checks = {
     "track_card_acquisition": "military.air_superiority_fighter.shipping.rank_1" in text and "confirm-military-track-acquire" in text,
     "natural_normal_batches": "Complete-NormalBatch -Batch 1" in text and "Complete-NormalBatch -Batch 2" in text,
     "natural_default_pace": "Set-Speed -Multiplier" not in text and "V075PacingControls/Speed" not in text,
-    "assault_region_ui": "选择地区" in text and "region.005" in text and "batch3-confirm-military-action" in text,
+    "assault_region_ui": "选择地区" in text and "FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID" in text and "batch3-confirm-military-action" in text,
     "natural_eta_wait": "MILITARY_NATURAL_RESOLUTION_TIMEOUT" in text and "_damage_settlement_by_id" in text,
     "major_round_barrier": "Wait-And-Finish-EmptyBatch -Batch 3" in text and "Wait-And-Finish-EmptyBatch -Batch 4" in text,
     "runtime_witnesses": all(token in text for token in ("final-private-owner", "final-eta-owner", "final-kernel", "final-runtime-owner", "final-legacy-combat-writer")),
@@ -104,6 +104,9 @@ checks["screen_projection_owner_binding"] = all("_v075_snapshot" not in line for
 track_filter = next(line for line in text.splitlines() if "$trackCards =" in line)
 checks["track_geometry_uses_production_track_script"] = "res://scripts/ui/v074/v074_track_card_button.gd" in track_filter and "v075_interactive_card_face" not in track_filter
 checks["card_filter_scripts_exist"] = all((root / path.removeprefix("res://")).is_file() for path in re.findall(r"script_path -eq '(res://[^']+)'", text))
+checks["military_target_no_fixed_region"] = "region.005" not in text and "$selectedTargetRegion" in text
+checks["military_target_witness_captured"] = "step='military_target'" in text and "eligible_options=$options" in text and "bound_option=$bound._pending_confirm_binding" in text
+checks["military_target_local_card_and_enabled"] = "[bool]$_.enabled" in text and "[string]$_.owner_player_id -ceq 'player.local'" in text and "[string]$_.card_instance_id -ceq $militaryInstanceId" in text
 checks["screen_projection_wait_used"] = "Wait-ScreenProjection -Name 'initial-track-snapshot'" in text and "Wait-ScreenProjection -Name 'batch3-hand'" in text and "SCREEN_PROJECTION_PROPERTY_MISSING" in text
 checks["runtime_source_does_not_fake_screen_fields"] = "$finalRuntime._v075_snapshot" not in text and "'final-production-screen.jsonrpc.json' -Path $screenPath" in text
 exit_function = text[text.index("function Test-ExitPlayModeResponse {"):text.index("function Stop-Normally {")]

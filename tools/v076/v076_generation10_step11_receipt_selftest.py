@@ -76,10 +76,13 @@ def runtime_result() -> dict[str, object]:
         "accepted": True, "duplicate": False, "submission_id": submission_id,
         "mission_kind": "ASSAULT_REGION", "eta_ticks": 6, "dispatch_delay_ticks": 6,
         "scheduled_tick": 101, "arrival_tick": 106, "command_id": "command.001",
+        "eta_receipt_fingerprint": "a" * 64,
+        "eta_receipt": {"owner_id": "component.v076.military_physical_eta", "distance_owner": "V076SharedHalfEdgePartitionV1", "teleport_allowed": False, "eta_ticks": 6, "canonical_geodesic_distance_mu": 60, "authored_speed_distance_mu_per_tick": 10, "source_face_id": 1, "target_face_id": 5, "receipt_fingerprint": "a" * 64},
     }
     ledger = {
         "phase": "WITHDRAWAL_READY", "mission_kind": "ASSAULT_REGION", "arrival_tick": 106,
         "mission_receipt": {"mission_state_after": "withdrawn"},
+        "eta_ticks": 6, "eta_receipt_fingerprint": "a" * 64,
     }
     human = {
         "private_information_violation_count": 0, "direct_asset_mutation_count": 0,
@@ -125,6 +128,7 @@ def runtime_result() -> dict[str, object]:
             }},
         },
     }
+    option = {"option_id": "option.001", "card_instance_id": "card.001", "owner_player_id": "player.local", "card_definition_id": "military.air_superiority_fighter.shipping.rank_1", "enabled": True, "task_kind": "assault_region", "target_region_id": "region.005"}
     return {
         "status": "PASS", "execution_class": "FORMAL", "formal_execution_count": 1, "automatic_retry_count": 0,
         "generation_id": 10, "new_evidence_id": 9696,
@@ -135,6 +139,7 @@ def runtime_result() -> dict[str, object]:
             {"step": "seed", "visible_text": "917592522", "config_model_seed": 917592522,
              "new_game_receipt_seed": 917592522, "runtime_seed": 917592522},
             final,
+            {"step": "military_target", "selection_policy": "FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID", "eligible_options": [copy.deepcopy(option)], "selected_option": copy.deepcopy(option), "bound_option": copy.deepcopy(option)},
         ],
     }
 
@@ -222,6 +227,14 @@ runtime_negative_mutations = {
     "screen_projection_missing": lambda value: value["step_receipts"][1]["production_screen"].pop("_v075_snapshot"),
     "projection_on_wrong_owner": lambda value: value["step_receipts"][1]["runtime_owner"].update({"_v075_snapshot": value["step_receipts"][1]["production_screen"].pop("_v075_snapshot")}),
     "screen_old_writer_reachable": lambda value: value["step_receipts"][1]["production_screen"]["_v075_snapshot"].update({"old_military_controller_production_reachable_count": 1}),
+    "legal_target_disabled": lambda value: value["step_receipts"][2]["selected_option"].update({"enabled": False}),
+    "legal_target_binding_mismatch": lambda value: value["step_receipts"][2]["bound_option"].update({"target_region_id": "region.000"}),
+    "legal_target_missing": lambda value: value["step_receipts"].pop(),
+    "eta_zero": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"].update({"eta_ticks": 0}),
+    "eta_wrong_distance_owner": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"]["eta_receipt"].update({"distance_owner": "unowned"}),
+    "eta_teleport": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"]["eta_receipt"].update({"teleport_allowed": True}),
+    "eta_formula": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"]["eta_receipt"].update({"canonical_geodesic_distance_mu": 20}),
+    "eta_kernel_binding": lambda value: value["step_receipts"][1]["kernel"]["_domain_states"]["future.private_direct_action_input"]["submission_ledger"]["v076.production.military.intent.001"].update({"eta_ticks": 2}),
 }
 for name, mutate in runtime_negative_mutations.items():
     candidate = copy.deepcopy(runtime_baseline)

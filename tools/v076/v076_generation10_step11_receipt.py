@@ -50,11 +50,11 @@ SELFTEST_PATH = "tools/v076/v076_generation10_step11_receipt_selftest.py"
 WORKFLOW_PATH = ".github/workflows/v076-reuse-point-inertia-gate.yml"
 RUNNER_PATH = "tools/v076_generation10_step11_runner.ps1"
 RUNNER_SELFTEST_PATH = "tools/v076/v076_generation10_step11_runner_selftest.py"
-TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_004.json"
-SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_003.json"
-AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_004.json"
+TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_005.json"
+SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_004.json"
+AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_005.json"
 AUTHORIZATION_SIDECAR_PATH = AUTHORIZATION_PATH + ".sha256"
-ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_004.json"
+ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_005.json"
 ENVIRONMENT_SIDECAR_PATH = ENVIRONMENT_SEAL_PATH + ".sha256"
 QUALIFICATION_SEAL_PATH = "reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json"
 PASS_PAIR_PATH = "reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json"
@@ -540,6 +540,22 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
     if any(seed_witness[field] != SEED for field in ("visible_text", "config_model_seed", "new_game_receipt_seed", "runtime_seed")):
         raise ValueError("FORMAL_RESULT_SEED_PARITY_MISMATCH")
 
+    target_selection = _step_receipt(result, "military_target")
+    options = target_selection.get("eligible_options")
+    selected = target_selection.get("selected_option")
+    bound = target_selection.get("bound_option")
+    if target_selection.get("selection_policy") != "FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID" or not isinstance(options, list) or not options or not isinstance(selected, dict) or not isinstance(bound, dict):
+        raise ValueError("FORMAL_RESULT_LEGAL_TARGET_EVIDENCE_MISSING")
+    if any(not isinstance(option, dict) or not isinstance(option.get("option_id"), str) for option in options):
+        raise ValueError("FORMAL_RESULT_LEGAL_TARGET_OPTIONS_INVALID")
+    if selected != sorted(options, key=lambda option: option["option_id"])[0] or selected.get("enabled") is not True or selected.get("owner_player_id") != "player.local" or selected.get("task_kind") != "assault_region" or selected.get("card_definition_id") != "military.air_superiority_fighter.shipping.rank_1":
+        raise ValueError("FORMAL_RESULT_LEGAL_TARGET_SELECTION_INVALID")
+    target_region = selected.get("target_region_id")
+    if not isinstance(target_region, str) or re.fullmatch(r"region\.\d{3}", target_region) is None:
+        raise ValueError("FORMAL_RESULT_LEGAL_TARGET_REGION_INVALID")
+    for field in ("option_id", "card_instance_id", "target_region_id", "task_kind", "owner_player_id"):
+        if not selected.get(field) or selected.get(field) != bound.get(field):
+            raise ValueError("FORMAL_RESULT_UI_TARGET_BINDING_MISMATCH")
     final = _step_receipt(result, "military_final")
     private = final.get("private_owner")
     eta = final.get("eta_owner")
@@ -558,11 +574,21 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("FORMAL_RESULT_DIRECT_ACTION_NOT_ACCEPTED_ONCE")
     if submitted.get("submission_id") != submission_id or submitted.get("mission_kind") != "ASSAULT_REGION":
         raise ValueError("FORMAL_RESULT_SUBMISSION_IDENTITY_MISMATCH")
-    if submitted.get("eta_ticks") != 6 or submitted.get("dispatch_delay_ticks") != 6:
+    eta_ticks = submitted.get("eta_ticks")
+    if not _exact_int(eta_ticks) or eta_ticks <= 0 or submitted.get("dispatch_delay_ticks") != eta_ticks:
         raise ValueError("FORMAL_RESULT_PHYSICAL_ETA_MISMATCH")
+    eta_receipt = submitted.get("eta_receipt")
+    if not isinstance(eta_receipt, dict) or eta_receipt.get("owner_id") != "component.v076.military_physical_eta" or eta_receipt.get("distance_owner") != "V076SharedHalfEdgePartitionV1" or eta_receipt.get("teleport_allowed") is not False or eta_receipt.get("eta_ticks") != eta_ticks:
+        raise ValueError("FORMAL_RESULT_PHYSICAL_ETA_OWNER_MISMATCH")
+    distance = eta_receipt.get("canonical_geodesic_distance_mu")
+    speed = eta_receipt.get("authored_speed_distance_mu_per_tick")
+    if not _exact_int(distance) or not _exact_int(speed) or distance <= 0 or speed <= 0 or (distance + speed - 1) // speed != eta_ticks or eta_receipt.get("source_face_id") == eta_receipt.get("target_face_id"):
+        raise ValueError("FORMAL_RESULT_PHYSICAL_ETA_FORMULA_MISMATCH")
+    if not isinstance(eta_receipt.get("receipt_fingerprint"), str) or SHA256_RE.fullmatch(eta_receipt["receipt_fingerprint"]) is None or eta_receipt["receipt_fingerprint"] != submitted.get("eta_receipt_fingerprint"):
+        raise ValueError("FORMAL_RESULT_PHYSICAL_ETA_FINGERPRINT_MISMATCH")
     scheduled_tick = submitted.get("scheduled_tick")
     arrival_tick = submitted.get("arrival_tick")
-    if not _exact_int(scheduled_tick) or not _exact_int(arrival_tick) or arrival_tick - scheduled_tick + 1 != 6:
+    if not _exact_int(scheduled_tick) or not _exact_int(arrival_tick) or arrival_tick - scheduled_tick + 1 != eta_ticks:
         raise ValueError("FORMAL_RESULT_ETA_ARITHMETIC_MISMATCH")
 
     domain_states = kernel.get("_domain_states")
@@ -576,6 +602,8 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("FORMAL_RESULT_WITHDRAWAL_PHASE_MISMATCH")
     if ledger.get("mission_kind") != "ASSAULT_REGION" or ledger.get("arrival_tick") != arrival_tick:
         raise ValueError("FORMAL_RESULT_KERNEL_MISSION_MISMATCH")
+    if ledger.get("eta_ticks") != eta_ticks or ledger.get("eta_receipt_fingerprint") != eta_receipt["receipt_fingerprint"]:
+        raise ValueError("FORMAL_RESULT_KERNEL_ETA_BINDING_MISMATCH")
     mission_receipt = ledger.get("mission_receipt")
     if not isinstance(mission_receipt, dict) or mission_receipt.get("mission_state_after") != "withdrawn":
         raise ValueError("FORMAL_RESULT_MISSION_RECEIPT_INVALID")
@@ -585,7 +613,7 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("FORMAL_RESULT_ASSET_WITNESS_FIELD_SET_MISMATCH")
     if asset.get("schema") != "V076AssetConsequenceAuthorityWitnessV1" or asset.get("owner_player_id") != "player.local":
         raise ValueError("FORMAL_RESULT_ASSET_OWNER_MISMATCH")
-    if asset.get("action") != "commit" or asset.get("outcome") != "consumed" or asset.get("task_kind") != "assault_region" or asset.get("target_region_id") != "region.005":
+    if asset.get("action") != "commit" or asset.get("outcome") != "consumed" or asset.get("task_kind") != "assault_region" or asset.get("target_region_id") != target_region:
         raise ValueError("FORMAL_RESULT_ASSET_ACTION_MISMATCH")
     if asset.get("asset_revision_after") != asset.get("asset_revision_before", -2) + 1:
         raise ValueError("FORMAL_RESULT_ASSET_REVISION_MISMATCH")
@@ -667,8 +695,8 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
         "submission_id": submission_id,
         "command_id": submitted.get("command_id"),
         "mission_kind": "ASSAULT_REGION",
-        "target_region_id": "region.005",
-        "eta_ticks": 6,
+        "target_region_id": target_region,
+        "eta_ticks": eta_ticks,
         "scheduled_tick": scheduled_tick,
         "arrival_tick": arrival_tick,
         "submission_count": 1,
@@ -767,7 +795,7 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         "superseded_authorization_manifest_path": SUPERSEDED_AUTHORIZATION_PATH,
         "superseded_authorization_head_sha": superseded_head,
         "superseded_authorization_tree_sha": project.tree(superseded_head),
-        "tooling_repair_reason_code": "LIVE_TRACK_CARD_SCRIPT_IDENTITY",
+        "tooling_repair_reason_code": "AUTHORITATIVE_LEGAL_TARGET_SELECTION_AND_PHYSICAL_ETA_BINDING",
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:
@@ -859,7 +887,7 @@ def _validate_runtime(project: GitProject, artifact_head: str, authorization: Ma
         "diagnostic_only": False, "fixture_only": False, "scene_started_via_mcp": True,
         "mcp_real_runtime_observed": True, "selected_seed": SEED, "player_count": PLAYER_COUNT,
         "new_game_profile": PROFILE, "acquired_card_definition_id": "military.air_superiority_fighter.shipping.rank_1",
-        "mission_kind": "ASSAULT_REGION", "target_region_id": "region.005", "runtime_error_count": 0,
+        "mission_kind": "ASSAULT_REGION", "runtime_error_count": 0,
         "invalid_action_count": 0,
     }
     for field, expected_value in expected.items():
@@ -905,7 +933,7 @@ def _validate_runtime(project: GitProject, artifact_head: str, authorization: Ma
         assert isinstance(asset, dict)
         if asset.get("schema") != "V076AssetConsequenceAuthorityWitnessV1" or asset.get("owner_player_id") != "player.local" or asset.get("action") != "commit" or asset.get("outcome") != "consumed":
             report.add("field_mismatches", "ASSET_WITNESS_OUTCOME_INVALID", repr(asset))
-        if asset.get("task_kind") != "assault_region" or asset.get("target_region_id") != "region.005":
+        if asset.get("task_kind") != "assault_region" or asset.get("target_region_id") != value.get("target_region_id"):
             report.add("field_mismatches", "ASSET_WITNESS_TARGET_INVALID", repr(asset))
         if not _exact_int(asset.get("asset_revision_before")) or not _exact_int(asset.get("asset_revision_after")) or asset["asset_revision_after"] != asset["asset_revision_before"] + 1:
             report.add("field_mismatches", "ASSET_REVISION_DELTA_INVALID", repr(asset))
@@ -931,7 +959,7 @@ def _validate_runtime(project: GitProject, artifact_head: str, authorization: Ma
         for field, expected_count in expected_counts.items():
             if military.get(field) != expected_count:
                 report.add("field_mismatches", "MILITARY_LIFECYCLE_COUNT_INVALID", f"{field}:{military.get(field)!r}")
-        if military.get("mission_kind") != "ASSAULT_REGION" or military.get("target_region_id") != "region.005" or military.get("eta_ticks") != 6 or military.get("complete_major_round_barrier_observed") is not True:
+        if military.get("mission_kind") != "ASSAULT_REGION" or military.get("target_region_id") != value.get("target_region_id") or not _exact_int(military.get("eta_ticks")) or military.get("eta_ticks", 0) <= 0 or military.get("complete_major_round_barrier_observed") is not True:
             report.add("field_mismatches", "MILITARY_LIFECYCLE_IDENTITY_INVALID", repr(military))
         if not _exact_int(military.get("scheduled_tick")) or not _exact_int(military.get("arrival_tick")) or military["arrival_tick"] - military["scheduled_tick"] + 1 != military["eta_ticks"]:
             report.add("field_mismatches", "MILITARY_ETA_ARITHMETIC_INVALID", repr(military))
@@ -1437,7 +1465,7 @@ def _package_formal(project_root: Path, evidence_root: Path) -> dict[str, Any]:
             "new_game_profile": PROFILE,
             "acquired_card_definition_id": "military.air_superiority_fighter.shipping.rank_1",
             "mission_kind": "ASSAULT_REGION",
-            "target_region_id": "region.005",
+            "target_region_id": derived["military_lifecycle_witness"]["target_region_id"],
             **derived,
             "injection_counters": injection_counters,
             "runtime_error_count": 0,
