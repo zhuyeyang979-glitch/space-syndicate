@@ -1,0 +1,40 @@
+{
+  "schema_version": "space_syndicate.v076.scanner_successor_postcommit_verification.v1",
+  "status": "PASS_EXACT_TOOLING_AND_REGISTRY_CHECKPOINT_ONLY",
+  "evaluated_head_sha": "278fc282f402b5cf33bd82a6723b90a0a5b36c48",
+  "evaluated_tree_sha": "2d54966a9e5b9ccc4a2503180daeb2bbfeb77a44",
+  "tracked_and_index_clean_at_execution": true,
+  "registry_sha256": "fa8486af2023a067df3af6e4e1eb5f4247e78f96f2b26e18a050d015c3a7667f",
+  "resolver_sha256": "d3ec779c1a46c862f53f87d49d8132f87b1d9578e4907db080f7f72e76df8106",
+  "v2_selftest": {
+    "passed": 118,
+    "total": 118,
+    "false_green_count": 0,
+    "current_violation_false_accept_count": 0,
+    "report": "v2-selftest-postcommit.json"
+  },
+  "seal_verify": {
+    "status": "VERIFIED",
+    "report": "seal-verify-postcommit.json",
+    "current_scanner_selftest_executed_by_original_seal_command": true,
+    "historical_status_preserved": "REUSE_GATE_STATUS=FAIL;FINAL_STATUS=HARD_STOP",
+    "historical_counts_are_not_current_required_gate_counts": true
+  },
+  "untracked_uid_preserved_count": 296,
+  "godot_process_count": 0,
+  "listener_23207_count": 0,
+  "product_file_change_count_this_checkpoint": 0,
+  "formal_step11_reexecution_count": 0,
+  "full_required_gate_execution_count": 0,
+  "required_gate_green": false,
+  "human_green": false,
+  "production_green": false,
+  "pr93_status": "OPEN_DRAFT_UNCHANGED_PENDING_REMAINING_REPAIRS",
+  "remaining": [
+    "Batch011 exact authority proposal and independent A/B records",
+    "Batch012 and Batch013 remaining correction items",
+    "Current subject and SPR/HDM/post-touch binding completion",
+    "Authorized PR93 Head/body synchronization after repairs, still Draft",
+    "Actual current-head Required Gate before Commercial Sprint"
+  ]
+}
