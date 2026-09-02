@@ -1,0 +1,39 @@
+{
+  "schema": "SpaceSyndicateV076Hdm2OutputBindingRepairWitnessV1",
+  "status": "PASS_TOOLING_AND_STAGING_ONLY",
+  "evaluated_source_head": "86fc75eb4c1ab7272c4f88d9184f2e3c75d0c2a4",
+  "change_class": "TOOLING_ONLY",
+  "changed_tools": [
+    "tools/v076/v076_historical_delta_metadata_successor_v2_builder.py",
+    "tools/v076/v076_historical_delta_metadata_successor_v2_selftest.py"
+  ],
+  "validator_schema_identity_membership_changes": 0,
+  "selftest": {
+    "status": "PASS",
+    "checks": 33,
+    "check_count": 33,
+    "failures": []
+  },
+  "independent_diff_review": {
+    "actor": "/root/required_gate_audit",
+    "verdict": "NO_BLOCKING_FINDINGS_FOR_EXTERNAL_STAGING_VALIDATION",
+    "legacy_stdout_byte_identity_claimed": false
+  },
+  "legacy_artifact_byte_match_count": 5,
+  "legacy_artifact_mismatch_count": 0,
+  "current_staging": {
+    "head": "86fc75eb4c1ab7272c4f88d9184f2e3c75d0c2a4",
+    "identity_count": 86,
+    "rebound_count": 52,
+    "preserved_count": 34,
+    "primary_status": "PASS",
+    "independent_status": "PASS",
+    "authority_projection_sha256": "dc61aedf3863a1097159c58f10d1fbfa4af8f67ad2ede99f8ec634a642a77d18"
+  },
+  "new_staging_created_at_is_fixed_test_input": true,
+  "new_staging_admitted_to_required_workflow": false,
+  "required_gate_green": false,
+  "human_green": false,
+  "production_green": false,
+  "next": "Finish exact Registry work before producing the final explicit HDM2 epoch, so later Registry edits do not invalidate another admitted binding."
+}

@@ -1,0 +1,12 @@
+{
+  "binding_head": "86fc75eb4c1ab7272c4f88d9184f2e3c75d0c2a4",
+  "identity_count": 86,
+  "manifest": "D:\\ss-v076-generation10-hdm2-output-repair-validation-001-20260902\\fresh-generated\\manifest.json",
+  "manifest_id": "V076-HDM-SUCCESSOR-V2-CHEAD-86FC75EB4C1AB7272C4F88D9184F2E3C75D0C2A4",
+  "output": "D:\\ss-v076-generation10-hdm2-output-repair-validation-001-20260902\\fresh-generated",
+  "preserved_count": 34,
+  "rebound_count": 52,
+  "record_count": 4,
+  "repository_output_root": "docs/architecture/reuse_corrections/v2/historical_delta_metadata_successor_v2/epochs/86fc75eb4c1ab7272c4f88d9184f2e3c75d0c2a4/",
+  "status": "PASS"
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "SpaceSyndicateV076Batch011MembershipScopeWitnessV1",
+  "head": "86fc75eb4c1ab7272c4f88d9184f2e3c75d0c2a4",
+  "membership_status": "DUAL_REVIEW_PASS",
+  "authority_projection_status": "NOT_APPROVED",
+  "official_batch_write_count": 0,
+  "official_record_write_count": 0,
+  "candidate_sha256": "77266d2081eac8510e307e49c6ebe969c45bd5f766828db0b54b8dacbedbe064",
+  "fingerprint_count": 50,
+  "fingerprint_set_sha256": "6d9d0dcb974b7c72175f87888a1d7a4bcbcfe44dda45cd91c56297ea1b34daa1",
+  "primary_reviewer": {
+    "role": "V076_FULL_CONVERGENCE_PRIMARY_REVIEWER_V1",
+    "actor": "/root",
+    "checks": [
+      "Original fresh candidate validator PASS",
+      "50 unique fingerprints and source paths",
+      "All 50 historical Git source paths exist",
+      "No current/future failure membership added"
+    ]
+  },
+  "independent_reviewer": {
+    "role": "V076_FULL_CONVERGENCE_INDEPENDENT_REVIEWER_V1",
+    "actor": "/root/batch011_audit",
+    "verdict": "GO_FOR_MEMBERSHIP_ONLY",
+    "checks": [
+      "Frozen and current-Head plans identical",
+      "001-010 manifest/schema/hash/record chain intact",
+      "008-010 exact planned membership with no overlap",
+      "011 is first uncommitted batch; 50 exact source identities resolved"
+    ]
+  },
+  "projection_constraints": [
+    "49 missing Registry paths and one existing tooling document, not 50 blind additions",
+    "Real AiPolicyProfileResource script class collides with an existing resource-instance label; requires separate exact successor",
+    "Three new resource-instance classes need path-specific identities",
+    "Source-text read reachability must not be confused with old gameplay Owner execution",
+    "Original authority materializer is batch-008 specific; it cannot be reused by changing the batch label"
+  ],
+  "formal_step11_reexecution_count": 0,
+  "human_green": false,
+  "required_gate_green": false
+}

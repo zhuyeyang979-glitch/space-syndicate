@@ -62,6 +62,7 @@ SUCCESSOR_ROOT = "docs/architecture/reuse_corrections/v2/historical_delta_metada
 RECORD_ROOT = SUCCESSOR_ROOT + "records/"
 SCHEMA_PATH = "docs/architecture/reuse_corrections/v2/schema_historical_delta_metadata_successor_v2_20260830.json"
 CREATOR = "v076_historical_delta_metadata_successor_v2_builder.py"
+LEGACY_MANIFEST_ID = "V076-HDM-SUCCESSOR-V2-20260830-CHEAD-38E3776"
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -308,9 +309,51 @@ def derive_identities(root: Path, binding_head: str) -> tuple[dict[str, Any], li
     return metadata, records
 
 
-def build(root: Path, output: Path, binding_head: str = CURRENT_BINDING_HEAD, created_at: str | None = None) -> dict[str, Any]:
+def artifact_identity(
+    binding_head: str,
+    repository_output_root: str | None = None,
+    manifest_id: str | None = None,
+) -> tuple[str, str]:
+    """Locate one explicit exact-Head epoch without redefining old artifacts.
+
+    This is an artifact destination, not a failure selector. Identity membership,
+    predecessor bytes, owner derivation and both validators remain unchanged.
+    """
     if not oid(binding_head):
         raise ValueError("BINDING_HEAD_INVALID")
+    if repository_output_root is None and manifest_id is None:
+        if binding_head != CURRENT_BINDING_HEAD:
+            raise ValueError("NEW_BINDING_REQUIRES_EXPLICIT_ARTIFACT_IDENTITY")
+        return SUCCESSOR_ROOT, LEGACY_MANIFEST_ID
+    if repository_output_root is None or manifest_id is None:
+        raise ValueError("ARTIFACT_IDENTITY_ARGUMENT_PAIR_REQUIRED")
+    expected_root = SUCCESSOR_ROOT + "epochs/" + binding_head + "/"
+    expected_id = "V076-HDM-SUCCESSOR-V2-CHEAD-" + binding_head.upper()
+    if repository_output_root != expected_root:
+        raise ValueError("ARTIFACT_ROOT_NOT_EXACT_BINDING_HEAD")
+    if manifest_id != expected_id:
+        raise ValueError("ARTIFACT_MANIFEST_ID_NOT_EXACT_BINDING_HEAD")
+    return repository_output_root, manifest_id
+
+
+def build(
+    root: Path,
+    output: Path,
+    binding_head: str = CURRENT_BINDING_HEAD,
+    created_at: str | None = None,
+    *,
+    repository_output_root: str | None = None,
+    manifest_id: str | None = None,
+) -> dict[str, Any]:
+    if not oid(binding_head):
+        raise ValueError("BINDING_HEAD_INVALID")
+    artifact_root, artifact_manifest_id = artifact_identity(
+        binding_head, repository_output_root, manifest_id
+    )
+    if output.resolve().is_relative_to(root.resolve()):
+        actual_root = output.resolve().relative_to(root.resolve()).as_posix() + "/"
+        if actual_root != artifact_root:
+            raise ValueError("REPOSITORY_OUTPUT_DESTINATION_MISMATCH")
     metadata, records = derive_identities(root, binding_head)
     schema_file = root / SCHEMA_PATH
     schema_raw = schema_file.read_bytes() if schema_file.is_file() else blob(root, binding_head, SCHEMA_PATH)
@@ -325,7 +368,7 @@ def build(root: Path, output: Path, binding_head: str = CURRENT_BINDING_HEAD, cr
         path = output / "records" / filename
         path.write_bytes(raw)
         record_bindings.append({
-            "path": SUCCESSOR_ROOT + "records/" + filename,
+            "path": artifact_root + "records/" + filename,
             "record_sha256": sha256_bytes(raw),
             "record_payload_sha256": document["record_payload_sha256"],
             "failure_fingerprints": document["failure_fingerprints"],
@@ -337,7 +380,7 @@ def build(root: Path, output: Path, binding_head: str = CURRENT_BINDING_HEAD, cr
     manifest = {
         "schema_version": MANIFEST_SCHEMA_VERSION,
         "manifest_kind": MANIFEST_KIND,
-        "manifest_id": "V076-HDM-SUCCESSOR-V2-20260830-CHEAD-38E3776",
+        "manifest_id": artifact_manifest_id,
         "authorization_id": AUTHORIZATION_ID,
         "authorization_base_head_sha": AUTHORIZATION_BASE_HEAD,
         "predecessor_ledger_path": PREDECESSOR_LEDGER_PATH,
@@ -388,6 +431,8 @@ def build(root: Path, output: Path, binding_head: str = CURRENT_BINDING_HEAD, cr
         "rebound_count": metadata["rebound"],
         "preserved_count": metadata["preserved"],
         "binding_head": binding_head,
+        "repository_output_root": artifact_root,
+        "manifest_id": artifact_manifest_id,
     }
 
 
@@ -397,9 +442,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--binding-head", default=CURRENT_BINDING_HEAD)
     parser.add_argument("--created-at", default=None)
+    parser.add_argument("--repository-output-root", default=None)
+    parser.add_argument("--manifest-id", default=None)
     args = parser.parse_args(argv)
     try:
-        result = build(args.project.resolve(), args.output.resolve(), args.binding_head, args.created_at)
+        result = build(
+            args.project.resolve(), args.output.resolve(), args.binding_head, args.created_at,
+            repository_output_root=args.repository_output_root, manifest_id=args.manifest_id,
+        )
     except Exception as error:
         print(json.dumps({"status": "FAIL", "failures": [str(error)]}, ensure_ascii=False, indent=2))
         return 1

@@ -1,0 +1,21 @@
+{
+  "all_record_paths_match_explicit_epoch": true,
+  "authority_projection_sha256": "dc61aedf3863a1097159c58f10d1fbfa4af8f67ad2ede99f8ec634a642a77d18",
+  "dual_projection_parity": true,
+  "formal_step11_reexecution_count": 0,
+  "fresh_identity_count": 86,
+  "fresh_record_count": 4,
+  "head": "86fc75eb4c1ab7272c4f88d9184f2e3c75d0c2a4",
+  "human_green": false,
+  "independent_status": "PASS",
+  "legacy_artifact_count": 5,
+  "legacy_artifact_mismatch_count": 0,
+  "old_artifact_write_count": 0,
+  "preserved_count": 34,
+  "primary_status": "PASS",
+  "production_green": false,
+  "rebound_count": 52,
+  "required_gate_green": false,
+  "scope": "EXACT_HEAD_HDM2_OUTPUT_REPAIR_STAGING_ONLY",
+  "status": "PASS"
+}

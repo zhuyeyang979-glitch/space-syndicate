@@ -1,0 +1,10 @@
+{
+  "authority_projection_sha256": "dc61aedf3863a1097159c58f10d1fbfa4af8f67ad2ede99f8ec634a642a77d18",
+  "failures": [],
+  "identity_count": 86,
+  "manifest_path": "D:\\ss-v076-generation10-hdm2-output-repair-validation-001-20260902\\fresh-generated\\manifest.json",
+  "preserved_count": 34,
+  "rebound_count": 52,
+  "record_count": 4,
+  "status": "PASS"
+}

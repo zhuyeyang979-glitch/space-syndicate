@@ -1,0 +1,96 @@
+{
+  "schema": "SpaceSyndicateV076LedgerStatusRepairFocusedValidationV1",
+  "status": "FAIL",
+  "scope": "EXACT_PENDING_REGISTRATION_METADATA_REPAIR_NOT_FULL_GATE",
+  "head": "86fc75eb4c1ab7272c4f88d9184f2e3c75d0c2a4",
+  "case_count": 19,
+  "pass_count": 18,
+  "before_sha256": "6dd6b7f96622539b683c07bdf9288a19615458dd7cb74f6e0c9b08d9317e197e",
+  "after_sha256": "1b495a9d1a682c180a6c7d9d71cf3fe4081877f365d1909eaab0e817f9bf4161",
+  "transition_failures": [
+    "HISTORY_REGRESSION_OWNER_UNKNOWN:exact-ledger-status-repair:stage:V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_AC5EFCC5",
+    "CANONICAL_LATEST_STAGE_ROLLBACK:exact-ledger-status-repair"
+  ],
+  "cases": [
+    {
+      "name": "exact_base_head",
+      "status": "PASS"
+    },
+    {
+      "name": "preserve_stage_count",
+      "status": "PASS"
+    },
+    {
+      "name": "preserve_all_earlier_stages",
+      "status": "PASS"
+    },
+    {
+      "name": "prior_status_really_invalid",
+      "status": "PASS"
+    },
+    {
+      "name": "new_status_valid_not_green",
+      "status": "PASS"
+    },
+    {
+      "name": "exact_prior_status_recorded",
+      "status": "PASS"
+    },
+    {
+      "name": "existing_regression_contract_pass",
+      "status": "PASS"
+    },
+    {
+      "name": "affected_commit_exists",
+      "status": "PASS"
+    },
+    {
+      "name": "failure_evidence_exists",
+      "status": "PASS"
+    },
+    {
+      "name": "stage_changes_exactly_status_and_regression",
+      "status": "PASS"
+    },
+    {
+      "name": "no_green_stage_added",
+      "status": "PASS"
+    },
+    {
+      "name": "canonical_latest_completed_exact",
+      "status": "PASS"
+    },
+    {
+      "name": "canonical_latest_head_exact",
+      "status": "PASS"
+    },
+    {
+      "name": "canonical_latest_tree_exact",
+      "status": "PASS"
+    },
+    {
+      "name": "frozen_live_pr_block_unique",
+      "status": "PASS"
+    },
+    {
+      "name": "canonical_matches_unchanged_pr_block",
+      "status": "PASS"
+    },
+    {
+      "name": "whole_ledger_no_other_semantic_edits",
+      "status": "PASS"
+    },
+    {
+      "name": "existing_git_delta_observer_exact_path",
+      "status": "PASS"
+    },
+    {
+      "name": "existing_monotonic_transition_guard",
+      "status": "FAIL"
+    }
+  ],
+  "formal_step11_reexecution_count": 0,
+  "product_file_mutation_count": 0,
+  "human_green": false,
+  "full_product_production_green": false
+}

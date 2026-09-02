@@ -1,0 +1,16 @@
+{
+  "schema": "SpaceSyndicateV076RejectedLedgerStatusRepairProposalV1",
+  "status": "REJECTED_AND_NOT_APPLIED",
+  "reason": "The focused original monotonic guard rejected the proposed latest-completed-stage rollback; its regression owner value also used a class name instead of a registered component ID.",
+  "observed_test_result": "18/19 PASS, one failed check containing two rejection codes",
+  "rejection_codes": [
+    "HISTORY_REGRESSION_OWNER_UNKNOWN",
+    "CANONICAL_LATEST_STAGE_ROLLBACK"
+  ],
+  "action": "Reverted only the uncommitted assistant-authored ledger patch with apply_patch. The original ledger hash is restored; no Git history or frozen evidence was rewritten.",
+  "restored_ledger_sha256": "6dd6b7f96622539b683c07bdf9288a19615458dd7cb74f6e0c9b08d9317e197e",
+  "weakened_validator_count": 0,
+  "green_stage_added_count": 0,
+  "product_file_mutation_count": 0,
+  "scope": "FAILED_METADATA_PROPOSAL_NOT_A_FORMAL_OR_REQUIRED_GATE_RETRY"
+}

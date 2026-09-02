@@ -1,0 +1,93 @@
+{
+  "schema": "SpaceSyndicateV076Hdm2OutputRepairExternalEvidenceIndexV1",
+  "root": "D:\\ss-v076-generation10-hdm2-output-repair-validation-001-20260902",
+  "file_count": 17,
+  "files": [
+    {
+      "path": "fresh-builder-result.json",
+      "sha256": "335daef58aa11df5c98d205eca54c923a29ecf7d16973f531b6d294ddd0d8f0a",
+      "bytes": 642
+    },
+    {
+      "path": "fresh-generated/manifest.json",
+      "sha256": "6942fda840e05b66a9d15fbfcfd02d3797a07bec9d067f375ed7b7922f91e0e4",
+      "bytes": 17914
+    },
+    {
+      "path": "fresh-generated/records/hdm2-v076-hdm2-01-scan.json",
+      "sha256": "2459d575c9d0c7f60b2174bf734b8b370de061159712d8544f061bb294f2c795",
+      "bytes": 55742
+    },
+    {
+      "path": "fresh-generated/records/hdm2-v076-hdm2-02-identity.json",
+      "sha256": "d67b700ce6b7662cc486f2f0925a361fb558741f5589f05a770b9bc65eaeb624",
+      "bytes": 355553
+    },
+    {
+      "path": "fresh-generated/records/hdm2-v076-hdm2-03-identity.json",
+      "sha256": "8e81e3bc4880ffc5b5e2e70f724f23a57fe0219368f30f125de5b714b56e3701",
+      "bytes": 185510
+    },
+    {
+      "path": "fresh-generated/records/hdm2-v076-hdm2-04-identity.json",
+      "sha256": "cfa5d9468159ddd584f5b17dea282ce734e5197046cfd18f9ec1d69ff62ccfa8",
+      "bytes": 306494
+    },
+    {
+      "path": "fresh-independent-result.json",
+      "sha256": "021f4180e9977b142020ac00051bace7cfb725db54401dc8e727252080c18748",
+      "bytes": 235
+    },
+    {
+      "path": "fresh-primary-result.json",
+      "sha256": "f40679c7c6421f3c30ccfb49a236bca74b8c081d5f87252a559f1185d2cd075e",
+      "bytes": 357
+    },
+    {
+      "path": "input-manifest.json",
+      "sha256": "323b43e01cb44185b20e85aed2740296c8c59b8652908f985780689c1a1bfe3c",
+      "bytes": 662
+    },
+    {
+      "path": "legacy-byte-parity.json",
+      "sha256": "c475ae0838d8c6098d003aca0b18a6d1e7b3eef0338ea0bae22bad68aeaef32f",
+      "bytes": 1440
+    },
+    {
+      "path": "legacy-generated/manifest.json",
+      "sha256": "0c7a2ceb61bf3a3949614f422c32a86d58e959ab95f6220bfd9ea4baac5150c5",
+      "bytes": 17698
+    },
+    {
+      "path": "legacy-generated/records/hdm2-v076-hdm2-01-scan.json",
+      "sha256": "bcf8a8ad61a0ac52191903b4677c7921bbeb001a6892344a2eb3087904688925",
+      "bytes": 55742
+    },
+    {
+      "path": "legacy-generated/records/hdm2-v076-hdm2-02-identity.json",
+      "sha256": "3b968d86d5f5ac2913248bbad24fb6210f63f26760c88143bd9a8bd2a1b29292",
+      "bytes": 355553
+    },
+    {
+      "path": "legacy-generated/records/hdm2-v076-hdm2-03-identity.json",
+      "sha256": "7839d5d2d51b551fc4ff0c0e28d7843ea152f991b492c5921019e182e2ec59d1",
+      "bytes": 185510
+    },
+    {
+      "path": "legacy-generated/records/hdm2-v076-hdm2-04-identity.json",
+      "sha256": "55e2ae04e191a3c8c5ff6329b812fb6ef257b495742c9e5b4ad802bbfd5c68d9",
+      "bytes": 306494
+    },
+    {
+      "path": "summary.json",
+      "sha256": "4e9e9d59df653de4c17d1507646eaaf70792000b51d79d15f6bd8096b8f838a8",
+      "bytes": 710
+    },
+    {
+      "path": "validate_hdm2_output_repair.py",
+      "sha256": "083a5865cd375bd399170ed395db3f5afedf2c696f5c3270ebb4b1055a84415d",
+      "bytes": 4321
+    }
+  ],
+  "frozen_at_utc": "2026-09-02T15:09:00.7976586Z"
+}

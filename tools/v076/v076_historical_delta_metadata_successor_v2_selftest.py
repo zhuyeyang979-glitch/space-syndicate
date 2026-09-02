@@ -34,6 +34,35 @@ def main(argv: list[str] | None = None) -> int:
         ("expected preserved cardinality", builder.EXPECTED_PRESERVED == 34),
         ("predecessor is immutable head", builder.PREDECESSOR_HEAD == "d4720d34b5dd99541c20907cb5231b1a780d1cf7"),
     ]
+    epoch_head = "196cf386bccf6ba93a66b2257fe95e990a0b5d78"
+    epoch_root = builder.SUCCESSOR_ROOT + "epochs/" + epoch_head + "/"
+    epoch_id = "V076-HDM-SUCCESSOR-V2-CHEAD-" + epoch_head.upper()
+    checks.extend([
+        ("legacy artifact identity byte-stable", builder.artifact_identity(builder.CURRENT_BINDING_HEAD) == (builder.SUCCESSOR_ROOT, "V076-HDM-SUCCESSOR-V2-20260830-CHEAD-38E3776")),
+        ("explicit epoch artifact identity", builder.artifact_identity(epoch_head, epoch_root, epoch_id) == (epoch_root, epoch_id)),
+    ])
+    invalid_artifact_identities = [
+        ("new binding cannot reuse old implicit identity", (epoch_head, None, None)),
+        ("explicit root requires manifest id", (epoch_head, epoch_root, None)),
+        ("explicit id requires repository root", (epoch_head, None, epoch_id)),
+        ("legacy root cannot receive new epoch", (epoch_head, builder.SUCCESSOR_ROOT, epoch_id)),
+        ("old manifest id cannot label new epoch", (epoch_head, epoch_root, builder.LEGACY_MANIFEST_ID)),
+        ("other head root rejected", (epoch_head, builder.SUCCESSOR_ROOT + "epochs/" + builder.CURRENT_BINDING_HEAD + "/", epoch_id)),
+        ("other head id rejected", (epoch_head, epoch_root, "V076-HDM-SUCCESSOR-V2-CHEAD-" + builder.CURRENT_BINDING_HEAD.upper())),
+        ("parent traversal rejected", (epoch_head, epoch_root + "../", epoch_id)),
+        ("absolute destination rejected", (epoch_head, "/" + epoch_root, epoch_id)),
+        ("backslash destination rejected", (epoch_head, epoch_root.replace("/", "\\"), epoch_id)),
+        ("wildcard destination rejected", (epoch_head, builder.SUCCESSOR_ROOT + "epochs/*/", epoch_id)),
+        ("empty explicit identity rejected", (epoch_head, "", "")),
+        ("invalid binding head rejected", ("HEAD", epoch_root, epoch_id)),
+    ]
+    for name, values in invalid_artifact_identities:
+        try:
+            builder.artifact_identity(*values)
+        except ValueError:
+            checks.append((name, True))
+        else:
+            checks.append((name, False))
     if manifest.is_file():
         document = builder.strict_json(manifest.read_bytes())
         checks.extend([

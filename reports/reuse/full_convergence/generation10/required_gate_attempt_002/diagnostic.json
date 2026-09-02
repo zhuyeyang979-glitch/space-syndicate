@@ -1,0 +1,56 @@
+{
+  "schema": "SpaceSyndicateV076Generation10RequiredGateDiagnosticV1",
+  "status": "FAIL_FROZEN",
+  "scope": "LOCAL_DESCENDANT_EXACT_HEAD_NOT_LIVE_PR_CHECK",
+  "evaluated_head": "86fc75eb4c1ab7272c4f88d9184f2e3c75d0c2a4",
+  "evaluated_tree": "a2265507deb7ffa33f899ce7f3fe67e4373ccd19",
+  "completed_at_utc": "2026-09-02T14:53:01.3456243Z",
+  "formal_step11": {
+    "generation": 10,
+    "status": "PASS",
+    "execution_count": 1,
+    "automatic_retry": false,
+    "artifact_commit": "638edf14a2d6c4410a9e7dd48ec43fc4f9715e48",
+    "consumer_status": "PASS",
+    "validated_receipt_count": 1,
+    "positive_proof_count": 13,
+    "rerun_allowed": false
+  },
+  "raw": {
+    "status": "FAIL",
+    "failure_count": 737,
+    "history_failure_count": 674,
+    "history_transition_count": 323,
+    "sha256": "5a31da74d96b225cffa4c9f34c243115c3b2cec51de7b5dafd1869796430b199"
+  },
+  "v2": {
+    "status": "FAIL",
+    "authority_failure_count": 745,
+    "effective_blocking_failure_count": 1482,
+    "corrected_historical_failure_count": 0,
+    "raw_current_delta_failure_count": 737,
+    "true_active_violation_count": 737,
+    "sha256": "62ad785b5e34a6a87edd069dcf04a35c6b0c4b6f581d82c24f1c69583e244a17"
+  },
+  "interpretation": "Correction authority failed closed after exact subject/owner bindings were touched. The 737 current/active counters are fail-closed classifications, not evidence of 737 newly introduced product defects. No correction or green claim is inferred from this diagnostic.",
+  "authority_blockers": [
+    "SUBJECT_PROJECTION_CHANGED_INVALID",
+    "HISTORICAL_DELTA_METADATA_CURRENT_OWNER_BINDING_AND_TOUCH_INVALID",
+    "POST_TOUCH_SUCCESSOR_BINDING_PATH_TOUCHED",
+    "SUBJECT_PROJECTION_SUCCESSOR_V3_NOT_PASS_AND_UNION_84_NOT_109",
+    "TERMINAL_HISTORICAL_COVERAGE_MISSING_100"
+  ],
+  "preservation": {
+    "generation9_formal_platform_fail_unchanged": true,
+    "formal_generation10_evidence_unchanged": true,
+    "pr93_draft_unchanged": true,
+    "pr93_head": "8b7f029db03a9cd18be72f5b5f8ed8cb233d255b",
+    "scanner_rule_removal_count": 0,
+    "scanner_scope_reduction_count": 0,
+    "history_rewrite_count": 0,
+    "product_file_mutation_count_during_gate": 0,
+    "human_green": false,
+    "full_product_production_green": false
+  },
+  "next_action": "Repair only authorized exact current bindings and complete existing historical identity batches; preserve Raw/V2 failures and do not execute STEP11 again."
+}
