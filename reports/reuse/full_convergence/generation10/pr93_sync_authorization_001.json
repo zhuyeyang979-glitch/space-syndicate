@@ -1,0 +1,18 @@
+{
+  "schema_version": "space_syndicate.v076.pr93_sync_authorization.v1",
+  "record_kind": "USER_AUTHORIZATION_TRANSCRIPTION",
+  "source": "User replied 授权 to the explicit question about synchronizing PR93 Head and status after remaining repairs, retaining Draft and forbidding merge/release.",
+  "observed_local_head_sha": "a026c0a8c6708a878e6e030e7702afb4607a1873",
+  "observed_pr93_head_sha": "8b7f029db03a9cd18be72f5b5f8ed8cb233d255b",
+  "authorized_after_remaining_repairs": ["synchronize PR93 source branch Head", "synchronize PR93 canonical status block"],
+  "must_remain_draft": true,
+  "merge_authorized": false,
+  "release_authorized": false,
+  "force_push_authorized": false,
+  "formal_step11_retry_authorized": false,
+  "generation9_history_mutation_authorized": false,
+  "generation10_formal_receipt_mutation_authorized": false,
+  "human_green_claim_authorized": false,
+  "production_green_claim_authorized": false,
+  "execution_status": "DEFERRED_UNTIL_REMAINING_REPAIRS_COMPLETE"
+}

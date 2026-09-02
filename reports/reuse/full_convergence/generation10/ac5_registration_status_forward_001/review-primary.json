@@ -1,0 +1,21 @@
+{
+  "schema_version": "space_syndicate.v076.ac5_identity_status_review.v1",
+  "role": "PRIMARY",
+  "reviewer": "/root",
+  "verdict": "GO_EXACT_LEDGER_AND_EVIDENCE_ONLY",
+  "source_head_sha": "a026c0a8c6708a878e6e030e7702afb4607a1873",
+  "proposal_sha256": "1f999c01db6d33ae4806e51346cfa38bc594413f561f6bc3cef868521039f642",
+  "applied_ledger_sha256": "b5332ceab2a12351659e265fc41ecc2d01df292a269abd15f95dddc0ac5dbfd1",
+  "applied_evidence_sha256": "eb90fed00fa45cfcfc56446b6a9e6aa1ee53356a05ad2dde5433af652295bad1",
+  "exact_source_hash_checked_before_apply": true,
+  "exact_target_hash_checked_after_apply": true,
+  "referenced_evidence_present_before_ledger_apply": true,
+  "focused_guard_pass_count": 14,
+  "focused_guard_count": 14,
+  "old_correction_or_formal_artifact_mutation_count": 0,
+  "product_file_mutation_count": 0,
+  "formal_step11_reexecution_count": 0,
+  "required_gate_green": false,
+  "human_green": false,
+  "production_green": false
+}

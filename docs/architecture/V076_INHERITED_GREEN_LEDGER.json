@@ -1697,12 +1697,12 @@
     },
     {
       "stage_id": "V076_REUSE_GATE_CURRENT_PRODUCT_SUBJECT_REGISTRATION_AC5EFCC5",
-      "ledger_status": "SUBJECT_REGISTERED_PENDING_GATE",
+      "ledger_status": "CURRENT_DELTA_GREEN",
       "head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
       "tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
       "change_class": "CROSS_DOMAIN_INTEGRATION",
       "stage_kind": "INFRASTRUCTURE",
-      "infrastructure_justification": "Append-only registration of the exact ac5efcc5 product subject after 2ce2ce21. The product change adds current-subject STEP11/STEP12 witness plumbing through the existing V075 Runtime Owner and creates no new gameplay, asset, map, card-catalog, tick, RNG, or presentation Owner. STEP09, STEP11, and STEP12 remain pending exact-subject production revalidation; no production-green or human-green claim is made.",
+      "infrastructure_justification": "Append-only registration of the exact ac5efcc5 product subject after 2ce2ce21. The product change adds current-subject STEP11/STEP12 witness plumbing through the existing V075 Runtime Owner and creates no new gameplay, asset, map, card-catalog, tick, RNG, or presentation Owner. STEP09, STEP11, and STEP12 remain pending exact-subject production revalidation; no production-green or human-green claim is made. This status corrects only the completed historical AC5 subject-registration metadata identity. The frozen manifest was exactly recomputed at its recorded AC5 subject and evaluated HEAD; it does not attest the current descendant product, Required Gate, runtime revalidation, production cutover, or human playability.",
       "golden_step_ids": [],
       "current_owner": "V075RuntimeOwner",
       "reused_owners": [
@@ -1722,6 +1722,19 @@
           "product_delta_path_count_to_evaluated_head": 0,
           "product_path_coverage_percent": 100,
           "unknown_product_path_count": 0
+        },
+        {
+          "evidence_id": "v076-ac5-historical-registration-status-identity-only-recompute",
+          "result": "PASS_METADATA_IDENTITY_RECOMPUTE_ONLY",
+          "receipt_path": "reports/reuse/full_convergence/generation10/ac5_registration_status_forward_001/manifest-recompute.json",
+          "receipt_sha256": "eb90fed00fa45cfcfc56446b6a9e6aa1ee53356a05ad2dde5433af652295bad1",
+          "subject_head_sha": "ac5efcc5a5119b8022b573333f707b3a73bff590",
+          "subject_tree_sha": "9757eef0e73118f89356b0c09833a44c2c76f8ee",
+          "original_invalid_stage_token": "SUBJECT_REGISTERED_PENDING_GATE",
+          "completion_scope": "HISTORICAL_IDENTITY_REGISTRATION_ONLY",
+          "required_gate_green": false,
+          "production_green_claimed": false,
+          "human_green_claimed": false
         }
       ],
       "not_claimed": [

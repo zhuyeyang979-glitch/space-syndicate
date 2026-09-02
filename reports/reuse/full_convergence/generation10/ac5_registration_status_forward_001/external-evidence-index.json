@@ -1,0 +1,27 @@
+{
+  "schema_version": "space_syndicate.v076.ac5_status_external_evidence_index.v1",
+  "candidate001": "NOT_APPLIED",
+  "candidate002": "DUAL_REVIEW_PASS_APPLIED_EXACTLY",
+  "files": [
+    {
+      "path": "D:\\ss-v076-generation10-ac5-status-forward-001-20260902\\manifest-recompute.json",
+      "bytes": 2238,
+      "sha256": "eb90fed00fa45cfcfc56446b6a9e6aa1ee53356a05ad2dde5433af652295bad1"
+    },
+    {
+      "path": "D:\\ss-v076-generation10-ac5-status-forward-001-20260902\\status-proposal.json",
+      "bytes": 140249,
+      "sha256": "6fc831e3f9b0dc39b833954357549380054c7c43b7e79a28ad2b0793825cf68e"
+    },
+    {
+      "path": "D:\\ss-v076-generation10-ac5-status-forward-002-20260902\\manifest-recompute.json",
+      "bytes": 2238,
+      "sha256": "eb90fed00fa45cfcfc56446b6a9e6aa1ee53356a05ad2dde5433af652295bad1"
+    },
+    {
+      "path": "D:\\ss-v076-generation10-ac5-status-forward-002-20260902\\status-proposal.json",
+      "bytes": 140985,
+      "sha256": "1f999c01db6d33ae4806e51346cfa38bc594413f561f6bc3cef868521039f642"
+    }
+  ]
+}
