@@ -239,6 +239,7 @@ runtime_negative_mutations = {
     "duplicate_target_receipt": lambda value: value["step_receipts"].append(copy.deepcopy(value["step_receipts"][2])),
     "target_equals_origin": lambda value: value["step_receipts"][2].update({"own_facility_regions": ["region.005"], "source_region_id": "region.005"}),
     "source_witness_missing": lambda value: value["step_receipts"][2].pop("own_facility_regions"),
+    "source_location_basis_unknown": lambda value: value["step_receipts"][2].update({"source_location_basis": "UNOWNED_LOCATION"}),
     "source_witness_unsorted": lambda value: value["step_receipts"][2].update({"own_facility_regions": ["region.006", "region.000"]}),
     "eta_fractional_wire_value": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"].update({"eta_ticks": 6.25}),
     "eta_boolean_wire_value": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"].update({"eta_ticks": True}),

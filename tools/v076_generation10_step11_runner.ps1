@@ -24,8 +24,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_008.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_008.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_009.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_009.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -614,7 +614,8 @@ try {
     if ($regionIndex -gt 0) {
         Click-Node -Name 'batch3-open-region-menu.jsonrpc.json' -Node $optionButton[0]
         $menuEvents = @()
-        for ($i = 0; $i -lt $regionIndex; $i++) { $menuEvents += @{type='key';key='down';mode='tap'} }
+        # Mouse-opened PopupMenu has no keyboard-focused item. First Down focuses item zero.
+        for ($i = 0; $i -le $regionIndex; $i++) { $menuEvents += @{type='key';key='down';mode='tap'} }
         $menuEvents += @{type='key';key='enter';mode='tap'}
         Send-Input -Name 'batch3-select-non-origin-region.jsonrpc.json' -Arguments @{events=$menuEvents} | Out-Null
     }

@@ -165,6 +165,7 @@ checks["new_play_clock_captured_before_play"] = text.index("$playRequestedUnix =
 checks["fresh_runtime_identity_witness_recorded"] = "step='runtime_ready'" in text and "previous_stream_id=$previousRuntimeStreamId" in text
 checks["non_origin_target_uses_local_public_facilities"] = "MIN_OWNED_PUBLIC_FACILITY_REGION" in text and "map_player_projection.public_facility_slots" in text and "owner_public_id -ceq 'player.local'" in text and "target_region_id -cne $sourceRegionId" in text
 checks["non_origin_target_menu_readback"] = "MILITARY_NON_ORIGIN_MENU_SELECTION_MISMATCH" in text and "batch3-selected-region-readback.jsonrpc.json" in text
+checks["popup_initial_keyboard_focus_accounted_for"] = "for ($i = 0; $i -le $regionIndex; $i++)" in text
 checks["positive_eta_required_before_wait"] = "POSITIVE_PHYSICAL_ETA_NOT_ESTABLISHED" in text and text.index("POSITIVE_PHYSICAL_ETA_NOT_ESTABLISHED") < text.index("$resolutionDeadline =")
 checks["runtime_fault_fails_fast"] = "RUNTIME_FAULT_OBSERVED:$Name" in text
 checks["runtime_fault_diagnostics_before_cleanup"] = all(token in text for token in ("failure-action-status.jsonrpc.json", "failure-runtime-owner.jsonrpc.json", "failure-private-owner.jsonrpc.json", "failure-main-table"))

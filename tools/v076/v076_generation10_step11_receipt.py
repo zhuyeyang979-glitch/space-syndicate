@@ -50,11 +50,11 @@ SELFTEST_PATH = "tools/v076/v076_generation10_step11_receipt_selftest.py"
 WORKFLOW_PATH = ".github/workflows/v076-reuse-point-inertia-gate.yml"
 RUNNER_PATH = "tools/v076_generation10_step11_runner.ps1"
 RUNNER_SELFTEST_PATH = "tools/v076/v076_generation10_step11_runner_selftest.py"
-TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_008.json"
-SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_007.json"
-AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_008.json"
+TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_009.json"
+SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_008.json"
+AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_009.json"
 AUTHORIZATION_SIDECAR_PATH = AUTHORIZATION_PATH + ".sha256"
-ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_008.json"
+ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_009.json"
 ENVIRONMENT_SIDECAR_PATH = ENVIRONMENT_SEAL_PATH + ".sha256"
 QUALIFICATION_SEAL_PATH = "reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json"
 PASS_PAIR_PATH = "reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json"
@@ -825,7 +825,7 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         "superseded_authorization_manifest_path": SUPERSEDED_AUTHORIZATION_PATH,
         "superseded_authorization_head_sha": superseded_head,
         "superseded_authorization_tree_sha": project.tree(superseded_head),
-        "tooling_repair_reason_code": "SELECT_NON_ORIGIN_LEGAL_TARGET_AND_QUALIFY_FULL_SOURCE_BEFORE_PASS",
+        "tooling_repair_reason_code": "ESTABLISH_POPUP_KEYBOARD_FOCUS_BEFORE_TARGET_ADVANCE",
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:
