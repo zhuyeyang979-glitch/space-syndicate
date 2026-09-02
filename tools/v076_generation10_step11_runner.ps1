@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$EvidenceRoot,
     [ValidateSet('NONFORMAL_CONFIRMATION','FORMAL')][string]$ExecutionClass = 'FORMAL',
+    [ValidatePattern('^nonformal-confirmation-[0-9]{3}$')][string]$NonformalConfirmationId = 'nonformal-confirmation-001',
     [string]$ConfirmationReceiptPath,
     [string]$Worktree = (Get-Location).Path,
     [string]$GodotPath = 'C:\Users\Administrator\AppData\Local\Microsoft\WinGet\Packages\GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe\Godot_v4.7-stable_win64.exe',
@@ -23,8 +24,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_001.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_001.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_002.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_002.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -261,8 +262,10 @@ function Select-FirstTargetAndConfirm {
     Send-Input -Name "batch$Batch-card$Card-first-target.jsonrpc.json" -Arguments @{events=@(@{type='key';key='down';mode='tap'},@{type='key';key='enter';mode='tap'})} | Out-Null
     Click-Node -Name "batch$Batch-card$Card-confirm.jsonrpc.json" -Node (Query-Clickable -Name "batch$Batch-card$Card-confirm-query.jsonrpc.json" -Path $confirmPath)
     $deadline = [DateTime]::UtcNow.AddSeconds(15)
+    $cardIdleIndex = 0
     do {
-        $state = Get-Props (Query-Node -Name "batch$Batch-card$Card-idle.jsonrpc.json" -Path $screenPath -Properties @('_current_action_mode','_action_submission_pending'))
+        $cardIdleIndex++
+        $state = Get-Props (Query-Node -Name ("batch{0}-card{1}-idle-{2:d3}.jsonrpc.json" -f $Batch,$Card,$cardIdleIndex) -Path $screenPath -Properties @('_current_action_mode','_action_submission_pending'))
         if ([string]$state._current_action_mode -eq 'idle' -and -not [bool]$state._action_submission_pending) { return }
         Start-Sleep -Milliseconds 200
     } while ([DateTime]::UtcNow -lt $deadline)
@@ -491,7 +494,7 @@ try {
 
     $seedNode = Query-Clickable -Name 'seed-before-entry.jsonrpc.json' -Path $seedPath
     $seedCenter = Get-Center $seedNode
-    Write-Json -Path $focusRequestPath -Value ([ordered]@{schema_version='space_syndicate.v076.external_seed_focus_request.v2';authorization_id=$authorizationId;execution_class=$ExecutionClass;formal_attempt_id=if($ExecutionClass -eq 'FORMAL'){'formal-attempt-001'}else{'nonformal-confirmation-001'};requested_at_utc=[DateTime]::UtcNow.ToString('o');editor_pid=[int]$connection.pid;exact_window_title='太空辛迪加 (DEBUG)';required_window_match_count=1;node_path=$seedPath;runtime_viewport_center=$seedCenter;runtime_viewport_coordinate_advisory_only=$true;computer_use_coordinate_space='WINDOW_RELATIVE_INCLUDING_WINDOW_CHROME';computer_use_required_screenshot_frame='FULL_WINDOW_FRAME';required_action='ACTIVATE_UNIQUE_EXACT_GODOT_WINDOW_AND_CLICK_VISIBLE_SEED_INPUT_ONCE';forbidden_action='DIRECT_RUNTIME_SEED_INJECTION'})
+    Write-Json -Path $focusRequestPath -Value ([ordered]@{schema_version='space_syndicate.v076.external_seed_focus_request.v2';authorization_id=$authorizationId;execution_class=$ExecutionClass;formal_attempt_id=if($ExecutionClass -eq 'FORMAL'){'formal-attempt-001'}else{$NonformalConfirmationId};requested_at_utc=[DateTime]::UtcNow.ToString('o');editor_pid=[int]$connection.pid;exact_window_title='太空辛迪加 (DEBUG)';required_window_match_count=1;node_path=$seedPath;runtime_viewport_center=$seedCenter;runtime_viewport_coordinate_advisory_only=$true;computer_use_coordinate_space='WINDOW_RELATIVE_INCLUDING_WINDOW_CHROME';computer_use_required_screenshot_frame='FULL_WINDOW_FRAME';required_action='ACTIVATE_UNIQUE_EXACT_GODOT_WINDOW_AND_CLICK_VISIBLE_SEED_INPUT_ONCE';forbidden_action='DIRECT_RUNTIME_SEED_INJECTION'})
     $focusDeadline = [DateTime]::UtcNow.AddSeconds($ExternalSeedFocusTimeoutSeconds)
     do { if (Test-Path -LiteralPath $focusCompletePath) {break}; Start-Sleep -Milliseconds 250 } while ([DateTime]::UtcNow -lt $focusDeadline)
     if (-not (Test-Path -LiteralPath $focusCompletePath)) { throw 'EXTERNAL_SEED_FOCUS_TIMEOUT' }
@@ -596,6 +599,7 @@ $result = [ordered]@{
     generation_id=$generationId
     new_evidence_id=$evidenceId
     execution_class=$ExecutionClass
+    nonformal_confirmation_id=if($ExecutionClass -eq 'NONFORMAL_CONFIRMATION'){$NonformalConfirmationId}else{$null}
     formal_execution_count=if($formalConsumed){1}else{0}
     automatic_retry_count=0
     execution_head_sha=if(Test-Path $preflightPath){[string](Get-Content $preflightPath -Raw|ConvertFrom-Json).head_sha}else{$null}
@@ -622,6 +626,7 @@ if ($status -eq 'PASS' -and $ExecutionClass -eq 'NONFORMAL_CONFIRMATION') {
         authorization_id=$authorizationId
         generation_id=$generationId
         execution_class='NONFORMAL_CONFIRMATION'
+        nonformal_confirmation_id=$NonformalConfirmationId
         execution_head_sha=$result.execution_head_sha
         execution_tree_sha=$result.execution_tree_sha
         subject_head_sha=$expectedProductHead

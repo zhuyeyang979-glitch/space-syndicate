@@ -58,6 +58,8 @@ checks = {
     "runtime_ready_unique_names": "runtime-ready-poll-{0:d3}.jsonrpc.json" in text,
     "overlay_unique_names": "start-overlay-{0:d3}.jsonrpc.json" in text and "commercial-overlay-{0:d3}.jsonrpc.json" in text,
     "track_idle_unique_names": "track-acquire-idle-{0:d3}.jsonrpc.json" in text,
+    "card_submission_idle_unique_names": "batch{0}-card{1}-idle-{2:d3}.jsonrpc.json" in text and '"batch$Batch-card$Card-idle.jsonrpc.json"' not in text,
+    "monotonic_nonformal_identity_parameter": "[ValidatePattern('^nonformal-confirmation-[0-9]{3}$')]" in text and "nonformal_confirmation_id=$NonformalConfirmationId" in text,
     "resolution_unique_names": "military-private-owner-resolution-poll-{0:d3}.jsonrpc.json" in text,
     "no_known_poll_collision_names": all(token not in text for token in ("'runtime-ready-poll.jsonrpc.json'", "'start-overlay.jsonrpc.json'", "'commercial-overlay.jsonrpc.json'", "'track-acquire-idle.jsonrpc.json'", "'military-private-owner-resolution-poll.jsonrpc.json'")),
     "button_discovery_truncated_tree_fallback": "$rootQuery.tree_truncated" in text and "children_truncated" in text and "CommercialShellSurfaceLayer" in text,
