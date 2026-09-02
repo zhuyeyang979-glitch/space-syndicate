@@ -303,9 +303,9 @@ jobs:
           }
           if ($receiptExit -ne 0 -or
               [string]$receipt.RECEIPT_CONTRACT_SELFTEST_STATUS -cne "PASS" -or
-              [long]$receipt.RECEIPT_CONTRACT_SELFTEST_CASE_COUNT -ne 124 -or
-              [long]$receipt.RECEIPT_CONTRACT_SELFTEST_PASS_COUNT -ne 124 -or
-              [long]$receipt.RECEIPT_CONTRACT_SELFTEST_NEGATIVE_CASE_COUNT -ne 83 -or
+              [long]$receipt.RECEIPT_CONTRACT_SELFTEST_CASE_COUNT -ne 146 -or
+              [long]$receipt.RECEIPT_CONTRACT_SELFTEST_PASS_COUNT -ne 146 -or
+              [long]$receipt.RECEIPT_CONTRACT_SELFTEST_NEGATIVE_CASE_COUNT -ne 104 -or
               [long]$receipt.FALSE_GREEN_COUNT -ne 0 -or
               [long]$receipt.VALID_RECEIPT_FALSE_REJECT_COUNT -ne 0 -or
               $receipt.EXECUTED_NEGATIVE_CASE_SET_MATCH -ne $true) {
@@ -318,7 +318,7 @@ jobs:
               [long]$runner.false_green_count -ne 0) {
             throw "Generation 10 runner self-test failed: exit=$runnerExit status=$($runner.status) pass=$($runner.pass_count)/$($runner.case_count)"
           }
-          "Generation 10 STEP11 receipt contract: PASS (124/124); dual-mode runner: PASS ($($runner.pass_count)/$($runner.case_count)); false green: 0." |
+          "Generation 10 STEP11 receipt contract: PASS (146/146); dual-mode runner: PASS ($($runner.pass_count)/$($runner.case_count)); false green: 0." |
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
 
       - name: Resolve explicit full-convergence input set
@@ -374,7 +374,7 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $reportPath = Join-Path $env:RUNNER_TEMP "v076-current-subject-receipt-validation.json"
-          $generation10ManifestRelative = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_009.json"
+          $generation10ManifestRelative = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_011.json"
           $generation10ManifestPath = Join-Path $env:GITHUB_WORKSPACE $generation10ManifestRelative
           $generation9ManifestRelative = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_004.json"
           $generation9ManifestPath = Join-Path $env:GITHUB_WORKSPACE $generation9ManifestRelative

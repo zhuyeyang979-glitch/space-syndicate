@@ -24,8 +24,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_010.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_010.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_011.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_011.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -645,6 +645,8 @@ try {
     } while ([DateTime]::UtcNow -lt $resolutionDeadline)
     if (@($finalPrivate._damage_settlement_by_id.PSObject.Properties).Count -ne 1) { throw 'MILITARY_NATURAL_RESOLUTION_TIMEOUT' }
     [void](Capture-View -Name '03-assault-region-resolved-and-withdrawn')
+    $militaryBoundaryAfter = Get-Props (Query-Node -Name 'military-public-boundary-after.jsonrpc.json' -Path $screenPath -Properties @('_v075_snapshot'))
+    $stepReceipts.Add([ordered]@{step='military_public_boundary';before=$batch3._v075_snapshot;after=$militaryBoundaryAfter._v075_snapshot})
 
     Wait-And-Finish-EmptyBatch -Batch 3
     $terminalBefore = Get-Props (Query-Node -Name 'terminal-before-runtime.jsonrpc.json' -Path $runtimePath -Properties @('_solar_state','_batch_number','_phase'))

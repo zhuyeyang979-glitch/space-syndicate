@@ -107,7 +107,7 @@ def runtime_result() -> dict[str, object]:
             }},
             "_rejection_count": 0,
         },
-        "application_flow": {"_v076_private_military_receipt_count": 1},
+        "application_flow": {"_v076_private_military_receipt_count": 3},
         "runtime_owner": {
             "_v075_debug_snapshot_cache": {"generation": 5, "snapshot": {
                 "old_military_controller_production_reachable_count": 0,
@@ -135,16 +135,23 @@ def runtime_result() -> dict[str, object]:
         },
         "legacy_combat_owner": {"_runtime_error_count": 0},
         "production_screen": {
-            "_v075_snapshot": {"batch_number": 4},
+            "_v075_snapshot": {"batch_number": 4, "v076_public_action_arrangement": {
+                "schema": "V076PublicActionArrangementProjectionV1", "viewer_id": "player.local",
+                "hidden_order_disclosed": False, "actor_id_disclosed": False, "private_queue_disclosed": False,
+                "private_direct_action_entry_count": 0, "entries": [],
+            }},
             "_current_action_mode": "idle", "_action_submission_pending": False,
             "acceptance_state": {"combat_wrapper": {
                 "human_playability": human,
+                "public_arrangement": {"last_public_entry_count": 0},
                 "presentation": {"presentation_gameplay_mutation_count": 0},
                 "presentation_gameplay_mutation_count": 0,
             }},
         },
     }
     option = {"option_id": "option.001", "card_instance_id": "card.001", "owner_player_id": "player.local", "card_definition_id": "military.air_superiority_fighter.shipping.rank_1", "enabled": True, "task_kind": "assault_region", "target_region_id": "region.005"}
+    boundary = copy.deepcopy(final["production_screen"]["_v075_snapshot"])
+    boundary["batch_number"] = 3
     return {
         "status": "PASS", "execution_class": "FORMAL", "formal_execution_count": 1, "automatic_retry_count": 0,
         "generation_id": 10, "new_evidence_id": 9696,
@@ -159,6 +166,7 @@ def runtime_result() -> dict[str, object]:
             {"step": "terminal_before", "runtime_owner": {"_batch_number": 4, "_phase": "submission", "_solar_state": {
                 "match_instance_id": "match.test", "victory_gate": {"macro_round_index": 1, "final_settlement_count": 0,
                 "final_settlement_committed": False, "pending": True}}}},
+            {"step": "military_public_boundary", "before": copy.deepcopy(boundary), "after": copy.deepcopy(boundary)},
         ],
     }
 
@@ -291,6 +299,29 @@ runtime_negative_mutations = {
     "eta_formula": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"]["eta_receipt"].update({"canonical_geodesic_distance_mu": 20}),
     "eta_kernel_binding": lambda value: value["step_receipts"][1]["kernel"]["_domain_states"]["future.private_direct_action_input"]["submission_ledger"]["v076.production.military.intent.001"].update({"eta_ticks": 2}),
 }
+for count in (0, 1, 2, 4, True, 3.25):
+    runtime_negative_mutations[f"private_receipt_stage_count_{count}"] = lambda value, count=count: value["step_receipts"][1]["application_flow"].update(_v076_private_military_receipt_count=count)
+for name, mutation in {
+    "missing_boundary": lambda value: value["step_receipts"].pop(4),
+    "missing_after": lambda value: value["step_receipts"][4].pop("after"),
+    "wrong_batch": lambda value: value["step_receipts"][4]["before"].update(batch_number=2),
+    "declared_private_entry": lambda value: value["step_receipts"][4]["after"]["v076_public_action_arrangement"].update(private_direct_action_entry_count=1),
+    "boolean_zero": lambda value: value["step_receipts"][4]["after"]["v076_public_action_arrangement"].update(private_direct_action_entry_count=False),
+    "hidden_queue": lambda value: value["step_receipts"][4]["after"]["v076_public_action_arrangement"].update(private_queue_disclosed=True),
+    "invalid_entries": lambda value: value["step_receipts"][4]["after"]["v076_public_action_arrangement"].update(entries=[None]),
+    "observer_parity": lambda value: value["step_receipts"][1]["production_screen"]["acceptance_state"]["combat_wrapper"]["human_playability"].update(shared_sushi_track_direct_action_resolution_count=1),
+    "observer_boolean": lambda value: value["step_receipts"][1]["production_screen"]["acceptance_state"]["combat_wrapper"]["human_playability"].update(public_batch_direct_action_entry_count=False),
+}.items():
+    runtime_negative_mutations["public_boundary_" + name] = mutation
+for name, entry in {
+    "military_domain": {"action_domain": "military"},
+    "private_role": {"projection_role": "private_action"},
+    "private_authority": {"authority_zone": "pending_private_military"},
+    "private_flag": {"private_direct_action": True},
+    "private_card": {"card_instance_id": "card.001"},
+    "private_submission": {"submission_id": "v076.production.military.intent.001"},
+}.items():
+    runtime_negative_mutations["public_boundary_" + name] = lambda value, entry=entry: value["step_receipts"][4]["after"]["v076_public_action_arrangement"].update(entries=[copy.deepcopy(entry)])
 for name, mutate in runtime_negative_mutations.items():
     candidate = copy.deepcopy(runtime_baseline)
     mutate(candidate)
@@ -301,6 +332,15 @@ for name, mutate in runtime_negative_mutations.items():
     else:
         rejected = False
     check(f"runtime_source_negative_rejected__{name}", rejected)
+
+ordinary_public = copy.deepcopy(runtime_baseline)
+ordinary_rows = [{"action_domain": "facility", "projection_role": "public_batch_card", "authority_zone": "public_batch", "public_batch_entry": True, "card_instance_id": f"ordinary.{i}"} for i in range(12)]
+ordinary_screen = ordinary_public["step_receipts"][1]["production_screen"]
+ordinary_screen["_v075_snapshot"]["v076_public_action_arrangement"]["entries"] = ordinary_rows
+ordinary_wrapper = ordinary_screen["acceptance_state"]["combat_wrapper"]
+ordinary_wrapper["public_arrangement"]["last_public_entry_count"] = 12
+ordinary_wrapper["human_playability"].update(public_batch_direct_action_entry_count=12, shared_sushi_track_direct_action_resolution_count=12)
+check("ordinary_public_cards_are_not_private_direct_actions", contract._derive_runtime_components(ordinary_public) == derived)
 
 def encode_godot_numbers(value):
     if isinstance(value, dict):

@@ -50,11 +50,11 @@ SELFTEST_PATH = "tools/v076/v076_generation10_step11_receipt_selftest.py"
 WORKFLOW_PATH = ".github/workflows/v076-reuse-point-inertia-gate.yml"
 RUNNER_PATH = "tools/v076_generation10_step11_runner.ps1"
 RUNNER_SELFTEST_PATH = "tools/v076/v076_generation10_step11_runner_selftest.py"
-TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_010.json"
-SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_009.json"
-AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_010.json"
+TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_011.json"
+SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_010.json"
+AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_011.json"
 AUTHORIZATION_SIDECAR_PATH = AUTHORIZATION_PATH + ".sha256"
-ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_010.json"
+ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_011.json"
 ENVIRONMENT_SIDECAR_PATH = ENVIRONMENT_SEAL_PATH + ".sha256"
 QUALIFICATION_SEAL_PATH = "reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json"
 PASS_PAIR_PATH = "reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json"
@@ -736,7 +736,9 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("FORMAL_RESULT_ETA_OWNER_COUNT_MISMATCH")
     if domain.get("military_intake_count") != 1 or domain.get("arrived_count") != 1 or domain.get("executed_once_count") != 1 or domain.get("withdrawal_ready_count") != 1:
         raise ValueError("FORMAL_RESULT_KERNEL_LIFECYCLE_COUNT_MISMATCH")
-    if kernel.get("_rejection_count") != 0 or application.get("_v076_private_military_receipt_count") != 1:
+    # One submission acknowledgement, one intake settlement, one completion
+    # settlement. These are three stages, not three gameplay submissions.
+    if kernel.get("_rejection_count") != 0 or not _exact_int(application.get("_v076_private_military_receipt_count")) or application.get("_v076_private_military_receipt_count") != 3:
         raise ValueError("FORMAL_RESULT_KERNEL_OR_FLOW_COUNT_MISMATCH")
     if runtime.get("_batch_number") != PLAYER_COUNT or runtime.get("_phase") != "settled":
         raise ValueError("FORMAL_RESULT_MAJOR_ROUND_BARRIER_MISSING")
@@ -766,8 +768,43 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
     presentation = combat_wrapper.get("presentation")
     if not isinstance(human, dict) or not isinstance(presentation, dict):
         raise ValueError("FORMAL_RESULT_SCREEN_GUARD_MISSING")
-    if human.get("private_information_violation_count") != 0 or human.get("direct_asset_mutation_count") != 0 or human.get("public_batch_direct_action_entry_count") != 0 or human.get("shared_sushi_track_direct_action_resolution_count") != 0:
+    if human.get("private_information_violation_count") != 0 or human.get("direct_asset_mutation_count") != 0:
         raise ValueError("FORMAL_RESULT_SCREEN_AUTHORITY_GUARD_NONZERO")
+    boundary = _step_receipt(result, "military_public_boundary")
+    for label, observed, batch in (
+        ("before", boundary.get("before"), 3),
+        ("after", boundary.get("after"), 3),
+        ("final", snapshot, PLAYER_COUNT),
+    ):
+        if not isinstance(observed, dict) or observed.get("batch_number") != batch:
+            raise ValueError("FORMAL_RESULT_PUBLIC_BOUNDARY_BATCH_MISMATCH:" + label)
+        arrangement = observed.get("v076_public_action_arrangement")
+        if not isinstance(arrangement, dict) or arrangement.get("schema") != "V076PublicActionArrangementProjectionV1" or arrangement.get("viewer_id") != "player.local":
+            raise ValueError("FORMAL_RESULT_PUBLIC_BOUNDARY_PROJECTION_MISSING:" + label)
+        if any(arrangement.get(field) is not False for field in ("hidden_order_disclosed", "actor_id_disclosed", "private_queue_disclosed")):
+            raise ValueError("FORMAL_RESULT_PUBLIC_BOUNDARY_PRIVACY_DISCLOSED:" + label)
+        if not _exact_int(arrangement.get("private_direct_action_entry_count")) or arrangement["private_direct_action_entry_count"] != 0:
+            raise ValueError("FORMAL_RESULT_PRIVATE_ACTION_PUBLIC_ENTRY:" + label)
+        entries = arrangement.get("entries")
+        if not isinstance(entries, list) or any(not isinstance(entry, dict) for entry in entries):
+            raise ValueError("FORMAL_RESULT_PUBLIC_BOUNDARY_ENTRIES_INVALID:" + label)
+        # Independently inspect actual entries: a declared zero is insufficient.
+        for entry in entries:
+            if (entry.get("action_domain") in ("monster", "military", "direct_attack", "private_direct_action")
+                    or str(entry.get("projection_role", "")).startswith("private_")
+                    or str(entry.get("authority_zone", "")).startswith("pending_private")
+                    or entry.get("private_direct_action", False) is not False
+                    or entry.get("card_instance_id") == selected["card_instance_id"]
+                    or entry.get("submission_id") == submission_id):
+                raise ValueError("FORMAL_RESULT_PRIVATE_ACTION_PUBLIC_ENTRY:" + label)
+    # Legacy screen labels count all ordinary public entries; they are not
+    # private-action counters. Bind them to their producer semantics explicitly.
+    public_entries = snapshot["v076_public_action_arrangement"]["entries"]
+    public_debug = combat_wrapper.get("public_arrangement")
+    if not isinstance(public_debug, dict) or not _exact_int(public_debug.get("last_public_entry_count")) or public_debug["last_public_entry_count"] < 0:
+        raise ValueError("FORMAL_RESULT_PUBLIC_ENTRY_OBSERVER_MISSING")
+    if any(not _exact_int(human.get(field)) for field in ("public_batch_direct_action_entry_count", "shared_sushi_track_direct_action_resolution_count")) or human.get("public_batch_direct_action_entry_count") != public_debug["last_public_entry_count"] or human.get("shared_sushi_track_direct_action_resolution_count") != len(public_entries):
+        raise ValueError("FORMAL_RESULT_PUBLIC_ENTRY_OBSERVER_PARITY_MISMATCH")
     if combat_wrapper.get("presentation_gameplay_mutation_count") != 0 or presentation.get("presentation_gameplay_mutation_count") != 0:
         raise ValueError("FORMAL_RESULT_PRESENTATION_MUTATION_NONZERO")
     if screen.get("_current_action_mode") != "idle" or screen.get("_action_submission_pending") is not False:
@@ -872,7 +909,7 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         "superseded_authorization_manifest_path": SUPERSEDED_AUTHORIZATION_PATH,
         "superseded_authorization_head_sha": superseded_head,
         "superseded_authorization_tree_sha": project.tree(superseded_head),
-        "tooling_repair_reason_code": "USER_AUTHORIZED_TERMINAL_OBSERVER_PRODUCT_REPAIR_AND_SETTLEMENT_WITNESS_RESEAL",
+        "tooling_repair_reason_code": "THREE_STAGE_PRIVATE_RECEIPTS_AND_ACTUAL_PUBLIC_BOUNDARY_ORACLE",
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:

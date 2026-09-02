@@ -72,6 +72,7 @@ checks = {
     "natural_eta_wait": "MILITARY_NATURAL_RESOLUTION_TIMEOUT" in text and "_damage_settlement_by_id" in text,
     "major_round_barrier": "Wait-And-Finish-EmptyBatch -Batch 3" in text and "Wait-And-Finish-EmptyBatch -Batch 4" in text,
     "runtime_witnesses": all(token in text for token in ("final-private-owner", "final-eta-owner", "final-kernel", "final-runtime-owner", "final-legacy-combat-writer")),
+    "mission_time_public_boundary": all(token in text for token in ("military-public-boundary-after.jsonrpc.json", "step='military_public_boundary'", "before=$batch3._v075_snapshot", "after=$militaryBoundaryAfter._v075_snapshot")),
     "headed_screenshots": text.count("Capture-View -Name") >= 4,
     "normal_cleanup": "exit_play_mode" in text and "stop_role_godot_mcp" in text,
     "normal_cleanup_rejects_forced_stop": "-not $cleanup.forced_stop" in text and "$cleanup.game_pid_after -eq 0" in text,
