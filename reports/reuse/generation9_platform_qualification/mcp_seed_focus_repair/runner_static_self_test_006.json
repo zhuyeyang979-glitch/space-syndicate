@@ -1,0 +1,20 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_static_self_test.v6",
+  "generated_at_utc": "2026-09-02T05:06:24.0104535Z",
+  "status": "PASS",
+  "powershell_parse_error_count": 0,
+  "discovered_command_count": 33,
+  "unknown_command_count": 0,
+  "control_flow_token_audit": "PASS",
+  "synthetic_recursive_button_discovery": "PASS",
+  "commercial_navigation_before_seed_entry": "PASS",
+  "unoccluded_start_overlay_gate": "PASS",
+  "external_windows_focus_contract": "PASS",
+  "timeout_state_machine": "PASS",
+  "cleanup_state_machine": "PASS",
+  "evidence_finalization": "PASS",
+  "budget_ledger_guard": "PASS",
+  "screenshot_coordinate_space_contract": "PASS",
+  "direct_runtime_seed_injection_allowed": false,
+  "godot_launch_count": 0
+}

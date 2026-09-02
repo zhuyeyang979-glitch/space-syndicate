@@ -31,9 +31,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$authorizationId = 'USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902'
-$probeBudgetAuthorizationId = 'USER_SUPPLEMENTAL_AUTHORIZATION_V076_GENERATION9_PROBES_PLUS3_20260902'
-$parentAuthorizationId = 'USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902'
+$authorizationId = 'USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902'
+$probeBudgetAuthorizationId = $authorizationId
+$parentAuthorizationId = 'USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902'
 $root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd('\')
 $probeRoot = [IO.Path]::GetFullPath($EvidenceRoot)
 $budgetLedgerFullPath = [IO.Path]::GetFullPath($BudgetLedgerPath)
@@ -355,25 +355,32 @@ foreach ($requiredControlFile in @($budgetLedgerFullPath, $requalificationSealFu
 $budgetLedger = Get-Content -LiteralPath $budgetLedgerFullPath -Raw | ConvertFrom-Json
 $requalificationSeal = Get-Content -LiteralPath $requalificationSealFullPath -Raw | ConvertFrom-Json
 if (
-    [string]$budgetLedger.schema_version -cne 'space_syndicate.v076.generation9_probe_budget_ledger.v1' -or
+    [string]$budgetLedger.schema_version -cne 'space_syndicate.v076.generation9_probe_budget_ledger.v2' -or
     [string]$budgetLedger.authorization_id -cne $authorizationId -or
-    [string]$budgetLedger.status -cne 'ACTIVE' -or
+    [string]$budgetLedger.status -notin @(
+        'REACTIVATED_FOR_MCP_SEED_REPAIR_AND_PASS_PAIR',
+        'ACTIVE_UNTIL_CONSECUTIVE_COMPLETE_PASS_PAIR'
+    ) -or
     [string]$budgetLedger.next_probe_id -cne $ProbeId -or
-    [int]$budgetLedger.remaining_launch_count -lt 1 -or
-    [int]$budgetLedger.remaining_launch_count -gt 4 -or
-    [int]$budgetLedger.launch_count_after_requalification -lt 0 -or
-    [int]$budgetLedger.launch_count_after_requalification -gt 3
+    [string]$budgetLedger.new_probe_budget_kind -cne 'UNTIL_FIRST_CONSECUTIVE_COMPLETE_PASS_PAIR' -or
+    [int]$budgetLedger.minimum_new_nonformal_probe_count -lt 2 -or
+    [int]$budgetLedger.new_launch_count -lt 0 -or
+    [int]$budgetLedger.required_consecutive_pass_count -ne 2 -or
+    [int]$budgetLedger.current_consecutive_pass_count -lt 0 -or
+    [int]$budgetLedger.current_consecutive_pass_count -gt 1
 ) {
     throw 'Probe budget ledger is not authorized for this exact successor probe.'
 }
 if (
-    [string]$requalificationSeal.schema_version -cne 'space_syndicate.v076.post_restart_requalification_seal.v1' -or
+    [string]$requalificationSeal.schema_version -cne 'space_syndicate.v076.mcp_seed_focus_repair_seal.v1' -or
     [string]$requalificationSeal.authorization_id -cne $authorizationId -or
     [string]$requalificationSeal.status -cne 'SEALED' -or
-    -not [bool]$requalificationSeal.existing_probe_budget_reactivated -or
-    [int]$requalificationSeal.probe_budget_after_requalification -ne 4
+    -not [bool]$requalificationSeal.godot_mcp_product_edit_verified -or
+    [int]$requalificationSeal.direct_filesystem_product_edit_count -ne 0 -or
+    [int]$requalificationSeal.required_consecutive_complete_pass_count -ne 2 -or
+    -not [bool]$requalificationSeal.new_nonformal_probe_authority_active
 ) {
-    throw 'Post-restart requalification seal does not authorize successor probes.'
+    throw 'MCP Seed focus repair seal does not authorize successor probes.'
 }
 $budgetLedgerSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $budgetLedgerFullPath).Hash.ToLowerInvariant()
 $requalificationSealSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $requalificationSealFullPath).Hash.ToLowerInvariant()
@@ -393,8 +400,9 @@ Write-Utf8Json -Path (Join-Path $probeRoot 'execution-start.json') -Value ([orde
     generation9_formal_execution_count = 0
     budget_ledger_sha256 = $budgetLedgerSha256
     requalification_seal_sha256 = $requalificationSealSha256
-    remaining_launch_count_before = [int]$budgetLedger.remaining_launch_count
-    launch_count_after_requalification_before = [int]$budgetLedger.launch_count_after_requalification
+    minimum_new_nonformal_probe_count = [int]$budgetLedger.minimum_new_nonformal_probe_count
+    new_launch_count_before = [int]$budgetLedger.new_launch_count
+    consecutive_complete_pass_count_before = [int]$budgetLedger.current_consecutive_pass_count
     next_probe_id = [string]$budgetLedger.next_probe_id
 })
 Write-Utf8Json -Path (Join-Path $probeRoot 'runner-manifest.json') -Value ([ordered]@{
@@ -437,7 +445,7 @@ try {
         throw "Tracked or index delta is not zero: tracked=$trackedDelta index=$indexDelta"
     }
     git -C $root merge-base --is-ancestor `
-        32b1a4d0e4b47735c98a09d5f5cd034a160d870d `
+        745696e9dda39fbc0487853609aaf91eb4984191 `
         HEAD
     if ($LASTEXITCODE -ne 0) {
         throw 'Product candidate is not an ancestor of the exact clone HEAD.'
@@ -448,6 +456,7 @@ try {
         project_godot = @((Join-Path $root 'project.godot'), '849e8c9458b1f6f4431a00073a8d50119937e64a995303874354fb34da4fb06b')
         main_tscn = @((Join-Path $root 'scenes\main.tscn'), 'aabe4e7f5dce63af558d22c2b77b0cffcfad03a763a7c6d11c4003e90e8e79f3')
         runtime_bridge = @((Join-Path $root 'addons\funplay_mcp\runtime\funplay_mcp_runtime_bridge.gd'), 'f3bbc4acc290bffbd596695b4962fabda85d3da764be91e50eb9f4fba2352990')
+        seed_focus_script = @((Join-Path $root 'scripts\ui\v075\v075_sample_game_screen.gd'), '2be67b73c11676df1b2f26f520e3a4d15a3bfbe88974f51c439b6b10da156702')
         mcp_launcher = @($launchTool, 'ae61c920a2a1b4c6d0c2e25d46a754d8d077ed145c0cfbe152c29c4566bc58ba')
         class_cache = @((Join-Path $root '.godot\global_script_class_cache.cfg'), 'f35abc2d252fa772468528f561dd52344ec0c3b09bd0a9b58ebfaf3d54c2ea01')
     }
@@ -502,8 +511,8 @@ try {
         branch = $branch
         head_sha = $head
         tree_sha = $tree
-        product_candidate_head_sha = '32b1a4d0e4b47735c98a09d5f5cd034a160d870d'
-        product_candidate_tree_sha = '5e6945f14e37b9416192f1945561b503f02fe49d'
+        product_candidate_head_sha = '745696e9dda39fbc0487853609aaf91eb4984191'
+        product_candidate_tree_sha = '0da87f7923b33f2d6ad968cd381c41813d591eff'
         tracked_delta_count = $trackedDelta
         index_delta_count = $indexDelta
         untracked_uid_count = $uidCount

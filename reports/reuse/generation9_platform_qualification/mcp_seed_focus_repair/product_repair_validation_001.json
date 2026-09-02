@@ -1,0 +1,84 @@
+{
+  "schema_version": "space_syndicate.v076.mcp_seed_focus_repair_validation.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "generated_at_utc": "2026-09-02T05:06:24.0104535Z",
+  "status": "PASS",
+  "root_cause": "The commercial menu button retained GUI focus while its overlay closed; the existing show_new_game_setup presentation entry made StartOverlay visible but did not hand focus to the visible SeedInput owner.",
+  "repair": {
+    "scope": "PRESENTATION_ONLY_GUI_FOCUS_HANDOFF",
+    "implementation": "show_new_game_setup defers one guarded SeedInput grab_focus plus select_all operation to the next idle edge",
+    "product_file": "scripts/ui/v075/v075_sample_game_screen.gd",
+    "product_file_sha256": "2be67b73c11676df1b2f26f520e3a4d15a3bfbe88974f51c439b6b10da156702",
+    "regression_test_file": "tests/v076_commercial_shell_reachability_test.gd",
+    "regression_test_file_sha256": "ae7f2a576110004bcecfabf7e8b14d6a989d80daab5f0718dc656a5c28d5eafa",
+    "godot_mcp_patch_script_call_count": 2,
+    "direct_filesystem_product_edit_count": 0,
+    "authority_owner_change_count": 0,
+    "runtime_owner_change_count": 0,
+    "seed_value_rule_change_count": 0
+  },
+  "candidate": {
+    "head_sha": "745696e9dda39fbc0487853609aaf91eb4984191",
+    "tree_sha": "0da87f7923b33f2d6ad968cd381c41813d591eff",
+    "remote_parity": true
+  },
+  "godot_mcp_validation": {
+    "godot_version": "4.7-stable (official)",
+    "project_path": "D:/ss-v076-generation9-platform-qualification-7a2e10c7-001",
+    "main_scene": "res://scenes/main.tscn",
+    "main_scene_launched_through_mcp": true,
+    "commercial_new_game_button_match_count": 1,
+    "commercial_menu_visible_after_navigation": false,
+    "seed_input_visible": true,
+    "seed_input_editable": true,
+    "seed_text_before_mcp_keys": "900626424",
+    "mcp_backspace_event_count": 12,
+    "mcp_seed_character_event_count": 9,
+    "requested_seed": "917592522",
+    "seed_text_after_mcp_keys": "917592522",
+    "seed_input_click_count_between_navigation_and_keys": 0,
+    "runtime_capture_size": "1600x960",
+    "runtime_capture_sha256": "918ac39cef0a86fd0100af0510e45fa98c225aa93f35fc6ea9fed48e6e367dd4",
+    "runtime_capture_external_path": "D:/ss-v076-generation9-platform-qualification-7a2e10c7-001/.codex-godot/appdata-roaming/Godot/app_userdata/太空辛迪加/mcp_seed_focus_repair_diagnostic.png",
+    "console_error_line_count": 0,
+    "normal_editor_shutdown": true,
+    "forced_stop": false,
+    "terminal_process_count": 0,
+    "terminal_listener_count": 0
+  },
+  "regression_validation": [
+    {
+      "test": "v076_commercial_shell_reachability_test.gd",
+      "status": "PASS",
+      "passed": 16,
+      "total": 16
+    },
+    {
+      "test": "v076_alpha07_human_playability_readiness_test.gd",
+      "status": "PASS",
+      "exit_code": 0,
+      "full_default_viewport_matrix": true
+    },
+    {
+      "test": "v076_alpha07_seed_tail_probe.gd",
+      "status": "PASS",
+      "bounded_seed_count": 2,
+      "settled_seed_count": 2
+    },
+    {
+      "test": "v076_new_game_loading_feedback_test.gd",
+      "status": "PASS",
+      "passed": 19,
+      "total": 19
+    }
+  ],
+  "diagnostic_notes": {
+    "runtime_event_cursor_invalid_request_count": 1,
+    "runtime_event_cursor_invalid_request_classification": "DIAGNOSTIC_CALL_ARGUMENT_ERROR_NOT_PRODUCT_ERROR",
+    "product_error_count": 0
+  },
+  "frozen_probe_rewrite_count": 0,
+  "preserved_untracked_uid_count": 295,
+  "generation9_formal_execution_count": 0,
+  "human_green": false
+}

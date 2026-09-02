@@ -146,8 +146,8 @@ if (
 }
 
 $orderedMarkers = @(
-    "schema_version -cne 'space_syndicate.v076.generation9_probe_budget_ledger.v1'",
-    "schema_version -cne 'space_syndicate.v076.post_restart_requalification_seal.v1'",
+    "schema_version -cne 'space_syndicate.v076.generation9_probe_budget_ledger.v2'",
+    "schema_version -cne 'space_syndicate.v076.mcp_seed_focus_repair_seal.v1'",
     'throw "Refusing to overwrite probe evidence: $probeRoot"',
     "schema_version = 'space_syndicate.v076.generation9_platform_probe_execution_start.v1'",
     "foreach (`$required in @(`$MonitorScript, `$GodotPath, `$invokeTool, `$launchTool, `$stopTool))",
@@ -169,13 +169,16 @@ foreach ($marker in $orderedMarkers) {
     $previousIndex = $index
 }
 foreach ($requiredText in @(
-    "`$authorizationId = 'USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902'",
-    "`$probeBudgetAuthorizationId = 'USER_SUPPLEMENTAL_AUTHORIZATION_V076_GENERATION9_PROBES_PLUS3_20260902'",
+    "`$authorizationId = 'USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902'",
+    '$probeBudgetAuthorizationId = $authorizationId',
     "[string]`$budgetLedger.next_probe_id -cne `$ProbeId",
-    '[int]$budgetLedger.remaining_launch_count -lt 1',
-    '[int]$budgetLedger.remaining_launch_count -gt 4',
-    '[int]$budgetLedger.launch_count_after_requalification -gt 3',
-    '-not [bool]$requalificationSeal.existing_probe_budget_reactivated',
+    "[string]`$budgetLedger.new_probe_budget_kind -cne 'UNTIL_FIRST_CONSECUTIVE_COMPLETE_PASS_PAIR'",
+    '[int]$budgetLedger.minimum_new_nonformal_probe_count -lt 2',
+    '[int]$budgetLedger.required_consecutive_pass_count -ne 2',
+    '[int]$budgetLedger.current_consecutive_pass_count -gt 1',
+    '-not [bool]$requalificationSeal.godot_mcp_product_edit_verified',
+    '[int]$requalificationSeal.direct_filesystem_product_edit_count -ne 0',
+    '-not [bool]$requalificationSeal.new_nonformal_probe_authority_active',
     "exact_window_title = '太空辛迪加 (DEBUG)'",
     'runtime_viewport_coordinate_advisory_only = $true',
     "computer_use_coordinate_space = 'WINDOW_RELATIVE_INCLUDING_WINDOW_CHROME'",
