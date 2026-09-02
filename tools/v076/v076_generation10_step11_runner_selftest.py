@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[2]
@@ -80,6 +82,21 @@ checks = {
     "external_output_required": "[Parameter(Mandatory = $true)][string]$EvidenceRoot" in text,
     "fail_closed_exit": "if ($status -ne 'PASS') { exit 1 }" in text,
 }
+
+guard_lines = [line.strip() for line in text.splitlines() if "@($checks.confirmation.GetEnumerator()" in line]
+checks["confirmation_guard_enumerates_entries_not_properties"] = len(guard_lines) == 1 and "$checks.confirmation.PSObject.Properties" not in text
+pwsh = shutil.which("pwsh")
+guard = guard_lines[0].removesuffix(" -and") if len(guard_lines) == 1 else "$false"
+for name, required, present, status, expected in (
+    ("nonformal_valid", False, True, True, True),
+    ("formal_valid", True, True, True, True),
+    ("formal_missing_receipt", True, False, True, False),
+    ("formal_failed_receipt", True, True, False, False),
+):
+    values = ["$true" if value else "$false" for value in (required, present, status)]
+    script = "$checks=[ordered]@{confirmation=[ordered]@{required=" + values[0] + ";receipt_present=" + values[1] + ";status_pass=" + values[2] + "}}; [bool](" + guard + ")"
+    completed = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True, text=True, timeout=15) if pwsh else None
+    checks[f"confirmation_guard_executes__{name}"] = completed is not None and completed.returncode == 0 and completed.stdout.strip() == str(expected)
 
 failed = sorted(name for name, ok in checks.items() if not ok)
 result = {

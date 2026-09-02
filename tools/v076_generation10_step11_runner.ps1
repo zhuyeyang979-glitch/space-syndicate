@@ -23,8 +23,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_001.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_001.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -440,7 +440,7 @@ try {
         $checks.receipt_selftest_sha256_match -and $checks.required_workflow_sha256_match -and
         $checks.formal_runner_sha256_match -and $checks.formal_runner_selftest_sha256_match -and
         $checks.tooling_seal_sha256_match -and
-        @($checks.confirmation.PSObject.Properties | Where-Object {$_.Name -cne 'required' -and -not [bool]$_.Value}).Count -eq 0 -and
+        @($checks.confirmation.GetEnumerator() | Where-Object {$_.Key -cne 'required' -and -not [bool]$_.Value}).Count -eq 0 -and
         $checks.formal_execution_count_before -eq 0 -and -not $checks.automatic_retry
     )
     if (-not $preflightPass) {
