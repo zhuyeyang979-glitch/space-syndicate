@@ -1,0 +1,40 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_repaired_runner_manifest.v9",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "parent_authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_at_utc": "2026-09-02T06:04:55.6243702Z",
+  "status": "PASS",
+  "predecessor_runner_manifest_sha256": "cc8ead6d42e05b38658681a65024e0d017953b8ab038fbdaa18ed4540ee129e0",
+  "probe_015_disposition": "FROZEN_TOOLING_FAILURE",
+  "probe_015_raw_evidence_manifest_sha256": "b74fe9844439acbbbbfc40c7f9c317b014fa77a5d050b12bfe1fbe6ee728bb43",
+  "probe_015_report_sha256": "7a8c8e586ea78ba41709d33c127d5a595d360b9113cb1daecd173c03c2609af2",
+  "probe_budget_ledger_011_sha256": "0e3cd1c2c6971b3ce2b4ce628ce1b72b0dd9faf901a021ded9555d5388c33782",
+  "product_candidate_head_sha": "b33e460610776564dac3616bd341fa829316b1e2",
+  "product_candidate_tree_sha": "449018413600b57b9d503b9610c9ae79e3c8eee1",
+  "runner": {
+    "path": "tools/v076_generation9_platform_probe.ps1",
+    "sha256": "86dceea2f23e65eedb87a36f9b8476b2710b247664f1dc4dfdf68cec4d9077fa",
+    "external_seed_focus_timeout_seconds": 300,
+    "parse_error_count": 0
+  },
+  "runner_static_self_test": {
+    "path": "reports/reuse/generation9_platform_qualification/mcp_seed_focus_repair/runner_static_self_test_008.json",
+    "sha256": "689e188cfc3d5f470d57e8ef82dfe0218e80b058dd1357636bea26684cc0b0d0",
+    "status": "PASS",
+    "unknown_command_count": 0,
+    "godot_launch_count": 0
+  },
+  "packager": {
+    "path": "tools/v076_generation9_platform_probe_packager.ps1",
+    "sha256": "ff9c2182a7d1b15b5ce1bd2abeae8397f779af5d8f4e33fd83377c9a37f3351d",
+    "static_self_test_path": "reports/reuse/generation9_platform_qualification/mcp_seed_focus_repair/packager_static_self_test_002.json",
+    "static_self_test_sha256": "27acde4bb632388a0b72d9216829ac45fc2b600374b2a00b76a72b16a7bc31f8",
+    "parse_error_count": 0,
+    "unknown_command_count": 0
+  },
+  "repair_reason": "The first live use of the updated Computer Use plugin spent the former 120-second witness window on API discovery and full-window screenshot transfer; extending only the witness timeout does not change product or Seed authority.",
+  "tooling_change_resets_consecutive_pass_count": true,
+  "consecutive_complete_pass_count_at_manifest": 0,
+  "next_monotonic_probe_id": "probe-016",
+  "generation9_formal_execution_count": 0
+}

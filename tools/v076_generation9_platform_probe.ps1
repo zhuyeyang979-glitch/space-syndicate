@@ -21,7 +21,7 @@ param(
     [int]$RuntimeReadyTimeoutSeconds = 120,
     [int]$CommercialMenuReadyTimeoutSeconds = 30,
     [int]$NewGameReadyTimeoutSeconds = 180,
-    [int]$ExternalSeedFocusTimeoutSeconds = 120,
+    [int]$ExternalSeedFocusTimeoutSeconds = 300,
 
     [Parameter(Mandatory = $true)]
     [string]$BudgetLedgerPath,

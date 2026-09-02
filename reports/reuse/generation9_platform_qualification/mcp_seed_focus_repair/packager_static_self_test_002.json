@@ -1,0 +1,13 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_probe_packager_static_self_test.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "generated_at_utc": "2026-09-02T06:04:55.6243702Z",
+  "status": "PASS",
+  "packager_path": "tools/v076_generation9_platform_probe_packager.ps1",
+  "packager_sha256": "ff9c2182a7d1b15b5ce1bd2abeae8397f779af5d8f4e33fd83377c9a37f3351d",
+  "powershell_parse_error_count": 0,
+  "command_count": 12,
+  "unknown_command_count": 0,
+  "godot_launch_count": 0,
+  "probe_launch_count": 0
+}

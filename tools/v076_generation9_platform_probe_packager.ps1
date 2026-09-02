@@ -40,8 +40,8 @@ $ErrorActionPreference = 'Stop'
 $authorizationId = 'USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902'
 $probeBudgetAuthorizationId = $authorizationId
 $parentAuthorizationId = 'USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902'
-$productCandidateHeadSha = '745696e9dda39fbc0487853609aaf91eb4984191'
-$productCandidateTreeSha = '0da87f7923b33f2d6ad968cd381c41813d591eff'
+$productCandidateHeadSha = 'b33e460610776564dac3616bd341fa829316b1e2'
+$productCandidateTreeSha = '449018413600b57b9d503b9610c9ae79e3c8eee1'
 $sourceRoot = (Resolve-Path -LiteralPath $SourceProbeRoot).Path.TrimEnd('\')
 $destinationRoot = [IO.Path]::GetFullPath($DestinationProbeRoot).TrimEnd('\')
 
