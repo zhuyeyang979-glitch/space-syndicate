@@ -374,7 +374,7 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $reportPath = Join-Path $env:RUNNER_TEMP "v076-current-subject-receipt-validation.json"
-          $generation9ManifestRelative = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_003.json"
+          $generation9ManifestRelative = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_004.json"
           $generation9ManifestPath = Join-Path $env:GITHUB_WORKSPACE $generation9ManifestRelative
           $generation8ManifestRelative = "reports/reuse/full_convergence/generation8/generation8_authorization_manifest.json"
           $generation8ManifestPath = Join-Path $env:GITHUB_WORKSPACE $generation8ManifestRelative

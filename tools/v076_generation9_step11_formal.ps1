@@ -21,8 +21,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation9/generation9_environment_seal_repair_003.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_003.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation9/generation9_environment_seal_repair_004.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_004.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -263,8 +263,8 @@ try {
     $trackedDelta = @(& git -C $root status --porcelain=v1 --untracked-files=no)
     $environmentSealPath = Join-Path $root $environmentSealRelative
     $authorizationPath = Join-Path $root $authorizationRelative
-    $environment = Get-Content -LiteralPath $environmentSealPath -Raw | ConvertFrom-Json -Depth 100
-    $authorization = Get-Content -LiteralPath $authorizationPath -Raw | ConvertFrom-Json -Depth 100
+    $environment = Get-Content -LiteralPath $environmentSealPath -Raw | ConvertFrom-Json -Depth 100 -DateKind String
+    $authorization = Get-Content -LiteralPath $authorizationPath -Raw | ConvertFrom-Json -Depth 100 -DateKind String
     $availableCommit = Get-AvailableCommitBytes
     $bootId = Get-BootId
     $godotCount = @(Get-ExactGodotRows).Count
