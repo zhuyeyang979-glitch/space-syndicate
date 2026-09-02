@@ -445,7 +445,7 @@ try {
         throw "Tracked or index delta is not zero: tracked=$trackedDelta index=$indexDelta"
     }
     git -C $root merge-base --is-ancestor `
-        745696e9dda39fbc0487853609aaf91eb4984191 `
+        b33e460610776564dac3616bd341fa829316b1e2 `
         HEAD
     if ($LASTEXITCODE -ne 0) {
         throw 'Product candidate is not an ancestor of the exact clone HEAD.'
@@ -511,8 +511,8 @@ try {
         branch = $branch
         head_sha = $head
         tree_sha = $tree
-        product_candidate_head_sha = '745696e9dda39fbc0487853609aaf91eb4984191'
-        product_candidate_tree_sha = '0da87f7923b33f2d6ad968cd381c41813d591eff'
+        product_candidate_head_sha = 'b33e460610776564dac3616bd341fa829316b1e2'
+        product_candidate_tree_sha = '449018413600b57b9d503b9610c9ae79e3c8eee1'
         tracked_delta_count = $trackedDelta
         index_delta_count = $indexDelta
         untracked_uid_count = $uidCount

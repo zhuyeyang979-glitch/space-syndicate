@@ -1,0 +1,59 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_repaired_runner_manifest.v8",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "parent_authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_at_utc": "2026-09-02T05:57:09.3509165Z",
+  "status": "PASS",
+  "predecessor_runner_manifest_sha256": "cb276eea7243e6cdfd10f8282e13424000b76f0c2cfce69ff42a5a84031a5e78",
+  "authorization_manifest_sha256": "804a16c4bfe9b132e29dcb72d7c883bf76a6cf1f7338fe6fcc74b0350e903a1b",
+  "probe_budget_ledger_010_sha256": "6b2778d6dbbebf7a1184313a2270305e8a75f257f227b829603bddec00757644",
+  "product_repair_validation_002_sha256": "18ac9d5c359fb22aa55a22a0eedac171cef434e119e82a5906d5fbbdde0af848",
+  "product_candidate_head_sha": "b33e460610776564dac3616bd341fa829316b1e2",
+  "product_candidate_tree_sha": "449018413600b57b9d503b9610c9ae79e3c8eee1",
+  "runner": {
+    "path": "tools/v076_generation9_platform_probe.ps1",
+    "sha256": "ba284b43b167aae868eeeb327b239c12d3f57b839b303ca2c50f9c5908a86b55",
+    "size_bytes": 44562,
+    "seed_receipt_source": "V075ApplicationFlow._last_new_game_receipt",
+    "generic_last_receipt_used_for_seed": false
+  },
+  "static_self_test": {
+    "path": "tools/v076_generation9_platform_probe_static_self_test.ps1",
+    "sha256": "38d8f98d38b4299fc419ef822634e7d0e4075367709e92e7c45d4dc5c83e8698",
+    "report_path": "reports/reuse/generation9_platform_qualification/mcp_seed_focus_repair/runner_static_self_test_007.json",
+    "report_sha256": "ccfe7c38a576205281ea3d0dd43a80c4ab3db17783967b09e7ce48a0780331fa",
+    "status": "PASS",
+    "powershell_parse_error_count": 0,
+    "unknown_command_count": 0,
+    "godot_launch_count": 0
+  },
+  "packager": {
+    "path": "tools/v076_generation9_platform_probe_packager.ps1",
+    "sha256": "a2894f57b6c7e50badc995c3d0713672bcf53e71d1388175092422d4dd4f71c6",
+    "static_self_test_report_path": "reports/reuse/generation9_platform_qualification/mcp_seed_focus_repair/packager_static_self_test_001.json",
+    "static_self_test_report_sha256": "70b11b7c3854bb262e87c52562bb3ddafcd59a1036193c1a2c85f7f6223bcb4b"
+  },
+  "monitor": {
+    "external_path": "C:/Users/Administrator/Documents/Codex/2026-08-20/qu/outputs/v076-generation9-platform-qualification/monitor_generation9_probe.ps1",
+    "sha256": "64e811c4ab358db051d9cb52d5508e867b0a4fbdd527b062f980081223bd1a59"
+  },
+  "canonical_import": {
+    "manifest_path": "reports/reuse/generation9_platform_qualification/canonical_import_compatibility_correction_001/pass-002/imported_manifest.json",
+    "manifest_sha256": "3658b1050ac601e220fed3e0b3d0339cbd6c2053aff23d63a79464db7a3027ce",
+    "entry_count": 1330,
+    "current_mismatch_count": 0
+  },
+  "workflow_contract": {
+    "external_unique_window_activation_required": true,
+    "external_seed_field_click_count": 1,
+    "windows_seed_character_input_count": 0,
+    "mcp_only_seed_character_input": true,
+    "direct_runtime_seed_injection_count": 0,
+    "seed_four_layer_parity_required": true,
+    "normal_cleanup_required": true,
+    "formal_generation": false,
+    "generation9_formal_execution_count": 0
+  },
+  "consecutive_complete_pass_count_at_manifest": 0,
+  "next_monotonic_probe_id": "probe-015"
+}

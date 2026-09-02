@@ -1,0 +1,65 @@
+{
+  "schema_version": "space_syndicate.v076.mcp_seed_focus_repair_validation.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_MCP_SEED_FOCUS_REPAIR_AND_PASS_PAIR_20260902",
+  "generated_at_utc": "2026-09-02T05:57:09.3509165Z",
+  "status": "PASS",
+  "root_cause": "The generic ApplicationFlow last receipt was correctly overwritten by a later ui.pacing.set intent, so it was not a durable source for the already-committed New Game Seed.",
+  "repair": {
+    "scope": "EXISTING_APPLICATION_FLOW_DIAGNOSTIC_RECEIPT_DURABILITY",
+    "implementation": "V075ApplicationFlow stores the latest completed New Game transaction result separately and exposes a duplicate in its existing debug snapshot; the platform probe reads that dedicated receipt.",
+    "product_file": "scripts/v075_runtime/v075_application_flow.gd",
+    "product_file_sha256": "c5eb8407ea16922d11d73cb6de3a702dc11b960f44051cc1c06a8944b3cef269",
+    "regression_test_file": "tests/v076_commercial_shell_reachability_test.gd",
+    "regression_test_file_sha256": "fc6a8d3687281f25a3b7648d60ae31f077f67225024576fb942f47ff08625d71",
+    "runner_file": "tools/v076_generation9_platform_probe.ps1",
+    "runner_sha256_before_candidate_rebind": "1b94c83a2b5f2e5560eac515919b6d7836f7c62e913c61ad2e9127ad665d9be2",
+    "godot_mcp_patch_script_call_count": 4,
+    "direct_filesystem_product_edit_count": 0,
+    "new_authority_owner_count": 0,
+    "gameplay_authority_change_count": 0,
+    "seed_rule_change_count": 0
+  },
+  "candidate": {
+    "head_sha": "b33e460610776564dac3616bd341fa829316b1e2",
+    "tree_sha": "449018413600b57b9d503b9610c9ae79e3c8eee1",
+    "remote_parity": true
+  },
+  "godot_mcp_validation": {
+    "godot_version": "4.7-stable (official)",
+    "main_scene": "res://scenes/main.tscn",
+    "main_scene_launched_through_mcp": true,
+    "application_flow_diagnostic_count": 0,
+    "regression_test_diagnostic_count": 0,
+    "dedicated_receipt_property_visible_before_new_game": true,
+    "normal_editor_shutdown": true,
+    "forced_stop": false,
+    "terminal_process_count": 0,
+    "terminal_listener_count": 0
+  },
+  "focused_regression": {
+    "test": "v076_commercial_shell_reachability_test.gd",
+    "status": "PASS",
+    "passed": 18,
+    "total": 18,
+    "requested_seed": 917592522,
+    "pacing_after_new_game": 2,
+    "durable_new_game_seed_after_pacing": 917592522,
+    "external_result_sha256": "04bd936b419addbe1fc1eae203936aaab18e19de357cfa428d746607d877ffd5"
+  },
+  "nonblocking_broad_baseline": {
+    "test": "v075_application_composition_test.gd",
+    "status": "FAIL",
+    "passed": 110,
+    "total": 111,
+    "failure": "the production screen has one bootstrap submission connection",
+    "classification": "OUTSIDE_CHANGED_LINES_AND_NOT_USED_AS_REPAIR_PASS_EVIDENCE",
+    "external_result_sha256": "cba7ed24920f106da17d876c63e9bbf08c1a0dc27cae805f1ab953c33dc53f82"
+  },
+  "canonical_import": {
+    "entry_count": 1330,
+    "mismatch_count": 0
+  },
+  "preserved_untracked_uid_count": 295,
+  "generation9_formal_execution_count": 0,
+  "human_green": false
+}
