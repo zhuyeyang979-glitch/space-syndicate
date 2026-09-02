@@ -1,0 +1,90 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_supplemental_probe_authorization.v1",
+  "task_id": "V076_GENERATION9_REPAIRED_MENU_NAVIGATION_SUCCESSOR_PROBES_FORMAL_STEP11_AND_COMMERCIAL_RESUME",
+  "supplemental_authorization_id": "USER_SUPPLEMENTAL_AUTHORIZATION_V076_GENERATION9_PROBES_PLUS3_20260902",
+  "parent_authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "authorization_source_sha256": "ce3b638b2828994f24c7fc6d2da47530121febb5ec4f82efc6eb1ea9a9ec9258",
+  "authorization_source_created_at_utc": "2026-09-02T02:39:58Z",
+  "generated_at_utc": "2026-09-02T03:23:02.5517645Z",
+  "append_only": true,
+  "status": "SUSPENDED_BY_SYSTEM_STABILITY_HARD_STOP",
+  "platform_lineage": {
+    "branch": "codex/v076-generation9-platform-qualification-7a2e10c7-001",
+    "head_sha_before_this_manifest": "1dd2fa89739eb831865fdf94344a295292f31902",
+    "tree_sha_before_this_manifest": "cdb3ec788f80be7d2c3a2765319f6123ea965936",
+    "remote_local_head_parity": true,
+    "unknown_preexisting_platform_head_drift": false,
+    "runner_repair_commit_sha": "81f05501bb5d159a882a89ada9715c594af38806",
+    "runner_repair_tree_sha": "3ccd41b442bdcc5f88ad88f84b5f16a7ee8e17e4",
+    "runner_repair_is_ancestor_of_checkpoint": true,
+    "checkpoint_commit_sha": "1dd2fa89739eb831865fdf94344a295292f31902",
+    "checkpoint_tree_sha": "cdb3ec788f80be7d2c3a2765319f6123ea965936"
+  },
+  "product_lineage": {
+    "pr_number": 93,
+    "pr_state": "OPEN",
+    "pr_is_draft": true,
+    "pr_head_sha": "8b7f029db03a9cd18be72f5b5f8ed8cb233d255b",
+    "pr_tree_sha": "92770263e94ce9d14ec2cd523b8a6df403aba021",
+    "product_candidate_head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+    "product_candidate_tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d",
+    "product_and_platform_head_identity_conflation_count": 0
+  },
+  "frozen_evidence_revalidation": {
+    "frozen_file_hash_match_count": 419,
+    "frozen_file_count": 419,
+    "probe_005_raw_evidence_hash_match_count": 37,
+    "probe_005_raw_evidence_file_count": 37,
+    "probe_006_raw_evidence_hash_match_count": 17,
+    "probe_006_raw_evidence_file_count": 17,
+    "probe_005_modification_count": 0,
+    "probe_006_modification_count": 0,
+    "probe_005_rerun_count": 0,
+    "probe_006_rerun_count": 0,
+    "prior_probe_pass_carry_forward_count": 0,
+    "preserved_untracked_uid_count": 295,
+    "untracked_uid_stage_count": 0
+  },
+  "probe_budget_ledger": {
+    "checkpoint_sha256": "fa5c7e4450e44d3e5a867ae4225354ff1e1adb5dc71e9b28105b1a8fe62adeac",
+    "previous_remaining_launch_count": 1,
+    "additional_authorized_launch_count": 3,
+    "total_launch_budget_from_checkpoint": 4,
+    "launch_count_after_checkpoint": 0,
+    "remaining_launch_count": 4,
+    "required_consecutive_pass_count": 2,
+    "current_consecutive_pass_count": 0,
+    "current_next_monotonic_probe_id": "probe-007",
+    "probe_id_registry_observed": [
+      "probe-001",
+      "probe-002",
+      "probe-003",
+      "probe-004",
+      "probe-005",
+      "probe-006"
+    ]
+  },
+  "runner": {
+    "path": "tools/v076_generation9_platform_probe.ps1",
+    "sha256": "5e7502c4c1acb4b8fff567b6d74425b899a34b2fae550d6e1bba1cf5250a190c",
+    "static_self_test_status_at_checkpoint": "PASS",
+    "repaired_runner_manifest_created": false,
+    "repaired_runner_seal_created": false,
+    "reason_not_sealed": "A post-authorization unexpected shutdown and restart triggered the mandatory system-stability hard stop before pre-probe tooling finalization."
+  },
+  "formal_preservation": {
+    "generation9_authorization_status": "NOT_SEALED",
+    "generation9_formal_execution_count": 0,
+    "generation9_automatic_retry_count": 0,
+    "generation10_creation_count": 0,
+    "step11_generation9_receipt_status": "NOT_RUN",
+    "v076_reuse_point_inertia_gate": "NOT_RUN",
+    "commercial_sprint_resumed": false,
+    "human_retest_deferred": true,
+    "human_green": false,
+    "step13_status": "PENDING",
+    "step14_status": "PENDING",
+    "step15_status": "PENDING"
+  },
+  "next_task": "ISSUE_EXPLICIT_POST_RESTART_REQUALIFICATION_AUTHORIZATION_BEFORE_ANY_SUCCESSOR_PROBE_LAUNCH"
+}
