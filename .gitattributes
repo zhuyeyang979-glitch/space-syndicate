@@ -14,6 +14,10 @@ reports/reuse/correction_v2/** binary
 # the same byte sequence before and after the evidence is committed.
 reports/reuse/full_convergence/raw_scans/** binary
 
+# Generation 10 reuses the exact Windows Compatibility manifest bytes.
+reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_002/pass-001/imported_manifest.json binary
+reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_002/pass-002/imported_manifest.json binary
+
 # Preserve upstream Kenney license evidence byte-for-byte; these files contain
 # intentional leading tabs and CRLF line endings from the selected archives.
 assets/third_party/commercial/audio/kenney_interface_sounds/LICENSE.txt binary
