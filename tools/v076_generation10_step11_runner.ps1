@@ -24,8 +24,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_007.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_007.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_008.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_008.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -253,6 +253,7 @@ function Wait-Runtime {
         $index++
         $node = Query-Node -Name ("{0}-{1:d3}.jsonrpc.json" -f $Name,$index) -Path $runtimePath -Properties @('_batch_number','_phase','_seed','_invalid_action_count','_runtime_error_count')
         $p = Get-Props $node
+        if ([string]$p._phase -ceq 'failed' -or [int]$p._runtime_error_count -gt 0) { throw "RUNTIME_FAULT_OBSERVED:$Name" }
         if (& $Predicate $p) { return $p }
         Start-Sleep -Milliseconds 250
     } while ([DateTime]::UtcNow -lt $deadline)
@@ -600,19 +601,35 @@ try {
     $militaryInstanceId = [string]$hand[$militaryIndex].instance_id
     $options = @($screenMilitary._combat_projection.military_task_options | Where-Object {[string]$_.task_kind -eq 'assault_region' -and [bool]$_.enabled -and [string]$_.owner_player_id -ceq 'player.local' -and [string]$_.card_instance_id -ceq $militaryInstanceId} | Sort-Object option_id)
     if ($options.Count -lt 1) { throw 'NO_LEGAL_ASSAULT_REGION_OPTION' }
-    $regionIndex = 0
+    $ownFacilityRegions = @($batch3._v075_snapshot.map_player_projection.public_facility_slots | Where-Object {[string]$_.owner_public_id -ceq 'player.local' -and [string]$_.occupancy -ceq 'occupied'} | ForEach-Object {[string]$_.region_id} | Sort-Object -Unique)
+    if ($ownFacilityRegions.Count -lt 1) { throw 'PHYSICAL_SOURCE_PUBLIC_FACILITY_WITNESS_MISSING' }
+    $sourceRegionId = $ownFacilityRegions[0]
+    $regionIndex = -1
+    for ($i = 0; $i -lt $options.Count; $i++) { if ([string]$options[$i].target_region_id -cne $sourceRegionId) { $regionIndex = $i; break } }
+    if ($regionIndex -lt 0) { throw 'NO_LEGAL_NON_ORIGIN_ASSAULT_REGION_OPTION' }
     $selectedOption = $options[$regionIndex]
     $selectedTargetRegion = [string]$selectedOption.target_region_id
     $menuSelection = Get-Props (Query-Node -Name 'batch3-default-region-readback.jsonrpc.json' -Path ([string]$optionButton[0].path) -Properties @('selected','item_count','text'))
-    if ($null -eq $menuSelection.selected -or $null -eq $menuSelection.item_count -or [int]$menuSelection.selected -ne $regionIndex -or [int]$menuSelection.item_count -ne $options.Count) { throw 'MILITARY_DEFAULT_MENU_SELECTION_MISMATCH' }
+    if ($null -eq $menuSelection.selected -or $null -eq $menuSelection.item_count -or [int]$menuSelection.selected -ne 0 -or [int]$menuSelection.item_count -ne $options.Count) { throw 'MILITARY_DEFAULT_MENU_SELECTION_MISMATCH' }
+    if ($regionIndex -gt 0) {
+        Click-Node -Name 'batch3-open-region-menu.jsonrpc.json' -Node $optionButton[0]
+        $menuEvents = @()
+        for ($i = 0; $i -lt $regionIndex; $i++) { $menuEvents += @{type='key';key='down';mode='tap'} }
+        $menuEvents += @{type='key';key='enter';mode='tap'}
+        Send-Input -Name 'batch3-select-non-origin-region.jsonrpc.json' -Arguments @{events=$menuEvents} | Out-Null
+    }
+    $menuSelection = Get-Props (Query-Node -Name 'batch3-selected-region-readback.jsonrpc.json' -Path ([string]$optionButton[0].path) -Properties @('selected','item_count','text'))
+    if ($null -eq $menuSelection.selected -or [int]$menuSelection.selected -ne $regionIndex -or [int]$menuSelection.item_count -ne $options.Count) { throw 'MILITARY_NON_ORIGIN_MENU_SELECTION_MISMATCH' }
     Click-Node -Name 'batch3-choose-legal-region.jsonrpc.json' -Node $chooseButton[0]
     $bound = Get-Props (Query-Node -Name 'batch3-bound-military-target.jsonrpc.json' -Path $screenPath -Properties @('_current_action_mode','_pending_confirm_binding','_selected_card_id'))
     if ([string]$bound._pending_confirm_binding.target_region_id -cne $selectedTargetRegion -or [string]$bound._pending_confirm_binding.task_kind -cne 'assault_region' -or [string]$bound._pending_confirm_binding.option_id -cne [string]$selectedOption.option_id) { throw 'MILITARY_TARGET_BINDING_MISMATCH' }
-    $stepReceipts.Add([ordered]@{step='military_target';selection_policy='FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID';eligible_options=$options;selected_option=$selectedOption;bound_option=$bound._pending_confirm_binding;menu_selected_index=[int]$menuSelection.selected;menu_item_count=[int]$menuSelection.item_count})
+    $stepReceipts.Add([ordered]@{step='military_target';selection_policy='FIRST_ENABLED_NON_ORIGIN_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID';source_location_basis='MIN_OWNED_PUBLIC_FACILITY_REGION';own_facility_regions=$ownFacilityRegions;source_region_id=$sourceRegionId;eligible_options=$options;selected_option=$selectedOption;bound_option=$bound._pending_confirm_binding;menu_selected_index=[int]$menuSelection.selected;menu_item_count=[int]$menuSelection.item_count})
     [void](Capture-View -Name '02-assault-region-ready-to-confirm')
     Click-Node -Name 'batch3-confirm-military-action.jsonrpc.json' -Node (Query-Clickable -Name 'batch3-confirm-military-query.jsonrpc.json' -Path $confirmPath)
     $immediatePrivate = Get-Props (Query-Node -Name 'military-private-owner-immediate.jsonrpc.json' -Path $privateOwnerPath -Properties @('_collision_count','_rejection_count','_submitted_result_by_id','_submission_fingerprint_by_id','_intake_settlement_result_by_id','_settlement_fingerprint_by_id'))
     $immediateEta = Get-Props (Query-Node -Name 'military-eta-owner-immediate.jsonrpc.json' -Path $etaOwnerPath -Properties @('_calculation_count','_rejection_count'))
+    $submittedRows = @($immediatePrivate._submitted_result_by_id.PSObject.Properties | ForEach-Object {$_.Value})
+    if ($submittedRows.Count -ne 1 -or -not [bool]$submittedRows[0].accepted -or [int64]$submittedRows[0].eta_ticks -le 0 -or [int64]$submittedRows[0].eta_receipt.source_face_id -eq [int64]$submittedRows[0].eta_receipt.target_face_id) { throw 'POSITIVE_PHYSICAL_ETA_NOT_ESTABLISHED' }
     $resolutionDeadline = [DateTime]::UtcNow.AddSeconds(60)
     $resolutionIndex = 0
     do {
@@ -632,7 +649,7 @@ try {
     $finalEta = Get-Props (Query-Node -Name 'final-eta-owner.jsonrpc.json' -Path $etaOwnerPath -Properties @('_calculation_count','_rejection_count'))
     $finalKernel = Get-Props (Query-Node -Name 'final-kernel.jsonrpc.json' -Path $kernelPath -Properties @('_current_tick','_domain_states','_last_rejection','_rejection_count'))
     $finalComposition = Get-Props (Query-Node -Name 'final-application-flow.jsonrpc.json' -Path $compositionPath -Properties @('_v076_private_military_receipt_count','_v076_production_ready','_last_new_game_receipt','_v076_production_seed'))
-    $finalRuntime = Get-Props (Query-Node -Name 'final-runtime-owner.jsonrpc.json' -Path $runtimePath -Properties @('_batch_number','_phase','_invalid_action_count','_invalid_action_reasons','_runtime_error_count','_v076_asset_consequence_projection_count','_v076_asset_consequence_projection_failure_count','_v076_last_asset_consequence_witness','_v076_military_consequence_collision_count','_v076_military_consequence_presentation_count','_v076_production_military_submission_by_uid'))
+    $finalRuntime = Get-Props (Query-Node -Name 'final-runtime-owner.jsonrpc.json' -Path $runtimePath -Properties @('_batch_number','_phase','_invalid_action_count','_invalid_action_reasons','_runtime_error_count','_v076_asset_consequence_projection_count','_v076_asset_consequence_projection_failure_count','_v076_last_asset_consequence_witness','_v076_military_consequence_collision_count','_v076_military_consequence_presentation_count','_v076_production_military_submission_by_uid','_v075_debug_snapshot_cache','_v075_snapshot_generation'))
     $finalLegacy = Get-Props (Query-Node -Name 'final-legacy-combat-writer.jsonrpc.json' -Path $legacyCombatPath -Properties @('_combat_receipt_journal','_military_region_assault_count','_military_withdraw_count','_processed_missions','_runtime_error_count'))
     $finalScreen = Get-Props (Query-Node -Name 'final-production-screen.jsonrpc.json' -Path $screenPath -Properties @('acceptance_state','_current_action_mode','_action_submission_pending','_v075_snapshot'))
     $stepReceipts.Add([ordered]@{step='seed';visible_text=$seedVisible;config_model_seed=[int64]$composition._v076_production_seed;new_game_receipt_seed=[int64]$composition._last_new_game_receipt.seed;runtime_seed=[int64]$readyGame._seed})
@@ -640,6 +657,14 @@ try {
     $stepReceipts.Add([ordered]@{step='military_final';private_owner=$finalPrivate;eta_owner=$finalEta;kernel=$finalKernel;application_flow=$finalComposition;runtime_owner=$finalRuntime;legacy_combat_owner=$finalLegacy;production_screen=$finalScreen})
 } catch {
     $failure = $_
+    if ($executionLaunched) {
+        try {
+            Query-Node -Name 'failure-action-status.jsonrpc.json' -Path "$screenPath/RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow/ActionStatus" -Properties @('text','visible') | Out-Null
+            Query-Node -Name 'failure-runtime-owner.jsonrpc.json' -Path $runtimePath -Properties @('_phase','_batch_number','_runtime_error_count','_invalid_action_count','_invalid_action_reasons','_solar_state','_asset_state','_victory_qualification_latched','_victory_settlement_pending','_v075_debug_snapshot_cache') | Out-Null
+            Query-Node -Name 'failure-private-owner.jsonrpc.json' -Path $privateOwnerPath -Properties @('_submitted_result_by_id','_damage_settlement_by_id','_rejection_count','_collision_count') | Out-Null
+            Capture-View -Name 'failure-main-table' | Out-Null
+        } catch { Write-Json -Path (Join-Path $out 'failure-diagnostics-unavailable.json') -Value @{status='UNAVAILABLE';reason=[string]$_.Exception.Message} }
+    }
 } finally {
     if ($executionLaunched -or @(Get-ExactGodotRows).Count -ne 0 -or (Test-Path -LiteralPath (Join-Path $root '.codex-godot\connection.json'))) {
         try {$cleanup = Stop-Normally} catch {if($null-eq$failure){$failure=$_}}
@@ -673,6 +698,17 @@ $result = [ordered]@{
     failure=if($null-eq$failure){$null}else{[string]$failure.Exception.Message}
     step_receipts=@($stepReceipts)
     process_cleanup=$cleanup
+}
+if ($status -eq 'PASS') {
+    try {
+        $sourceReportRaw = ($result | ConvertTo-Json -Depth 100 -Compress) | & python (Join-Path $root 'tools/v076/v076_generation10_step11_receipt.py') inspect-source
+        $sourceReportExit = $LASTEXITCODE
+        $sourceReport = $sourceReportRaw | ConvertFrom-Json -Depth 100
+        Write-Json -Path (Join-Path $out 'source-contract-validation.json') -Value $sourceReport
+        if ($sourceReportExit -ne 0 -or [string]$sourceReport.status -cne 'PASS') { throw ('SOURCE_CONTRACT_VALIDATION_FAILED:' + [string]$sourceReport.failure) }
+    } catch {
+        $status = 'FAIL'; $result.status = 'FAIL'; $result.failure = 'SOURCE_CONTRACT_VALIDATION_FAILED:' + [string]$_.Exception.Message
+    }
 }
 Write-Json -Path $resultPath -Value $result
 if ($status -eq 'PASS' -and $ExecutionClass -eq 'NONFORMAL_CONFIRMATION') {

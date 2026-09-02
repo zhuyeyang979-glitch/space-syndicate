@@ -109,6 +109,8 @@ def runtime_result() -> dict[str, object]:
         },
         "application_flow": {"_v076_private_military_receipt_count": 1},
         "runtime_owner": {
+            "_v075_debug_snapshot_cache": {"generation": 5, "snapshot": {"old_military_controller_production_reachable_count": 0}},
+            "_v075_snapshot_generation": 5,
             "_batch_number": 5, "_phase": "submission", "_runtime_error_count": 0,
             "_invalid_action_count": 0, "_v076_asset_consequence_projection_count": 1,
             "_v076_asset_consequence_projection_failure_count": 0,
@@ -119,7 +121,7 @@ def runtime_result() -> dict[str, object]:
         },
         "legacy_combat_owner": {"_runtime_error_count": 0},
         "production_screen": {
-            "_v075_snapshot": {"old_military_controller_production_reachable_count": 0},
+            "_v075_snapshot": {"batch_number": 5},
             "_current_action_mode": "idle", "_action_submission_pending": False,
             "acceptance_state": {"combat_wrapper": {
                 "human_playability": human,
@@ -139,7 +141,7 @@ def runtime_result() -> dict[str, object]:
             {"step": "seed", "visible_text": "917592522", "config_model_seed": 917592522,
              "new_game_receipt_seed": 917592522, "runtime_seed": 917592522},
             final,
-            {"step": "military_target", "selection_policy": "FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID", "eligible_options": [copy.deepcopy(option)], "selected_option": copy.deepcopy(option), "bound_option": copy.deepcopy(option), "menu_selected_index": 0, "menu_item_count": 1},
+            {"step": "military_target", "selection_policy": "FIRST_ENABLED_NON_ORIGIN_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID", "source_location_basis": "MIN_OWNED_PUBLIC_FACILITY_REGION", "own_facility_regions": ["region.000"], "source_region_id": "region.000", "eligible_options": [copy.deepcopy(option)], "selected_option": copy.deepcopy(option), "bound_option": copy.deepcopy(option), "menu_selected_index": 0, "menu_item_count": 1},
         ],
     }
 
@@ -226,13 +228,21 @@ runtime_negative_mutations = {
     "source_withdrawal": lambda value: value["step_receipts"][1]["runtime_owner"].update({"_v076_production_military_submission_by_uid": {"7": {}}}),
     "screen_projection_missing": lambda value: value["step_receipts"][1]["production_screen"].pop("_v075_snapshot"),
     "projection_on_wrong_owner": lambda value: value["step_receipts"][1]["runtime_owner"].update({"_v075_snapshot": value["step_receipts"][1]["production_screen"].pop("_v075_snapshot")}),
-    "screen_old_writer_reachable": lambda value: value["step_receipts"][1]["production_screen"]["_v075_snapshot"].update({"old_military_controller_production_reachable_count": 1}),
+    "runtime_old_writer_reachable": lambda value: value["step_receipts"][1]["runtime_owner"]["_v075_debug_snapshot_cache"]["snapshot"].update({"old_military_controller_production_reachable_count": 1}),
+    "runtime_debug_stale": lambda value: value["step_receipts"][1]["runtime_owner"]["_v075_debug_snapshot_cache"].update({"generation": 4}),
+    "runtime_debug_missing": lambda value: value["step_receipts"][1]["runtime_owner"].pop("_v075_debug_snapshot_cache"),
     "legal_target_disabled": lambda value: value["step_receipts"][2]["selected_option"].update({"enabled": False}),
     "legal_target_binding_mismatch": lambda value: value["step_receipts"][2]["bound_option"].update({"target_region_id": "region.000"}),
     "legal_target_missing": lambda value: value["step_receipts"].pop(),
     "menu_index_mismatch": lambda value: value["step_receipts"][2].update({"menu_selected_index": 1}),
     "menu_index_boolean": lambda value: value["step_receipts"][2].update({"menu_selected_index": False}),
     "duplicate_target_receipt": lambda value: value["step_receipts"].append(copy.deepcopy(value["step_receipts"][2])),
+    "target_equals_origin": lambda value: value["step_receipts"][2].update({"own_facility_regions": ["region.005"], "source_region_id": "region.005"}),
+    "source_witness_missing": lambda value: value["step_receipts"][2].pop("own_facility_regions"),
+    "source_witness_unsorted": lambda value: value["step_receipts"][2].update({"own_facility_regions": ["region.006", "region.000"]}),
+    "eta_fractional_wire_value": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"].update({"eta_ticks": 6.25}),
+    "eta_boolean_wire_value": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"].update({"eta_ticks": True}),
+    "eta_unsafe_integer_wire_value": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"].update({"eta_ticks": float(2**53)}),
     "menu_item_count_mismatch": lambda value: value["step_receipts"][2].update({"menu_item_count": 0}),
     "eta_zero": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"].update({"eta_ticks": 0}),
     "eta_wrong_distance_owner": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"]["eta_receipt"].update({"distance_owner": "unowned"}),
@@ -250,6 +260,39 @@ for name, mutate in runtime_negative_mutations.items():
     else:
         rejected = False
     check(f"runtime_source_negative_rejected__{name}", rejected)
+
+def encode_godot_numbers(value):
+    if isinstance(value, dict):
+        return {key: encode_godot_numbers(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [encode_godot_numbers(item) for item in value]
+    return float(value) if type(value) is int else value
+
+wire_result = copy.deepcopy(runtime_baseline)
+wire_result["step_receipts"] = encode_godot_numbers(wire_result["step_receipts"])
+check("godot_integer_wire_values_derive_identical_proof", contract._derive_runtime_components(wire_result) == derived)
+check("integer_wire_normalization_preserves_original", type(wire_result["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"]["eta_ticks"]) is float)
+source_result = copy.deepcopy(runtime_baseline)
+source_result.update(execution_class="NONFORMAL_CONFIRMATION", formal_execution_count=0, process_cleanup={"exit_play_mode": "PASS", "stop_role_godot_mcp": "PASS", "editor_pid_after": 0, "game_pid_after": 0, "listener_count_after": 0, "stopped": True, "forced_stop": False})
+source_report = contract.inspect_execution_source(source_result)
+check("nonformal_source_qualifies_without_formal_consumption", source_report["status"] == "PASS" and source_report["formal_execution_count"] == 0 and source_report["execution_class"] == "NONFORMAL_CONFIRMATION")
+check("nonformal_source_has_exact_full_proof", source_report["proof"] == baseline)
+check("nonformal_source_input_not_mutated", source_result["formal_execution_count"] == 0 and source_result["execution_class"] == "NONFORMAL_CONFIRMATION")
+for name, mutation in {
+    "consumed_budget": lambda v: v.update(formal_execution_count=1),
+    "boolean_budget": lambda v: v.update(formal_execution_count=False),
+    "forced_stop": lambda v: v["process_cleanup"].update(forced_stop=True),
+    "runtime_fault": lambda v: v["step_receipts"][1]["runtime_owner"].update(_runtime_error_count=1),
+}.items():
+    candidate = copy.deepcopy(source_result)
+    mutation(candidate)
+    try:
+        contract.inspect_execution_source(candidate)
+    except ValueError:
+        rejected = True
+    else:
+        rejected = False
+    check(f"source_qualification_negative__{name}", rejected)
 
 private_sample = {"worktree": "D:/private/repo", "command_line": "private command", "username": "private user", "token": "private token", "scene": "res://scenes/main.tscn", "nested": json.dumps({"path": "C:/Users/private/data", "count": 1}), "facts": runtime_baseline}
 public_sample = contract._public_evidence_value(private_sample)
@@ -288,7 +331,7 @@ result = {
     "RECEIPT_CONTRACT_SELFTEST_STATUS": "PASS" if not failed_names else "FAIL",
     "RECEIPT_CONTRACT_SELFTEST_CASE_COUNT": len(cases),
     "RECEIPT_CONTRACT_SELFTEST_PASS_COUNT": passed,
-    "RECEIPT_CONTRACT_SELFTEST_NEGATIVE_CASE_COUNT": 13 + 10 + 2 + 1 + 5 + len(runtime_negative_mutations),
+    "RECEIPT_CONTRACT_SELFTEST_NEGATIVE_CASE_COUNT": 13 + 10 + 2 + 1 + 5 + len(runtime_negative_mutations) + 4,
     "FALSE_GREEN_COUNT": 0 if not failed_names else len(failed_names),
     "VALID_RECEIPT_FALSE_REJECT_COUNT": 0,
     "EXECUTED_NEGATIVE_CASE_SET_MATCH": True,

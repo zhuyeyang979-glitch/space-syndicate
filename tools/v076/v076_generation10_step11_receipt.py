@@ -50,11 +50,11 @@ SELFTEST_PATH = "tools/v076/v076_generation10_step11_receipt_selftest.py"
 WORKFLOW_PATH = ".github/workflows/v076-reuse-point-inertia-gate.yml"
 RUNNER_PATH = "tools/v076_generation10_step11_runner.ps1"
 RUNNER_SELFTEST_PATH = "tools/v076/v076_generation10_step11_runner_selftest.py"
-TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_007.json"
-SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_006.json"
-AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_007.json"
+TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_008.json"
+SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_007.json"
+AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_008.json"
 AUTHORIZATION_SIDECAR_PATH = AUTHORIZATION_PATH + ".sha256"
-ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_007.json"
+ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_008.json"
 ENVIRONMENT_SIDECAR_PATH = ENVIRONMENT_SEAL_PATH + ".sha256"
 QUALIFICATION_SEAL_PATH = "reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json"
 PASS_PAIR_PATH = "reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json"
@@ -515,6 +515,17 @@ def _step_receipt(result: Mapping[str, Any], step: str) -> dict[str, Any]:
     return rows[0]
 
 
+def _normalize_mcp_integer_values(value: Any) -> Any:
+    """Recover lossless JSON integer values from Godot's Variant wire encoding only."""
+    if isinstance(value, dict):
+        return {key: _normalize_mcp_integer_values(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize_mcp_integer_values(item) for item in value]
+    if isinstance(value, float) and math.isfinite(value) and value.is_integer() and abs(value) <= 2**53 - 1:
+        return int(value)
+    return value
+
+
 def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
     if result.get("status") != "PASS" or result.get("formal_execution_count") != 1 or result.get("automatic_retry_count") != 0:
         raise ValueError("FORMAL_RESULT_NOT_SINGLE_PASS")
@@ -528,6 +539,10 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("FORMAL_RESULT_PROFILE_MISMATCH")
     if result.get("failure") is not None:
         raise ValueError("FORMAL_RESULT_FAILURE_PRESENT")
+
+    # Original evidence bytes remain immutable. Only the MCP-derived observation
+    # subtree is normalized; receipt schemas and execution budgets remain exact integers.
+    result = {**result, "step_receipts": _normalize_mcp_integer_values(result.get("step_receipts", []))}
 
     seed_row = _step_receipt(result, "seed")
     seed_witness = {
@@ -544,13 +559,21 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
     options = target_selection.get("eligible_options")
     selected = target_selection.get("selected_option")
     bound = target_selection.get("bound_option")
-    if target_selection.get("selection_policy") != "FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID" or not isinstance(options, list) or not options or not isinstance(selected, dict) or not isinstance(bound, dict):
+    if target_selection.get("selection_policy") != "FIRST_ENABLED_NON_ORIGIN_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID" or not isinstance(options, list) or not options or not isinstance(selected, dict) or not isinstance(bound, dict):
         raise ValueError("FORMAL_RESULT_LEGAL_TARGET_EVIDENCE_MISSING")
     if any(not isinstance(option, dict) or not isinstance(option.get("option_id"), str) for option in options):
         raise ValueError("FORMAL_RESULT_LEGAL_TARGET_OPTIONS_INVALID")
-    if not _exact_int(target_selection.get("menu_selected_index")) or target_selection.get("menu_selected_index") != 0 or not _exact_int(target_selection.get("menu_item_count")) or target_selection.get("menu_item_count") != len(options):
+    owned_regions = target_selection.get("own_facility_regions")
+    source_region = target_selection.get("source_region_id")
+    if target_selection.get("source_location_basis") != "MIN_OWNED_PUBLIC_FACILITY_REGION" or not isinstance(owned_regions, list) or not owned_regions or any(not isinstance(region, str) or re.fullmatch(r"region\.\d{3}", region) is None for region in owned_regions) or owned_regions != sorted(set(owned_regions)) or source_region != owned_regions[0]:
+        raise ValueError("FORMAL_RESULT_SOURCE_LOCATION_WITNESS_INVALID")
+    ordered_options = sorted(options, key=lambda option: option["option_id"])
+    non_origin_options = [option for option in ordered_options if option.get("target_region_id") != source_region]
+    if not non_origin_options or selected != non_origin_options[0]:
+        raise ValueError("FORMAL_RESULT_NON_ORIGIN_TARGET_SELECTION_INVALID")
+    if not _exact_int(target_selection.get("menu_selected_index")) or target_selection.get("menu_selected_index") != ordered_options.index(selected) or not _exact_int(target_selection.get("menu_item_count")) or target_selection.get("menu_item_count") != len(options):
         raise ValueError("FORMAL_RESULT_MENU_SELECTION_BINDING_MISMATCH")
-    if selected != sorted(options, key=lambda option: option["option_id"])[0] or selected.get("enabled") is not True or selected.get("owner_player_id") != "player.local" or selected.get("task_kind") != "assault_region" or selected.get("card_definition_id") != "military.air_superiority_fighter.shipping.rank_1":
+    if selected.get("enabled") is not True or selected.get("owner_player_id") != "player.local" or selected.get("task_kind") != "assault_region" or selected.get("card_definition_id") != "military.air_superiority_fighter.shipping.rank_1":
         raise ValueError("FORMAL_RESULT_LEGAL_TARGET_SELECTION_INVALID")
     target_region = selected.get("target_region_id")
     if not isinstance(target_region, str) or re.fullmatch(r"region\.\d{3}", target_region) is None:
@@ -672,7 +695,12 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
     if runtime.get("_v076_production_military_submission_by_uid") != {}:
         raise ValueError("FORMAL_RESULT_MILITARY_SOURCE_NOT_WITHDRAWN")
     snapshot = screen.get("_v075_snapshot")
-    if not isinstance(snapshot, dict) or snapshot.get("old_military_controller_production_reachable_count") != 0:
+    if not isinstance(snapshot, dict):
+        raise ValueError("FORMAL_RESULT_SCREEN_PROJECTION_MISSING")
+    runtime_debug_cache = runtime.get("_v075_debug_snapshot_cache")
+    if not isinstance(runtime_debug_cache, dict) or not _exact_int(runtime.get("_v075_snapshot_generation")) or runtime_debug_cache.get("generation") != runtime.get("_v075_snapshot_generation") or not isinstance(runtime_debug_cache.get("snapshot"), dict):
+        raise ValueError("FORMAL_RESULT_CURRENT_RUNTIME_DEBUG_MISSING")
+    if runtime_debug_cache["snapshot"].get("old_military_controller_production_reachable_count") != 0:
         raise ValueError("FORMAL_RESULT_OLD_MILITARY_WRITER_REACHABLE")
     if legacy.get("_runtime_error_count") != 0:
         raise ValueError("FORMAL_RESULT_LEGACY_PRESENTATION_RUNTIME_ERROR")
@@ -797,7 +825,7 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         "superseded_authorization_manifest_path": SUPERSEDED_AUTHORIZATION_PATH,
         "superseded_authorization_head_sha": superseded_head,
         "superseded_authorization_tree_sha": project.tree(superseded_head),
-        "tooling_repair_reason_code": "REQUIRE_FRESH_NEW_PLAY_RUNTIME_HEARTBEAT_BEFORE_UI_QUERY",
+        "tooling_repair_reason_code": "SELECT_NON_ORIGIN_LEGAL_TARGET_AND_QUALIFY_FULL_SOURCE_BEFORE_PASS",
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:
@@ -1611,9 +1639,26 @@ def _package_formal(project_root: Path, evidence_root: Path) -> dict[str, Any]:
     }
 
 
+def inspect_execution_source(result: Mapping[str, Any]) -> dict[str, Any]:
+    execution_class = result.get("execution_class")
+    expected_count = {"FORMAL": 1, "NONFORMAL_CONFIRMATION": 0}.get(execution_class)
+    if expected_count is None or not _exact_int(result.get("formal_execution_count")) or result.get("formal_execution_count") != expected_count:
+        raise ValueError("SOURCE_EXECUTION_CLASS_OR_BUDGET_INVALID")
+    derived = _derive_runtime_components({**result, "execution_class": "FORMAL", "formal_execution_count": 1})
+    cleanup = result.get("process_cleanup")
+    if not isinstance(cleanup, dict) or cleanup.get("forced_stop") is not False or cleanup.get("stopped") is not True:
+        raise ValueError("SOURCE_CLEANUP_NOT_NORMAL")
+    report = Report()
+    _validate_cleanup(report, {field: cleanup.get(field) for field in PROCESS_CLEANUP_FIELDS}, "source.cleanup")
+    if report.codes:
+        raise ValueError("SOURCE_CLEANUP_INVALID:" + ",".join(report.codes))
+    return {"schema_version": "space_syndicate.v076.execution_source_qualification.v1", "status": "PASS", "execution_class": execution_class, "formal_execution_count": expected_count, "proof": derived["proof"], "military_lifecycle_witness": derived["military_lifecycle_witness"], "failure": None}
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("inspect-source")
     schema = sub.add_parser("schema")
     schema.add_argument("--report-json", type=Path)
     validate = sub.add_parser("validate")
@@ -1625,6 +1670,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     package.add_argument("--evidence-root", type=Path, required=True)
     package.add_argument("--report-json", type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.command == "inspect-source":
+        try:
+            payload = inspect_execution_source(json.loads(sys.stdin.read()))
+        except Exception as exc:
+            payload = {"status": "FAIL", "failure": str(exc)}
+        sys.stdout.buffer.write(canonical_json_bytes(payload))
+        return 0 if payload["status"] == "PASS" else 1
     if args.command == "schema":
         payload = schema_descriptor()
         if args.report_json:

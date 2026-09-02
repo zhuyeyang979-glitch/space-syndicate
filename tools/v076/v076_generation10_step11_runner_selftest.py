@@ -68,7 +68,7 @@ checks = {
     "track_card_acquisition": "military.air_superiority_fighter.shipping.rank_1" in text and "confirm-military-track-acquire" in text,
     "natural_normal_batches": "Complete-NormalBatch -Batch 1" in text and "Complete-NormalBatch -Batch 2" in text,
     "natural_default_pace": "Set-Speed -Multiplier" not in text and "V075PacingControls/Speed" not in text,
-    "assault_region_ui": "选择地区" in text and "FIRST_ENABLED_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID" in text and "batch3-confirm-military-action" in text,
+    "assault_region_ui": "选择地区" in text and "FIRST_ENABLED_NON_ORIGIN_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID" in text and "batch3-confirm-military-action" in text,
     "natural_eta_wait": "MILITARY_NATURAL_RESOLUTION_TIMEOUT" in text and "_damage_settlement_by_id" in text,
     "major_round_barrier": "Wait-And-Finish-EmptyBatch -Batch 3" in text and "Wait-And-Finish-EmptyBatch -Batch 4" in text,
     "runtime_witnesses": all(token in text for token in ("final-private-owner", "final-eta-owner", "final-kernel", "final-runtime-owner", "final-legacy-combat-writer")),
@@ -101,7 +101,7 @@ for name, required, present, status, expected in (
     completed = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True, text=True, timeout=15) if pwsh else None
     checks[f"confirmation_guard_executes__{name}"] = completed is not None and completed.returncode == 0 and completed.stdout.strip() == str(expected)
 
-checks["screen_projection_owner_binding"] = all("_v075_snapshot" not in line for line in text.splitlines() if "-Path $runtimePath -Properties" in line)
+checks["screen_projection_owner_binding"] = all("'_v075_snapshot'" not in line for line in text.splitlines() if "-Path $runtimePath -Properties" in line)
 track_filter = next(line for line in text.splitlines() if "$trackCards =" in line)
 checks["track_geometry_uses_production_track_script"] = "res://scripts/ui/v074/v074_track_card_button.gd" in track_filter and "v075_interactive_card_face" not in track_filter
 checks["card_filter_scripts_exist"] = all((root / path.removeprefix("res://")).is_file() for path in re.findall(r"script_path -eq '(res://[^']+)'", text))
@@ -163,6 +163,13 @@ for name, response, expected in ready_cases:
 checks["fresh_runtime_guard_controls_poll_exit"] = "$runtimeReady = Test-FreshRuntimeReady" in after_launch and "if ($runtimeReady) { break }" in after_launch and "if (-not $runtimeReady) { throw 'FRESH_RUNTIME_READY_TIMEOUT' }" in after_launch
 checks["new_play_clock_captured_before_play"] = text.index("$playRequestedUnix =") < text.index("Invoke-RoleTool -ToolName 'play_main_scene'")
 checks["fresh_runtime_identity_witness_recorded"] = "step='runtime_ready'" in text and "previous_stream_id=$previousRuntimeStreamId" in text
+checks["non_origin_target_uses_local_public_facilities"] = "MIN_OWNED_PUBLIC_FACILITY_REGION" in text and "map_player_projection.public_facility_slots" in text and "owner_public_id -ceq 'player.local'" in text and "target_region_id -cne $sourceRegionId" in text
+checks["non_origin_target_menu_readback"] = "MILITARY_NON_ORIGIN_MENU_SELECTION_MISMATCH" in text and "batch3-selected-region-readback.jsonrpc.json" in text
+checks["positive_eta_required_before_wait"] = "POSITIVE_PHYSICAL_ETA_NOT_ESTABLISHED" in text and text.index("POSITIVE_PHYSICAL_ETA_NOT_ESTABLISHED") < text.index("$resolutionDeadline =")
+checks["runtime_fault_fails_fast"] = "RUNTIME_FAULT_OBSERVED:$Name" in text
+checks["runtime_fault_diagnostics_before_cleanup"] = all(token in text for token in ("failure-action-status.jsonrpc.json", "failure-runtime-owner.jsonrpc.json", "failure-private-owner.jsonrpc.json", "failure-main-table"))
+checks["source_contract_checked_before_result_and_confirmation"] = text.index("inspect-source") < text.index("Write-Json -Path $resultPath") < text.index("Write-Json -Path $confirmationOutputPath")
+checks["source_contract_failure_finalizes_failed_result"] = "SOURCE_CONTRACT_VALIDATION_FAILED" in text and "$result.status = 'FAIL'" in text
 
 failed = sorted(name for name, ok in checks.items() if not ok)
 result = {
