@@ -1054,7 +1054,11 @@ def _generation7_frozen_chain_accepts() -> bool:
 
 
 def _generation8_missing_manifest_rejected() -> bool:
-    payload = contract.validate_generation8_repository(REPO_ROOT, "HEAD")
+    # The frozen Generation 7 artifact predates Generation 8 authorization.
+    # Current HEAD may now contain it and is not a missing-manifest fixture.
+    payload = contract.validate_generation8_repository(
+        REPO_ROOT, contract.GENERATION7_ARTIFACT_HEAD_SHA
+    )
     return (
         payload["validator_status"] == "FAIL"
         and "GENERATION8_AUTHORIZATION_COMMIT_NOT_UNIQUE" in payload["failure_codes"]
