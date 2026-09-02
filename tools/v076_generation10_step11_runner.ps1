@@ -17,15 +17,15 @@ $ErrorActionPreference = 'Stop'
 $authorizationId = 'USER_AUTHORIZATION_V076_GENERATION10_REPAIRED_RUNNER_FORMAL_20260902'
 $generationId = 10
 $evidenceId = 9696
-$expectedProductHead = 'b33e460610776564dac3616bd341fa829316b1e2'
-$expectedProductTree = '449018413600b57b9d503b9610c9ae79e3c8eee1'
+$expectedProductHead = '196cf386bccf6ba93a66b2257fe95e990a0b5d78'
+$expectedProductTree = 'e4df955560bb3abac0a4c28993e767f7bdadf51d'
 $root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd('\')
 $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_009.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_009.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_010.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_010.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -323,10 +323,14 @@ function Complete-NormalBatch {
 }
 
 function Wait-And-Finish-EmptyBatch {
-    param([int]$Batch)
+    param([int]$Batch, [switch]$Terminal)
     [void](Wait-Runtime -Name "batch$Batch-empty-maintenance" -TimeoutSeconds 180 -Predicate {param($p) [int]$p._batch_number -eq $Batch -and [string]$p._phase -eq 'maintenance'})
     Click-Node -Name "batch$Batch-empty-finish-maintenance.jsonrpc.json" -Node (Query-Clickable -Name "batch$Batch-empty-finish-maintenance-query.jsonrpc.json" -Path $finishMaintenancePath)
-    [void](Wait-Runtime -Name "batch$Batch-empty-next-submission" -TimeoutSeconds 30 -Predicate {param($p) [int]$p._batch_number -eq ($Batch + 1) -and [string]$p._phase -eq 'submission'})
+    if ($Terminal) {
+        [void](Wait-Runtime -Name "batch$Batch-final-settlement" -TimeoutSeconds 120 -Predicate {param($p) [int]$p._batch_number -eq $Batch -and [string]$p._phase -eq 'settled'})
+    } else {
+        [void](Wait-Runtime -Name "batch$Batch-empty-next-submission" -TimeoutSeconds 30 -Predicate {param($p) [int]$p._batch_number -eq ($Batch + 1) -and [string]$p._phase -eq 'submission'})
+    }
 }
 
 function Test-ExitPlayModeResponse {
@@ -643,14 +647,16 @@ try {
     [void](Capture-View -Name '03-assault-region-resolved-and-withdrawn')
 
     Wait-And-Finish-EmptyBatch -Batch 3
-    Wait-And-Finish-EmptyBatch -Batch 4
-    $majorRound = Wait-Runtime -Name 'major-round-barrier' -TimeoutSeconds 30 -Predicate {param($p) [int]$p._batch_number -eq 5 -and [string]$p._phase -eq 'submission'}
+    $terminalBefore = Get-Props (Query-Node -Name 'terminal-before-runtime.jsonrpc.json' -Path $runtimePath -Properties @('_solar_state','_batch_number','_phase'))
+    $stepReceipts.Add([ordered]@{step='terminal_before';runtime_owner=$terminalBefore})
+    Wait-And-Finish-EmptyBatch -Batch 4 -Terminal
+    $majorRound = Wait-Runtime -Name 'major-round-barrier' -TimeoutSeconds 30 -Predicate {param($p) [int]$p._batch_number -eq 4 -and [string]$p._phase -eq 'settled'}
     [void](Capture-View -Name '04-complete-major-round-barrier')
     $finalPrivate = Get-Props (Query-Node -Name 'final-private-owner.jsonrpc.json' -Path $privateOwnerPath -Properties @('_collision_count','_rejection_count','_submitted_result_by_id','_submission_fingerprint_by_id','_intake_settlement_result_by_id','_settlement_fingerprint_by_id','_damage_settlement_by_id'))
     $finalEta = Get-Props (Query-Node -Name 'final-eta-owner.jsonrpc.json' -Path $etaOwnerPath -Properties @('_calculation_count','_rejection_count'))
     $finalKernel = Get-Props (Query-Node -Name 'final-kernel.jsonrpc.json' -Path $kernelPath -Properties @('_current_tick','_domain_states','_last_rejection','_rejection_count'))
     $finalComposition = Get-Props (Query-Node -Name 'final-application-flow.jsonrpc.json' -Path $compositionPath -Properties @('_v076_private_military_receipt_count','_v076_production_ready','_last_new_game_receipt','_v076_production_seed'))
-    $finalRuntime = Get-Props (Query-Node -Name 'final-runtime-owner.jsonrpc.json' -Path $runtimePath -Properties @('_batch_number','_phase','_invalid_action_count','_invalid_action_reasons','_runtime_error_count','_v076_asset_consequence_projection_count','_v076_asset_consequence_projection_failure_count','_v076_last_asset_consequence_witness','_v076_military_consequence_collision_count','_v076_military_consequence_presentation_count','_v076_production_military_submission_by_uid','_v075_debug_snapshot_cache','_v075_snapshot_generation'))
+    $finalRuntime = Get-Props (Query-Node -Name 'final-runtime-owner.jsonrpc.json' -Path $runtimePath -Properties @('_batch_number','_phase','_invalid_action_count','_invalid_action_reasons','_runtime_error_count','_v076_asset_consequence_projection_count','_v076_asset_consequence_projection_failure_count','_v076_last_asset_consequence_witness','_v076_military_consequence_collision_count','_v076_military_consequence_presentation_count','_v076_production_military_submission_by_uid','_v075_debug_snapshot_cache','_v075_snapshot_generation','_solar_state'))
     $finalLegacy = Get-Props (Query-Node -Name 'final-legacy-combat-writer.jsonrpc.json' -Path $legacyCombatPath -Properties @('_combat_receipt_journal','_military_region_assault_count','_military_withdraw_count','_processed_missions','_runtime_error_count'))
     $finalScreen = Get-Props (Query-Node -Name 'final-production-screen.jsonrpc.json' -Path $screenPath -Properties @('acceptance_state','_current_action_mode','_action_submission_pending','_v075_snapshot'))
     $stepReceipts.Add([ordered]@{step='seed';visible_text=$seedVisible;config_model_seed=[int64]$composition._v076_production_seed;new_game_receipt_seed=[int64]$composition._last_new_game_receipt.seed;runtime_seed=[int64]$readyGame._seed})

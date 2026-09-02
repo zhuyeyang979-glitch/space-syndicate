@@ -109,9 +109,23 @@ def runtime_result() -> dict[str, object]:
         },
         "application_flow": {"_v076_private_military_receipt_count": 1},
         "runtime_owner": {
-            "_v075_debug_snapshot_cache": {"generation": 5, "snapshot": {"old_military_controller_production_reachable_count": 0}},
+            "_v075_debug_snapshot_cache": {"generation": 5, "snapshot": {
+                "old_military_controller_production_reachable_count": 0,
+                "match_id": "match.test", "player_count": 4,
+                "final_settlement_count": 1, "final_settlement_presentation_count": 1,
+                "final_settlement_public_log_count": 1, "duplicate_settlement_count": 0,
+                "accepted_action_loss_at_terminal_count": 0, "terminal_drain_deadlock_count": 0,
+                "new_major_round_after_qualification_count": 0, "complete_major_round_before_settlement": True,
+            }},
             "_v075_snapshot_generation": 5,
-            "_batch_number": 5, "_phase": "submission", "_runtime_error_count": 0,
+            "_batch_number": 4, "_phase": "settled", "_runtime_error_count": 0,
+            "_solar_state": {"match_instance_id": "match.test", "victory_gate": {
+                "macro_round_index": 1, "pending": False, "final_settlement_committed": True,
+                "final_settlement_count": 1, "final_settlement_id": "settlement.match.test",
+                "final_settlement_receipt_id": "receipt.final.test",
+            }, "receipt_ledger": {"intent.final": {"receipt_id": "receipt.final.test", "reason_code": "final_settlement_committed_exact_once",
+                "final_settlement_id": "settlement.match.test", "accepted": True, "committed": True,
+                "final_settlement_committed": True, "final_settlement_count": 1}}},
             "_invalid_action_count": 0, "_v076_asset_consequence_projection_count": 1,
             "_v076_asset_consequence_projection_failure_count": 0,
             "_v076_military_consequence_collision_count": 0,
@@ -121,7 +135,7 @@ def runtime_result() -> dict[str, object]:
         },
         "legacy_combat_owner": {"_runtime_error_count": 0},
         "production_screen": {
-            "_v075_snapshot": {"batch_number": 5},
+            "_v075_snapshot": {"batch_number": 4},
             "_current_action_mode": "idle", "_action_submission_pending": False,
             "acceptance_state": {"combat_wrapper": {
                 "human_playability": human,
@@ -142,6 +156,9 @@ def runtime_result() -> dict[str, object]:
              "new_game_receipt_seed": 917592522, "runtime_seed": 917592522},
             final,
             {"step": "military_target", "selection_policy": "FIRST_ENABLED_NON_ORIGIN_LOCAL_CARD_ASSAULT_REGION_BY_OPTION_ID", "source_location_basis": "MIN_OWNED_PUBLIC_FACILITY_REGION", "own_facility_regions": ["region.000"], "source_region_id": "region.000", "eligible_options": [copy.deepcopy(option)], "selected_option": copy.deepcopy(option), "bound_option": copy.deepcopy(option), "menu_selected_index": 0, "menu_item_count": 1},
+            {"step": "terminal_before", "runtime_owner": {"_batch_number": 4, "_phase": "submission", "_solar_state": {
+                "match_instance_id": "match.test", "victory_gate": {"macro_round_index": 1, "final_settlement_count": 0,
+                "final_settlement_committed": False, "pending": True}}}},
         ],
     }
 
@@ -208,6 +225,13 @@ payload = {"value": 7, "canonical_payload_sha256": "0" * 64}
 payload_hash = contract.canonical_payload_sha256(payload)
 check("canonical_payload_excludes_own_hash", payload_hash == contract.canonical_payload_sha256({"value": 7}))
 
+# Captured nonformal009 owner witness; original failure remains frozen.
+captured_godot_witness = {"action":"commit","allocated_damage_total":3,"asset_debit_count":1,"asset_delta_by_color":{"commerce":0,"energy":0,"industry":0,"life":0,"shipping":-2,"technology":0},"asset_quantities_after":{"commerce":2,"energy":0,"industry":2,"life":2,"shipping":0,"technology":2},"asset_quantities_before":{"commerce":2,"energy":0,"industry":2,"life":2,"shipping":2,"technology":2},"asset_revision_after":5,"asset_revision_before":4,"consequence_bound":True,"consequence_fingerprint":"f7a6fc30f8c29178c966322fcbe02d0cafd965f502007d224ebdd16cddfa0827","consequence_id":"combat.mission.v076.production.military.intent.v075.sample.000022.resolution","facility_damage_intent_count":1,"mission_receipt_fingerprint":"cfed1f1fe8d2bd44baf6c926ac0de64d229e8bbcef805ec99bce9985c3321095","monster_damage_intent_count":0,"outcome":"consumed","owner_player_id":"player.local","presentation_count":1,"projection_count_after":1,"projection_count_before":0,"projection_failure_count":0,"reservation_id":"reservation.private.direct.action.v076.production.military.intent.v075.sample.000022","reservation_receipt_fingerprint":"2da951c24affa8ded6581d753478688cb87fc3a96b9618481e803d7099251f88","reservation_receipt_id":"receipt.asset.private.direct.26713511f38e176a8ef00137","reserved_asset_cost_by_color":{"commerce":0,"energy":0,"industry":0,"life":0,"shipping":2,"technology":0},"schema":"V076AssetConsequenceAuthorityWitnessV1","settlement_receipt_fingerprint":"6dfbac8fe6c37cef984bb0a19507a29265f5fa13a5c3337b7854105a86eb4db4","settlement_receipt_id":"batch.match.v075.sample.917592522.1.0003.receipt.5","target_region_id":"region.011","task_kind":"assault_region","witness_fingerprint":"d744e38631e594e6652ef2e53b8555a9055d9223d58f9aa9163bc208c56181dd"}
+check("captured_godot_witness_no_lf_matches", contract.witness_fingerprint_sha256(captured_godot_witness) == "d744e38631e594e6652ef2e53b8555a9055d9223d58f9aa9163bc208c56181dd")
+captured_payload = dict(captured_godot_witness)
+captured_payload.pop("witness_fingerprint")
+check("captured_godot_witness_artifact_lf_rejected", hashlib.sha256(contract.canonical_json_bytes(captured_payload)).hexdigest() != captured_godot_witness["witness_fingerprint"])
+
 runtime_baseline = runtime_result()
 derived = contract._derive_runtime_components(runtime_baseline)
 check("runtime_source_derives_exact_proof", derived["proof"] == baseline)
@@ -218,10 +242,26 @@ receipt_fingerprint_fixture = {field: field for field in contract.RESULT_FINGERP
 check("result_fingerprint_is_sha256", contract.SHA256_RE.fullmatch(contract.result_fingerprint_sha256(receipt_fingerprint_fixture)) is not None)
 
 runtime_negative_mutations = {
+    "asset_legacy_artifact_lf": lambda value: value["step_receipts"][1]["runtime_owner"]["_v076_last_asset_consequence_witness"].update({"witness_fingerprint": hashlib.sha256(contract.canonical_json_bytes({k: v for k, v in value["step_receipts"][1]["runtime_owner"]["_v076_last_asset_consequence_witness"].items() if k != "witness_fingerprint"})).hexdigest()}),
+    "terminal_before_boolean_count": lambda value: value["step_receipts"][3]["runtime_owner"]["_solar_state"]["victory_gate"].update({"final_settlement_count": False}),
+    "terminal_final_boolean_count": lambda value: value["step_receipts"][1]["runtime_owner"]["_solar_state"]["victory_gate"].update({"final_settlement_count": True}),
+    "terminal_boolean_macro_index": lambda value: value["step_receipts"][1]["runtime_owner"]["_solar_state"]["victory_gate"].update({"macro_round_index": True}),
+    "terminal_receipt_integer_commit": lambda value: value["step_receipts"][1]["runtime_owner"]["_solar_state"]["receipt_ledger"]["intent.final"].update({"committed": 1}),
     "asset_fingerprint": lambda value: value["step_receipts"][1]["runtime_owner"]["_v076_last_asset_consequence_witness"].update({"witness_fingerprint": "0" * 64}),
     "eta_arithmetic": lambda value: value["step_receipts"][1]["private_owner"]["_submitted_result_by_id"]["v076.production.military.intent.001"].update({"arrival_tick": 105}),
     "private_collision": lambda value: value["step_receipts"][1]["private_owner"].update({"_collision_count": 1}),
-    "major_round_barrier": lambda value: value["step_receipts"][1]["runtime_owner"].update({"_batch_number": 4}),
+    "major_round_barrier": lambda value: value["step_receipts"][1]["runtime_owner"].update({"_batch_number": 3}),
+    "terminal_before_already_settled": lambda value: value["step_receipts"][3]["runtime_owner"]["_solar_state"]["victory_gate"].update({"final_settlement_count": 1}),
+    "terminal_still_submission": lambda value: value["step_receipts"][1]["runtime_owner"].update({"_phase": "submission"}),
+    "terminal_not_committed": lambda value: value["step_receipts"][1]["runtime_owner"]["_solar_state"]["victory_gate"].update({"final_settlement_committed": False}),
+    "terminal_remains_pending": lambda value: value["step_receipts"][1]["runtime_owner"]["_solar_state"]["victory_gate"].update({"pending": True}),
+    "terminal_new_major_round": lambda value: value["step_receipts"][1]["runtime_owner"]["_solar_state"]["victory_gate"].update({"macro_round_index": 2}),
+    "terminal_foreign_match": lambda value: value["step_receipts"][1]["runtime_owner"]["_solar_state"].update({"match_instance_id": "other"}),
+    "terminal_missing_receipt": lambda value: value["step_receipts"][1]["runtime_owner"]["_solar_state"].update({"receipt_ledger": {}}),
+    "terminal_receipt_not_committed": lambda value: value["step_receipts"][1]["runtime_owner"]["_solar_state"]["receipt_ledger"]["intent.final"].update({"committed": False}),
+    "terminal_empty_identity": lambda value: value["step_receipts"][1]["runtime_owner"]["_solar_state"]["victory_gate"].update({"final_settlement_receipt_id": ""}),
+    "terminal_double_presentation": lambda value: value["step_receipts"][1]["runtime_owner"]["_v075_debug_snapshot_cache"]["snapshot"].update({"final_settlement_presentation_count": 2}),
+    "terminal_missing_complete_round": lambda value: value["step_receipts"][1]["runtime_owner"]["_v075_debug_snapshot_cache"]["snapshot"].update({"complete_major_round_before_settlement": False}),
     "private_information": lambda value: value["step_receipts"][1]["production_screen"]["acceptance_state"]["combat_wrapper"]["human_playability"].update({"private_information_violation_count": 1}),
     "legacy_runtime_error": lambda value: value["step_receipts"][1]["legacy_combat_owner"].update({"_runtime_error_count": 1}),
     "formal_status": lambda value: value.update({"status": "FAIL"}),

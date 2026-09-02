@@ -42,25 +42,25 @@ RUNTIME_COMPOSITION_PATH = "scenes/runtime/V075RuntimeComposition.tscn"
 PRODUCTION_SCREEN_PATH = "scenes/ui/v075/V075SampleGameScreen.tscn"
 CHECK_CONTEXT = "V076 Reuse and Point-Inertia Gate"
 VALIDATION_MODE = "GENERATION10_SUCCESSOR"
-PRODUCT_HEAD = "b33e460610776564dac3616bd341fa829316b1e2"
-PRODUCT_TREE = "449018413600b57b9d503b9610c9ae79e3c8eee1"
+PRODUCT_HEAD = "196cf386bccf6ba93a66b2257fe95e990a0b5d78"
+PRODUCT_TREE = "e4df955560bb3abac0a4c28993e767f7bdadf51d"
 
 VALIDATOR_PATH = "tools/v076/v076_generation10_step11_receipt.py"
 SELFTEST_PATH = "tools/v076/v076_generation10_step11_receipt_selftest.py"
 WORKFLOW_PATH = ".github/workflows/v076-reuse-point-inertia-gate.yml"
 RUNNER_PATH = "tools/v076_generation10_step11_runner.ps1"
 RUNNER_SELFTEST_PATH = "tools/v076/v076_generation10_step11_runner_selftest.py"
-TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_009.json"
-SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_008.json"
-AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_009.json"
+TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_receipt_tooling_repair_seal_010.json"
+SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_009.json"
+AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_010.json"
 AUTHORIZATION_SIDECAR_PATH = AUTHORIZATION_PATH + ".sha256"
-ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_009.json"
+ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_010.json"
 ENVIRONMENT_SIDECAR_PATH = ENVIRONMENT_SEAL_PATH + ".sha256"
 QUALIFICATION_SEAL_PATH = "reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json"
 PASS_PAIR_PATH = "reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json"
 POST_RESTART_SEAL_PATH = "reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json"
 MCP_CONFIG_PATH = "reports/reuse/generation9_platform_qualification/post_restart_requalification/mcp_probe_config.json"
-CANONICAL_IMPORT_PATH = "reports/reuse/generation9_platform_qualification/canonical_import/pass-002/imported_manifest.json"
+CANONICAL_IMPORT_PATH = "reports/reuse/full_convergence/generation10/canonical_import_terminal_repair_002/pass-002/imported_manifest.json"
 CLASS_CACHE_PATH = ".godot/global_script_class_cache.cfg"
 PARENT_RECEIPT_PATH = "reports/reuse/full_convergence/generation-009/formal-attempt-001/summary.json"
 FORMAL_ROOT = "reports/reuse/full_convergence/generation-010/formal-attempt-001"
@@ -149,7 +149,10 @@ MILITARY_WITNESS_FIELDS = frozenset(
     }
 )
 SETTLEMENT_WITNESS_FIELDS = frozenset(
-    {"major_round_before", "major_round_after", "settlement_count_delta", "complete_major_round_barrier_observed"}
+    {"major_round_before", "major_round_after", "settlement_count_before", "settlement_count_after",
+     "settlement_count_delta", "complete_major_round_barrier_observed", "final_settlement_id",
+     "final_settlement_receipt_id", "final_batch_number", "player_count",
+     "final_presentation_count", "final_public_log_count", "new_major_round_after_qualification_count"}
 )
 
 RECEIPT_FIELDS = frozenset(
@@ -303,7 +306,8 @@ def canonical_payload_sha256(value: Mapping[str, Any]) -> str:
 def witness_fingerprint_sha256(value: Mapping[str, Any]) -> str:
     payload = dict(value)
     payload.pop("witness_fingerprint", None)
-    return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
+    # Godot canonical_sha256 hashes the JSON text itself, without an artifact LF.
+    return hashlib.sha256(canonical_json_bytes(payload)[:-1]).hexdigest()
 
 
 def result_fingerprint_sha256(value: Mapping[str, Any]) -> str:
@@ -526,6 +530,54 @@ def _normalize_mcp_integer_values(value: Any) -> Any:
     return value
 
 
+def _derive_terminal_settlement(result: Mapping[str, Any], runtime: Mapping[str, Any]) -> dict[str, Any]:
+    before = _step_receipt(result, "terminal_before").get("runtime_owner")
+    if not isinstance(before, dict) or before.get("_batch_number") != PLAYER_COUNT or before.get("_phase") != "submission":
+        raise ValueError("TERMINAL_BEFORE_BOUNDARY_INVALID")
+    before_solar, after_solar = before.get("_solar_state"), runtime.get("_solar_state")
+    if not isinstance(before_solar, dict) or not isinstance(after_solar, dict):
+        raise ValueError("TERMINAL_AUTHORITY_STATES_MISSING")
+    prior, final = before_solar.get("victory_gate"), after_solar.get("victory_gate")
+    if not isinstance(prior, dict) or not isinstance(final, dict):
+        raise ValueError("TERMINAL_AUTHORITY_GATES_MISSING")
+    debug = runtime["_v075_debug_snapshot_cache"]["snapshot"]
+    match_id = debug.get("match_id")
+    if not isinstance(match_id, str) or not match_id or before_solar.get("match_instance_id") != match_id or after_solar.get("match_instance_id") != match_id:
+        raise ValueError("TERMINAL_MATCH_IDENTITY_MISMATCH")
+    if not _exact_int(prior.get("final_settlement_count")) or prior["final_settlement_count"] != 0 or prior.get("final_settlement_committed") is not False or prior.get("pending") is not True:
+        raise ValueError("TERMINAL_BEFORE_ALREADY_SETTLED_OR_UNQUALIFIED")
+    if not _exact_int(final.get("final_settlement_count")) or final["final_settlement_count"] != 1 or final.get("final_settlement_committed") is not True or final.get("pending") is not False:
+        raise ValueError("TERMINAL_FINAL_NOT_COMMITTED_ONCE")
+    if not _exact_int(prior.get("macro_round_index")) or not _exact_int(final.get("macro_round_index")) or prior["macro_round_index"] < 1 or final["macro_round_index"] != prior["macro_round_index"]:
+        raise ValueError("TERMINAL_NEW_MAJOR_ROUND_FORBIDDEN")
+    settlement_id, receipt_id = final.get("final_settlement_id"), final.get("final_settlement_receipt_id")
+    if settlement_id != f"settlement.{match_id}" or not isinstance(receipt_id, str) or not receipt_id:
+        raise ValueError("TERMINAL_SETTLEMENT_IDENTITY_MISSING")
+    ledger = after_solar.get("receipt_ledger")
+    if not isinstance(ledger, dict):
+        raise ValueError("TERMINAL_RECEIPT_LEDGER_MISSING")
+    receipts = [row for row in ledger.values() if isinstance(row, dict) and row.get("reason_code") == "final_settlement_committed_exact_once"]
+    if len(receipts) != 1 or any(receipts[0].get(k) != v for k, v in {"receipt_id": receipt_id, "final_settlement_id": settlement_id, "accepted": True, "committed": True, "final_settlement_committed": True, "final_settlement_count": 1}.items()):
+        raise ValueError("TERMINAL_COMMITTED_RECEIPT_NOT_EXACTLY_ONE")
+    if any(receipts[0].get(k) is not True for k in ("accepted", "committed", "final_settlement_committed")) or not _exact_int(receipts[0].get("final_settlement_count")):
+        raise ValueError("TERMINAL_COMMITTED_RECEIPT_TYPES_INVALID")
+    for field, expected in {"final_settlement_count": 1, "final_settlement_presentation_count": 1, "final_settlement_public_log_count": 1, "duplicate_settlement_count": 0, "accepted_action_loss_at_terminal_count": 0, "terminal_drain_deadlock_count": 0, "new_major_round_after_qualification_count": 0, "player_count": PLAYER_COUNT}.items():
+        if not _exact_int(debug.get(field)) or debug[field] != expected:
+            raise ValueError(f"TERMINAL_RUNTIME_PROOF_INVALID:{field}")
+    if debug.get("complete_major_round_before_settlement") is not True or runtime.get("_phase") != "settled" or runtime.get("_batch_number") != PLAYER_COUNT:
+        raise ValueError("TERMINAL_COMPLETE_MAJOR_ROUND_NOT_OBSERVED")
+    return {
+        "major_round_before": prior["macro_round_index"], "major_round_after": final["macro_round_index"],
+        "settlement_count_before": prior["final_settlement_count"], "settlement_count_after": final["final_settlement_count"],
+        "settlement_count_delta": final["final_settlement_count"] - prior["final_settlement_count"],
+        "complete_major_round_barrier_observed": debug["complete_major_round_before_settlement"],
+        "final_settlement_id": settlement_id, "final_settlement_receipt_id": receipt_id,
+        "final_batch_number": runtime["_batch_number"], "player_count": debug["player_count"],
+        "final_presentation_count": debug["final_settlement_presentation_count"], "final_public_log_count": debug["final_settlement_public_log_count"],
+        "new_major_round_after_qualification_count": debug["new_major_round_after_qualification_count"],
+    }
+
+
 def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
     if result.get("status") != "PASS" or result.get("formal_execution_count") != 1 or result.get("automatic_retry_count") != 0:
         raise ValueError("FORMAL_RESULT_NOT_SINGLE_PASS")
@@ -686,7 +738,7 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("FORMAL_RESULT_KERNEL_LIFECYCLE_COUNT_MISMATCH")
     if kernel.get("_rejection_count") != 0 or application.get("_v076_private_military_receipt_count") != 1:
         raise ValueError("FORMAL_RESULT_KERNEL_OR_FLOW_COUNT_MISMATCH")
-    if runtime.get("_batch_number") != 5 or runtime.get("_phase") != "submission":
+    if runtime.get("_batch_number") != PLAYER_COUNT or runtime.get("_phase") != "settled":
         raise ValueError("FORMAL_RESULT_MAJOR_ROUND_BARRIER_MISSING")
     if runtime.get("_runtime_error_count") != 0 or runtime.get("_invalid_action_count") != 0:
         raise ValueError("FORMAL_RESULT_RUNTIME_ERROR_COUNT_NONZERO")
@@ -741,12 +793,7 @@ def _derive_runtime_components(result: Mapping[str, Any]) -> dict[str, Any]:
     }
     if not isinstance(military["command_id"], str) or not military["command_id"]:
         raise ValueError("FORMAL_RESULT_COMMAND_ID_MISSING")
-    settlement = {
-        "major_round_before": 1,
-        "major_round_after": 2,
-        "settlement_count_delta": 1,
-        "complete_major_round_barrier_observed": True,
-    }
+    settlement = _derive_terminal_settlement(result, runtime)
     proof = {**{field: 1 for field in POSITIVE_PROOF_FIELDS}, **{field: 0 for field in ZERO_PROOF_FIELDS}}
     return {
         "seed_witness": seed_witness,
@@ -825,7 +872,7 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         "superseded_authorization_manifest_path": SUPERSEDED_AUTHORIZATION_PATH,
         "superseded_authorization_head_sha": superseded_head,
         "superseded_authorization_tree_sha": project.tree(superseded_head),
-        "tooling_repair_reason_code": "ESTABLISH_POPUP_KEYBOARD_FOCUS_BEFORE_TARGET_ADVANCE",
+        "tooling_repair_reason_code": "USER_AUTHORIZED_TERMINAL_OBSERVER_PRODUCT_REPAIR_AND_SETTLEMENT_WITNESS_RESEAL",
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:
@@ -996,8 +1043,14 @@ def _validate_runtime(project: GitProject, artifact_head: str, authorization: Ma
     settlement = value.get("settlement_witness")
     if _exact_keys(report, settlement, SETTLEMENT_WITNESS_FIELDS, "settlement_witness"):
         assert isinstance(settlement, dict)
-        if not _exact_int(settlement.get("major_round_before")) or not _exact_int(settlement.get("major_round_after")) or settlement["major_round_after"] != settlement["major_round_before"] + 1 or settlement.get("settlement_count_delta") != 1 or settlement.get("complete_major_round_barrier_observed") is not True:
+        if not _exact_int(settlement.get("major_round_before")) or not _exact_int(settlement.get("major_round_after")) or settlement["major_round_before"] < 1 or settlement["major_round_after"] != settlement["major_round_before"] or settlement.get("settlement_count_delta") != 1 or settlement.get("complete_major_round_barrier_observed") is not True:
             report.add("field_mismatches", "COMPLETE_MAJOR_ROUND_SETTLEMENT_INVALID", repr(settlement))
+        for field, expected in {"settlement_count_before": 0, "settlement_count_after": 1, "final_batch_number": PLAYER_COUNT, "player_count": PLAYER_COUNT, "final_presentation_count": 1, "final_public_log_count": 1, "new_major_round_after_qualification_count": 0}.items():
+            if not _exact_int(settlement.get(field)) or settlement[field] != expected:
+                report.add("field_mismatches", "FINAL_SETTLEMENT_WITNESS_INVALID", field)
+        for field in ("final_settlement_id", "final_settlement_receipt_id"):
+            if not isinstance(settlement.get(field), str) or not settlement[field]:
+                report.add("field_mismatches", "FINAL_SETTLEMENT_WITNESS_ID_MISSING", field)
     _validate_proof(report, value.get("proof"), "runtime.proof")
     try:
         source_raw = project.read(artifact_head, RUNTIME_SOURCE_PATH)

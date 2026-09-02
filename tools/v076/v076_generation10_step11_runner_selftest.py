@@ -101,6 +101,11 @@ for name, required, present, status, expected in (
     completed = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True, text=True, timeout=15) if pwsh else None
     checks[f"confirmation_guard_executes__{name}"] = completed is not None and completed.returncode == 0 and completed.stdout.strip() == str(expected)
 
+checks["terminal_branch_explicit"] = "[switch]$Terminal" in text and "Wait-And-Finish-EmptyBatch -Batch 4 -Terminal" in text
+checks["terminal_before_authority_captured"] = "step='terminal_before'" in text and "terminal-before-runtime.jsonrpc.json" in text
+checks["terminal_waits_for_settled_fourth_batch"] = "[int]$p._batch_number -eq 4 -and [string]$p._phase -eq 'settled'" in text
+checks["terminal_no_fifth_batch_oracle"] = "[int]$p._batch_number -eq 5" not in text
+checks["terminal_final_authority_captured"] = any("'final-runtime-owner.jsonrpc.json'" in line and "'_solar_state'" in line for line in text.splitlines())
 checks["screen_projection_owner_binding"] = all("'_v075_snapshot'" not in line for line in text.splitlines() if "-Path $runtimePath -Properties" in line)
 track_filter = next(line for line in text.splitlines() if "$trackCards =" in line)
 checks["track_geometry_uses_production_track_script"] = "res://scripts/ui/v074/v074_track_card_button.gd" in track_filter and "v075_interactive_card_face" not in track_filter
