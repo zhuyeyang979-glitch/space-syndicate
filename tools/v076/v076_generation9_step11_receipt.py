@@ -50,8 +50,9 @@ SELFTEST_PATH = "tools/v076/v076_generation9_step11_receipt_selftest.py"
 WORKFLOW_PATH = ".github/workflows/v076-reuse-point-inertia-gate.yml"
 RUNNER_PATH = "tools/v076_generation9_step11_formal.ps1"
 RUNNER_SELFTEST_PATH = "tools/v076/v076_generation9_step11_runner_selftest.py"
-TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_receipt_tooling_seal.json"
-AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest.json"
+TOOLING_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_receipt_tooling_repair_seal_001.json"
+SUPERSEDED_AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest.json"
+AUTHORIZATION_PATH = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_001.json"
 AUTHORIZATION_SIDECAR_PATH = AUTHORIZATION_PATH + ".sha256"
 ENVIRONMENT_SEAL_PATH = "reports/reuse/full_convergence/generation9/generation9_environment_seal.json"
 ENVIRONMENT_SIDECAR_PATH = ENVIRONMENT_SEAL_PATH + ".sha256"
@@ -187,6 +188,9 @@ AUTHORIZATION_FIELDS = frozenset(
         "formal_runner_sha256", "formal_runner_selftest_path", "formal_runner_selftest_sha256",
         "tooling_seal_path", "tooling_seal_sha256", "environment_seal_path",
         "formal_execution_count_before", "authorized_formal_execution_count", "automatic_retry",
+        "superseded_authorization_manifest_path", "superseded_authorization_manifest_sha256",
+        "superseded_authorization_head_sha", "superseded_authorization_tree_sha",
+        "tooling_repair_reason_code",
         "canonical_payload_sha256",
     }
 )
@@ -701,10 +705,9 @@ def _validate_tooling(project: GitProject, tooling_head: str, authorization: Map
     expected_changes = [
         ("M", WORKFLOW_PATH),
         ("A", TOOLING_SEAL_PATH),
-        ("A", VALIDATOR_PATH),
-        ("A", SELFTEST_PATH),
-        ("A", RUNNER_SELFTEST_PATH),
-        ("A", RUNNER_PATH),
+        ("M", VALIDATOR_PATH),
+        ("M", RUNNER_SELFTEST_PATH),
+        ("M", RUNNER_PATH),
     ]
     if project.changed(tooling_parent, tooling_head) != expected_changes:
         report.add("path_failures", "TOOLING_COMMIT_NOT_EXACT", repr(project.changed(tooling_parent, tooling_head)))
@@ -752,6 +755,10 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         "formal_runner_selftest_path": RUNNER_SELFTEST_PATH, "tooling_seal_path": TOOLING_SEAL_PATH,
         "environment_seal_path": ENVIRONMENT_SEAL_PATH, "formal_execution_count_before": 0,
         "authorized_formal_execution_count": 1, "automatic_retry": False,
+        "superseded_authorization_manifest_path": SUPERSEDED_AUTHORIZATION_PATH,
+        "superseded_authorization_head_sha": project.parent(tooling_head),
+        "superseded_authorization_tree_sha": project.tree(project.parent(tooling_head)),
+        "tooling_repair_reason_code": "WINDOWS_EVENT_STARTTIME_UTC_LOCAL_CLOCK_MISINTERPRETATION",
     }
     for field, expected_value in expected.items():
         if value.get(field) != expected_value:
@@ -767,6 +774,7 @@ def _validate_authorization(project: GitProject, authorization_head: str, toolin
         ("receipt_validator_path", "receipt_validator_sha256"), ("receipt_selftest_path", "receipt_selftest_sha256"),
         ("required_workflow_path", "required_workflow_sha256"), ("formal_runner_path", "formal_runner_sha256"),
         ("formal_runner_selftest_path", "formal_runner_selftest_sha256"), ("tooling_seal_path", "tooling_seal_sha256"),
+        ("superseded_authorization_manifest_path", "superseded_authorization_manifest_sha256"),
     ):
         _bind(project, tooling_head, value.get(path_field), value.get(hash_field), report, f"authorization.{hash_field}")
     if value.get("class_cache_path") != CLASS_CACHE_PATH or not isinstance(value.get("class_cache_sha256"), str) or SHA256_RE.fullmatch(value["class_cache_sha256"]) is None:

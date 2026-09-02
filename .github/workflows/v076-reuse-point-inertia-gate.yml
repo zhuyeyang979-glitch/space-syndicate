@@ -313,12 +313,12 @@ jobs:
           }
           if ($runnerExit -ne 0 -or
               [string]$runner.status -cne "PASS" -or
-              [long]$runner.case_count -ne 42 -or
-              [long]$runner.pass_count -ne 42 -or
+              [long]$runner.case_count -ne 43 -or
+              [long]$runner.pass_count -ne 43 -or
               [long]$runner.false_green_count -ne 0) {
             throw "Generation 9 runner self-test failed: exit=$runnerExit status=$($runner.status) pass=$($runner.pass_count)/$($runner.case_count)"
           }
-          "Generation 9 STEP11 receipt contract: PASS (67/67); formal runner: PASS (42/42); false green: 0." |
+          "Generation 9 STEP11 receipt contract: PASS (67/67); formal runner: PASS (43/43); false green: 0." |
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
 
       - name: Resolve explicit full-convergence input set
@@ -374,7 +374,7 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $reportPath = Join-Path $env:RUNNER_TEMP "v076-current-subject-receipt-validation.json"
-          $generation9ManifestRelative = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest.json"
+          $generation9ManifestRelative = "reports/reuse/full_convergence/generation9/generation9_authorization_manifest_repair_001.json"
           $generation9ManifestPath = Join-Path $env:GITHUB_WORKSPACE $generation9ManifestRelative
           $generation8ManifestRelative = "reports/reuse/full_convergence/generation8/generation8_authorization_manifest.json"
           $generation8ManifestPath = Join-Path $env:GITHUB_WORKSPACE $generation8ManifestRelative
