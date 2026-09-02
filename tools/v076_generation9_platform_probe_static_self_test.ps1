@@ -156,6 +156,7 @@ $orderedMarkers = @(
     '-EvidenceName ("commercial-menu-closed-poll-{0:d3}.jsonrpc.json"',
     "-EvidenceName 'seed-input-before-entry.jsonrpc.json'",
     "schema_version = 'space_syndicate.v076.external_seed_focus_request.v2'",
+    "-EvidenceName 'seed-runtime-focus-confirmation-click.jsonrpc.json'",
     "-EvidenceName 'seed-entry.jsonrpc.json'",
     "-EvidenceName 'start-configured-game-click.jsonrpc.json'"
 )
@@ -187,6 +188,7 @@ foreach ($requiredText in @(
     "[string]`$externalFocus.computer_use_coordinate_space -cne 'WINDOW_RELATIVE_INCLUDING_WINDOW_CHROME'",
     '-not [bool]$externalFocus.full_window_frame_screenshot_used',
     '[bool]$externalFocus.runtime_viewport_coordinate_used_for_click',
+    '$seedBinding.runtime_focus_confirmation_click_count = 1',
     'commercial_menu_overlay_visible = $false'
 )) {
     if ($runnerText.IndexOf($requiredText, [StringComparison]::Ordinal) -lt 0) {

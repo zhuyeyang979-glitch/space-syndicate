@@ -72,6 +72,7 @@ $seedBinding = [ordered]@{
     empty_readback_count = 0
     fallback_randomization_count = 0
     direct_runtime_injection_count = 0
+    runtime_focus_confirmation_click_count = 0
     four_layer_match = $false
 }
 $readySteadySamples = @()
@@ -734,6 +735,15 @@ try {
     ) {
         throw 'External Windows focus witness is invalid.'
     }
+    Send-RuntimeInput `
+        -EvidenceName 'seed-runtime-focus-confirmation-click.jsonrpc.json' `
+        -Arguments @{
+            type = 'mouse_button'
+            button = 1
+            mode = 'tap'
+            position = $seedCenter
+        } | Out-Null
+    $seedBinding.runtime_focus_confirmation_click_count = 1
     $clearEvents = @()
     1..12 | ForEach-Object {
         $clearEvents += @{type='key'; key='backspace'; mode='tap'}

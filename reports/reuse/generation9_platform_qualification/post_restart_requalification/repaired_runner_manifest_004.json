@@ -1,0 +1,48 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_repaired_runner_manifest.v5",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "probe_budget_authorization_id": "USER_SUPPLEMENTAL_AUTHORIZATION_V076_GENERATION9_PROBES_PLUS3_20260902",
+  "parent_authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "generated_at_utc": "2026-09-02T04:20:15.6940457Z",
+  "status": "PASS",
+  "predecessor_committed_head_sha": "73412f2fd3f818b003ea39875307d09ad9ba535a",
+  "predecessor_committed_tree_sha": "0c40c4862b2954207f6044cd3b20c8e0d43918eb",
+  "product_candidate_head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+  "product_candidate_tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d",
+  "runner": {
+    "path": "tools/v076_generation9_platform_probe.ps1",
+    "sha256": "bd0eaeb5eefbf3e21adc571096726b93242256d6df321caa02a5e74296aa6004",
+    "size_bytes": 43930
+  },
+  "static_self_test": {
+    "path": "tools/v076_generation9_platform_probe_static_self_test.ps1",
+    "sha256": "5d73336e46a33528ecfb08ead9362591a6a374a72b10877f7b46cc719044efcd",
+    "report_path": "reports/reuse/generation9_platform_qualification/post_restart_requalification/runner_static_self_test_005.json",
+    "report_sha256": "be9d793aab32f2669946ad28821e0297c6f4637393657c2381d0cb1e098a0f7a",
+    "status": "PASS",
+    "powershell_parse_error_count": 0,
+    "unknown_command_count": 0
+  },
+  "packager_sha256": "ff7f480c7ef16d8e806dd29739f7a2179f9ba86ad830f636c8cac305354dfb96",
+  "monitor_sha256": "64e811c4ab358db051d9cb52d5508e867b0a4fbdd527b062f980081223bd1a59",
+  "requalification_seal_sha256": "5411203af65fe621491f021d8dd38c8929f49191c45ac1a23a7a7a2e537c5b63",
+  "probe009_raw_evidence_manifest_sha256": "4aad1d043298edbe3b60aa81ac86580c2e5d6c76f0181088b515080d8a1cb2f3",
+  "probe009_report_sha256": "16ac182546499447c722b122714f38d833b9a5935ba99bfecb067f61991a7b85",
+  "workflow_contract": {
+    "external_unique_window_activation_required": true,
+    "external_seed_field_click_count": 1,
+    "runtime_focus_confirmation_click_count": 1,
+    "runtime_viewport_coordinate_for_runtime_focus_only": true,
+    "windows_seed_character_input_count": 0,
+    "mcp_only_seed_character_input": true,
+    "direct_runtime_seed_injection_count": 0,
+    "seed_four_layer_parity_required": true,
+    "normal_cleanup_required": true,
+    "formal_generation": false,
+    "generation9_formal_execution_count": 0
+  },
+  "tooling_change_resets_consecutive_pass_count": true,
+  "consecutive_pass_count_at_seal": 0,
+  "godot_launch_count_for_static_validation": 0,
+  "product_file_mutation_count": 0
+}
