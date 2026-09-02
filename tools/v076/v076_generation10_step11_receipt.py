@@ -1213,10 +1213,7 @@ def _validate_receipt(project: GitProject, artifact_head: str, execution_head: s
         _bind(project, artifact_head, path, value.get(field), report, f"receipt.{field}")
     if value.get("resume_authorization_manifest_sha256") != sha256_bytes(authorization_raw) or value.get("environment_seal_sha256") != sha256_bytes(environment_raw):
         report.add("hash_mismatches", "RECEIPT_PREEXECUTION_BINDING_MISMATCH", "authorization/environment")
-    for field in ("producer_script_sha256", "schema_authority_sha256", "validator_sha256", "workflow_sha256", "tooling_seal_sha256"):
-        auth_field = "receipt_validator_sha256" if field == "producer_script_sha256" else ("receipt_schema_sha256" if field == "schema_authority_sha256" else field)
-        if value.get(field) != authorization.get(auth_field):
-            report.add("hash_mismatches", "RECEIPT_AUTHORIZATION_TOOL_BINDING_MISMATCH", field)
+    _validate_authorization_tool_bindings(value, authorization, report)
     if not _timestamp(value.get("created_at_utc")) or not isinstance(value.get("result_fingerprint_sha256"), str) or SHA256_RE.fullmatch(value["result_fingerprint_sha256"]) is None:
         report.add("schema_failures", "RECEIPT_DYNAMIC_FIELD_INVALID", "timestamp/fingerprint")
     if value.get("result_fingerprint_sha256") != result_fingerprint_sha256(value):
@@ -1224,6 +1221,22 @@ def _validate_receipt(project: GitProject, artifact_head: str, execution_head: s
     _validate_proof(report, value.get("proof"), "receipt.proof")
     _validate_cleanup(report, value.get("process_cleanup"), "receipt.process_cleanup")
     return value, raw
+
+
+def _validate_authorization_tool_bindings(receipt: Mapping[str, Any], authorization: Mapping[str, Any], report: Report) -> None:
+    # The receipt and its sealed authorization use distinct canonical field names.
+    # Compare those exact fields; aliases and absent values must not pass.
+    bindings = {
+        "producer_script_sha256": "receipt_validator_sha256",
+        "schema_authority_sha256": "receipt_schema_sha256",
+        "validator_sha256": "receipt_validator_sha256",
+        "workflow_sha256": "required_workflow_sha256",
+        "tooling_seal_sha256": "tooling_seal_sha256",
+    }
+    for receipt_field, authorization_field in bindings.items():
+        expected = authorization.get(authorization_field)
+        if not isinstance(expected, str) or SHA256_RE.fullmatch(expected) is None or receipt.get(receipt_field) != expected:
+            report.add("hash_mismatches", "RECEIPT_AUTHORIZATION_TOOL_BINDING_MISMATCH", receipt_field)
 
 
 def _validate_formal_documents(project: GitProject, artifact_head: str, execution_head: str, execution_tree: str, authorization_raw: bytes, receipt_raw: bytes, report: Report) -> set[str]:

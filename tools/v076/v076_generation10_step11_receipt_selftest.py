@@ -385,6 +385,50 @@ check("public_projection_preserves_res_scene", public_sample["scene"] == contrac
 check("public_projection_preserves_proof", contract._derive_runtime_components(public_sample["facts"]) == derived)
 check("public_projection_idempotent", contract._public_evidence_bytes(public_bytes, ".json") == public_bytes)
 
+binding_authorization = {
+    "receipt_validator_sha256": "1" * 64,
+    "receipt_schema_sha256": "2" * 64,
+    "required_workflow_sha256": "3" * 64,
+    "tooling_seal_sha256": "4" * 64,
+}
+binding_receipt = {
+    "producer_script_sha256": "1" * 64,
+    "schema_authority_sha256": "2" * 64,
+    "validator_sha256": "1" * 64,
+    "workflow_sha256": "3" * 64,
+    "tooling_seal_sha256": "4" * 64,
+}
+
+
+def binding_failures(receipt, authorization):
+    binding_report = contract.Report("1" * 40)
+    contract._validate_authorization_tool_bindings(receipt, authorization, binding_report)
+    return binding_report.codes
+
+
+binding_original = copy.deepcopy((binding_receipt, binding_authorization))
+check("canonical_authorization_tool_fields_accept_valid_receipt", not binding_failures(binding_receipt, binding_authorization))
+check("authorization_tool_binding_does_not_mutate_inputs", binding_original == (binding_receipt, binding_authorization))
+binding_negative_cases = []
+for field in binding_receipt:
+    changed = copy.deepcopy(binding_receipt)
+    changed[field] = "f" * 64
+    binding_negative_cases.append((f"wrong_receipt_{field}", changed, binding_authorization))
+    missing = copy.deepcopy(binding_receipt)
+    missing.pop(field)
+    binding_negative_cases.append((f"missing_receipt_{field}", missing, binding_authorization))
+for field in binding_authorization:
+    missing = copy.deepcopy(binding_authorization)
+    missing.pop(field)
+    binding_negative_cases.append((f"missing_authorization_{field}", binding_receipt, missing))
+for canonical, alias in (("receipt_validator_sha256", "validator_sha256"), ("required_workflow_sha256", "workflow_sha256")):
+    alias_only = copy.deepcopy(binding_authorization)
+    alias_only[alias] = alias_only.pop(canonical)
+    binding_negative_cases.append((f"noncanonical_authorization_alias_{alias}", binding_receipt, alias_only))
+binding_negative_cases.append(("both_sides_missing", {}, {}))
+for name, receipt, authorization in binding_negative_cases:
+    check(f"authorization_tool_binding_negative__{name}", set(binding_failures(receipt, authorization)) == {"RECEIPT_AUTHORIZATION_TOOL_BINDING_MISMATCH"})
+
 schema = contract.schema_descriptor()
 check("schema_generation_is_10", schema["required_generation_id"] == 10)
 check("readonly_timeout_repair_preserves_product_candidate", contract.PRODUCT_HEAD == "196cf386bccf6ba93a66b2257fe95e990a0b5d78")
@@ -413,7 +457,7 @@ result = {
     "RECEIPT_CONTRACT_SELFTEST_STATUS": "PASS" if not failed_names else "FAIL",
     "RECEIPT_CONTRACT_SELFTEST_CASE_COUNT": len(cases),
     "RECEIPT_CONTRACT_SELFTEST_PASS_COUNT": passed,
-    "RECEIPT_CONTRACT_SELFTEST_NEGATIVE_CASE_COUNT": 13 + 10 + 2 + 1 + 5 + len(runtime_negative_mutations) + 4,
+    "RECEIPT_CONTRACT_SELFTEST_NEGATIVE_CASE_COUNT": 13 + 10 + 2 + 1 + 5 + len(runtime_negative_mutations) + 4 + len(binding_negative_cases),
     "FALSE_GREEN_COUNT": 0 if not failed_names else len(failed_names),
     "VALID_RECEIPT_FALSE_REJECT_COUNT": 0,
     "EXECUTED_NEGATIVE_CASE_SET_MATCH": True,
