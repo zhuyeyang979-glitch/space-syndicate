@@ -18,6 +18,7 @@ before_launch = text[: text.index("$launchRaw = & $launchTool")]
 after_launch = text[text.index("$launchRaw = & $launchTool") :]
 
 checks = {
+    "bounded_runtime_query_timeout_without_retry": "max_nodes=$MaxNodes; timeout_msec=30000" in text and "retry_runtime_query" not in text,
     "authorization_id": "USER_AUTHORIZATION_V076_GENERATION10_REPAIRED_RUNNER_FORMAL_20260902" in text,
     "generation_id": "$generationId = 10" in text,
     "evidence_id": "$evidenceId = 9696" in text,

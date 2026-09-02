@@ -24,8 +24,8 @@ $out = [IO.Path]::GetFullPath($EvidenceRoot)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
-$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_011.json'
-$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_011.json'
+$environmentSealRelative = 'reports/reuse/full_convergence/generation10/generation10_environment_seal_repair_012.json'
+$authorizationRelative = 'reports/reuse/full_convergence/generation10/generation10_authorization_manifest_repair_012.json'
 $qualificationSealRelative = 'reports/reuse/generation9_platform_qualification/generation9_platform_qualification_seal_001.json'
 $passPairRelative = 'reports/reuse/generation9_platform_qualification/platform_qualification_pass_pair_001.json'
 $postRestartSealRelative = 'reports/reuse/generation9_platform_qualification/post_restart_requalification/post_restart_requalification_seal.json'
@@ -145,7 +145,7 @@ function Test-FreshRuntimeReady {
 function Query-Node {
     param([string]$Name, [string]$Path, [string[]]$Properties, [switch]$Children, [int]$MaxDepth = 2, [int]$MaxNodes = 80)
     $inner = Get-Inner (Invoke-RoleTool -ToolName 'query_runtime_node' -EvidenceName $Name -Arguments @{
-        node_path=$Path; properties=$Properties; include_children=[bool]$Children; max_depth=$MaxDepth; max_nodes=$MaxNodes; timeout_msec=10000
+        node_path=$Path; properties=$Properties; include_children=[bool]$Children; max_depth=$MaxDepth; max_nodes=$MaxNodes; timeout_msec=30000
     })
     if (-not [bool]$inner.success) { throw "RUNTIME_QUERY_FAILED:$Path" }
     return $inner.result

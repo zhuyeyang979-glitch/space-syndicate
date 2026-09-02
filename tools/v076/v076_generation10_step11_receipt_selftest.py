@@ -387,6 +387,7 @@ check("public_projection_idempotent", contract._public_evidence_bytes(public_byt
 
 schema = contract.schema_descriptor()
 check("schema_generation_is_10", schema["required_generation_id"] == 10)
+check("readonly_timeout_repair_preserves_product_candidate", contract.PRODUCT_HEAD == "196cf386bccf6ba93a66b2257fe95e990a0b5d78")
 check("schema_evidence_is_9696", schema["required_resume_evidence_id"] == 9696)
 check("schema_unknown_fields_rejected", schema["unknown_field_policy"] == "REJECT")
 check("schema_receipt_fields_exact", schema["fields"] == sorted(contract.RECEIPT_FIELDS))
