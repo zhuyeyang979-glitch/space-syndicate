@@ -1,0 +1,36 @@
+{
+  "schema_version": "space_syndicate.v076.post_restart_stability_observer_characterization.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_at_utc": "2026-09-02T03:57:29.7151400Z",
+  "append_only": true,
+  "status": "TOOLING_CHARACTERIZATION_COMPLETE",
+  "discarded_unsealed_attempts": [
+    {
+      "attempt_id": "observer-characterization-001",
+      "started_at_utc": "2026-09-02T03:42:56.6941783Z",
+      "persisted_as_qualification_window": false,
+      "first_failure": "OBSERVER_SELF_COMMAND_LINE_FALSE_POSITIVE",
+      "cause": "The passive PowerShell observer contained the runner filename in its own command line and counted itself as a probe runner.",
+      "godot_execution_count": 0,
+      "mcp_execution_count": 0,
+      "probe_execution_count": 0
+    },
+    {
+      "attempt_id": "observer-characterization-002",
+      "started_at_utc": "2026-09-02T03:43:53.199Z",
+      "persisted_as_qualification_window": false,
+      "first_failure": "UTC_DATETIME_INTERPRETATION_AND_BOOLEAN_LITERAL_TOOLING_ERROR",
+      "cause": "The event query used a UTC DateTime where the local event API expected local time, and the observer header used an invalid PowerShell boolean literal.",
+      "godot_execution_count": 0,
+      "mcp_execution_count": 0,
+      "probe_execution_count": 0
+    }
+  ],
+  "authoritative_window_started_at_utc": "2026-09-02T03:44:30.3018284Z",
+  "authoritative_window_ended_at_utc": "2026-09-02T03:54:35.3416879Z",
+  "authoritative_window_sample_count": 21,
+  "authoritative_window_duration_seconds": 604.865,
+  "failed_observation_overwrite_count": 0,
+  "budget_consumed_count": 0,
+  "generation9_formal_execution_count": 0
+}

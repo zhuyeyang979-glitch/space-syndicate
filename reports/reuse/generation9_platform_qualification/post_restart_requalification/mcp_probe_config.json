@@ -1,0 +1,17 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_mcp_probe_config.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "role": "Supervisor",
+  "port": 23207,
+  "renderer": "compatibility",
+  "tool_profile": "full",
+  "resolution_width": 1600,
+  "resolution_height": 960,
+  "seed": 917592522,
+  "player_count": 4,
+  "new_game_profile": "PRODUCTION_MAIN_TSCN_ONE_MCP_SEAT_THREE_AI",
+  "exact_window_title": "太空辛迪加 (DEBUG)",
+  "windows_seed_character_input_allowed": false,
+  "mcp_seed_character_input_required": true,
+  "direct_runtime_seed_injection_allowed": false
+}

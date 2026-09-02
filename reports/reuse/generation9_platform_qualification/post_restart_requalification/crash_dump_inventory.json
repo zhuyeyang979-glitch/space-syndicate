@@ -1,0 +1,23 @@
+{
+  "schema_version": "space_syndicate.v076.post_restart_crash_dump_inventory.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_at_utc": "2026-09-02T03:57:29.7151400Z",
+  "comparison_start_utc": "2026-09-02T02:39:58Z",
+  "memory_dmp_present": false,
+  "minidump_count_observed": 1,
+  "new_dump_count": 0,
+  "entries": [
+    {
+      "kind": "MINIDUMP",
+      "last_write_utc": "2026-09-01T16:12:23.8343949Z",
+      "size_bytes": 6113980,
+      "predates_parent_authorization": true,
+      "predates_observed_shutdown": true,
+      "content_read": false,
+      "sha256": null,
+      "sha256_unavailable_reason": "ACCESS_DENIED_WITHOUT_ELEVATION"
+    }
+  ],
+  "raw_dump_committed": false,
+  "administrator_access_requested": false
+}

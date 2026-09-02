@@ -1,0 +1,938 @@
+{
+  "schema_version": "space_syndicate.v076.post_restart_stability_samples.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_from": "PASSIVE_READ_ONLY_WINDOWS_OBSERVATION",
+  "window_start_utc": "2026-09-02T03:44:30.3018284Z",
+  "window_end_utc": "2026-09-02T03:54:35.3416879Z",
+  "duration_seconds": 604.865,
+  "sample_interval_seconds": 30,
+  "sample_count": 21,
+  "boot_id": 212,
+  "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+  "samples": [
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 0,
+      "captured_at_utc": "2026-09-02T03:44:30.3785099Z",
+      "elapsed_seconds": 0.077,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16417603584,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 24759685120,
+      "available_physical_bytes": 20255477760,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 125154,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5063790592,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15963172864,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 1,
+      "captured_at_utc": "2026-09-02T03:45:01.0226707Z",
+      "elapsed_seconds": 30.721,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16381526016,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 24795762688,
+      "available_physical_bytes": 20290502656,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 124813,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5063790592,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15962517504,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 2,
+      "captured_at_utc": "2026-09-02T03:45:31.2956370Z",
+      "elapsed_seconds": 60.994,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16396345344,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 24780943360,
+      "available_physical_bytes": 20281892864,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 124197,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5063761920,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15961862144,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 3,
+      "captured_at_utc": "2026-09-02T03:46:01.5731210Z",
+      "elapsed_seconds": 91.271,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16341032960,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 24836255744,
+      "available_physical_bytes": 20298870784,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 124347,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5062356992,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15961468928,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 4,
+      "captured_at_utc": "2026-09-02T03:46:31.8081937Z",
+      "elapsed_seconds": 121.506,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16334336000,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 24842952704,
+      "available_physical_bytes": 20298059776,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 123632,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5062291456,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15960944640,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 5,
+      "captured_at_utc": "2026-09-02T03:47:02.0416749Z",
+      "elapsed_seconds": 151.74,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16322314240,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 24854974464,
+      "available_physical_bytes": 20308213760,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 122770,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5062172672,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15960420352,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 6,
+      "captured_at_utc": "2026-09-02T03:47:32.2367556Z",
+      "elapsed_seconds": 181.935,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16326676480,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 24850612224,
+      "available_physical_bytes": 20305874944,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 122574,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5062168576,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15959961600,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 7,
+      "captured_at_utc": "2026-09-02T03:48:02.4216449Z",
+      "elapsed_seconds": 212.12,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16105152512,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25072136192,
+      "available_physical_bytes": 20444426240,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 119573,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5062283264,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15959437312,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 8,
+      "captured_at_utc": "2026-09-02T03:48:32.6189162Z",
+      "elapsed_seconds": 242.317,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16039096320,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25138192384,
+      "available_physical_bytes": 20792520704,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 118847,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5062307840,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15958966272,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 9,
+      "captured_at_utc": "2026-09-02T03:49:02.8075962Z",
+      "elapsed_seconds": 272.506,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16043896832,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25133391872,
+      "available_physical_bytes": 20804472832,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 118643,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5062307840,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15962685440,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 10,
+      "captured_at_utc": "2026-09-02T03:49:33.0055432Z",
+      "elapsed_seconds": 302.704,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16005042176,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25172246528,
+      "available_physical_bytes": 20844158976,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 118023,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5062569984,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15962124288,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 11,
+      "captured_at_utc": "2026-09-02T03:50:03.1956152Z",
+      "elapsed_seconds": 332.894,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16010252288,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25167036416,
+      "available_physical_bytes": 20834734080,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 117801,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5062475776,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15961534464,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 12,
+      "captured_at_utc": "2026-09-02T03:50:33.4034003Z",
+      "elapsed_seconds": 363.102,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16034095104,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25143193600,
+      "available_physical_bytes": 20824879104,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 117903,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 5062463488,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15961010176,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 13,
+      "captured_at_utc": "2026-09-02T03:51:03.6025206Z",
+      "elapsed_seconds": 393.301,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16193331200,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 24983957504,
+      "available_physical_bytes": 20655902720,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 120828,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 3322953728,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15960608768,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 14,
+      "captured_at_utc": "2026-09-02T03:51:33.9324842Z",
+      "elapsed_seconds": 423.631,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16130068480,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25047220224,
+      "available_physical_bytes": 20718723072,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 119978,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 3336048640,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15960027136,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 15,
+      "captured_at_utc": "2026-09-02T03:52:04.1306702Z",
+      "elapsed_seconds": 453.829,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16124141568,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25053147136,
+      "available_physical_bytes": 20730261504,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 119741,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 3335589888,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15959502848,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 16,
+      "captured_at_utc": "2026-09-02T03:52:34.3561319Z",
+      "elapsed_seconds": 484.054,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16143749120,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25033539584,
+      "available_physical_bytes": 20727017472,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 119430,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 3335294976,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15959044096,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 17,
+      "captured_at_utc": "2026-09-02T03:53:04.5484629Z",
+      "elapsed_seconds": 514.247,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16126509056,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25050779648,
+      "available_physical_bytes": 20740308992,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 119401,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 3334651904,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15958585344,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 18,
+      "captured_at_utc": "2026-09-02T03:53:34.7422872Z",
+      "elapsed_seconds": 544.44,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16113225728,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25064062976,
+      "available_physical_bytes": 20746010624,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 118937,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 3334373376,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15958061056,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 19,
+      "captured_at_utc": "2026-09-02T03:54:04.9473487Z",
+      "elapsed_seconds": 574.646,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16097775616,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25079513088,
+      "available_physical_bytes": 20751536128,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 118100,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 3333021696,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15957626880,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    },
+    {
+      "record_type": "STABILITY_SAMPLE",
+      "sample_index": 20,
+      "captured_at_utc": "2026-09-02T03:54:35.1663381Z",
+      "elapsed_seconds": 604.865,
+      "boot_id": 212,
+      "boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+      "committed_bytes": 16111996928,
+      "commit_limit_bytes": 41177288704,
+      "available_commit_bytes": 25065291776,
+      "available_physical_bytes": 20753743872,
+      "pagefile_automatic_managed": true,
+      "pagefile_current_usage_mb": 0,
+      "pagefile_allocated_mb": 6656,
+      "system_handle_count": 117957,
+      "fixed_disks": [
+        {
+          "device_id": "C:",
+          "free_bytes": 3332423680,
+          "size_bytes": 214750457856
+        },
+        {
+          "device_id": "D:",
+          "free_bytes": 15961300992,
+          "size_bytes": 760995639296
+        },
+        {
+          "device_id": "E:",
+          "free_bytes": 36616089600,
+          "size_bytes": 1000187359232
+        }
+      ],
+      "new_system_critical_error_count": 0,
+      "new_bugcheck_count": 0,
+      "new_kernel_power_41_count": 0,
+      "new_whea_error_count": 0,
+      "new_storage_error_count": 0,
+      "godot_process_count": 0,
+      "exact_clone_godot_process_count": 0,
+      "mcp_process_count": 0,
+      "probe_runner_process_count": 0,
+      "test_worker_process_count": 0,
+      "protected_port_23207_count": 0
+    }
+  ]
+}

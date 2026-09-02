@@ -21,13 +21,23 @@ param(
     [int]$RuntimeReadyTimeoutSeconds = 120,
     [int]$CommercialMenuReadyTimeoutSeconds = 30,
     [int]$NewGameReadyTimeoutSeconds = 180,
-    [int]$ExternalSeedFocusTimeoutSeconds = 120
+    [int]$ExternalSeedFocusTimeoutSeconds = 120,
+
+    [Parameter(Mandatory = $true)]
+    [string]$BudgetLedgerPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RequalificationSealPath
 )
 
 $ErrorActionPreference = 'Stop'
-$authorizationId = 'USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902'
+$authorizationId = 'USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902'
+$probeBudgetAuthorizationId = 'USER_SUPPLEMENTAL_AUTHORIZATION_V076_GENERATION9_PROBES_PLUS3_20260902'
+$parentAuthorizationId = 'USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902'
 $root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd('\')
 $probeRoot = [IO.Path]::GetFullPath($EvidenceRoot)
+$budgetLedgerFullPath = [IO.Path]::GetFullPath($BudgetLedgerPath)
+$requalificationSealFullPath = [IO.Path]::GetFullPath($RequalificationSealPath)
 $invokeTool = Join-Path $root 'tools\invoke_role_godot_mcp.ps1'
 $launchTool = Join-Path $root 'tools\launch_role_godot_mcp.ps1'
 $stopTool = Join-Path $root 'tools\stop_role_godot_mcp.ps1'
@@ -336,10 +346,56 @@ function Stop-RoleNormally {
     Write-Utf8Json -Path $cleanupPath -Value $script:cleanup
 }
 
+foreach ($requiredControlFile in @($budgetLedgerFullPath, $requalificationSealFullPath)) {
+    if (-not (Test-Path -LiteralPath $requiredControlFile -PathType Leaf)) {
+        throw "Required sealed probe control file is missing: $requiredControlFile"
+    }
+}
+$budgetLedger = Get-Content -LiteralPath $budgetLedgerFullPath -Raw | ConvertFrom-Json
+$requalificationSeal = Get-Content -LiteralPath $requalificationSealFullPath -Raw | ConvertFrom-Json
+if (
+    [string]$budgetLedger.schema_version -cne 'space_syndicate.v076.generation9_probe_budget_ledger.v1' -or
+    [string]$budgetLedger.authorization_id -cne $authorizationId -or
+    [string]$budgetLedger.status -cne 'ACTIVE' -or
+    [string]$budgetLedger.next_probe_id -cne $ProbeId -or
+    [int]$budgetLedger.remaining_launch_count -lt 1 -or
+    [int]$budgetLedger.remaining_launch_count -gt 4 -or
+    [int]$budgetLedger.launch_count_after_requalification -lt 0 -or
+    [int]$budgetLedger.launch_count_after_requalification -gt 3
+) {
+    throw 'Probe budget ledger is not authorized for this exact successor probe.'
+}
+if (
+    [string]$requalificationSeal.schema_version -cne 'space_syndicate.v076.post_restart_requalification_seal.v1' -or
+    [string]$requalificationSeal.authorization_id -cne $authorizationId -or
+    [string]$requalificationSeal.status -cne 'SEALED' -or
+    -not [bool]$requalificationSeal.existing_probe_budget_reactivated -or
+    [int]$requalificationSeal.probe_budget_after_requalification -ne 4
+) {
+    throw 'Post-restart requalification seal does not authorize successor probes.'
+}
+$budgetLedgerSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $budgetLedgerFullPath).Hash.ToLowerInvariant()
+$requalificationSealSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $requalificationSealFullPath).Hash.ToLowerInvariant()
+
 if (Test-Path -LiteralPath $probeRoot) {
     throw "Refusing to overwrite probe evidence: $probeRoot"
 }
 [IO.Directory]::CreateDirectory($probeRoot) | Out-Null
+Write-Utf8Json -Path (Join-Path $probeRoot 'execution-start.json') -Value ([ordered]@{
+    schema_version = 'space_syndicate.v076.generation9_platform_probe_execution_start.v1'
+    authorization_id = $authorizationId
+    probe_budget_authorization_id = $probeBudgetAuthorizationId
+    parent_authorization_id = $parentAuthorizationId
+    probe_id = $ProbeId
+    started_at_utc = $startedAt.ToString('o')
+    formal_generation = $false
+    generation9_formal_execution_count = 0
+    budget_ledger_sha256 = $budgetLedgerSha256
+    requalification_seal_sha256 = $requalificationSealSha256
+    remaining_launch_count_before = [int]$budgetLedger.remaining_launch_count
+    launch_count_after_requalification_before = [int]$budgetLedger.launch_count_after_requalification
+    next_probe_id = [string]$budgetLedger.next_probe_id
+})
 
 try {
     foreach ($required in @($MonitorScript, $GodotPath, $invokeTool, $launchTool, $stopTool)) {
@@ -424,6 +480,8 @@ try {
     $preflight = [ordered]@{
         schema_version = 'space_syndicate.v076.generation9_platform_probe_preflight.v1'
         authorization_id = $authorizationId
+        probe_budget_authorization_id = $probeBudgetAuthorizationId
+        parent_authorization_id = $parentAuthorizationId
         probe_id = $ProbeId
         captured_at_utc = [DateTime]::UtcNow.ToString('o')
         branch = $branch
@@ -439,6 +497,8 @@ try {
         available_commit_bytes = $availableCommit
         target_available_commit_bytes = $TargetStartAvailableCommitBytes
         identity = $identityResults
+        budget_ledger_sha256 = $budgetLedgerSha256
+        requalification_seal_sha256 = $requalificationSealSha256
         status = 'PASS'
     }
     Write-Utf8Json -Path $preflightPath -Value $preflight
@@ -849,6 +909,8 @@ $status = if (
 $result = [ordered]@{
     schema_version = 'space_syndicate.v076.generation9_platform_probe_execution_result.v1'
     authorization_id = $authorizationId
+    probe_budget_authorization_id = $probeBudgetAuthorizationId
+    parent_authorization_id = $parentAuthorizationId
     probe_id = $ProbeId
     formal_generation = $false
     generation9_formal_execution_count = 0
@@ -875,6 +937,8 @@ $result = [ordered]@{
     index_delta_count_after = $indexDeltaAfter
     untracked_uid_count_after = @(git -C $root status --porcelain=v1 | Where-Object {$_ -match '^\?\? .*\.uid$'}).Count
     unrelated_process_termination_count = 0
+    budget_ledger_sha256 = $budgetLedgerSha256
+    requalification_seal_sha256 = $requalificationSealSha256
 }
 Write-Utf8Json -Path $resultPath -Value $result
 $result | ConvertTo-Json -Depth 100

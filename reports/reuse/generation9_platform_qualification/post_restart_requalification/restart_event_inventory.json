@@ -1,0 +1,124 @@
+{
+  "schema_version": "space_syndicate.v076.restart_event_inventory.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_at_utc": "2026-09-02T03:57:29.7151400Z",
+  "window_start_utc": "2026-09-02T02:20:00Z",
+  "window_end_utc": "2026-09-02T03:54:35.3416879Z",
+  "redacted": true,
+  "raw_sensitive_event_log_committed": false,
+  "events": [
+    {
+      "record_id": 95803,
+      "time_utc": "2026-09-02T02:54:11.5865326Z",
+      "provider": "User32",
+      "event_id": 1074,
+      "level": "INFORMATION",
+      "normalized_fact": "WINDOWS_START_MENU_PROCESS_INITIATED_POWER_OFF_ON_BEHALF_OF_INTERACTIVE_USER",
+      "reason_code": "0x0",
+      "os_reason_label": "OTHER_UNPLANNED"
+    },
+    {
+      "record_id": 95805,
+      "time_utc": "2026-09-02T02:54:15.9220974Z",
+      "provider": "EventLog",
+      "event_id": 6006,
+      "level": "INFORMATION",
+      "normalized_fact": "EVENT_LOG_SERVICE_STOPPED_CLEANLY"
+    },
+    {
+      "record_id": 95824,
+      "time_utc": "2026-09-02T02:54:21.4899564Z",
+      "provider": "Microsoft-Windows-Kernel-General",
+      "event_id": 13,
+      "level": "INFORMATION",
+      "normalized_fact": "KERNEL_RECORDED_ORDERLY_SHUTDOWN"
+    },
+    {
+      "record_id": 95825,
+      "time_utc": "2026-09-02T03:10:42.1493882Z",
+      "provider": "Microsoft-Windows-Kernel-General",
+      "event_id": 12,
+      "level": "INFORMATION",
+      "normalized_fact": "OPERATING_SYSTEM_STARTED",
+      "reported_boot_time_utc": "2026-09-02T03:10:41.5000000Z"
+    },
+    {
+      "record_id": 95830,
+      "time_utc": "2026-09-02T03:10:42.1495808Z",
+      "provider": "Microsoft-Windows-Kernel-Boot",
+      "event_id": 20,
+      "level": "INFORMATION",
+      "normalized_fact": "PREVIOUS_SHUTDOWN_SUCCESS_TRUE_AND_PREVIOUS_BOOT_SUCCESS_TRUE"
+    },
+    {
+      "record_id": 95817,
+      "time_utc": "2026-09-02T03:10:56.2427736Z",
+      "provider": "EventLog",
+      "event_id": 6005,
+      "level": "INFORMATION",
+      "normalized_fact": "EVENT_LOG_SERVICE_STARTED"
+    },
+    {
+      "record_id": 95840,
+      "time_utc": "2026-09-02T03:10:43.3299393Z",
+      "provider": "Microsoft-Windows-Ntfs",
+      "event_id": 98,
+      "level": "INFORMATION",
+      "normalized_fact": "FIXED_VOLUME_HEALTHY_NO_ACTION_REQUIRED"
+    },
+    {
+      "record_id": 95841,
+      "time_utc": "2026-09-02T03:10:43.4120418Z",
+      "provider": "Microsoft-Windows-Ntfs",
+      "event_id": 98,
+      "level": "INFORMATION",
+      "normalized_fact": "FIXED_VOLUME_HEALTHY_NO_ACTION_REQUIRED"
+    },
+    {
+      "record_id": 95847,
+      "time_utc": "2026-09-02T03:10:48.2218914Z",
+      "provider": "Microsoft-Windows-Ntfs",
+      "event_id": 98,
+      "level": "INFORMATION",
+      "normalized_fact": "FIXED_VOLUME_HEALTHY_NO_ACTION_REQUIRED"
+    }
+  ],
+  "restart_window_counts": {
+    "user32_1074_count": 1,
+    "eventlog_6005_count": 1,
+    "eventlog_6006_count": 1,
+    "eventlog_6008_count": 0,
+    "kernel_power_41_count": 0,
+    "bugcheck_1001_count": 0,
+    "whea_error_count": 0,
+    "disk_ntfs_storage_error_count": 0,
+    "resource_exhaustion_error_count": 0,
+    "critical_system_process_failure_count": 0
+  },
+  "non_restart_system_errors": [
+    {
+      "event_id": 7024,
+      "provider": "Service Control Manager",
+      "normalized_fact": "THIRD_PARTY_UPDATER_SERVICE_ENDED_WHILE_SYSTEM_SHUTDOWN_WAS_IN_PROGRESS",
+      "restart_causality": false
+    },
+    {
+      "event_ids": [7000, 7009],
+      "provider": "Service Control Manager",
+      "normalized_fact": "THIRD_PARTY_GAME_CLIENT_SERVICE_START_TIMEOUT_AFTER_BOOT",
+      "restart_causality": false
+    }
+  ],
+  "windows_update_evidence": {
+    "update_scan_before_shutdown_result_count": 0,
+    "update_scan_after_boot_result_count": 0,
+    "restart_initiator_event_count": 0,
+    "update_orchestrator_operational_log_available": false
+  },
+  "windows_error_reporting_evidence": {
+    "bugcheck_report_count": 0,
+    "critical_process_report_count": 0,
+    "informational_application_pre_leak_report_count": 1,
+    "informational_application_pre_leak_restart_causality": false
+  }
+}

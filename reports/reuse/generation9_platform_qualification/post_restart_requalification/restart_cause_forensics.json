@@ -1,0 +1,39 @@
+{
+  "schema_version": "space_syndicate.v076.post_restart_cause_forensics.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "parent_authorization_id": "USER_SUPPLEMENTAL_AUTHORIZATION_V076_GENERATION9_PROBES_PLUS3_20260902",
+  "generated_at_utc": "2026-09-02T03:57:29.7151400Z",
+  "restart_cause_class": "A",
+  "restart_cause_name": "USER_INITIATED_PLANNED_RESTART",
+  "post_restart_cause": "PLANNED",
+  "planned_restart_evidence_green": true,
+  "historical_hard_stop_disposition": "CORRECT_FAIL_CLOSED_AT_TIME_OF_EXECUTION",
+  "historical_hard_stop_modified": false,
+  "current_boot_id": 212,
+  "previous_recorded_boot_id": 212,
+  "previous_boot_id_reconstructed_from_same_unchanged_boot_session": true,
+  "current_boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+  "previous_recorded_boot_time_utc": "2026-09-02T03:10:41.5000000Z",
+  "same_boot_session_as_historical_hard_stop": true,
+  "positive_evidence": [
+    "USER32_1074_INTERACTIVE_START_MENU_POWER_OFF_REQUEST",
+    "EVENTLOG_6006_CLEAN_STOP",
+    "KERNEL_GENERAL_13_ORDERLY_SHUTDOWN",
+    "KERNEL_BOOT_20_PREVIOUS_SHUTDOWN_SUCCESS_TRUE",
+    "EVENTLOG_6005_NORMAL_START"
+  ],
+  "negative_evidence": {
+    "eventlog_6008_count": 0,
+    "kernel_power_41_count": 0,
+    "bugcheck_count": 0,
+    "new_dump_count": 0,
+    "whea_error_count": 0,
+    "storage_error_count": 0,
+    "critical_process_failure_count": 0,
+    "windows_update_restart_initiator_count": 0
+  },
+  "reason_label_interpretation": "The OS reason label was OTHER_UNPLANNED, but the explicit interactive Start Menu request, clean EventLog shutdown, orderly kernel shutdown, and successful previous-shutdown flag prove an intentional orderly user power-off rather than an unclean loss of power.",
+  "classification_conflict_count": 0,
+  "requires_user_attestation": false,
+  "status": "PASS"
+}

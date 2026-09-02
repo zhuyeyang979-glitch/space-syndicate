@@ -1,0 +1,71 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_repaired_runner_manifest.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "probe_budget_authorization_id": "USER_SUPPLEMENTAL_AUTHORIZATION_V076_GENERATION9_PROBES_PLUS3_20260902",
+  "parent_authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "generated_at_utc": "2026-09-02T03:57:29.7151400Z",
+  "status": "PASS",
+  "platform_authorized_input_head_sha": "b2074d60afa3f46c0967408457aa422f2d1cdaaf",
+  "platform_authorized_input_tree_sha": "88d16bc04472852af57bfc18ae32b3f1ea644c63",
+  "product_candidate_head_sha": "32b1a4d0e4b47735c98a09d5f5cd034a160d870d",
+  "product_candidate_tree_sha": "5e6945f14e37b9416192f1945561b503f02fe49d",
+  "runner": {
+    "path": "tools/v076_generation9_platform_probe.ps1",
+    "sha256": "cc69d4e7a6fc753981ac6dfbcea1595f06c9e1d016fd3e5016f66888a1bfc36a",
+    "size_bytes": 39448
+  },
+  "static_self_test": {
+    "path": "tools/v076_generation9_platform_probe_static_self_test.ps1",
+    "sha256": "1d74ed68fbe08a5943b3b9ca6d50230e71f940028504923761dca854fee64bb8",
+    "report_path": "reports/reuse/generation9_platform_qualification/post_restart_requalification/runner_static_self_test_002.json",
+    "report_sha256": "97f2ae1fd55ef4e5acfa491066a79379c770d69144baff6aaec983655785b2d5",
+    "status": "PASS",
+    "powershell_parse_error_count": 0,
+    "unknown_command_count": 0
+  },
+  "dependencies": {
+    "monitor_storage": "EXTERNAL_TASK_OUTPUT_READ_ONLY_INPUT",
+    "monitor_sha256": "64e811c4ab358db051d9cb52d5508e867b0a4fbdd527b062f980081223bd1a59",
+    "invoke_tool_sha256": "251ad82d40984b71359dfc7c1725727554d5cf7e8bc14ed421d43c3f74ee33a8",
+    "launch_tool_sha256": "ae61c920a2a1b4c6d0c2e25d46a754d8d077ed145c0cfbe152c29c4566bc58ba",
+    "stop_tool_sha256": "0ea9511921823d38b4d1f05912fee21f75f4b219c32445ef0e965aca14974d32",
+    "runtime_bridge_sha256": "f3bbc4acc290bffbd596695b4962fabda85d3da764be91e50eb9f4fba2352990",
+    "mcp_probe_config_sha256": "8ca4bb281279b256f21340a4017ec26ac23a0c0b8c2260a287204bfb0a998ea4"
+  },
+  "workflow_contract": {
+    "budget_ledger_guard": true,
+    "post_restart_requalification_seal_guard": true,
+    "probe_id_format_guard": true,
+    "evidence_root_overwrite_guard": true,
+    "commercial_menu_navigation_before_seed_focus": true,
+    "menu_modal_closed_before_seed_input": true,
+    "start_overlay_visible_before_seed_input": true,
+    "unique_external_window_title_required": "太空辛迪加 (DEBUG)",
+    "windows_seed_character_input_count": 0,
+    "mcp_only_seed_character_input": true,
+    "direct_runtime_seed_injection_count": 0,
+    "seed_four_layer_parity_required": true,
+    "milestone_required_count": 12,
+    "normal_cleanup_required": true,
+    "failure_exit_code": 65,
+    "formal_generation": false,
+    "generation9_formal_execution_count": 0
+  },
+  "static_audits": {
+    "ast_parse": "PASS",
+    "unknown_command_scan": "PASS",
+    "control_flow_token_audit": "PASS",
+    "menu_navigation_order": "PASS",
+    "seed_input_ownership": "PASS",
+    "mcp_only_seed_text_contract": "PASS",
+    "timeout_state_machine": "PASS",
+    "cleanup_state_machine": "PASS",
+    "evidence_finalization": "PASS",
+    "budget_ledger": "PASS"
+  },
+  "tooling_change_resets_consecutive_pass_count": true,
+  "consecutive_pass_count_at_seal": 0,
+  "godot_launch_count_for_static_validation": 0,
+  "product_file_mutation_count": 0,
+  "direct_filesystem_product_edit_count": 0
+}

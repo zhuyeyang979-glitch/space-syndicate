@@ -1,0 +1,21 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_probe_budget_ledger.v1",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "probe_budget_authorization_id": "USER_SUPPLEMENTAL_AUTHORIZATION_V076_GENERATION9_PROBES_PLUS3_20260902",
+  "parent_authorization_id": "USER_AUTHORIZATION_V076_COMMIT_CAPACITY_AND_GENERATION9_20260902",
+  "generated_at_utc": "2026-09-02T03:57:29.7151400Z",
+  "append_only": true,
+  "ledger_sequence": 0,
+  "status": "ACTIVE",
+  "existing_probe_budget_reactivated": true,
+  "probe_budget_before_requalification": 4,
+  "additional_probe_budget_this_authorization": 0,
+  "probe_budget_after_requalification": 4,
+  "launch_count_after_requalification": 0,
+  "remaining_launch_count": 4,
+  "required_consecutive_pass_count": 2,
+  "current_consecutive_pass_count": 0,
+  "next_probe_id": "probe-007",
+  "generation9_formal_execution_count": 0,
+  "generation10_creation_count": 0
+}

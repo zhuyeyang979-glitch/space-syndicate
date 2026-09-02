@@ -1,0 +1,26 @@
+{
+  "schema_version": "space_syndicate.v076.generation9_platform_probe_runner_static_self_test.v2",
+  "authorization_id": "USER_AUTHORIZATION_V076_POST_RESTART_REQUALIFICATION_20260902",
+  "generated_at_utc": "2026-09-02T03:57:29.7151400Z",
+  "status": "PASS",
+  "powershell_parse_error_count": 0,
+  "discovered_command_count": 33,
+  "unknown_command_count": 0,
+  "control_flow_token_audit": "PASS",
+  "synthetic_recursive_button_discovery": "PASS",
+  "discovered_button_path": "/root/Main/CommercialShellSurfaceLayer/MenuPreviewBox/MainMenuCommandButton",
+  "discovered_button_center": {
+    "x": 250,
+    "y": 240
+  },
+  "commercial_navigation_before_seed_entry": "PASS",
+  "unoccluded_start_overlay_gate": "PASS",
+  "external_windows_focus_contract": "PASS",
+  "timeout_state_machine": "PASS",
+  "cleanup_state_machine": "PASS",
+  "evidence_finalization": "PASS",
+  "budget_ledger_guard": "PASS",
+  "direct_runtime_seed_injection_allowed": false,
+  "godot_launch_count": 0,
+  "scope": "STATIC_TOOLING_VALIDATION_ONLY_NO_PLATFORM_PASS_CLAIM"
+}
