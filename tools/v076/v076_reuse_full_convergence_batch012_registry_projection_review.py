@@ -217,6 +217,7 @@ def _independent(root: Path, candidate: dict) -> list[str]:
     allowed = {
         "tools/v076/v076_reuse_full_convergence_batch012_registry_projection_builder.py",
         "tools/v076/v076_reuse_full_convergence_batch012_registry_projection_review.py",
+        "tools/v076/v076_reuse_full_convergence_batch012_registry_apply.py",
     }
     if changed != allowed:
         raise ValueError("INDEPENDENT_POST_ARTIFACT_DELTA_INVALID")
