@@ -1,0 +1,41 @@
+{
+  "schema_version": "space_syndicate.v076.batch012_exact_registry_applied_audit.v1",
+  "status": "PASS",
+  "binding_head_sha": "a3ea0a03362c5e4cfc44043b2b875d609d70b72e",
+  "binding_tree_sha": "b56c2aedf6ca3889e20a7921e9bbd5f8e71ce9d3",
+  "candidate_sha256": "5c77357a4db9eb4654b3bfdc2c8178cd77e8eb3268089455cfb840e898272989",
+  "source_registry_sha256": "fa8486af2023a067df3af6e4e1eb5f4247e78f96f2b26e18a050d015c3a7667f",
+  "target_registry_sha256": "7bf5d500028f99b745e106c9a87e57e7cf4aa8540bb9c334cbd8c64bac8b2a67",
+  "registry_rows_before": 523,
+  "registry_rows_after": 562,
+  "appended_row_count": 39,
+  "old_row_mutation_count": 0,
+  "classification_counts": {
+    "HISTORICAL_TEST_ONLY": 39
+  },
+  "new_owner_count": 0,
+  "official_registry_write_count": 1,
+  "official_supersession_map_write_count": 0,
+  "product_file_mutation_count": 0,
+  "primary_exact_rebuild_review": "PASS",
+  "independent_target_delta_review": "PASS",
+  "postwrite_target_byte_parity": "PASS",
+  "reuse_point_inertia_selftest": {
+    "status": "PASS",
+    "pass_count": 163,
+    "case_count": 163,
+    "false_green_count": 0,
+    "valid_delta_false_reject_count": 0
+  },
+  "full_convergence_selftest": {
+    "status": "PASS",
+    "pass_count": 130,
+    "case_count": 130,
+    "legacy_record_mutation_count": 0,
+    "legacy_seal_mutation_count": 0
+  },
+  "formal_step11_reexecution_count": 0,
+  "required_gate_green": false,
+  "human_green": false,
+  "production_green": false
+}

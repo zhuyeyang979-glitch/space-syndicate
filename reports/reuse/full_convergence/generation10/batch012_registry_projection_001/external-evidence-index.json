@@ -1,0 +1,44 @@
+{
+  "schema_version": "space_syndicate.v076.batch012_registry_external_evidence_index.v1",
+  "candidates": [
+    {
+      "path": "D:/ss-v076-generation10-batch012-registry-projection-001-20260905/batch012_registry_projection_candidate.json",
+      "sha256": "dcd28c380f8ed5971a087d2a8241d061ae1ae9f468d37bfbce51695081debbc2",
+      "status": "SUPERSEDED_PRE_REVIEW_PROTOTYPE_NOT_APPLIED",
+      "preserved": true
+    },
+    {
+      "path": "D:/ss-v076-generation10-batch012-registry-projection-002-20260905/batch012_registry_projection_candidate.json",
+      "sha256": "9f2d908db2ba442bc8baad0bb70773ac692c53739810a47bdabb0e95681faacb",
+      "status": "DUAL_REVIEW_PASS_SUPERSEDED_BY_COMMITTED_WRITER_HEAD_NOT_APPLIED",
+      "preserved": true
+    },
+    {
+      "path": "D:/ss-v076-generation10-batch012-registry-projection-003-20260905/batch012_registry_projection_candidate.json",
+      "sha256": "5c77357a4db9eb4654b3bfdc2c8178cd77e8eb3268089455cfb840e898272989",
+      "status": "DUAL_REVIEWED_EXACT_TARGET_APPLIED",
+      "repository_copy": "registry-candidate.json",
+      "preserved": true
+    }
+  ],
+  "reviews": [
+    {
+      "review_id": "A",
+      "path": "D:/ss-v076-generation10-batch012-registry-projection-review-a-002-20260905/review-a.json",
+      "sha256": "068a921ba1c23fccaeb7b23bc8c52e8e8e27523c491d05d7e2c75d69a10f2347",
+      "repository_copy": "review-primary.json"
+    },
+    {
+      "review_id": "B",
+      "path": "D:/ss-v076-generation10-batch012-registry-projection-review-b-002-20260905/review-b.json",
+      "sha256": "a8184990f5b336e4b530c014b55a28037961e1fab578bee92e916a05628265d8",
+      "repository_copy": "review-independent.json"
+    }
+  ],
+  "application_receipt": {
+    "path": "D:/ss-v076-generation10-batch012-registry-apply-001-20260905/batch012_registry_apply_receipt.json",
+    "sha256": "210224ad29d53c61a16c6111f7aaaa6019f2435d4c53a465cdf4e45875c4d425",
+    "repository_copy": "application.json"
+  },
+  "old_evidence_mutation_count": 0
+}
