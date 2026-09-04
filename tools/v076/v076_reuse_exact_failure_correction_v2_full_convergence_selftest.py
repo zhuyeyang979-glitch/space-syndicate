@@ -16,6 +16,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
+from unittest.mock import patch
 
 import v076_reuse_exact_failure_correction_v2_full_convergence as convergence
 import v076_reuse_correction_v2_independent_audit as independent_audit
@@ -1128,6 +1129,31 @@ def _baseline_raw_identity_binding_case(root: Path) -> None:
     )
     _expect_failure(failures, "IDENTITY_BASELINE_HISTORICAL_PATH_MISMATCH")
     _expect_failure(failures, "IDENTITY_BASELINE_SOURCE_COMMIT_MISMATCH")
+
+
+def _implementation_trusted_row_forwarding_case(root: Path) -> None:
+    """The caller already selected one row; do not index it a second time."""
+    fingerprint = sorted(convergence.ALPHA01_DYNAMIC_FINGERPRINTS)[0]
+    trusted_row = {
+        "binding_id": "ALPHA01_CONTENT_MANIFEST_RESOURCE_BINDING_V1",
+        "component_id": convergence.ALPHA01_COMPONENT_ID,
+        "implementation_path": convergence.ALPHA01_SCRIPT_PATH,
+        "recommended_disposition": "HISTORICAL_DYNAMIC_REFERENCE_RESOLVED",
+    }
+    identity = {"bucket": "HISTORICAL", "rule_id": "HISTORY_DYNAMIC_REFERENCE_UNRESOLVED", "subject_kind": "path", "subject_value": convergence.ALPHA01_SCRIPT_PATH}
+    for row in (trusted_row, {}, None):
+        seen = []
+        def projection(_binding: dict[str, Any], **kwargs: Any) -> list[str]:
+            seen.append(kwargs.get("implementation_trusted"))
+            return ["IDENTITY_BINDING_TEST_SENTINEL"]
+        with patch.object(convergence, "_identity_projection_failures", side_effect=projection), patch.object(convergence, "_resolve_commit_prefix", return_value=""):
+            failures = convergence._authorized_identity_binding_failures(
+                root, fingerprint, _identity_binding(), identity,
+                record_rule_ids=[identity["rule_id"]], implementation_trusted=row,
+            )
+        _expect(len(seen) == 1 and seen[0] is row, "selected trust row was dropped, replaced or indexed twice")
+        _expect_failure(failures, "IDENTITY_BINDING_TEST_SENTINEL")
+        _expect_failure(failures, "IDENTITY_BASELINE_TRANSITION_UNRESOLVED")
 
 
 def _record_manifest_binding_case(root: Path) -> None:
@@ -7918,6 +7944,7 @@ def build_cases(root: Path) -> list[Case]:
     cases.append(Case("128", "successor-v6 Raw visibility fails closed on one or two missing rows and keeps future rows active", _successor_v6_scanner_visibility_case))
     cases.append(Case("129", "successor-v6 remains disjoint from every terminal correction authority", _successor_v6_terminal_overlap_case))
     cases.append(Case("130", "independent successor-v6 CLI is coupled to the complete full-convergence input set", lambda: _successor_v6_independent_cli_coupling_case(root)))
+    cases.append(Case("131", "Raw identity validation forwards exactly one selected implementation row without dropping failures or inventing trust", lambda: _implementation_trusted_row_forwarding_case(root)))
     return cases
 
 

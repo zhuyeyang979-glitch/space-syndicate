@@ -5095,7 +5095,9 @@ def _authorized_identity_binding_failures(
             rule_id=rule_id,
             raw_failure=str(identity.get("raw_failure", "")),
             fingerprint=fingerprint,
-            implementation_trusted=(implementation_trusted or {}).get(fingerprint),
+            # The record validator has already selected this fingerprint's
+            # verified row. A second lookup would silently discard that proof.
+            implementation_trusted=implementation_trusted,
         )
     )
     if record_rule_ids != [rule_id]:
