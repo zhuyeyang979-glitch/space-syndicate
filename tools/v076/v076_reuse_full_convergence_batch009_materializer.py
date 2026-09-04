@@ -1034,6 +1034,8 @@ def _artifact_documents(
     bindings: dict[str, dict[str, Any]],
     identities: dict[str, dict[str, Any]],
     proposal_reviews: dict[str, dict[str, Any]],
+    *,
+    batch_id: str = BATCH_ID,
 ) -> dict[str, dict[str, Any]]:
     inventory_rows: dict[str, Any] = {}
     classifications: dict[str, Any] = {}
@@ -1072,7 +1074,7 @@ def _artifact_documents(
             "transition_class": binding["recommended_disposition"],
         }
     common = {
-        "batch_id": BATCH_ID,
+        "batch_id": batch_id,
         "failure_count": len(fingerprints),
         "failure_fingerprints": fingerprints,
     }
@@ -1171,6 +1173,9 @@ def _record_document(
     tree: str,
     previous_chain: str,
     supplement_sha256: str,
+    batch_id: str = BATCH_ID,
+    created_at: str = CREATED_AT,
+    creator: str = "V076ReuseFullConvergenceBatch009Materializer",
 ) -> dict[str, Any]:
     paths = _set_values(bindings, ("historical_path", "current_path"))
     components = _set_values(
@@ -1189,11 +1194,11 @@ def _record_document(
         "authority_source_sha256": authority_hashes,
         "authorization_base_head_sha": convergence.AUTHORIZATION_BASE_HEAD_SHA,
         "authorization_id": convergence.AUTHORIZATION_ID,
-        "backlog_item_ids": [f"reuse.full-convergence.{BATCH_ID}.{index:02d}"],
+        "backlog_item_ids": [f"reuse.full-convergence.{batch_id}.{index:02d}"],
         "baseline_failure_set_sha256": convergence.AUTHORIZED_BASELINE_FAILURE_SET_SHA256,
         "baseline_report_sha256": convergence.AUTHORIZED_BASELINE_REPORT_SHA256,
         "batch_classification_sha256": artifact_hashes["batch_classification_sha256"],
-        "batch_id": BATCH_ID,
+        "batch_id": batch_id,
         "batch_inventory_sha256": artifact_hashes["batch_inventory_sha256"],
         "batch_negative_checks_sha256": artifact_hashes["batch_negative_checks_sha256"],
         "batch_review_a_sha256": artifact_hashes["batch_review_a_sha256"],
@@ -1203,15 +1208,15 @@ def _record_document(
         "component_ids": components,
         "component_set_sha256": line_set(components),
         "correction_id": (
-            f"V2-FC-{BATCH_ID}-{index:02d}-46b33bba77b3-"
+            f"V2-FC-{batch_id}-{index:02d}-46b33bba77b3-"
             f"e584cd4d8b0c-{suffix.lower()}"
         ),
         "correction_reason": (
             "Exact dual-reviewed historical component identity correction for "
             "transition 46b33bba77b3->e584cd4d8b0c."
         ),
-        "created_at": CREATED_AT,
-        "creator": "V076ReuseFullConvergenceBatch009Materializer",
+        "created_at": created_at,
+        "creator": creator,
         "descendant_history_supplement_sha256": supplement_sha256,
         "domain_ids": domains,
         "domain_set_sha256": line_set(domains),

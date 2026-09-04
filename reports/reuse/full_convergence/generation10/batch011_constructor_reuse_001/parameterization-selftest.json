@@ -1,0 +1,23 @@
+{
+  "case_count": 9,
+  "cases": {
+    "artifact_default_bytes_unchanged": true,
+    "artifact_explicit_default_bytes_unchanged": true,
+    "artifact_inputs_unchanged": true,
+    "explicit_batch_id_projects_only_batch_fields": true,
+    "explicit_creator_and_time_project_only_requested_fields": true,
+    "record_default_bytes_unchanged": true,
+    "record_explicit_default_bytes_unchanged": true,
+    "record_inputs_unchanged": true,
+    "record_payload_sha_unchanged": true
+  },
+  "godot_execution_count": 0,
+  "new_artifact_sha256": "e7a49c17e4093e898285d827a6b6f7e64d5cbd842ca39b50f1f8dd88ae0a218d",
+  "new_record_sha256": "ff788bdac29861f21d2fd1974fba9b9437818ebe5f06efcc1cf9a6d8e940d165",
+  "old_artifact_sha256": "e7a49c17e4093e898285d827a6b6f7e64d5cbd842ca39b50f1f8dd88ae0a218d",
+  "old_record_sha256": "ff788bdac29861f21d2fd1974fba9b9437818ebe5f06efcc1cf9a6d8e940d165",
+  "pass_count": 9,
+  "repository_mutation_count": 0,
+  "schema_version": "space_syndicate.v076.batch009_constructor_parameterization_selftest.v1",
+  "status": "PASS"
+}
