@@ -1,0 +1,42 @@
+{
+  "schema": "SpaceSyndicateV076Batch012MembershipScopeWitnessV1",
+  "head": "4c6ddc42fb20a5f09e14110e3a784534a7b7f905",
+  "membership_status": "DUAL_REVIEW_PASS",
+  "authority_projection_status": "NOT_APPROVED",
+  "official_batch_write_count": 0,
+  "official_record_write_count": 0,
+  "candidate_sha256": "53c4c82c2107318f35ad6fb34ff35b762341a7187ef79beb0cdfa341ea43e942",
+  "fingerprint_count": 39,
+  "fingerprint_set_sha256": "e0df091128327115a7ff339fba6f4a945f5d99e17054561ee1d62ec80eaf5c29",
+  "primary_reviewer": {
+    "role": "V076_FULL_CONVERGENCE_PRIMARY_REVIEWER_V1",
+    "actor": "/root",
+    "checks": [
+      "Original fresh candidate validator PASS",
+      "39 unique fingerprints and source paths",
+      "All 39 historical Git source paths exist at e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3",
+      "No current or future failure membership added"
+    ]
+  },
+  "independent_reviewer": {
+    "role": "V076_FULL_CONVERGENCE_INDEPENDENT_REVIEWER_V1",
+    "actor": "/root",
+    "verdict": "GO_FOR_MEMBERSHIP_ONLY",
+    "checks": [
+      "Frozen and current-Head plans have the exact Batch012 member set",
+      "All 39 paths are absent from the current Registry",
+      "Batch012 has zero overlap with Batch008 through Batch011",
+      "The frozen source transition and all 39 source identities resolve"
+    ]
+  },
+  "projection_constraints": [
+    "All 39 source Git objects are byte-identical between e584cd4d8b0cd8afca7ff508cffcb05d1ba801a3 and the evaluated Head",
+    "The current executable root instantiates V075RuntimeComposition and V075SampleGameScreen, not the historical GameRuntimeCoordinator or SpaceSyndicateGameScreen composition",
+    "Type annotations, preloads and compatibility lookups do not prove historical scene-node instantiation",
+    "All 39 proposed rows require TEST_SUPPORT, production_reachable false, writes_authority false and zero new Owner classification",
+    "The original authority materializer is batch-008 specific and cannot be relabeled for Batch012"
+  ],
+  "formal_step11_reexecution_count": 0,
+  "human_green": false,
+  "required_gate_green": false
+}
