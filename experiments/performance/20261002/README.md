@@ -1,0 +1,13 @@
+# Performance experiments: not selected, 2026-10-02
+
+These patches are research artifacts anchored to the declared local source hashes, not a runnable clean-checkout release and not authority to apply them to another code version. No game rules, costs, target commitments, privacy checks or event order should change.
+
+SourceRows baseline: CombatOwner FCF0FB31F1E45C8722231B314B69FE7FA0B4995B9E84A85C35A5C9D11FF2931F, SkillCore400A40EC157C0CEAAA51BA5D7B13F18FBEFAF99EA95557B608FE4669D418DF58. Frozen candidate: CombatOwner202F52B7C2BD1521EB61D39B5779B05D27D8EA6D15A02AB24B9CC2BDD303C28B, SkillCore417820E177C718C598AF54B262F45C0E84D3F2330C05C86B6A36120E81FD7721. Default OFF. Contract3539 and Main438 checks passed. Main initial7AI had zeroMonster/history and did not execute the measured projection section. Natural288 army11.732FPS/max194ms vs27811.622/max193ms: no material improvement. Both production files restored.
+
+Military revision scalar draft: baseline RuntimeOwner60D9EFA04654CD48E1B962F5FE9FA4D5EBDD6697F63CAD8927162977E31598DE / CombatOwner202F above. Candidate62DC20D8C8DDC6F4C2A4999BB682F7601E67F19E2013EF8DB9A01E756093F2AB /7DC9CA0126BECF3C4FAB230E3624F51D7590CD8D2D628759BAEFAD400410DCB7. Default OFF. It replaces full Combat debug snapshot solely for a revision value after the existing successful military preview, with native/source guards and the old fallback. Not parsed or run. An attempted MCP write of Owner was restored because complete readback was truncated at500000 characters; increasing requested max did not remove the cap. Combat candidate was never staged. No runtime/FPS claim.
+
+Latest natural288 also retained a debt failure (154.51s to154.80s), and normal final presentation had not drained within the30s observation. Rules settled and ACK/FIFO delivered705 events; final modal remained pending while last public focus was queued249/finished248 and director89 queued. Root has not proven a deadlock: the observation window was1x and may still have been doing serial presentation. Do not blame pause0 or extend a timeout and relabel it a performance fix.
+
+Next allocated test slot: collect bounded per-queue progress and actual component completion edges, fix a proven terminal blocker; then evaluate fresh military revision scalar and a larger pure-resolution prepare proposal. The latter preserves main-thread authoritative single commit and full byte-match of prior state; merely moving the26.3ms public transition and10.8ms asset proposal is insufficient to eliminate the122ms resolution atom.
+
+Large logs, world snapshots, profiles and credentials are excluded. Existing evidence remains on E:/SpaceSyndicateData, and originals are not moved or deleted.
