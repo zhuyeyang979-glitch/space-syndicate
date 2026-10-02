@@ -9950,6 +9950,24 @@ func _current_track_item(instance_id: String) -> Dictionary:
 	return {}
 
 
+func _same_v076_facility_target_commitment(expected: Dictionary, current: Dictionary) -> bool:
+	if expected.is_empty() or current.is_empty():
+		return false
+	for key in ["card_instance_id", "card_definition_id", "target_region_id", "target_slot_id", "facility_type", "industry_id", "facility_action_mode", "asset_cost", "expected_facility_id", "expected_facility_generation", "expected_owner_id", "expected_rank", "expected_damage_revision"]:
+		# Null denotes an unused expectation for the original mode. It must not
+		# be reinterpreted as authorization for a different mode or entity.
+		if str(key).begins_with("expected_") and current.get(key) == null and expected.get(key) in ["", 0, null]:
+			continue # Closed binding normalizes unused raw-option null to empty/zero.
+		if expected.has(key) and expected.get(key) != null and expected.get(key) != current.get(key):
+			return false
+	for aliases in [["target_revision", "region_revision"], ["target_slot_generation", "slot_generation"]]:
+		var old_value: Variant = expected.get(aliases[0], expected.get(aliases[1]))
+		var new_value: Variant = current.get(aliases[0], current.get(aliases[1]))
+		if old_value != null and old_value != new_value:
+			return false
+	return true
+
+
 func _current_card_queue_binding(candidate: Dictionary) -> Dictionary:
 	if candidate.is_empty() or _selected_card_id.is_empty():
 		return {}
@@ -9980,6 +9998,9 @@ func _current_card_queue_binding(candidate: Dictionary) -> Dictionary:
 				) as Dictionary
 				if not bool(resolved.get("accepted", false)):
 					return {}
+				var current_binding: Dictionary = resolved.get("binding", {}) as Dictionary
+				if not _same_v076_facility_target_commitment(candidate, current_binding):
+					return {} # Fresh authority may revoke a choice, never change its promise.
 				return (
 					resolved.get("binding", {}) as Dictionary
 				).duplicate(true)
